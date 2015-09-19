@@ -1,8 +1,7 @@
-package com.evolved.automata.nlisp;
+package com.evolved.automata.lisp;
 import java.util.*;
 
 import com.evolved.automata.filetools.StandardTools;
-import com.evolved.automata.nlisp.Value.Type;
 
 public class Environment 
 {
@@ -446,12 +445,9 @@ public class Environment
 		LinkedList<Value> listArgs = new LinkedList<Value>();
 		ParserResult result=null;
 		
-		String name;
-		boolean first=true;
 		
 		if (input.charAt(index)=='(')
 		{
-			Integer skipIndex = null;
 			index++;
 			while (index<input.length())
 			{

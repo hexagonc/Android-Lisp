@@ -1,10 +1,10 @@
 package com.evolved.automata.desktop;
-import com.evolved.automata.nlisp.Environment;
-import com.evolved.automata.nlisp.ExtendedFunctions;
-import com.evolved.automata.nlisp.IncompleteLispExpressionException;
-import com.evolved.automata.nlisp.NLispTools;
-import com.evolved.automata.nlisp.SimpleFunctionTemplate;
-import com.evolved.automata.nlisp.Value;
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.ExtendedFunctions;
+import com.evolved.automata.lisp.IncompleteLispExpressionException;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.Value;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

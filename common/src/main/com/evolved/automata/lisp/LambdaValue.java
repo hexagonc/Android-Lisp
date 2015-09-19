@@ -1,6 +1,4 @@
-package com.evolved.automata.nlisp;
-
-import com.evolved.automata.nlisp.Value.Type;
+package com.evolved.automata.lisp;
 
 public class LambdaValue extends Value {
 

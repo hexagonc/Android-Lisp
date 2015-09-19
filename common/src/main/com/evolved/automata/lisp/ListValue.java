@@ -1,6 +1,5 @@
-package com.evolved.automata.nlisp;
+package com.evolved.automata.lisp;
 
-import com.evolved.automata.nlisp.Value.Type;
 
 public class ListValue extends Value
 {

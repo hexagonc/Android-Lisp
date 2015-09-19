@@ -1,4 +1,4 @@
-package com.evolved.automata.nlisp;
+package com.evolved.automata.lisp;
 
 public class StringValue extends Value {
 

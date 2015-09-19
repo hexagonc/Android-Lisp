@@ -1,9 +1,8 @@
-package com.evolved.automata.nlisp;
+package com.evolved.automata.lisp;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.UUID;
 

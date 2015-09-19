@@ -1,4 +1,4 @@
-package com.evolved.automata.nlisp;
+package com.evolved.automata.lisp;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -561,7 +561,6 @@ public class ExtendedFunctions
 				double sample;
 				double weight;
 				
-				HashMap<String, String> evidenceMap = new HashMap<String, String>();
 				
 				
 				if (evaluatedArgs[0].isStringHashtable())
