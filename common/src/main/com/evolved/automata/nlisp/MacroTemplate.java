@@ -17,7 +17,7 @@ public class MacroTemplate extends FunctionTemplate
 	}
 	
 	@Override
-	public <T extends FunctionTemplate> T clone() throws InstantiationException, IllegalAccessException
+	public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 	{
 		T l = (T) new MacroTemplate(_innerEnvironment, _formalParameters, _bodyArguments);
 		return l;

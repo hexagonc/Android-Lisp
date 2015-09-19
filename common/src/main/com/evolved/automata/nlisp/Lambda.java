@@ -77,8 +77,10 @@ public class Lambda extends FunctionTemplate {
 		return _innerEnvironment;
 	}
 	
+	
+	
 	@Override
-	public <T extends FunctionTemplate> T clone() throws InstantiationException, IllegalAccessException
+	public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 	{
 		T l = (T) new Lambda(_innerEnvironment, _formalParameters, _bodyArguments);
 		l.setName(_name);

@@ -16,8 +16,20 @@ public abstract class FunctionTemplate
 	
 	public abstract Value evaluate(Environment env, boolean resume)  throws InstantiationException, IllegalAccessException;
 	
-
-	public <T extends FunctionTemplate> T clone() throws InstantiationException, IllegalAccessException
+	@Override
+	public Object clone()
+	{
+		try
+		{
+			return innerClone();
+		}
+		catch (Exception e)
+		{
+			return null;
+		}
+	}
+	
+	public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 	{
 		Class<T> c = (Class<T>)this.getClass();
 		T base = (T)c.newInstance();
