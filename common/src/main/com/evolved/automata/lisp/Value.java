@@ -34,6 +34,12 @@ public abstract class Value {
 		return false;
 	}
 	
+	public boolean isKeyName()
+	{
+		return isIdentifier() && getString().startsWith(":");
+	}
+	
+	
 	
 	public boolean isContinuation()
 	{

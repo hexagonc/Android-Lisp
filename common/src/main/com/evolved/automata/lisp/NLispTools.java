@@ -3911,6 +3911,7 @@ public class NLispTools
 		return v.isFloat() || v.isInteger();
 	}
 	
+	
 	public static String[] getStringArrayFromValue(Value stringListValue)
 	{
 		if (stringListValue.isList())

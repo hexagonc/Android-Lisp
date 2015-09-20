@@ -212,6 +212,8 @@ public class Environment
 		if (v.isIdentifier())
 		{
 			String name = v.getString();
+			if (v.isKeyName())
+				return v;
 			Value val = getVariableValue(name);
 			if (val !=null)
 				return val;
@@ -226,7 +228,7 @@ public class Environment
 			if (values.length>0)
 			{
 				Value first = values[0];
-				if (first.isIdentifier())
+				if (first.isIdentifier() && !first.isKeyName())
 				{
 					MacroTemplate mtemplate = getMacro(first.getString());
 					if (mtemplate!=null)
