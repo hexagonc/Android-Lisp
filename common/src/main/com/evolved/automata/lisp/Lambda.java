@@ -3,8 +3,6 @@ package com.evolved.automata.lisp;
 import java.util.HashMap;
 import java.util.LinkedList;
 
-import org.junit.Assert;
-
 
 
 public class Lambda extends FunctionTemplate {
@@ -146,7 +144,7 @@ public class Lambda extends FunctionTemplate {
 					if (name.equals(_VAR_ARGNAME))
 					{
 						_appendToVargs = true;
-						Assert.assertTrue(_argumentInstructionPointer == _formalParameters.length - 1);
+						assert _argumentInstructionPointer == _formalParameters.length - 1;
 					}
 					if (_argumentInstructionPointer < _actualParameters.length)
 					{
@@ -189,7 +187,7 @@ public class Lambda extends FunctionTemplate {
 				if (name.equals(_VAR_ARGNAME))
 				{
 					_appendToVargs = true;
-					Assert.assertTrue(_argumentInstructionPointer == _formalParameters.length - 1);
+					assert _argumentInstructionPointer == _formalParameters.length - 1;
 				}
 				if (_argumentInstructionPointer < _actualParameters.length)
 				{

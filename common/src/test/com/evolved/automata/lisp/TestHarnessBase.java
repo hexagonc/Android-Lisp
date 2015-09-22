@@ -4,16 +4,33 @@ import static org.junit.Assert.assertTrue;
 
 public class TestHarnessBase 
 {
-	protected static void addAssertFunction(Environment env)
+	
+	public class AssertEvaluate extends SimpleFunctionTemplate
 	{
-		env.mapFunction("assert-true", new SimpleFunctionTemplate() {
+		public AssertEvaluate()
+		{
+			super();
+			_name = "assert-true";
+		}
+		@Override
+		public Value evaluate(Environment env, Value[] evaluatedArgs) {
+			checkActualArguments(1, false, true);
+			assertTrue(!evaluatedArgs[0].isNull());
+			return evaluatedArgs[0];
+		}
+		
+		@Override
+		public Object clone()
+		{
+			return new AssertEvaluate();
 			
-			@Override
-			public Value evaluate(Environment env, Value[] evaluatedArgs) {
-				checkActualArguments(1, false, true);
-				assertTrue(!evaluatedArgs[0].isNull());
-				return evaluatedArgs[0];
-			}
-		});
+		}
+	}
+	
+	
+	
+	protected void addAssertFunction(Environment env)
+	{
+		env.mapFunction("assert-true", new AssertEvaluate());
 	}
 }

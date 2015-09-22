@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.UUID;
 
+import com.evolved.automata.KeyValuePair;
+
 
 
 public class NLispTools 
@@ -3975,6 +3977,27 @@ public class NLispTools
 		return out;
 	}
 	
-	
+	public static KeyValuePair<Value[], HashMap<String, Value>> getPartitionValues(Value[] args)
+	{
+		LinkedList<Value> normalValues = new LinkedList<Value>();
+		HashMap<String, Value> keyMap = new HashMap<String, Value>();
+		String prevKeyName = null;
+		for (Value v:args)
+		{
+			if (v.isKeyName())
+				prevKeyName = v.getString();
+			else if (prevKeyName != null)
+			{
+				keyMap.put(prevKeyName, v);
+				prevKeyName = null;
+			}
+			else
+			{
+				normalValues.add(v);
+			}
+				
+		}
+		return new KeyValuePair<Value[], HashMap<String, Value>>(normalValues.toArray(new Value[0]), keyMap);
+	}
 	
 }
