@@ -3487,7 +3487,7 @@ public class NLispTools
 		}
 		);
 		
-		env.mapFunction("thread-sleep", new SimpleFunctionTemplate()
+		env.mapFunction("sleep-milli", new SimpleFunctionTemplate()
 		{
 
 			private void thread_sleep()
@@ -3497,7 +3497,7 @@ public class NLispTools
 			
 			@Override
 			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(1, false, true);
+				checkActualArguments(1, false, false);
 				long time = evaluatedArgs[0].getIntValue();
 				try {
 					Thread.sleep(time);
