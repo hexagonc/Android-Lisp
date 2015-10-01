@@ -47,6 +47,25 @@ public class NLispTools
 		return elementList;
 	}
 	
+	public static SimpleFunctionTemplate format(final Environment env)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, true, true);
+				String formatString = evaluatedArgs[0].getString();
+				int argLength = evaluatedArgs.length - 1;
+				Object[] remaining = new Object[argLength];
+				for (int i=0;i < argLength;i++)
+					remaining[i] = (evaluatedArgs[i+1].isString())?evaluatedArgs[i+1].getString():evaluatedArgs[i+1].toString();
+				String out = String.format(formatString, remaining);
+				return NLispTools.makeValue(out);
+			}
+		};
+	}
+	
 	public static Environment addDefaultFunctionsAddMacros(Environment env) throws InstantiationException, IllegalAccessException
 	{
 		
@@ -2541,8 +2560,8 @@ public class NLispTools
 		env.evaluate("(defmacro multiple-bind* (binding-list value-list) (setq setq-list ()) (setq n (length binding-list)) (setq i 0) (while (< i n) (setq setq-list (append setq-list (list `(setq ,(nth binding-list i) ,(nth value-list i))))) (incr i)) `(progn ,@setq-list ,value-list))", true);
 		//env.evaluate("(defmacro funcall (fn ...) `(apply ,fn ,...))", true);
 		//env.evaluate("(defmacro find (loop-spec list condition) 		(setq remaining-list (gensym))		(setq matching-list (gensym))			(if (list-p loop-spec)		(progn			(if (not condition)				(setq condition					  (first loop-spec)))			`(let () 							(setq ,remaining-list ,list)							(setq ,matching-list ()) 							(setq ,(first loop-spec) 					  (first ,remaining-list)) 							(setq ,(second loop-spec) 0) 							(while (> (length ,remaining-list) 0) 									(if ,condition											(set ,matching-list						 							 (append-item ,matching-list						 		 							 	     ,(first loop-spec))))									(incr ,(second loop-spec)) 									(setq ,remaining-list 						  (rest ,remaining-list)) 									(setq ,(first loop-spec) 						  (first ,remaining-list))) 				,matching-list))		(progn			(if (not condition)				(setq condition					  loop-spec))			`(let () 							(setq ,remaining-list ,list)							(setq ,matching-list ()) 							(setq ,loop-spec (first ,remaining-list)) 							(while (> (length ,remaining-list) 0)									(if ,condition											(set ,matching-list						 							(append-item ,matching-list						 		 								,loop-spec)))				 					(setq ,remaining-list 				 	   						(rest ,remaining-list)) 				 					(setq ,loop-spec 						  (first ,remaining-list)))					,matching-list))))", true);
-		env.evaluate("(defmacro some (loop-spec list condition) 	(if (list-p loop-spec) `(for ,loop-spec ,list F (if ,(first loop-spec) ,(first loop-spec))) `(for ,loop-spec ,list F (if ,loop-spec (break ,loop-spec)))))", true);
-		env.evaluate("(defmacro all (loop-spec list condition) 	(if (list-p loop-spec) `(for ,loop-spec ,list ,list (if (not ,(first loop-spec)) (break F))) `(for ,loop-spec ,list ,list (if (not ,loop-spec) (break F)))))", true);
+		env.evaluate("(defmacro some (loop-spec list condition) 	(if (list-p loop-spec) `(for ,loop-spec ,list F (if ,condition (break ,(first loop-spec)))) `(for ,loop-spec ,list F (if ,condition (break ,loop-spec)))))", true);
+		env.evaluate("(defmacro all (loop-spec list condition) 	(if (list-p loop-spec) `(for ,loop-spec ,list ,list (if (not ,condition) (break F))) `(for ,loop-spec ,list ,list (if (not ,condition) (break F)))))", true);
 		//env.evaluate("(defmacro mapcar (loop-spec list transform) 	(setq remaining-list (gensym))	(setq new-list (gensym))	(if (list-p loop-spec) 		`(let () 			(setq ,remaining-list ,list)			(setq ,(first loop-spec) (first ,remaining-list)) 			(setq ,(second loop-spec) 0)			(setq ,new-list ()) 			(while ,(first loop-spec) 				(setq ,new-list					  (append ,new-list (if (list-p ,transform) (list ,transform) ,transform)))				(incr ,(second loop-spec)) 				(setq ,remaining-list (rest ,remaining-list)) 				(setq ,(first loop-spec) (first ,remaining-list)))			,new-list) 		`(let () 			(setq ,remaining-list ,list)			(setq ,new-list ()) 			(setq ,loop-spec (first ,remaining-list)) 			(while ,loop-spec				(setq ,new-list					  (append ,new-list (if (list-p ,transform) (list ,transform) ,transform)))					 (setq ,remaining-list 				 	   (rest ,remaining-list)) 				 (setq ,loop-spec (first ,remaining-list)))			,new-list				 )))", true);
 		//env.evaluate("(defmacro map-filter (loop-spec list transform) `(find x (mapcar ,loop-spec ,list ,transform)))", true);
 		//env.evaluate("(defmacro append-item (list item) (if (list-p item) `(append ,list (list ,item)) `(append ,list ,item)))", true);
@@ -2917,6 +2936,8 @@ public class NLispTools
 			
 		}
 		);
+		
+		env.mapFunction("format", format(env));
 		
 		env.mapFunction("substring", new SimpleFunctionTemplate()
 		{
