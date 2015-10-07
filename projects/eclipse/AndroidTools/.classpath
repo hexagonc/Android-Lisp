@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry excluding="com/evolved/automata/android/lisp/InternalEvaluator.java|com/evolved/automata/android/lisp/LispActivity.java|com/evolved/automata/android/lisp/LispApplication.java|com/evolved/automata/android/lisp/Pair.java|com/evolved/automata/android/mindstorms/MindstormBluetoothService.java|com/evolved/automata/android/mindstorms/NewBTCommunicator.java|com/evolved/automata/desktop/" kind="src" path="main"/>
+	<classpathentry excluding="com/evolved/automata/android/lisp/InternalEvaluator.java|com/evolved/automata/android/lisp/LispActivity.java|com/evolved/automata/android/lisp/LispApplication.java|com/evolved/automata/android/lisp/Pair.java" kind="src" path="src"/>
+	<classpathentry kind="src" path="gen"/>
+	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
+	<classpathentry exported="true" kind="con" path="com.android.ide.eclipse.adt.DEPENDENCIES"/>
+	<classpathentry kind="output" path="bin/classes"/>
+</classpath>
