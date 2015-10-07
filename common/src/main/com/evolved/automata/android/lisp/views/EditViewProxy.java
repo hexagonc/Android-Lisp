@@ -15,7 +15,7 @@ import android.widget.TextView;
 
 public class EditViewProxy extends TextViewProxy
 {
-	public static final String HINT_TEXT = ":hint";
+	public static final String HINT_TEXT = ":hint"; // text hint
 	
 	public EditViewProxy(Context con, HashMap<String, Value> keymap, String text)
 	{

@@ -2,6 +2,7 @@ package com.evolved.automata.lisp;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +25,36 @@ public class BasicLispTests extends TestHarnessBase
 			assertTrue(NLispTools.isNumericType(out));
 			assertTrue(out.getIntValue() == (23 + 56));
 			
+		}
+		catch (Exception e)
+		{
+			assertTrue(false);
+		}
+	}
+	
+	@Test
+	public void testStringInString()
+	{
+		String testString = "\"\\\"expression\\\"\"";
+		try
+		{
+			LinkedList<Value> processed = Environment.parse(testString, true);
+			assertTrue(processed.size()==1);
+			Value result = processed.getFirst();
+			assertTrue(result.isString());
+			String rawString = result.getString();
+			assertTrue(rawString.length()>0);
+			int doubleQuoteCount = 0;
+			int backSlashCount = 0;
+			for (char c:rawString.toCharArray())
+			{
+				if (c == '\"')
+					doubleQuoteCount++;
+				if (c == '\\')
+					backSlashCount++;
+			}
+			assertTrue(backSlashCount == 0 && doubleQuoteCount == 2);
+			assertTrue(rawString.startsWith("\"") && rawString.endsWith("\""));
 		}
 		catch (Exception e)
 		{

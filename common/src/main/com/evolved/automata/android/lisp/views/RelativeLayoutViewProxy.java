@@ -28,6 +28,7 @@ public class RelativeLayoutViewProxy extends ViewGroupProxy
 	{
 		
 		RelativeLayout layout = new RelativeLayout(context);
+		layout.setClipChildren(false);
 		return layout;
 	}
 	

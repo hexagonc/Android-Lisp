@@ -16,7 +16,7 @@ import com.nostra13.universalimageloader.core.ImageLoader;
 
 public class ImageViewProxy extends ViewProxy
 {
-	public static final String SOURCE = ":src";
+	public static final String SOURCE = ":src"; // string url for image
 	
 	
 	public ImageViewProxy(Context con, HashMap<String, Value> keymap)

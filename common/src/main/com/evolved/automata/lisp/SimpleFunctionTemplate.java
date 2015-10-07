@@ -2,6 +2,10 @@ package com.evolved.automata.lisp;
 
 public abstract class SimpleFunctionTemplate extends FunctionTemplate {
 
+	public SimpleFunctionTemplate()
+	{
+		
+	}
 	
 	@Override
 	public Value evaluate(Environment env, boolean resume)

@@ -83,13 +83,16 @@ public class ViewEvaluator  {
 		
 		env.mapFunction("is-checked", is_checked(env, con, interpreter));
 		
+		env.mapFunction("set-checked", set_checked(env, con, interpreter));
+		
+		
 		env.mapFunction("checkbox", checkbox(env, con, interpreter));
 		
 		env.mapFunction("shadow-button", shadow_button(env, con, interpreter));
 		
 		env.mapFunction("button", button(env, con, interpreter));
 		
-		
+		env.mapFunction("radio-button", radio_button(env, con, interpreter));
 		
 		env.mapFunction("edit", edit(env, con, interpreter));
 		
@@ -97,6 +100,11 @@ public class ViewEvaluator  {
 		env.mapFunction("text", text(env, con, interpreter));
 		
 		env.mapFunction("horizontal-layout", horizontal_layout(env, con, interpreter));
+		
+		env.mapFunction("horizontal-radio-group", horizontal_radio_group(env, con, interpreter));
+		
+		env.mapFunction("vertical-radio-group", vertical_radio_group(env, con, interpreter));
+		
 		
 		
 		
@@ -123,8 +131,33 @@ public class ViewEvaluator  {
 		
 		env.mapFunction("dialog", dialog(env, con, interpreter));
 		
-		
+		env.mapFunction("get-id", get_id(env, con, interpreter));
 	}
+	
+	public static SimpleFunctionTemplate get_id(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_id(env, con, interpreter);
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				
+				Value proxyArg = evaluatedArgs[0];
+				final ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+				
+				return NLispTools.makeValue(vp.getId());
+			}
+			
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate show_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
 	{
@@ -427,7 +460,7 @@ public class ViewEvaluator  {
 			@Override
 			public Value evaluate(Environment env, Value[] args) {
 				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
-				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				Value[] evaluatedArgs = kv.GetKey();
 				
 				
 				CheckboxViewProxy proxy = (CheckboxViewProxy)evaluatedArgs[0].getObjectValue();
@@ -437,6 +470,32 @@ public class ViewEvaluator  {
 			
 		};
 	}
+	
+	public static SimpleFunctionTemplate set_checked(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_checked(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				
+				
+				CheckboxViewProxy proxy = (CheckboxViewProxy)evaluatedArgs[0].getObjectValue();
+				proxy.setChecked(!evaluatedArgs[1].isNull());
+				return evaluatedArgs[1];
+			}
+			
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate checkbox(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
 	{
@@ -464,6 +523,34 @@ public class ViewEvaluator  {
 			
 		};
 	}
+	
+	public static SimpleFunctionTemplate radio_button(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)radio_button(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				HashMap<String, Value> keys = kv.GetValue();
+				
+				
+				Value text = evaluatedArgs[0];
+				RadioButtonProxy proxy = new RadioButtonProxy(con, keys, text.getString());
+				proxy.setLispInterpreter(interpreter);
+				return ExtendedFunctions.makeValue(proxy);
+			}
+			
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate shadow_button(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
 	{
@@ -636,6 +723,94 @@ public class ViewEvaluator  {
 			
 		};
 	}
+	
+	public static SimpleFunctionTemplate horizontal_radio_group(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)horizontal_radio_group(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				HashMap<String, Value> keys = kv.GetValue();
+				
+				
+				RadioGroupProxy proxy = new RadioGroupProxy(con, keys, LinearLayout.HORIZONTAL);
+				proxy.setLispInterpreter(interpreter);
+				for (Value input:evaluatedArgs)
+				{
+					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
+					{
+						proxy.addChild((ViewProxy)input.getObjectValue());
+					}
+					else if (input.isList())
+					{
+						for (Value sub:input.getList())
+						{
+							if (sub.isUserObject() && sub.getObjectValue() instanceof ViewProxy)
+							{
+								proxy.addChild((ViewProxy)sub.getObjectValue());
+							}
+						}
+					}
+				}
+				
+				return ExtendedFunctions.makeValue(proxy);
+			}
+			
+		};
+	}
+	
+	public static SimpleFunctionTemplate vertical_radio_group(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)vertical_radio_group(env, con, interpreter);
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				HashMap<String, Value> keys = kv.GetValue();
+				
+				
+				RadioGroupProxy proxy = new RadioGroupProxy(con, keys, LinearLayout.VERTICAL);
+				proxy.setLispInterpreter(interpreter);
+				for (Value input:evaluatedArgs)
+				{
+					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
+					{
+						proxy.addChild((ViewProxy)input.getObjectValue());
+					}
+					else if (input.isList())
+					{
+						for (Value sub:input.getList())
+						{
+							if (sub.isUserObject() && sub.getObjectValue() instanceof ViewProxy)
+							{
+								proxy.addChild((ViewProxy)sub.getObjectValue());
+							}
+						}
+					}
+				}
+				
+				return ExtendedFunctions.makeValue(proxy);
+			}
+			
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate relative(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
 	{
@@ -886,12 +1061,12 @@ public class ViewEvaluator  {
 				
 				final ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
 				final boolean requestLayout = evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull();
-	    		
+				proxy.applyAttribures(keys);
 	    		(new UIRunnable(new Handler(Looper.getMainLooper())) {
 					
 					@Override
 					public void run() {
-						proxy.applyAttribures(keys);
+						
 						View view = proxy.getView();
 						if (requestLayout && view != null )
 							view.requestLayout();

@@ -21,11 +21,11 @@ import com.evolved.automata.lisp.Value;
 
 public class TextViewProxy extends ViewProxy
 {
-	public static final String TEXT_SIZE = ":text-size"; //  #sp | #dp
-	public static final String TEXT_STYLE = ":text-style"; // 
-	public static final String FONT_FACE = ":typeface";
-	public static final String TEXT_ALIGNMENT = ":text-align";
-	public static final String TEXT_COLOR = ":text-color";
+	public static final String TEXT_SIZE = ":text-size"; // text pixel size in sp
+	public static final String TEXT_STYLE = ":text-style"; // string combination of "bold" or "italic" joined by pipe '|' character if needed
+	public static final String FONT_FACE = ":typeface"; // "normal" | "sans" | "serif" | "monospaced"
+	public static final String TEXT_ALIGNMENT = ":text-align"; // string combination of "top" or "left" or "right" or "bottom" or "center" joined buy pipe '|' character if necessary
+	public static final String TEXT_COLOR = ":text-color"; // raw color decimal number | android string color spec, such as #000 or @android:color/white
 	
 	String text = null;
 	int textColor;
@@ -114,9 +114,9 @@ public class TextViewProxy extends ViewProxy
 				styleValue = 0;
 				for (String spec:styleSpec.split("\\|"))
 				{
-					if (styleSpec.equalsIgnoreCase("bold"))
+					if (spec.equalsIgnoreCase("bold"))
 						styleValue |= Typeface.BOLD;
-					else if (styleSpec.equalsIgnoreCase("italic"))
+					else if (spec.equalsIgnoreCase("italic"))
 						styleValue |= Typeface.ITALIC;
 					else
 						throw new EvaluateException("Invalid text style spec: " + style);

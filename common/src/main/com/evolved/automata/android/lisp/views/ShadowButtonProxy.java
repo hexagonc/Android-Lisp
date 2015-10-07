@@ -18,11 +18,12 @@ import com.evolved.automata.lisp.Value;
 
 public class ShadowButtonProxy extends ViewProxy
 {
-	public static final String TEXT_SIZE = ":text-size";
-	public static final String TEXT_STYLE = ":text-style";
-	public static final String FONT_FACE = ":typeface";
-	public static final String TEXT_ALIGNMENT = ":text-align";
-	public static final String TEXT_COLOR = ":text-color";
+	public static final String TEXT_SIZE = ":text-size"; // text pixel size in sp
+	public static final String TEXT_STYLE = ":text-style"; // string combination of "bold" or "italic" joined by pipe '|' character if needed
+	public static final String FONT_FACE = ":typeface"; // "normal" | "sans" | "serif" | "monospaced"
+	public static final String TEXT_ALIGNMENT = ":text-align"; // string combination of "top" or "left" or "right" or "bottom" or "center" joined buy pipe '|' character if necessary
+	public static final String TEXT_COLOR = ":text-color"; // raw color decimal number | android string color spec, such as #000 or @android:color/white
+
 	
 	String text = null;
 	int textColor;
@@ -57,7 +58,7 @@ public class ShadowButtonProxy extends ViewProxy
 	
 	protected void processTextColor(HashMap<String, Value> keys, ShadowButton tview)
 	{
-		Value color = keys.get(TEXT_COLOR);
+		Value color = getMapValue(keys, TEXT_COLOR);
 		if (!color.isNull())
 		{
 			setTextColor(color, tview);
@@ -92,8 +93,8 @@ public class ShadowButtonProxy extends ViewProxy
 	
 	public void processFontFaceAndStyle(HashMap<String, Value> keys, ShadowButton tview)
 	{
-		Value style = keys.get(TEXT_STYLE);
-		Value face = keys.get(FONT_FACE);
+		Value style = getMapValue(keys, TEXT_STYLE);
+		Value face = getMapValue(keys, FONT_FACE);
 		
 		int styleValue = Typeface.NORMAL;
 		Typeface tp = Typeface.DEFAULT;
@@ -105,9 +106,9 @@ public class ShadowButtonProxy extends ViewProxy
 				styleValue = 0;
 				for (String spec:styleSpec.split("\\|"))
 				{
-					if (styleSpec.equalsIgnoreCase("bold"))
+					if (spec.equalsIgnoreCase("bold"))
 						styleValue |= Typeface.BOLD;
-					else if (styleSpec.equalsIgnoreCase("italic"))
+					else if (spec.equalsIgnoreCase("italic"))
 						styleValue |= Typeface.ITALIC;
 					else
 						throw new EvaluateException("Invalid text style spec: " + style);
@@ -149,7 +150,7 @@ public class ShadowButtonProxy extends ViewProxy
 	
 	public void processTextSize(HashMap<String, Value> keys, ShadowButton tview)
 	{
-		Value text = keys.get(TEXT_SIZE);
+		Value text = getMapValue(keys, TEXT_SIZE);
 		if (!text.isNull())
 		{
 			Number value = Double.valueOf(text.getFloatValue());

@@ -20,7 +20,7 @@ public class LinearLayoutViewProxy extends ViewGroupProxy
 	int orientation;
 	int gravity;
 	
-	public static final String CHILD_ALIGNMENT = ":child-align";
+	public static final String CHILD_ALIGNMENT = ":child-align"; // "left" | "right" | "top" | "bottom" | "center"
 	
 	
 	public LinearLayoutViewProxy(Context con, HashMap<String, Value> keymap, int oorientation)

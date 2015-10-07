@@ -54,28 +54,30 @@ public abstract class ViewProxy
 	int defaultHeight = ViewGroup.LayoutParams.WRAP_CONTENT;
 	protected boolean backgroundColorDefinedP = false;
 	
-	public static final String WIDTH_KEYWORD = ":width";
-	public static final String HEIGHT_KEYWORD = ":height";
+	public static final String WIDTH_KEYWORD = ":width"; //  integer dp | "match_parent" | "fill_parent" | "wrap_content"
+														//	if parent is horizontal-layout then "%#" where # is percent of parent width or "equal-space" meaning width is equally divided amongst all siblings
+	public static final String HEIGHT_KEYWORD = ":height"; //  integer dp | "match_parent" | "fill_parent" | "wrap_content"
+														  //	if parent is vertical-layout then can be "%#" of parent height or "equal-space" meaning height is equally divided amongst all siblings
 	public static final String EQUAL_SPACE_WIDTH = "equal-space";
-	public static final String BACKGROUND_COLOR = ":background-color";
-	public static final String BACKGROUND_DRAWABLE = ":background";
-	public static final String VISIBILITY = ":visibility";
+	public static final String BACKGROUND_COLOR = ":background-color"; // raw color decimal number | android string color spec, such as #000 or @android:color/white  
+	public static final String BACKGROUND_DRAWABLE = ":background"; // decimal integer drawable resource id | string url of image resource 
+	public static final String VISIBILITY = ":visibility"; // "visible" | "invisible" | "gone"
 	
-	public static final String MARGIN = ":margin";
-	public static final String MARGIN_LEFT = ":margin-left";
-	public static final String MARGIN_RIGHT = ":margin-right";
-	public static final String MARGIN_TOP = ":margin-top";
-	public static final String MARGIN_BOTTOM = ":margin-bottom";
+	public static final String MARGIN = ":margin"; // integer dp
+	public static final String MARGIN_LEFT = ":margin-left"; // integer dp
+	public static final String MARGIN_RIGHT = ":margin-right"; // integer dp
+	public static final String MARGIN_TOP = ":margin-top"; // integer dp
+	public static final String MARGIN_BOTTOM = ":margin-bottom"; // integer dp
 	
-	public static final String PADDING = ":padding";
-	public static final String PADDING_LEFT = ":padding-left";
-	public static final String PADDING_RIGHT = ":padding-right";
-	public static final String PADDING_TOP = ":padding-top";
-	public static final String PADDING_BOTTOM = ":padding-bottom";
+	public static final String PADDING = ":padding"; // integer dp
+	public static final String PADDING_LEFT = ":padding-left"; // integer dp
+	public static final String PADDING_RIGHT = ":padding-right"; // integer dp
+	public static final String PADDING_TOP = ":padding-top"; // integer dp
+	public static final String PADDING_BOTTOM = ":padding-bottom"; // integer dp
 	
-	public static final String PARENT_ALIGN = ":parent-align";
-	public static final String ON_CLICK = ":onClick";
-	public static final String ON_LONG_CLICK = ":onLongClick";
+	public static final String PARENT_ALIGN = ":parent-align"; // combination of "top" | "bottom" | "center" | "left" | "right" joined by pipe '|' character
+	public static final String ON_CLICK = ":on-click"; // a string expression to be evaluated
+	public static final String ON_LONG_CLICK = ":on-long-click"; // a string expression to be evaluated that can return a boolean result
 	
 	int topPadding = 0;
 	int bottomPadding = 0;
@@ -662,6 +664,7 @@ public abstract class ViewProxy
 			{
 				actualValue = Double.valueOf(width.getFloatValue()).intValue();
 				layout.width = AndroidTools.convertDPtoPX(context, actualValue);
+				return;
 			}
 			throw new EvaluateException("Invalid width: " + width);
 		}
@@ -1005,5 +1008,10 @@ public abstract class ViewProxy
 			return result;
 		else
 			return Environment.getNull();
+	}
+	
+	public int getId()
+	{
+		return id;
 	}
 }

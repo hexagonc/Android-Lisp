@@ -1,13 +1,17 @@
 package com.evolved.automata.android;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Calendar;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.io.*;
+
+
 
 import android.net.Uri;
 import android.os.*;
@@ -420,6 +424,25 @@ public class AndroidTools
     public static InputStream getFileAsset(String assetPath, Context context) throws IOException
     {
     	return context.getAssets().open(assetPath);
+    }
+    
+    public static String getFileAssetAsString(String assetPath, Context context) throws IOException
+    {
+    	BufferedReader breader = null;
+		StringBuilder sbuilder = new StringBuilder();
+		try
+		{
+			breader = new BufferedReader(new InputStreamReader(getFileAsset(assetPath)));
+			String line;
+			while ((line = breader.readLine())!=null)
+				sbuilder.append(line).append("\n");
+			return sbuilder.toString();
+		}
+		finally
+		{
+			if (breader!=null)
+				breader.close();
+		}
     }
     
     public static void writeAssetToLocalStorage(Context context, String assetPath, String filePath) throws IOException

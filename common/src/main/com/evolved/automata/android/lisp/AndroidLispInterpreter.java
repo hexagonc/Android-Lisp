@@ -61,7 +61,10 @@ public class AndroidLispInterpreter
 		{
 			Value tout = null;
 			try {
-				tout = _env.evaluate(out.getFirst(), false);
+				for (Value o:out)
+				{
+					tout = _env.evaluate(o, false);
+				}
 			} catch (Exception e) {
 				notifyError(e);
 				return null;
@@ -87,7 +90,11 @@ public class AndroidLispInterpreter
 				{
 					Value tout = null;
 					try {
-						tout = _env.evaluate(out.getFirst(), false);
+						for (Value o:out)
+						{
+							tout = _env.evaluate(o, false);
+						}
+						
 					} catch (Exception e) {
 						notifyError(e);
 						return;
