@@ -75,6 +75,13 @@ public class AppStateManager
 			_listeners.remove(a);
 	}
 	
+	public synchronized void simpleMessage(String tag, String message)
+	{
+		Log.i(tag, message);
+		
+	}
+	
+	
 	public synchronized void onEvent(String key, String ...keyValuePairs )
 	{
 		HashMap<String, String> map = new HashMap<String, String>();

@@ -9,8 +9,10 @@ import com.evolved.automata.android.mindstorms.NXTBluetoothInterface;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.android.mindstorms.NXTBluetoothService;
 import com.evolved.automata.android.mindstorms.NXTServiceInterface;
+import com.evolved.automata.android.mindstorms.NotConnectedToNXTException;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
+import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
@@ -24,6 +26,10 @@ public class NXTLispFunctions
 		env.mapFunction("get-device-mac-address", get_device_mac_address(manager));
 		env.mapFunction("nxt-service-running-p", nxt_service_running_p(manager));
 		env.mapFunction("bluetooth-adapter-on-p", bluetooth_adapter_on_p(manager));
+		
+		env.mapFunction("connected-to-device-p", connected_to_device_p(manager));
+		
+		
 		env.mapFunction("request-bluetooth-adapter_enable", request_bluetooth_adatper_enable(manager));
 		env.mapFunction("start-nxt-service", start_nxt_service(manager));
 		env.mapFunction("stop-nxt-service", stop_nxt_service(manager));
@@ -36,15 +42,116 @@ public class NXTLispFunctions
 		env.mapFunction("get-motor-tach", get_motor_tach(manager));
 		env.mapFunction("reset-motor-tach", reset_motor_tach(manager));
 		env.mapFunction("keep-nxt-alive", keep_nxt_alive(manager));
-		
+		env.mapFunction("disconnect-all-nxt", disconnect_all_nxt(manager));
 		env.mapFunction("get-battery-millivolts", get_battery_millivolts(manager));
+		env.mapFunction("set-bluetooth-debug-enable", set_bluetooth_debug_enable(manager));
 	}
+	
+	private static SimpleFunctionTemplate set_bluetooth_debug_enable(final NXTBluetoothManager manager)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_bluetooth_debug_enable(manager);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) 
+			{
+				try
+				{
+					return NLispTools.makeValue(manager.setBluetoothDebugMode(!evaluatedArgs[0].isNull()));
+				}
+				catch (Exception e)
+				{
+					AppStateManager.getInstance().onError("lisp:get-battery-millivolts", e);
+				}
+				
+				return NLispTools.makeValue(false);
+				
+			}
+			
+		};
+	}
+	
+	private static SimpleFunctionTemplate connected_to_device_p(final NXTBluetoothManager manager)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)connected_to_device_p(manager);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) 
+			{
+				try
+				{
+					NXTBluetoothInterface ninterface = (NXTBluetoothInterface)evaluatedArgs[0].getObjectValue();
+					
+					return (ninterface.isConnected()?evaluatedArgs[0]:NLispTools.makeValue(false));
+				}
+				catch (Exception e)
+				{
+					AppStateManager.getInstance().onError("lisp:get-battery-millivolts", e);
+				}
+				
+				return NLispTools.makeValue(false);
+				
+			}
+			
+		};
+	}
+	
+	
+	private static SimpleFunctionTemplate disconnect_all_nxt(final NXTBluetoothManager manager)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)disconnect_all_nxt(manager);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) 
+			{
+				try
+				{
+					manager.disconnectAllNXT();
+					
+					return NLispTools.makeValue(true);
+				}
+				
+				catch (Exception e)
+				{
+					AppStateManager.getInstance().onError("lisp:disconnect-all-nxt", e);
+				}
+				
+				return NLispTools.makeValue(false);
+				
+			}
+			
+		};
+	}
+	
 	
 	private static SimpleFunctionTemplate get_battery_millivolts(final NXTBluetoothManager manager)
 	{
 		return new SimpleFunctionTemplate()
 		{
 
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_battery_millivolts(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -73,6 +180,13 @@ public class NXTLispFunctions
 		{
 
 			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)keep_nxt_alive(manager);
+			}
+			
+			
+			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
 				try
@@ -99,6 +213,12 @@ public class NXTLispFunctions
 		return new SimpleFunctionTemplate()
 		{
 
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)reset_motor_tach(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -137,6 +257,12 @@ public class NXTLispFunctions
 		{
 
 			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_motor_tach(manager);
+			}
+			
+			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
 				try
@@ -165,6 +291,12 @@ public class NXTLispFunctions
 		{
 
 			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_boolean_sensor_value(manager);
+			}
+			
+			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
 				try
@@ -192,6 +324,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_raw_sensor_value(manager);
+			}
+			
 
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
@@ -219,7 +357,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)configure_sensor_port(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -248,7 +391,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_motor_power(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -278,7 +426,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)disconnect_from_device(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -304,7 +457,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)connect_to_device(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -330,7 +488,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)start_nxt_service(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -344,11 +507,16 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)stop_nxt_service(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
-				return NLispTools.makeValue(manager.startNXTBluetoothService());
+				return NLispTools.makeValue(manager.stopNXTBluetoothService());
 			}
 			
 		};
@@ -359,7 +527,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)request_bluetooth_adatper_enable(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -373,7 +546,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)bluetooth_adapter_on_p(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -392,7 +570,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)nxt_service_running_p(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -411,7 +594,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_paired_devices(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -442,7 +630,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_device_name(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
@@ -458,7 +651,12 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
-
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_device_mac_address(manager);
+			}
+			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{

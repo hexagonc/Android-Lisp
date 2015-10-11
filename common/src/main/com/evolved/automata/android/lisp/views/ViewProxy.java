@@ -19,11 +19,13 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 
 
 import com.evolved.automata.android.AndroidTools;
+import com.evolved.automata.android.DeviceBehaviorOverrides;
 import com.evolved.automata.android.EvaluateException;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.lisp.Environment;
@@ -939,7 +941,10 @@ public abstract class ViewProxy
 			processImageSourceKeyword(view, backgroundResourceUrl);
 		}
 		view.setId(id);
-		view.setPadding(leftPadding, topPadding, rightPadding, bottomPadding);
+		// TODO: Don't set padding for radio buttons for certain devices because this breaks ui on certain
+		//		 phones, namely the HTC EVO 4G LTE.  Need a better way to handle this
+		if (!DeviceBehaviorOverrides.radioPaddingBugP() ||  !(view instanceof RadioButton))
+			view.setPadding(leftPadding, topPadding, rightPadding, bottomPadding);
 		processOnClickListenerKeys(view, _keys);
 		processOnLongClickListenerKeys(view, _keys);
 	}

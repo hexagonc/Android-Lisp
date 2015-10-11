@@ -28,6 +28,8 @@ import java.util.HashMap;
  */
 public class NXTMessage {
 
+	public static final byte _DISTANCE_I2C_ADDRESS = 0x42;
+	
 	public static enum TachRelation
 	{
 		RELATIVE_TO_LAST_MOVEMENT, ABSOLUTE

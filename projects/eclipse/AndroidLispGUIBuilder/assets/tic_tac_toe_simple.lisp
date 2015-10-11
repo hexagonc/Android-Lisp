@@ -1,3 +1,5 @@
+(setq radio-padding 0)
+
 (setq position-mark-spec
 	  (list ("O"  "X" "X")
 		    ("X"  "O" "O")
@@ -76,16 +78,16 @@
 				 	   :parent-align "left")
 				 (horizontal-radio-group :width "match_parent"
 					 					 :height "wrap_content"
-					 					 (radio-button "X")
-					 					 (radio-button "O"
-					 					 			   :margin-left 13))
+					 					 (radio-button "X" :padding-left radio-padding)
+					 					 (radio-button "O" :padding-left radio-padding
+					 					 			   	   :margin-left 13))
 				 (text "Who starts:"
 				 	   :parent-align "left"
 				 	   :margin-top 5)
 				 (horizontal-radio-group :width "match_parent"
 					 					 :height "wrap_content"
-					 					 (radio-button "Player")
-					 					 (radio-button "AI"
+					 					 (radio-button "Player" :padding-left radio-padding)
+					 					 (radio-button "AI" :padding-left radio-padding
 					 					 			   :margin-left 13))
 				 
 		 	     (vertical-layout :width "match_parent"

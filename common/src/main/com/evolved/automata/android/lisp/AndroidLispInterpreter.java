@@ -55,7 +55,17 @@ public class AndroidLispInterpreter
 	 */
 	public Value evaluateExpression(String exp, boolean alwaysUseCallbackP) 
 	{
-		final LinkedList<Value> out = _env.parse(exp, true);
+		LinkedList<Value> temp = null;
+		try
+		{
+			temp = _env.parse(exp, true);
+		}
+		catch (Exception e)
+		{
+			notifyError(e);
+			return null;
+		}
+		final LinkedList<Value> out = temp;
 		
 		if (Looper.myLooper() == Looper.getMainLooper())
 		{
@@ -118,7 +128,8 @@ public class AndroidLispInterpreter
 			{
 				Value tout = null;
 				try {
-					tout = _env.evaluate(input, true);
+					
+					tout = input.getContinuingFunction().evaluate(_env, true);
 				} catch (Exception e) {
 					notifyError(e);
 					return;
@@ -127,6 +138,8 @@ public class AndroidLispInterpreter
 				{
 					_mainThreadHandler.post(getEvaluationSlice(tout));
 				}
+				else if (_eListener!=null)
+					_eListener.onResult(tout);
 			}
 		};
 	}

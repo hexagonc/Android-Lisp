@@ -49,7 +49,7 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 	
 	static Object _interfaceMutex = new Object();
 	
-	
+	private static NXTBluetoothService _instance = null;
 	
 	@Override
 	public void onCreate()
@@ -62,34 +62,25 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 		_bluetoothConnectionReceiver = getConnectionReceiver();
 		_bluetoothStateReceiver = getStatusReceiver();
 		
-		Intent prior = null;
 		IntentFilter bluetoothStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-		prior = registerReceiver(null, bluetoothStateFilter);
-		if (prior != null)
+		BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+		if (adapter != null)
 		{
-			synchronized (_interfaceMutex)
-			{
-				_adapterStatus = prior.getExtras().getInt(BluetoothAdapter.EXTRA_STATE);
-			}
+			_adapterStatus = (adapter.isEnabled())?BluetoothAdapter.STATE_ON:BluetoothAdapter.STATE_OFF;
 		}
+		
 		registerReceiver(_bluetoothStateReceiver, bluetoothStateFilter);
 		
-		
 		IntentFilter bluetoothConnectionFilter = new IntentFilter(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
-		prior = registerReceiver(null, bluetoothConnectionFilter);
-		if (prior != null)
-		{
-			synchronized (_interfaceMutex)
-			{
-				_connectionState = prior.getExtras().getInt(BluetoothAdapter.EXTRA_CONNECTION_STATE);
-			}
-		}
+		
 		registerReceiver(_bluetoothConnectionReceiver, bluetoothConnectionFilter);
 		
 		_serviceStatus = _STARTED;
 		
 		notifyListeners(_UPDATE_ALL);
 		_serviceInteface = this;
+		NXTBluetoothManager.getInstance().showBluetooNotification(true);
+		_instance = this;
 	}
 	
 	
@@ -114,6 +105,8 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 		
 		notifyListeners(_UPDATE_ALL);
 		clearServiceInterface();
+		NXTBluetoothManager.getInstance().showBluetooNotification(false);
+		_instance = null;
 		super.onDestroy();
 	}
 	
@@ -122,7 +115,8 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 		if (!_statusListeners.contains(listener))
 		{
 			_statusListeners.add(listener);
-			
+			if (_instance !=null)
+				_instance.notifyListeners(listener);
 		}
 		
 	}
@@ -166,9 +160,6 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 						_connectionState = state;
 					}
 					notifyListeners(_UPDATE_CONNECTION_STATE_LISTENERS);
-						
-						
-					
 					
 				}
 				
@@ -195,9 +186,9 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 	
 	private void notifyListeners(BluetoothStatusListener listener)
 	{
-		listener.onConnectionChange(_connectionState);
 		listener.onServiceStatusChanged(_serviceStatus);
 		listener.onStatusChange(_adapterStatus);
+		listener.onConnectionChange(_connectionState);
 	}
 
 

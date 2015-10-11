@@ -1,3 +1,5 @@
+(setq radio-padding 0)
+
 (defun empty (string-list-or-map)
     (or (not string-list-or-map)
         (= 0 (length string-list-or-map))))
@@ -195,6 +197,8 @@
 
 (setq mark-text-size 17)
 
+
+
 (setq board-text-map
     (for i
          3
@@ -348,15 +352,17 @@
                                     (build-score-columns ("Player" player-score-text)
                                                          ("AI" ai-score-text)
                                                          ("Draws" draw-score-text)))
-                 (button "Reset"
+                 (shadow-button "Reset"
                          :parent-align "left"
                          :on-click "(initialize)")
                  (text "Select your mark:"
                        :parent-align "left")
                  (horizontal-radio-group :width "match_parent"
                                          :height "wrap_content"
-                                         (radio-button "X" :on-click "(setq player-mark _X_MARK) (setq ai-mark _O_MARK)")
+                                         (radio-button "X" :padding-left radio-padding
+                                                           :on-click "(setq player-mark _X_MARK) (setq ai-mark _O_MARK)")
                                          (radio-button "O"
+                                                       :padding-left radio-padding
                                                        :on-click "(setq player-mark _O_MARK ) (setq ai-mark _X_MARK)"
                                                        :margin-left 13))
                  (text "Who starts:"
@@ -364,8 +370,9 @@
                        :margin-top 5)
                  (horizontal-radio-group :width "match_parent"
                                          :height "wrap_content"
-                                         (radio-button "Player" :on-click "(setq ai-starts-p F)")
+                                         (radio-button "Player" :on-click "(setq ai-starts-p F)" :padding-left radio-padding)
                                          (radio-button "AI"
+                                                       :padding-left radio-padding
                                                        :on-click "(setq ai-starts-p 1)"
                                                        :margin-left 13))
                  (set board-container
@@ -373,6 +380,6 @@
                                         :height "wrap_content"
                                         (create-grid )))
                  
-                 (button "New Game"
+                 (shadow-button "New Game"
                          :parent-align "left"
                          :on-click "(new-game) (if ai-starts-p (do-ai-move))"))

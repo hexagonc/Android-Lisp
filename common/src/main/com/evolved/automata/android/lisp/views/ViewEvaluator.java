@@ -14,6 +14,7 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.evolved.automata.KeyValuePair;
+import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.EvaluateException;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.lisp.Environment;
@@ -132,6 +133,8 @@ public class ViewEvaluator  {
 		env.mapFunction("dialog", dialog(env, con, interpreter));
 		
 		env.mapFunction("get-id", get_id(env, con, interpreter));
+		
+		env.mapFunction("log", log(env, con, interpreter));
 	}
 	
 	public static SimpleFunctionTemplate get_id(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
@@ -1111,6 +1114,40 @@ public class ViewEvaluator  {
 			}
 		};
 	}
+	
+	public static SimpleFunctionTemplate log(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)log(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args)
+			{
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				String tag = evaluatedArgs[0].getString();
+				StringBuilder message = new StringBuilder();
+				for (int i=1; i< evaluatedArgs.length; i++)
+				{
+					Value v = evaluatedArgs[i];
+					if (v.isString())
+						message.append(v.getString());
+					else
+						message.append(v.toString());
+				}
+				
+	    		AppStateManager.getInstance().simpleMessage(tag, message.toString());
+				return evaluatedArgs[1];
+			}
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate remove_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
 	{
