@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Stack;
 import java.util.UUID;
 
 import com.evolved.automata.KeyValuePair;
@@ -4020,5 +4021,40 @@ public class NLispTools
 		}
 		return new KeyValuePair<Value[], HashMap<String, Value>>(normalValues.toArray(new Value[0]), keyMap);
 	}
+	
+	public static final String _SKIP_PREFIX = "*";
+	
+	public static Environment getMinimalEnvironment(Environment base, Value value)
+	{
+		Environment out = new Environment(base);
+		
+		Stack<Value> argStack = new Stack<Value>();
+		argStack.add(value);
+		while (argStack.size()>0)
+		{
+			value = argStack.pop();
+			
+			if (value.isList())
+			{
+				for (Value v:value.getList())
+				{
+					argStack.push(v);
+				}
+			}
+			else
+			{
+				if (value.isIdentifier() && !value.getString().startsWith(_SKIP_PREFIX) && !out.hasVariable(value.getString()))
+				{
+					Value boundValue = base.getVariableValue(value.getString());
+					if (boundValue != null)
+						out.mapValue(value.getString(), boundValue);
+				}
+			}
+		}
+		return out;
+		
+			
+	}
+
 	
 }

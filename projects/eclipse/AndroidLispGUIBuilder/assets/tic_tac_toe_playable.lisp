@@ -216,7 +216,7 @@
                             :parent-align "center"
                             :padding 20
                             :text-size mark-text-size
-                            :on-click (format "(set-user-move (coordinate-string %1$s %2$s ))" i j)
+                            :on-click (set-user-move (coordinate-string i j))
                              )))))
 
 

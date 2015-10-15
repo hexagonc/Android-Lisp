@@ -36,9 +36,8 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	HashMap<String, KeyValuePair<Class<? extends LispBuilderFragment>, LispBuilderFragment>> _fragmentMap;
 	HashMap<String, ActionBar.Tab> _tabMap = null;
 	
-	AndroidLispInterpreter _interpreter;
-	Environment _lispEnvironnent;
 	LispBuilderFragment _currentFragment = null;
+	
 	GlobalData _data = null;
 	
 	String _CONSOLE_TAB_NAME = "Console";
@@ -97,17 +96,11 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	
 	private void setupGlobalData() throws InstantiationException, IllegalAccessException
 	{
-		_lispEnvironnent = new Environment();
-		_interpreter = new AndroidLispInterpreter(this, _lispEnvironnent, this);
-		_data = new GlobalData(this);
 		
-		
-		NLispTools.addDefaultFunctionsAddMacros(_lispEnvironnent);
-		ViewEvaluator.bindFunctions(_lispEnvironnent, this, _interpreter);
-		ExtendedFunctions.addExtendedFunctions(_lispEnvironnent);
-		NXTLispFunctions.addFunctions(_lispEnvironnent, NXTBluetoothManager.getInstance());
-		_data.setLispInterpreter(_interpreter);
-		_data.setEnvironment(_lispEnvironnent);
+		_data = ((GuiBuilderApplication)getApplication()).getGlobalData();
+		ViewEvaluator.bindFunctions(_data.getEnvironment(), this, _data.getInterpreter());
+		_data.setForegroundLispResponseListener(this);
+		_data.setControlListener(this);
 		_data.setViewProxy(null);
 	}
 	

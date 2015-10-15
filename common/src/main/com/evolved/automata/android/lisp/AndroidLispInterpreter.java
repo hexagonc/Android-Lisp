@@ -43,6 +43,28 @@ public class AndroidLispInterpreter
 		_eListener = listener;
 	}
 	
+	public void setNewEnvironment(Environment env)
+	{
+		_env = env;
+	}
+	
+	
+	public Value evaluateExpression(Environment env, String exp, boolean alwaysUseCallbackP) 
+	{
+		LinkedList<Value> temp = null;
+		try
+		{
+			temp = Environment.parse(exp, true);
+		}
+		catch (Exception e)
+		{
+			notifyError(e);
+			return null;
+		}
+		
+		return evaluatePreParsedValue(env, temp.removeFirst(), temp, alwaysUseCallbackP);
+	}
+	
 	/**
 	 * Evaluates the lisp expression on the main thread and tries to return the result.  
 	 * If already running on the main thread and if the result doesn't involve continuations, 
@@ -55,72 +77,62 @@ public class AndroidLispInterpreter
 	 */
 	public Value evaluateExpression(String exp, boolean alwaysUseCallbackP) 
 	{
-		LinkedList<Value> temp = null;
-		try
-		{
-			temp = _env.parse(exp, true);
-		}
-		catch (Exception e)
-		{
-			notifyError(e);
-			return null;
-		}
-		final LinkedList<Value> out = temp;
+		return evaluateExpression(_env, exp, alwaysUseCallbackP);
+	}
+	
+	private Value evaluatePreParsedValue(Environment env, Value value, LinkedList<Value> remaining, boolean alwaysUseCallbackP)
+	{
 		
 		if (Looper.myLooper() == Looper.getMainLooper())
 		{
 			Value tout = null;
 			try {
-				for (Value o:out)
-				{
-					tout = _env.evaluate(o, false);
-				}
+				tout = env.evaluate(value, false);
 			} catch (Exception e) {
 				notifyError(e);
 				return null;
 			} 
 			if (tout.isContinuation())
 			{
-				_mainThreadHandler.post(getEvaluationSlice(tout));
+				_mainThreadHandler.post(getEvaluationSlice(env, tout, remaining));
 				return null;
 			}
 			else if (alwaysUseCallbackP)
 			{
-				_eListener.onResult(tout);
+				if (remaining.size()>0)
+					evaluatePreParsedValue(env, remaining.removeFirst(), remaining, alwaysUseCallbackP);
+				else if (_eListener!=null)
+					_eListener.onResult(tout);
 				return null;
 			}
 			else
-				return tout;
+			{
+				if (remaining.size()>0)
+					return evaluatePreParsedValue(env, remaining.removeFirst(), remaining, alwaysUseCallbackP);
+				else
+					return tout;
+			}
 		}
 		else
 		{
-			_mainThreadHandler.post(new Runnable()
-			{
-				public void run()
-				{
-					Value tout = null;
-					try {
-						for (Value o:out)
-						{
-							tout = _env.evaluate(o, false);
-						}
-						
-					} catch (Exception e) {
-						notifyError(e);
-						return;
-					} 
-					if (tout.isContinuation())
-						_mainThreadHandler.post(getEvaluationSlice(tout));
-					else
-						_eListener.onResult(tout);
-				}
-			});
+			_mainThreadHandler.post(getEvaluationSlice(env, value, remaining));
+			return null;
 		}
-		return null;
+	}
+	
+	public Value evaluatePreParsedValue(Value value, boolean alwaysUseCallbackP)
+	{
+		return evaluatePreParsedValue(_env, value, new LinkedList<Value>(), alwaysUseCallbackP);
+	}
+	
+	public Value evaluatePreParsedValue(Environment env, Value value, boolean alwaysUseCallbackP)
+	{
+		return evaluatePreParsedValue(env, value, new LinkedList<Value>(), alwaysUseCallbackP);
 	}
 	
 	
-	private Runnable getEvaluationSlice(final Value input)
+	
+	private Runnable getEvaluationSlice(final Environment env, final Value input, final LinkedList<Value> remaining)
 	{
 		return new Runnable()
 		{
@@ -128,19 +140,28 @@ public class AndroidLispInterpreter
 			{
 				Value tout = null;
 				try {
-					
-					tout = input.getContinuingFunction().evaluate(_env, true);
+					if (input.isContinuation())
+						tout = input.getContinuingFunction().evaluate(env, true);
+					else
+						tout = env.evaluate(input, false);
 				} catch (Exception e) {
 					notifyError(e);
 					return;
 				} 
 				if (tout.isContinuation())
 				{
-					_mainThreadHandler.post(getEvaluationSlice(tout));
+					_mainThreadHandler.post(getEvaluationSlice(env, tout, remaining));
 				}
-				else if (_eListener!=null)
+				else if (remaining.size() > 0) 
+				{
+					_mainThreadHandler.post(getEvaluationSlice(env, remaining.removeFirst(), remaining));
+				} else if (_eListener!=null)
 					_eListener.onResult(tout);
 			}
 		};
 	}
+	
+	
+	
+	
 }

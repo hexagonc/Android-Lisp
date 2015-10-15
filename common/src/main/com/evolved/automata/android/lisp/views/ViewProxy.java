@@ -86,6 +86,10 @@ public abstract class ViewProxy
 	int rightPadding = 0;
 	int leftPadding = 0;
 	Context context;
+	Environment _currentEnv = null;
+	
+	View.OnClickListener _onClickListener = null;
+	View.OnLongClickListener _onLongClickListener = null;
 	
 	protected HashMap<String, Value> _keys = null;
 	
@@ -195,13 +199,15 @@ public abstract class ViewProxy
 		return encapsulated;
 	}
 	
-	protected void processOnClickListenerKeys(View vw, HashMap<String, Value> keys)
+	protected void processOnClickListenerKeys(HashMap<String, Value> keys)
 	{
-		Value code = getMapValue(keys, ON_CLICK);
+		final Value code = getMapValue(keys, ON_CLICK);
+		if (code.isNull())
+			return;
 		if (code.isString())
 		{
 			final String codeContinuation = code.getString();
-			View.OnClickListener listener = new View.OnClickListener()
+			_onClickListener = new View.OnClickListener()
 			{
 
 				@Override
@@ -210,17 +216,48 @@ public abstract class ViewProxy
 				}
 				
 			};
-			vw.setOnClickListener(listener);
+			
 		}
+		else
+		{
+			final Environment runEnvironment = NLispTools.getMinimalEnvironment(_currentEnv, code);
+			_onClickListener = new View.OnClickListener()
+			{
+
+				@Override
+				public void onClick(View v) {
+					_lispInterpreter.evaluatePreParsedValue(runEnvironment, code, true);
+				}
+				
+			};
+			
+		}
+	}
+	
+	
+	protected void processOnClickListenerKeys(View vw, HashMap<String, Value> keys)
+	{
+		if (_onClickListener!=null)
+			vw.setOnClickListener(_onClickListener);
+		
 	}
 	
 	protected void processOnLongClickListenerKeys(View vw, HashMap<String, Value> keys)
 	{
-		Value code = getMapValue(keys, ON_CLICK);
+		if (_onLongClickListener != null)
+			vw.setOnLongClickListener(_onLongClickListener);
+		
+	}
+	
+	protected void processOnLongClickListenerKeys(HashMap<String, Value> keys)
+	{
+		final Value code = getMapValue(keys, ON_LONG_CLICK);
+		if (code.isNull())
+			return;
 		if (code.isString())
 		{
 			final String codeContinuation = code.getString();
-			View.OnLongClickListener listener = new View.OnLongClickListener()
+			_onLongClickListener = new View.OnLongClickListener()
 			{
 
 				@Override
@@ -229,10 +266,23 @@ public abstract class ViewProxy
 					return out!=null&&!out.isNull();
 				}
 
-				
-				
 			};
-			vw.setOnLongClickListener(listener);
+			
+		}
+		else
+		{
+			final Environment runEnvironment = NLispTools.getMinimalEnvironment(_currentEnv, code);
+			_onLongClickListener = new View.OnLongClickListener()
+			{
+
+				@Override
+				public boolean onLongClick(View v) {
+					Value out = _lispInterpreter.evaluatePreParsedValue(runEnvironment, code, false);
+					return out!=null&&!out.isNull();
+				}
+
+			};
+			
 		}
 	}
 	
@@ -819,9 +869,12 @@ public abstract class ViewProxy
 		
 	}
 	
-	public void setLispInterpreter(AndroidLispInterpreter interpreter)
+	public void setLispInterpreter(Environment env, AndroidLispInterpreter interpreter)
 	{
 		_lispInterpreter = interpreter;
+		_currentEnv = env;
+		processOnLongClickListenerKeys(_keys);
+		processOnClickListenerKeys(_keys);
 	}
 	
 	public void setView(View v)

@@ -2,8 +2,9 @@ package com.evolved.automata.android.lisp.views;
 
 import java.util.HashMap;
 
+import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,7 +22,7 @@ import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
-import com.evolved.automata.lisp.SimpleFunctionTemplate;
+
 import com.evolved.automata.lisp.Value;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
 import com.nostra13.universalimageloader.core.ImageLoader;
@@ -49,7 +50,7 @@ public class ViewEvaluator  {
 	
 	
 	
-	public static void bindFunctions(final Environment env, final Context con, final AndroidLispInterpreter interpreter) 
+	public static void bindFunctions(final Environment env, final Activity activity, final AndroidLispInterpreter interpreter) 
 	{
 
 		if (!_imageConfiguredP)
@@ -57,90 +58,91 @@ public class ViewEvaluator  {
 //			DisplayImageOptions defaultOptions = new DisplayImageOptions.Builder().cacheInMemory(true).build();
 //			ImageLoaderConfiguration config = new ImageLoader
 			
-			ImageLoaderConfiguration config = ImageLoaderConfiguration.createDefault(con);
+			ImageLoaderConfiguration config = ImageLoaderConfiguration.createDefault(activity);
 			ImageLoader.getInstance().init(config);
 			_imageConfiguredP = true;
 		}
 		
-		env.mapFunction("remove-view", remove_view(env, con, interpreter));
+		env.mapFunction("remove-view", remove_view(env, activity, interpreter));
 		
-		env.mapFunction("show-view", show_view(env, con, interpreter));
+		env.mapFunction("show-view", show_view(env, activity, interpreter));
 		
-		env.mapFunction("hide-view", hide_view(env, con, interpreter));
-		
-		
-		env.mapFunction("set-background-color", set_background_color(env, con, interpreter));
-		
-		env.mapFunction("solid", solid(env, con, interpreter));
+		env.mapFunction("hide-view", hide_view(env, activity, interpreter));
 		
 		
-		env.mapFunction("get-text", get_text(env, con, interpreter));
+		env.mapFunction("set-background-color", set_background_color(env, activity, interpreter));
 		
-		env.mapFunction("set-text", set_text(env, con, interpreter));
-		
-		env.mapFunction("image", image(env, con, interpreter));
-		
-		env.mapFunction("set-check-changed-listener", set_check_changed_listener(env, con, interpreter));
-		
-		env.mapFunction("is-checked", is_checked(env, con, interpreter));
-		
-		env.mapFunction("set-checked", set_checked(env, con, interpreter));
+		env.mapFunction("solid", solid(env, activity, interpreter));
 		
 		
-		env.mapFunction("checkbox", checkbox(env, con, interpreter));
+		env.mapFunction("get-text", get_text(env, activity, interpreter));
 		
-		env.mapFunction("shadow-button", shadow_button(env, con, interpreter));
+		env.mapFunction("set-text", set_text(env, activity, interpreter));
 		
-		env.mapFunction("button", button(env, con, interpreter));
+		env.mapFunction("image", image(env, activity, interpreter));
 		
-		env.mapFunction("radio-button", radio_button(env, con, interpreter));
+		env.mapFunction("set-check-changed-listener", set_check_changed_listener(env, activity, interpreter));
 		
-		env.mapFunction("edit", edit(env, con, interpreter));
+		env.mapFunction("is-checked", is_checked(env, activity, interpreter));
 		
-		
-		env.mapFunction("text", text(env, con, interpreter));
-		
-		env.mapFunction("horizontal-layout", horizontal_layout(env, con, interpreter));
-		
-		env.mapFunction("horizontal-radio-group", horizontal_radio_group(env, con, interpreter));
-		
-		env.mapFunction("vertical-radio-group", vertical_radio_group(env, con, interpreter));
+		env.mapFunction("set-checked", set_checked(env, activity, interpreter));
 		
 		
+		env.mapFunction("checkbox", checkbox(env, activity, interpreter));
+		
+		env.mapFunction("shadow-button", shadow_button(env, activity, interpreter));
+		
+		env.mapFunction("button", button(env, activity, interpreter));
+		
+		env.mapFunction("radio-button", radio_button(env, activity, interpreter));
+		
+		env.mapFunction("edit", edit(env, activity, interpreter));
 		
 		
-		env.mapFunction("vertical-layout", vertical_layout(env, con, interpreter));
+		env.mapFunction("text", text(env, activity, interpreter));
 		
-		env.mapFunction("relative", relative(env, con, interpreter));
+		env.mapFunction("horizontal-layout", horizontal_layout(env, activity, interpreter));
 		
-		env.mapFunction("create-view", create_view(env, con, interpreter));
+		env.mapFunction("horizontal-radio-group", horizontal_radio_group(env, activity, interpreter));
 		
-		env.mapFunction("show-short-toast", show_short_toast(env, con, interpreter));
+		env.mapFunction("vertical-radio-group", vertical_radio_group(env, activity, interpreter));
 		
-		env.mapFunction("show-long-toast", show_long_toast(env, con, interpreter));
 		
-		env.mapFunction("scrollview", scrollview(env, con, interpreter));
 		
-		env.mapFunction("horizontal-scrollview", horizontal_scrollview(env, con, interpreter));
 		
-		env.mapFunction("update-parameters", update_parameters(env, con, interpreter));
+		env.mapFunction("vertical-layout", vertical_layout(env, activity, interpreter));
 		
-		env.mapFunction("remove-all-views", remove_all_views(env, con, interpreter));
-		env.mapFunction("remove-view", remove_view(env, con, interpreter));
+		env.mapFunction("relative", relative(env, activity, interpreter));
 		
-		env.mapFunction("add-view", add_view(env, con, interpreter));
+		env.mapFunction("create-view", create_view(env, activity, interpreter));
 		
-		env.mapFunction("dialog", dialog(env, con, interpreter));
+		env.mapFunction("show-short-toast", show_short_toast(env, activity, interpreter));
 		
-		env.mapFunction("get-id", get_id(env, con, interpreter));
+		env.mapFunction("show-long-toast", show_long_toast(env, activity, interpreter));
 		
-		env.mapFunction("log", log(env, con, interpreter));
+		env.mapFunction("scrollview", scrollview(env, activity, interpreter));
+		
+		env.mapFunction("horizontal-scrollview", horizontal_scrollview(env, activity, interpreter));
+		
+		env.mapFunction("update-parameters", update_parameters(env, activity, interpreter));
+		
+		env.mapFunction("remove-all-views", remove_all_views(env, activity, interpreter));
+		env.mapFunction("remove-view", remove_view(env, activity, interpreter));
+		
+		env.mapFunction("add-view", add_view(env, activity, interpreter));
+		
+		env.mapFunction("dialog", dialog(env, activity, interpreter));
+		
+		env.mapFunction("get-id", get_id(env, activity, interpreter));
+		
+		env.mapFunction("log", log(env, activity, interpreter));
 	}
 	
-	public static SimpleFunctionTemplate get_id(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate get_id(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -162,10 +164,11 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate show_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate show_view(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -195,10 +198,11 @@ public class ViewEvaluator  {
 	
 	
 	
-	public static SimpleFunctionTemplate text(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate text(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -217,18 +221,19 @@ public class ViewEvaluator  {
 				if (evaluatedArgs.length>0)
 					text = evaluatedArgs[0];
 				TextViewProxy proxy = new TextViewProxy(con, keys, text.getString());
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
 		};
 	}
 	
-	public static SimpleFunctionTemplate hide_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate hide_view(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -256,10 +261,11 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate set_background_color(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate set_background_color(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -296,11 +302,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate solid(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate solid(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -315,18 +322,19 @@ public class ViewEvaluator  {
 				
 				
 				SolidViewProxy proxy = new SolidViewProxy(con, keys);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
 		};
 	}
 	
-	public static SimpleFunctionTemplate get_text(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate get_text(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -357,11 +365,12 @@ public class ViewEvaluator  {
 		};
 	}
 
-	public static SimpleFunctionTemplate set_text(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate set_text(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -398,11 +407,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate image(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate image(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -416,18 +426,19 @@ public class ViewEvaluator  {
 				HashMap<String, Value> keys = kv.GetValue();
 				
 				ImageViewProxy proxy = new ImageViewProxy(con, keys);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
 		};
 	}
 	
-	public static SimpleFunctionTemplate set_check_changed_listener(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate set_check_changed_listener(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -449,11 +460,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate is_checked(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate is_checked(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -474,11 +486,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate set_checked(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate set_checked(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -500,11 +513,12 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate checkbox(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate checkbox(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -520,16 +534,16 @@ public class ViewEvaluator  {
 				
 				Value text = evaluatedArgs[0];
 				CheckboxViewProxy proxy = new CheckboxViewProxy(con, keys, text.getString());
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
 		};
 	}
 	
-	public static SimpleFunctionTemplate radio_button(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate radio_button(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -547,7 +561,7 @@ public class ViewEvaluator  {
 				
 				Value text = evaluatedArgs[0];
 				RadioButtonProxy proxy = new RadioButtonProxy(con, keys, text.getString());
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
@@ -555,9 +569,9 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate shadow_button(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate shadow_button(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -575,16 +589,16 @@ public class ViewEvaluator  {
 				
 				Value text = evaluatedArgs[0];
 				ShadowButtonProxy proxy = new ShadowButtonProxy(con, keys, text.getString());
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
 		};
 	}
 	
-	public static SimpleFunctionTemplate button(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate button(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -602,7 +616,7 @@ public class ViewEvaluator  {
 				
 				Value text = evaluatedArgs[0];
 				ButtonViewProxy proxy = new ButtonViewProxy(con, keys, text.getString());
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
@@ -610,9 +624,9 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate edit(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate edit(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -632,17 +646,18 @@ public class ViewEvaluator  {
 				if (evaluatedArgs.length>0)
 					text = evaluatedArgs[0];
 				EditViewProxy proxy = new EditViewProxy(con, keys, text.getString());
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				return ExtendedFunctions.makeValue(proxy);
 			}
 			
 		};
 	}
 	
-	public static SimpleFunctionTemplate vertical_layout(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate vertical_layout(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -657,7 +672,7 @@ public class ViewEvaluator  {
 				
 				
 				LinearLayoutViewProxy proxy = new LinearLayoutViewProxy(con, keys, LinearLayout.VERTICAL);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -683,9 +698,9 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate horizontal_layout(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate horizontal_layout(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -702,7 +717,7 @@ public class ViewEvaluator  {
 				
 				
 				LinearLayoutViewProxy proxy = new LinearLayoutViewProxy(con, keys, LinearLayout.HORIZONTAL);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -727,9 +742,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate horizontal_radio_group(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate horizontal_radio_group(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -746,7 +761,7 @@ public class ViewEvaluator  {
 				
 				
 				RadioGroupProxy proxy = new RadioGroupProxy(con, keys, LinearLayout.HORIZONTAL);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -771,9 +786,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate vertical_radio_group(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate vertical_radio_group(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
@@ -789,7 +804,7 @@ public class ViewEvaluator  {
 				
 				
 				RadioGroupProxy proxy = new RadioGroupProxy(con, keys, LinearLayout.VERTICAL);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -815,9 +830,9 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate relative(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate relative(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -834,7 +849,7 @@ public class ViewEvaluator  {
 				
 				
 				RelativeLayoutViewProxy proxy = new RelativeLayoutViewProxy(con, keys);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -859,11 +874,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate create_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate create_view(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -887,11 +903,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate show_short_toast(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate show_short_toast(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -922,11 +939,12 @@ public class ViewEvaluator  {
 		;
 	}
 	
-	public static SimpleFunctionTemplate show_long_toast(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate show_long_toast(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -955,11 +973,12 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate scrollview(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate scrollview(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -975,7 +994,7 @@ public class ViewEvaluator  {
 				
 				
 				ScrollViewProxy proxy = new ScrollViewProxy(con, keys);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -1000,11 +1019,12 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate horizontal_scrollview(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate horizontal_scrollview(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -1020,7 +1040,7 @@ public class ViewEvaluator  {
 				
 				
 				HorizontalScrollViewProxy proxy = new HorizontalScrollViewProxy(con, keys);
-				proxy.setLispInterpreter(interpreter);
+				proxy.setLispInterpreter(env, interpreter);
 				for (Value input:evaluatedArgs)
 				{
 					if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
@@ -1044,9 +1064,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate update_parameters(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate update_parameters(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -1082,9 +1102,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate remove_all_views(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate remove_all_views(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -1115,9 +1135,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate log(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate log(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -1149,9 +1169,9 @@ public class ViewEvaluator  {
 	}
 	
 	
-	public static SimpleFunctionTemplate remove_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate remove_view(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -1188,9 +1208,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate add_view(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate add_view(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override
@@ -1227,9 +1247,9 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static SimpleFunctionTemplate dialog(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate dialog(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
-		return new SimpleFunctionTemplate()
+		return new ViewFunctionTemplate()
 		{
 
 			@Override

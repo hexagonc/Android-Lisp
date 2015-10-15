@@ -3,11 +3,11 @@ package com.evolved.automata.android.lisp.views;
 import java.util.HashMap;
 
 import android.view.View;
-import android.widget.Button;
+
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 
-import com.evolved.automata.lisp.NLispTools;
+
 import com.evolved.automata.lisp.Value;
 import android.content.Context;
 import com.evolved.automata.android.EvaluateException;

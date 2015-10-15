@@ -26,6 +26,7 @@ public class LispInterpreter
 	{
 		public void evaluateExpression(String exp);
 		public Value evaluateExpressionSynchronous(String exp);
+		public void evaluateValue(Value value);
 		public void breakExecution();
 	}
 	
@@ -82,6 +83,19 @@ public class LispInterpreter
 						
 					}
 				}
+				
+				@Override
+				public void evaluateValue(Value value) {
+					try
+					{
+						_commandQueue.put(value);
+					}
+					catch (InterruptedException ie)
+					{
+						
+					}
+				}
+				
 
 				@Override
 				public void breakExecution() {
@@ -162,7 +176,7 @@ public class LispInterpreter
 					while (true)
 					{
 						command = _commandQueue.take();
-						assert command.isString() && !command.isContinuation() || command.isContinuation();
+						
 						if (command.isString() && !command.isContinuation())
 						{
 							try
@@ -192,6 +206,7 @@ public class LispInterpreter
 								{
 									out = _env.evaluate(comp, false);
 									
+									// Processing continuations of intermediate expressions immediately
 									if (parsedResult.size() - 1 > i)
 									{
 										while (out.isContinuation())
@@ -216,7 +231,10 @@ public class LispInterpreter
 						{
 							out = command.getContinuingFunction().evaluate(_env, true);
 						}
-						
+						else
+						{
+							out = _env.evaluate(command, false);
+						}
 						if (out.isContinuation())
 						{
 							_commandQueue.add(out);

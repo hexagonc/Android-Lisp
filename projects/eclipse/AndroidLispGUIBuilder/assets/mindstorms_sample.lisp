@@ -205,7 +205,7 @@
                           (button "stop"
                                   :padding 10
                                   :parent-align "center"
-                                  :on-click "(set-power 0 0)")
+                                  :on-click (set-power 0 0))
                           (button "right"
                                   :padding 10
                                   :parent-align "right"))
@@ -214,14 +214,14 @@
                                    :child-align "center"
                                    (button "back"
                                            :padding 10
-                                           :on-click "(set-power 0 20)"  ))
+                                           :on-click (set-power 0 20)))
                 (button :width "match_parent"
                         :height "wrap_content"
                         :margin 10
                         "configure ports"
                         :text-size 20
                         :text-style "bold|italic"
-                        :on-click "(configure-ports)")
+                        :on-click (configure-ports))
 
                 (relative :width "match_parent"
                           :height "wrap_content"
@@ -229,7 +229,7 @@
                           (button "get sonar"
                                   :parent-align "left"
                                   :padding 10
-                                  :on-click "(get-sonar)")
+                                  :on-click (get-sonar))
                           (setq sonar-reading 
                                 (text "0"
                                       :parent-align "right")))
@@ -239,7 +239,7 @@
                           (button "get touch"
                                   :parent-align "left"
                                   :padding 10
-                                  :on-click "(get-touch)")
+                                  :on-click (get-touch))
                           (setq sonar-reading 
                                 (text "0"
                                       :parent-align "right"))))
