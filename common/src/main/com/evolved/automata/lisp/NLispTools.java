@@ -4030,15 +4030,22 @@ public class NLispTools
 		
 		Stack<Value> argStack = new Stack<Value>();
 		argStack.add(value);
+		boolean first =true;
 		while (argStack.size()>0)
 		{
 			value = argStack.pop();
 			
 			if (value.isList())
 			{
+				first =true;
 				for (Value v:value.getList())
 				{
-					argStack.push(v);
+					// Only add the remaining elements in the list since the first element 
+					// must be a function name if the value is a list unless it is a loop variable declaration
+					// in whicb case we don't care about the first identifier anyway
+					if (!first)
+						argStack.push(v);
+					first = false;
 				}
 			}
 			else

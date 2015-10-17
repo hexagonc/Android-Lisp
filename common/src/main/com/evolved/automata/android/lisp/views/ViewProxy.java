@@ -8,6 +8,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -90,7 +91,7 @@ public abstract class ViewProxy
 	
 	View.OnClickListener _onClickListener = null;
 	View.OnLongClickListener _onLongClickListener = null;
-	
+	Drawable _backgroundDrawable = null;
 	protected HashMap<String, Value> _keys = null;
 	
 	public ViewProxy(Context con, HashMap<String, Value> keywords)
@@ -619,7 +620,11 @@ public abstract class ViewProxy
 				backgroundResourceUrl = background.getString();
 				return;
 			}
-			
+			else if (background.isUserObject() && background.getObjectValue() instanceof Drawable)
+			{
+				_backgroundDrawable = (Drawable)background.getObjectValue();
+				return;
+			}
 			throw new EvaluateException("Invalid background resource spec");
 			
 		}
@@ -980,9 +985,19 @@ public abstract class ViewProxy
 		});
 	}
 	
+	@SuppressLint("NewApi")
 	protected void baseUpdate(View view)
 	{
 		view.setVisibility(visibility);
+		if (_backgroundDrawable!=null)
+		{
+			if (Build.VERSION.SDK_INT<16)
+				view.setBackgroundDrawable(_backgroundDrawable);
+			else
+				view.setBackground(_backgroundDrawable);
+			
+		}
+		else
 		if (backgroundColorDefinedP)
 			view.setBackgroundColor(backgroundColor);
 		else if (backgroundResourceId!=0)

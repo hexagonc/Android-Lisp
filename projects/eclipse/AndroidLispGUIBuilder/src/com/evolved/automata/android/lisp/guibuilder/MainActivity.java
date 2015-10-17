@@ -28,7 +28,7 @@ import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 
-public class MainActivity extends Activity implements TabListener, AndroidLispInterpreter.ResponseListener, GlobalData.UIControlListener 
+public class MainActivity extends Activity implements TabListener, AndroidLispInterpreter.ResponseListener, GlobalInterface.UIControlListener 
 {
 	
 	HashMap<Class<? extends LispBuilderFragment>, String> _fragmentLabelMap = null;
@@ -38,7 +38,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	
 	LispBuilderFragment _currentFragment = null;
 	
-	GlobalData _data = null;
+	GlobalInterface _data = null;
 	
 	String _CONSOLE_TAB_NAME = "Console";
 	String _RENDER_TAB_NAME = "Render";
@@ -153,7 +153,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		if (cachedFrag == null)
 		{
 			cachedFrag = (LispBuilderFragment)Fragment.instantiate(this, fclass.getName());
-			cachedFrag.setData(_data);
+			cachedFrag.setGlobalInterface(_data);
 			_fragmentMap.put(label, new KeyValuePair<Class<? extends LispBuilderFragment>, LispBuilderFragment>(fclass, cachedFrag));
 			ft.add(android.R.id.content, cachedFrag);
 		}
@@ -212,6 +212,12 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	protected void onDestroy() {
 		
 		super.onDestroy();
+	}
+
+	@Override
+	public Activity getActivity() {
+	
+		return this;
 	}
 	
 }

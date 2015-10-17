@@ -2,10 +2,12 @@ package com.evolved.automata.android.lisp.views;
 
 import java.util.HashMap;
 
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.content.DialogInterface;
+import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -18,6 +20,7 @@ import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.EvaluateException;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
+import com.evolved.automata.android.tools.R;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
@@ -136,7 +139,60 @@ public class ViewEvaluator  {
 		env.mapFunction("get-id", get_id(env, activity, interpreter));
 		
 		env.mapFunction("log", log(env, activity, interpreter));
+		
+		env.mapFunction("create-border", create_border(env, activity, interpreter));
+		
+		env.mapFunction("create-shadow-background", shadow_background(env, activity, interpreter));
 	}
+	
+	public static ViewFunctionTemplate shadow_background(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)shadow_background(env, con, interpreter);
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				HashMap<String, Value> keys = kv.GetValue();
+				
+				Drawable border = con.getResources().getDrawable(R.drawable.shadow);
+				return ExtendedFunctions.makeValue(border);
+			}
+			
+		};
+	}
+	
+	public static ViewFunctionTemplate create_border(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)create_border(env, con, interpreter);
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+				HashMap<String, Value> keys = kv.GetValue();
+				
+				Drawable border = con.getResources().getDrawable(R.drawable.border);
+				return ExtendedFunctions.makeValue(border);
+			}
+			
+		};
+	}
+	
 	
 	public static ViewFunctionTemplate get_id(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
@@ -546,6 +602,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -574,6 +631,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -601,6 +659,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -629,6 +688,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -703,6 +763,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -747,6 +808,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -790,6 +852,7 @@ public class ViewEvaluator  {
 	{
 		return new ViewFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -835,6 +898,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{

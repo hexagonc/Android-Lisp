@@ -3,23 +3,24 @@ package com.evolved.automata.android.lisp.guibuilder.fragments;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter.ResponseListener;
-import com.evolved.automata.android.lisp.guibuilder.GlobalData;
+import com.evolved.automata.android.lisp.guibuilder.GlobalInterface;
 import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.LispInterpreter;
 import com.evolved.automata.lisp.Value;
 
 import android.app.Fragment;
 import android.util.Log;
 
-public abstract class LispBuilderFragment extends Fragment implements AndroidLispInterpreter.ResponseListener 
+public abstract class LispBuilderFragment extends Fragment implements LispInterpreter.LispResponseListener, AndroidLispInterpreter.ResponseListener 
 {
-	protected GlobalData _data;
+	protected GlobalInterface _data;
 
-	public void setData(GlobalData data)
+	public void setGlobalInterface(GlobalInterface data)
 	{
 		_data = data;
 	}
 	
-	public GlobalData getData(GlobalData data)
+	public GlobalInterface getGlobalInterface()
 	{
 		return _data;
 	}

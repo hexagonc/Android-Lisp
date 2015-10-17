@@ -103,5 +103,22 @@ public class RenderFragment extends LispBuilderFragment
 			
 		}
 	}
+
+	@Override
+	public void onOutput(Value out) {
+		
+	}
+
+	@Override
+	public void onIncompleteInputException(String message) {
+		AndroidTools.showshortMessageToast(message, getActivity());
+		Log.e("RenderFragment", message);
+	}
+
+	@Override
+	public void onGeneralException(Exception e) {
+		AndroidTools.showshortMessageToast(e.toString(), getActivity());
+		Log.e("RenderFragment", e.toString());
+	}
 	
 }

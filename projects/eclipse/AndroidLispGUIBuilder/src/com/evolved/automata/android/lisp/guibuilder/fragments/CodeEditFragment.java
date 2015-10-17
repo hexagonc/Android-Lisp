@@ -78,7 +78,8 @@ public class CodeEditFragment extends LispBuilderFragment
 		predefinedSampleMap.put("tic-tac-toe ui only", "tic_tac_toe_simple.lisp");
 		predefinedSampleMap.put("tic-tac-toe with simple ai", "tic_tac_toe_playable.lisp");
 		predefinedSampleMap.put("lego mindstorms sample", "mindstorms_sample.lisp");
-		String[] predefinedSamples = new String[]{"tic-tac-toe ui only", "tic-tac-toe with simple ai", "lego mindstorms sample"};
+		predefinedSampleMap.put("test", "test.lisp");
+		String[] predefinedSamples = new String[]{"test", "tic-tac-toe ui only", "tic-tac-toe with simple ai", "lego mindstorms sample"};
 		String assetCode = null;
 		try
 		{
@@ -317,6 +318,45 @@ public class CodeEditFragment extends LispBuilderFragment
 		_messageText.setText(newText);
 		_messageText.setSelection(newText.length(), newText.length());
 		
+	}
+
+
+	// Called on a background thread
+	@Override
+	public void onOutput(final Value v) {
+		_messageText.post(new Runnable(){
+			public void run()
+			{
+				if (v != null)
+				{
+					if (v.getObjectValue() instanceof ViewProxy)
+					{
+						_lastResult = v;
+					}
+					String svalue = v.toString();
+					log(LogType.INFO, svalue);
+					appendResult(svalue);
+				}
+				else
+					appendResult("null");
+			}
+		});
+	}
+
+
+
+	@Override
+	public void onIncompleteInputException(String message) {
+		appendResult(message);
+		log(LogType.ERROR, message);
+	}
+
+
+
+	@Override
+	public void onGeneralException(Exception e) {
+		appendResult(e.toString());
+		log(LogType.ERROR, e.toString());
 	}
 	
 	

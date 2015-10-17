@@ -122,6 +122,64 @@ public class LispInterpreter
 		
 	}
 	
+	public LispInputListener setResponseListener(LispResponseListener responseListener)
+	{
+		synchronized (_synch)
+		{
+			_responseListener = responseListener;
+			
+				
+			 return new LispInputListener()
+			 {
+
+				@Override
+				public void evaluateExpression(String exp) {
+					try
+					{
+						_commandQueue.put(NLispTools.makeValue(exp));
+					}
+					catch (InterruptedException ie)
+					{
+						
+					}
+				}
+				
+				@Override
+				public void evaluateValue(Value value) {
+					try
+					{
+						_commandQueue.put(value);
+					}
+					catch (InterruptedException ie)
+					{
+						
+					}
+				}
+				
+
+				@Override
+				public void breakExecution() {
+					_commandQueue.clear();
+					
+				}
+
+				@Override
+				public Value evaluateExpressionSynchronous(String exp) 
+				{
+					try
+					{
+						return _env.evaluate(exp, true);
+					}
+					catch (Exception e)
+					{
+						throw new RuntimeException(e);
+					}
+				}
+				 
+			 };
+		}
+	}
+	
 	/**
 	 * Stops the interpreter.  Can block until the interpreter has shutdown.  If maxWaitMilli
 	 * is provided and it takes longer than that to stop the interpreter than returns false,

@@ -38,7 +38,7 @@ public class AndroidLispInterpreter
 			_eListener.onError(e);
 	}
 	
-	public void setErrorListener(ResponseListener listener)
+	public void setResponseListener(ResponseListener listener)
 	{
 		_eListener = listener;
 	}

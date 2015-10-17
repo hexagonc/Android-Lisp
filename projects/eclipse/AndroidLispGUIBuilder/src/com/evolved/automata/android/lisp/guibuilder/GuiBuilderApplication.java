@@ -14,7 +14,7 @@ public class GuiBuilderApplication extends Application
 {
 
 	
-	GlobalData _data = null;
+	GlobalInterface _data = null;
 	
 	
 	@Override
@@ -28,7 +28,7 @@ public class GuiBuilderApplication extends Application
 			AppStateManager.create(this);
 			NXTBluetoothManager.create(this);
 			DeviceInfo.create(this);
-			_data = new GlobalData(this);
+			_data = new GlobalInterface(this);
 		}
 		catch (Exception e)
 		{
@@ -38,7 +38,7 @@ public class GuiBuilderApplication extends Application
 		
 	}
 	
-	public GlobalData getGlobalData()
+	public GlobalInterface getGlobalData()
 	{
 		return _data;
 	}
