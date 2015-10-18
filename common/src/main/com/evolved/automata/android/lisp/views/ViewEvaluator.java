@@ -7,7 +7,11 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Activity;
 import android.content.DialogInterface;
+import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.ShapeDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -17,6 +21,7 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.evolved.automata.KeyValuePair;
+import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.EvaluateException;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
@@ -162,8 +167,62 @@ public class ViewEvaluator  {
 				Value[] evaluatedArgs = kv.GetKey();
 				HashMap<String, Value> keys = kv.GetValue();
 				
-				Drawable border = con.getResources().getDrawable(R.drawable.shadow);
-				return ExtendedFunctions.makeValue(border);
+				Value shadow_width = keys.get(":shadow-width");
+				Value shadow_color = keys.get(":shadow-color");
+				Value foreground_color = keys.get(":foreground-color");
+				Value angle = keys.get(":shadow-angle");
+				
+				
+				LayerDrawable shadow = (LayerDrawable)con.getResources().getDrawable(R.drawable.shadow);
+				GradientDrawable shadowLayer = (GradientDrawable)shadow.getDrawable(0);
+				GradientDrawable topLayer = (GradientDrawable)shadow.getDrawable(1);
+				if (shadow_width != null)
+				{
+					
+					int width = (int)shadow_width.getIntValue();
+					double rads = angle.getFloatValue()/180*Math.PI;
+					double bx = width*Math.cos(rads);
+					double by = width*Math.sin(rads);
+					
+					// shadow inset
+					shadow.setLayerInset(0, 
+										AndroidTools.convertDPtoPX(con, (int)Math.max(0, bx)), 
+										AndroidTools.convertDPtoPX(con, (int)Math.max(0, -by)),
+										AndroidTools.convertDPtoPX(con, (int)Math.max(0, -bx)),
+										AndroidTools.convertDPtoPX(con, (int)Math.max(0, by)));
+					shadow.setLayerInset(1,
+										 AndroidTools.convertDPtoPX(con, (int)Math.max(0, -bx)),
+										 AndroidTools.convertDPtoPX(con, (int)Math.max(0, by)),
+										 AndroidTools.convertDPtoPX(con, (int)Math.max(0, bx)), 
+										 AndroidTools.convertDPtoPX(con, (int)Math.max(0, -by)));
+				}
+				if (foreground_color != null)
+				{
+					int color = 0;
+					if (foreground_color.isString())
+					{
+						color = Color.parseColor(foreground_color.getString());
+					}
+					else
+						color = (int)foreground_color.getIntValue();
+					topLayer.setColor(color);
+					//topLayer.getPaint().setColor(color);
+				}
+				
+				if (shadow_color != null)
+				{
+					int color = 0;
+					if (shadow_color.isString())
+					{
+						color = Color.parseColor(shadow_color.getString());
+					}
+					else
+						color = (int)foreground_color.getIntValue();
+					//shadowLayer.getPaint().setColor(color);
+					shadowLayer.setColor(color);
+				}
+				
+				return ExtendedFunctions.makeValue(shadow);
 			}
 			
 		};

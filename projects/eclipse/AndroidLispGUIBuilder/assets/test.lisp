@@ -3,7 +3,11 @@
 	 	    :height "wrap_content"
 	 	    "Thanos"
 	 	    :padding 10
-	 	    :background (create-shadow-background)
+	 	    :text-color "white"
+	 	    :background (create-shadow-background :shadow-angle -45
+	 	    									  :shadow-width 8
+	 	    									  :foreground-color "green"
+	 	    									  :shadow-color "#8F000000")
 	 	    ))
 
 (setq bounce-height 50)
@@ -18,6 +22,7 @@
 				 (button "test animation"
 				 		 :width "wrap_content"
 				 		 :height "wrap_content"
+				 		 :padding 10
 				 		 :on-click (progn
 				 		 			  (set *stop F)
 				 		 			  
@@ -64,4 +69,5 @@
 									 	   :margin-bottom bounce-height)
 				 					animated-text)
 				 (button "stop-animation"
+				 		 :padding 10
 				 		 :on-click (set *stop 1)))
