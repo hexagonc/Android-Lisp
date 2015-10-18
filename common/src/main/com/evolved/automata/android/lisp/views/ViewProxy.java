@@ -25,6 +25,7 @@ import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 
 
+import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.DeviceBehaviorOverrides;
 import com.evolved.automata.android.EvaluateException;
@@ -221,13 +222,13 @@ public abstract class ViewProxy
 		}
 		else
 		{
-			final Environment runEnvironment = NLispTools.getMinimalEnvironment(_currentEnv, code);
+			final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(_currentEnv, code);
 			_onClickListener = new View.OnClickListener()
 			{
 
 				@Override
 				public void onClick(View v) {
-					_lispInterpreter.evaluatePreParsedValue(runEnvironment, code, true);
+					_lispInterpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), true);
 				}
 				
 			};
@@ -272,13 +273,14 @@ public abstract class ViewProxy
 		}
 		else
 		{
-			final Environment runEnvironment = NLispTools.getMinimalEnvironment(_currentEnv, code);
+			final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(_currentEnv, code); 
+			
 			_onLongClickListener = new View.OnLongClickListener()
 			{
 
 				@Override
 				public boolean onLongClick(View v) {
-					Value out = _lispInterpreter.evaluatePreParsedValue(runEnvironment, code, false);
+					Value out = _lispInterpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), false);
 					return out!=null&&!out.isNull();
 				}
 

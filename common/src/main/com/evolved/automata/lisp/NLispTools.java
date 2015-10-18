@@ -4024,43 +4024,59 @@ public class NLispTools
 	
 	public static final String _SKIP_PREFIX = "*";
 	
-	public static Environment getMinimalEnvironment(Environment base, Value value)
+	public static KeyValuePair<Environment, Value> getMinimalEnvironment(Environment base, Value value)
 	{
-		Environment out = new Environment(base);
+		return getMinimalEnvironment(base, null, value);
+	}
+	
+	private static KeyValuePair<Environment, Value> getMinimalEnvironment(Environment base, Environment currentEnvironment, Value value)
+	{
+		if (currentEnvironment == null)
+			currentEnvironment = new Environment(base);
 		
-		Stack<Value> argStack = new Stack<Value>();
-		argStack.add(value);
-		boolean first =true;
-		while (argStack.size()>0)
+		if (value.isIdentifier() && !value.getString().startsWith(_SKIP_PREFIX))
 		{
-			value = argStack.pop();
 			
-			if (value.isList())
+			if (!currentEnvironment.hasVariable(value.getString()))
 			{
-				first =true;
-				for (Value v:value.getList())
+				Value boundValue = base.getVariableValue(value.getString());
+				if (boundValue != null)
 				{
-					// Only add the remaining elements in the list since the first element 
-					// must be a function name if the value is a list unless it is a loop variable declaration
-					// in whicb case we don't care about the first identifier anyway
-					if (!first)
-						argStack.push(v);
-					first = false;
+					currentEnvironment.mapValue(value.getString(), boundValue);
 				}
 			}
-			else
-			{
-				if (value.isIdentifier() && !value.getString().startsWith(_SKIP_PREFIX) && !out.hasVariable(value.getString()))
-				{
-					Value boundValue = base.getVariableValue(value.getString());
-					if (boundValue != null)
-						out.mapValue(value.getString(), boundValue);
-				}
-			}
+			return new KeyValuePair<Environment, Value>(currentEnvironment, value);
 		}
-		return out;
+		else if (value.isIdentifier() && value.getString().startsWith(_SKIP_PREFIX))
+		{
+			return new KeyValuePair<Environment, Value>(currentEnvironment, NLispTools.makeValue(value.getString().substring(1), true));
+		}
 		
+		if (value.isList() && value.getList().length>1)
+		{
+			Value[] oldList = value.getList();
+			Value[] newList = new Value[oldList.length];
 			
+			Value nValue = null;
+			KeyValuePair<Environment, Value> kv;
+			
+			for (int i = 0;i<newList.length;i++)
+			{
+				if (i == 0)
+					newList[i] = oldList[i];
+				else
+				{
+					kv = getMinimalEnvironment(base, currentEnvironment, oldList[i]);
+					nValue = kv.GetValue();
+					currentEnvironment = kv.GetKey();
+					newList[i] = nValue;
+				}
+			}
+			return new KeyValuePair<Environment, Value>(currentEnvironment, NLispTools.makeValue(newList));
+		}
+			 
+		return new KeyValuePair<Environment, Value>(currentEnvironment, value);
+		
 	}
 
 	

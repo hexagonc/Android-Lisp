@@ -23,6 +23,8 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 	}
 	
 	boolean _nonEvaluatedKeyPresent = false;
+	boolean _continuationReturn = false;
+	Value _previousContinuedOutput = null;
 	
 	public void resetFunctionTemplate()
 	{
@@ -30,6 +32,8 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 		_instructionPointer = 0;
 		_argumentInstructionPointer = 0;
 		_nonEvaluatedKeyPresent = false;
+		_previousContinuedOutput = null;
+		_continuationReturn = false;
 	}
 	
 	@Override
@@ -40,6 +44,12 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 			resetFunctionTemplate();
 		else
 		{
+			if (_continuationReturn && _previousContinuedOutput != null)
+			{
+				_previousContinuedOutput.setContinuation(false, null);
+				return resetReturn(_previousContinuedOutput);
+			}
+			
 			_lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
 			if (_lastFunctionReturn.isContinuation())
 				return continuationReturn(_lastFunctionReturn);
@@ -72,7 +82,15 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 			}
 			
 		}
-		return resetReturn(evaluate(env, evaluatedArgs));
+		Value temp = evaluate(env, evaluatedArgs); 
+		if (temp.isContinuation())
+		{
+			_previousContinuedOutput = temp;
+			_continuationReturn = true;
+			return temp;
+		}
+		else
+			return resetReturn(temp); 
 	}
 
 	public abstract Value evaluate(Environment env, Value[] evaluatedArgs);

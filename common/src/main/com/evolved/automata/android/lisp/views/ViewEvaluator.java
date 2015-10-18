@@ -239,14 +239,8 @@ public class ViewEvaluator  {
 				Value proxyArg = evaluatedArgs[0];
 				final ViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
 				tv.setVisiblity(View.VISIBLE);
-				(new UIRunnable(new Handler(Looper.getMainLooper())) {
-					
-					@Override
-					public void run() {
-						tv.setVisiblity(View.VISIBLE);
-					}
-				}).post();
-				return proxyArg;
+				
+				return continuationReturn(proxyArg);
 			}
 			
 		};
@@ -304,14 +298,8 @@ public class ViewEvaluator  {
 				Value proxyArg = evaluatedArgs[0];
 				final ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
 				
-				(new UIRunnable(new Handler(Looper.getMainLooper())) {
-					
-					@Override
-					public void run() {
-						vp.setVisiblity(View.INVISIBLE);
-					}
-				}).post();
-				return proxyArg;
+				vp.setVisiblity(View.INVISIBLE);
+				return continuationReturn(proxyArg);
 			}
 			
 		};
@@ -339,14 +327,8 @@ public class ViewEvaluator  {
 					final Value textArg = evaluatedArgs[1];
 					final ViewProxy tv = (ViewProxy)proxyArg.getObjectValue();
 					
-					(new UIRunnable(new Handler(Looper.getMainLooper())) {
-						
-						@Override
-						public void run() {
-							tv.setBackgroundColor(textArg.getString());
-						}
-					}).post();
-					return proxyArg;
+					tv.setBackgroundColor(textArg.getString());
+					return continuationReturn(proxyArg);
 				}
 				catch (Exception e)
 				{
@@ -444,14 +426,8 @@ public class ViewEvaluator  {
 					final Value textArg = evaluatedArgs[1];
 					final TextViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
 					
-					(new UIRunnable(new Handler(Looper.getMainLooper())) {
-						
-						@Override
-						public void run() {
-							tv.setText(textArg.getString());
-						}
-					}).post();
-					return proxyArg;
+					tv.setText(textArg.getString());
+					return continuationReturn(proxyArg);
 				}
 				catch (Exception e)
 				{
@@ -987,16 +963,9 @@ public class ViewEvaluator  {
 				
 	    		final String text = evaluatedArgs[0].getString();
 	    		
-	    		(new UIRunnable(new Handler(Looper.getMainLooper())) {
-					
-					@Override
-					public void run() {
-						Toast.makeText(con, text, Toast.LENGTH_SHORT).show();
-					}
-				}).post();
+	    		Toast.makeText(con, text, Toast.LENGTH_SHORT).show();
+	    		return continuationReturn(evaluatedArgs[0]);
 	    		
-	    		
-	    		return NLispTools.makeValue(text);
 			}
 		}
 			
@@ -1023,16 +992,10 @@ public class ViewEvaluator  {
 				
 	    		final String text = evaluatedArgs[0].getString();
 	    		
-	    		(new UIRunnable(new Handler(Looper.getMainLooper())) {
-					
-					@Override
-					public void run() {
-						Toast.makeText(con, text, Toast.LENGTH_LONG).show();
-					}
-				}).post();
+	    		Toast.makeText(con, text, Toast.LENGTH_LONG).show();
 	    		
+	    		return continuationReturn(evaluatedArgs[0]);
 	    		
-	    		return NLispTools.makeValue(text);
 			}
 		};
 	}
@@ -1133,6 +1096,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -1149,19 +1113,14 @@ public class ViewEvaluator  {
 				final ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
 				final boolean requestLayout = evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull();
 				proxy.applyAttribures(keys);
-	    		(new UIRunnable(new Handler(Looper.getMainLooper())) {
-					
-					@Override
-					public void run() {
-						
-						View view = proxy.getView();
-						if (requestLayout && view != null )
-							view.requestLayout();
-					}
-				}).post();
-	    		
-				
-				return evaluatedArgs[0];
+				View view = proxy.getView();
+				if (requestLayout && view != null)
+				{
+					view.requestLayout();
+					return continuationReturn(evaluatedArgs[0]);
+				}
+				else
+					return evaluatedArgs[0];
 			}
 		};
 	}
@@ -1171,6 +1130,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -1185,16 +1145,15 @@ public class ViewEvaluator  {
 				
 				final ViewGroupProxy proxy = (ViewGroupProxy)evaluatedArgs[0].getObjectValue();
 				
+	    		ViewGroup view = (ViewGroup)proxy.getView();
+	    		proxy.removeAllViews();
+	    		if (view != null)
+	    		{
+	    			return continuationReturn(evaluatedArgs[0]);
+	    		}
+	    		else
+	    			return evaluatedArgs[0];
 	    		
-	    		(new UIRunnable(new Handler(Looper.getMainLooper())) {
-					
-					@Override
-					public void run() {
-						((ViewGroup)proxy.getView()).removeAllViews();
-					}
-				}).post();
-	    		
-				return evaluatedArgs[0];
 			}
 		};
 	}
@@ -1204,6 +1163,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -1238,6 +1198,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -1250,24 +1211,18 @@ public class ViewEvaluator  {
 				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
 				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
 				
-				final ViewGroupProxy proxy = (ViewGroupProxy)evaluatedArgs[0].getObjectValue();
-				final ViewProxy child = (ViewProxy)evaluatedArgs[1].getObjectValue();
-				boolean uiThread = evaluatedArgs.length> 2 && !evaluatedArgs[2].isNull();
+				ViewGroupProxy proxy = (ViewGroupProxy)evaluatedArgs[0].getObjectValue();
+				ViewProxy child = (ViewProxy)evaluatedArgs[1].getObjectValue();
 				
-				if (uiThread)
+				ViewGroup parentV = (ViewGroup)proxy.getView();
+				View childV = (View)child.getView();
+				proxy.removeView(child);
+				if (parentV != null && childV != null)
 				{
-					(new UIRunnable(new Handler(Looper.getMainLooper())) {
-						
-						@Override
-						public void run() {
-							proxy.removeView(child);
-						}
-					}).post();
+					return continuationReturn(evaluatedArgs[1]);
 				}
 				else
-					proxy.removeView(child);
-	    		
-				return evaluatedArgs[1];
+					return evaluatedArgs[1];
 			}
 		};
 	}
@@ -1277,6 +1232,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -1291,22 +1247,17 @@ public class ViewEvaluator  {
 				
 				final ViewGroupProxy proxy = (ViewGroupProxy)evaluatedArgs[0].getObjectValue();
 				final ViewProxy child = (ViewProxy)evaluatedArgs[1].getObjectValue();
-				boolean uiThread = evaluatedArgs.length> 2 && !evaluatedArgs[2].isNull();
+				ViewGroup parentV = (ViewGroup)proxy.getView();
+				View childV = (View)child.getView();
 				
-				if (uiThread)
+				proxy.addChild(child);
+				if (parentV != null && childV != null)
 				{
-					(new UIRunnable(new Handler(Looper.getMainLooper())) {
-						
-						@Override
-						public void run() {
-							proxy.addChild(child);
-						}
-					}).post();
+					return continuationReturn(evaluatedArgs[1]);
 				}
 				else
-					proxy.addChild(child);
-	    		
-				return evaluatedArgs[1];
+					return evaluatedArgs[1];
+				
 			}
 		};
 	}
@@ -1316,6 +1267,7 @@ public class ViewEvaluator  {
 		return new ViewFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
