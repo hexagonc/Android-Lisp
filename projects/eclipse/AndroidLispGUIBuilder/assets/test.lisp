@@ -13,6 +13,7 @@
 (setq bounce-height 50)
 (setq stop 1)
 (setq up-milli 1000)
+(setq border-width 3)
 
 (vertical-layout :width "match_parent"
 				 :height "match_parent"
@@ -65,7 +66,12 @@
 				 					:child-align "bottom"
 				 					(solid :width 30
 									 	   :height 20
-									 	   :background (create-border)
+									 	   :background (create-border :foreground-color "white"
+									 	   							  :border-color "#05346A"
+									 	   							  :top-width border-width
+									 	   							  :bottom-width border-width
+									 	   							  :left-width border-width
+									 	   							  :right-width border-width)
 									 	   :margin-bottom bounce-height)
 				 					animated-text)
 				 (button "stop-animation"

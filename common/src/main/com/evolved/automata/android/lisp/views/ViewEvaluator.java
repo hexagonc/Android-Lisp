@@ -245,7 +245,69 @@ public class ViewEvaluator  {
 				Value[] evaluatedArgs = kv.GetKey();
 				HashMap<String, Value> keys = kv.GetValue();
 				
-				Drawable border = con.getResources().getDrawable(R.drawable.border);
+				int leftWidth = 0;
+				int rightWidth = 0;
+				int topWidth = 0;
+				int bottomWidth = 0;
+				
+				Value borderColor = keys.get(":border-color");
+				Value foregroundColor = keys.get(":foreground-color");
+				
+				Value left = keys.get(":left-width");
+				Value right = keys.get(":right-width");
+				Value top = keys.get(":top-width");
+				Value bottom = keys.get(":bottom-width");
+				
+				if (left != null)
+				{
+					leftWidth = AndroidTools.convertDPtoPX(con, (int)left.getIntValue());
+				}
+				
+				if (right != null)
+				{
+					rightWidth = AndroidTools.convertDPtoPX(con, (int)right.getIntValue());
+				}
+				
+				if (top != null)
+				{
+					topWidth = AndroidTools.convertDPtoPX(con, (int)top.getIntValue());
+				}
+				
+				if (bottom!=null)
+				{
+					bottomWidth = AndroidTools.convertDPtoPX(con, (int)bottom.getIntValue());
+				}
+				
+				LayerDrawable border = (LayerDrawable)con.getResources().getDrawable(R.drawable.border);
+				GradientDrawable borderLayout = (GradientDrawable)border.getDrawable(0);
+				GradientDrawable topLayer = (GradientDrawable)border.getDrawable(1);
+				
+				if (foregroundColor != null)
+				{
+					int color = 0;
+					if (foregroundColor.isString())
+					{
+						color = Color.parseColor(foregroundColor.getString());
+					}
+					else
+						color = (int)foregroundColor.getIntValue();
+					topLayer.setColor(color);
+					
+				}
+				
+				if (borderColor != null)
+				{
+					int color = 0;
+					if (borderColor.isString())
+					{
+						color = Color.parseColor(borderColor.getString());
+					}
+					else
+						color = (int)borderColor.getIntValue();
+					
+					borderLayout.setColor(color);
+				}
+				border.setLayerInset(1, leftWidth, topWidth, rightWidth, bottomWidth);
 				return ExtendedFunctions.makeValue(border);
 			}
 			
