@@ -94,6 +94,7 @@ public abstract class ViewProxy
 	View.OnLongClickListener _onLongClickListener = null;
 	Drawable _backgroundDrawable = null;
 	protected HashMap<String, Value> _keys = null;
+	boolean _enabledP= true;
 	
 	public ViewProxy(Context con, HashMap<String, Value> keywords)
 	{
@@ -102,6 +103,13 @@ public abstract class ViewProxy
 		_keys = keywords;
 		id = TOP_ID++;
 		
+	}
+	
+	public void setEnabled(boolean enabled)
+	{
+		_enabledP = enabled;
+		if (encapsulated != null)
+			encapsulated.setEnabled(_enabledP);
 	}
 	
 	protected LinearLayout.LayoutParams processKeywords(LinearLayout parent, HashMap<String, Value> keys)
@@ -895,7 +903,7 @@ public abstract class ViewProxy
 	public View createView(ViewGroup parent)
 	{
 		View base = encapsulated = createBaseView();
-		
+		encapsulated.setEnabled(_enabledP);
 		ViewGroup.LayoutParams params = null;
 		if (parent instanceof LinearLayout)
 		{

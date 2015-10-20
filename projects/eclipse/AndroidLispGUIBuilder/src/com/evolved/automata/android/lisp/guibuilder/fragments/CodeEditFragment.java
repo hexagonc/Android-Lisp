@@ -79,7 +79,8 @@ public class CodeEditFragment extends LispBuilderFragment
 		predefinedSampleMap.put("tic-tac-toe with simple ai", "tic_tac_toe_playable.lisp");
 		predefinedSampleMap.put("lego mindstorms sample", "mindstorms_sample.lisp");
 		predefinedSampleMap.put("test", "test.lisp");
-		String[] predefinedSamples = new String[]{"test", "tic-tac-toe ui only", "tic-tac-toe with simple ai", "lego mindstorms sample"};
+		predefinedSampleMap.put("speech test", "speech_test.lisp");
+		String[] predefinedSamples = new String[]{"speech test", "test", "tic-tac-toe ui only", "tic-tac-toe with simple ai", "lego mindstorms sample"};
 		String assetCode = null;
 		try
 		{

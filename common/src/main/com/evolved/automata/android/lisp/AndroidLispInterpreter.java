@@ -7,6 +7,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.Value;
 
 public class AndroidLispInterpreter 
@@ -130,7 +131,41 @@ public class AndroidLispInterpreter
 		return evaluatePreParsedValue(env, value, new LinkedList<Value>(), alwaysUseCallbackP);
 	}
 	
-	
+	public Value evaluateFunction(final FunctionTemplate function)
+	{
+		if (Looper.myLooper() == Looper.getMainLooper())
+		{
+			try
+			{
+				Value out = function.evaluate(_env, false);
+				if (out.isContinuation())
+				{
+					_mainThreadHandler.post(getEvaluationSlice(_env, out, new LinkedList<Value>()));
+					return null;
+				}
+				else
+					return out;
+			}
+			catch (Exception e)
+			{
+				notifyError(e);
+			}
+			return null;
+		}
+		else
+		{
+			_mainThreadHandler.post(new Runnable()
+			{
+				public void run()
+				{
+					evaluateFunction(function);
+				}
+			});
+			return null;
+		}
+		
+		
+	}
 	
 	private Runnable getEvaluationSlice(final Environment env, final Value input, final LinkedList<Value> remaining)
 	{

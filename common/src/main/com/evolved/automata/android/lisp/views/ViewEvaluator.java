@@ -148,6 +148,36 @@ public class ViewEvaluator  {
 		env.mapFunction("create-border", create_border(env, activity, interpreter));
 		
 		env.mapFunction("create-shadow-background", shadow_background(env, activity, interpreter));
+		
+		env.mapFunction("set-enabled", set_enabled(env, activity, interpreter));
+	}
+	
+	public static ViewFunctionTemplate set_enabled(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_enabled(env, con, interpreter);
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				
+				ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
+				boolean enabled = !evaluatedArgs[1].isNull();
+				proxy.setEnabled(enabled);
+				if (proxy.getView()!=null)
+					return continuationReturn(evaluatedArgs[0]);
+				else
+					return evaluatedArgs[0];
+			}
+			
+		};
 	}
 	
 	public static ViewFunctionTemplate shadow_background(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)

@@ -64,15 +64,15 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	public interface SpeechListener
 	{
 		public void onTTSComplete(TTS_STATUS status);
-		public void onASRComplete(SPEECH_STATUS status, String speech);
+		public void onASRComplete(SPEECH_STATUS status, String speech, int errorCode);
 		public void onInit();
 		public void log(String tag, String message);
 	}
 	
 	public interface SpeechControlInterface
 	{
-		public void speechMessage(String text);
-		public void initialiateASR();
+		public void speakMessage(String text);
+		public void initiateListening();
 	}
 	
 	public static final String SPEECH_CONTROL_LISTENER_ACTION = SpeechControlReceiver.class.getName();
@@ -126,12 +126,12 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		{
 
 			@Override
-			public void speechMessage(String text) {
-				speakMessage(text);
+			public void speakMessage(String text) {
+				SpeechInterface.this.speakMessage(text);
 			}
 
 			@Override
-			public void initialiateASR() {
+			public void initiateListening() {
 				startRecognition();
 			}
 			
@@ -151,7 +151,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		return speechIntent;
 	}
 	
-	public void startRecognition()
+	private void startRecognition()
 	{
 		synchronized (_interfaceSynch)
 		{
@@ -245,13 +245,21 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	{
 		if (_speechListener!=null)
 		{
-			_speechListener.onASRComplete(status, fullResults);
+			_speechListener.onASRComplete(status, fullResults, 0);
 		}
 	}
 	
 	private void notifySpeechStatus(SPEECH_STATUS status)
 	{
 		notifySpeechStatus(status, null);
+	}
+	
+	private void notifySpeechStatus(SPEECH_STATUS status, int errorStatus)
+	{
+		if (_speechListener!=null)
+		{
+			_speechListener.onASRComplete(status, null, errorStatus);
+		}
 	}
 	
 	public static Intent getInitiateListeningSpeechIntent()
@@ -278,21 +286,24 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	{
 		if (_recognizer!=null)
 			_recognizer.destroy();
-		
-		synchronized (_interfaceSynch)
+		if (_controller != null)
 		{
-			_controller.stopPlayingCurrentText();
-			if (_speakRequested)
+			synchronized (_interfaceSynch)
 			{
-				notifyTTSStatus(TTS_STATUS.SPEECH_INTERRUPTED);
-				
+				_controller.stopPlayingCurrentText();
+				if (_speakRequested)
+				{
+					notifyTTSStatus(TTS_STATUS.SPEECH_INTERRUPTED);
+					
+				}
+				_speakRequested =  false;
+				_listeningP = false;
+				_speechReady = false;
 			}
-			_speakRequested =  false;
-			_listeningP = false;
-			_speechReady = false;
+			_controller.shutdown();
+			_controller = null;
 		}
-		_controller.shutdown();
-		_controller = null;
+			
 		_recognizer = null;
 		if (_controlReceiver!=null)
 			_context.unregisterReceiver(_controlReceiver);
@@ -318,7 +329,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 
 	@Override
 	public void onError(int error) {
-		notifySpeechStatus(SPEECH_STATUS.RECOGNITION_ERROR);
+		notifySpeechStatus(SPEECH_STATUS.RECOGNITION_ERROR, error);
 		synchronized (_interfaceSynch)
 		{
 			_listeningP = false;
