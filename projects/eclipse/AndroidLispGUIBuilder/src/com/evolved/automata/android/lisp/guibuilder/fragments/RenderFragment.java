@@ -56,7 +56,7 @@ public class RenderFragment extends LispBuilderFragment
 
 	@Override
 	public void onDestroyView() {
-		// TODO Auto-generated method stub
+		ViewProxy.clearDetachedViewProxies();
 		super.onDestroyView();
 	}
 	
@@ -90,6 +90,7 @@ public class RenderFragment extends LispBuilderFragment
 			try
 			{
 				_cachedView.removeAllViews();
+				ViewProxy.clearDetachedViewProxies();
 				View result = _currentProxy.createView(_cachedView, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 				if (result != null)
 				{

@@ -10,6 +10,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -110,13 +112,16 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	
 	Context _context;
 	String _speechLabel = "Speech";
+	ConnectivityManager _connManager = null;
+	boolean _networkSpeechAvailableP = true;
+	
 	public SpeechInterface(Context context, String speechLabel, OnInitListener initListener, HashSet<String> dictionary)
 	{
 		_initListener = initListener;
 		_context = context;
 		_speechLabel = speechLabel;
 		_dictionary = dictionary;
-		
+		_connManager = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
 	}
 	
 	public SpeechControlInterface setSpeechListener(SpeechListener listener)
@@ -153,6 +158,8 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	
 	private void startRecognition()
 	{
+		NetworkInfo ninfo = _connManager.getActiveNetworkInfo();
+		_networkSpeechAvailableP = ninfo!=null && ninfo.isAvailable();
 		synchronized (_interfaceSynch)
 		{
 			if (_speakRequested)
@@ -306,7 +313,17 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			
 		_recognizer = null;
 		if (_controlReceiver!=null)
-			_context.unregisterReceiver(_controlReceiver);
+		{
+			try
+			{
+				_context.unregisterReceiver(_controlReceiver);
+			}
+			catch (IllegalStateException ie) // If not already registered
+			{
+				
+			}
+			
+		}
 	}
 
 	@Override
@@ -470,7 +487,9 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			float[] confidence = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES);
 			LinkedList<List<WeightedValue<String>>> components = convertResultList(resultList, confidence), filtered = new LinkedList<List<WeightedValue<String>>>();
 			List<WeightedValue<String>> newSet;
-			double maxWeight = 0, weightThreshold = 0.2;
+			double maxWeight = 0.0, weightThreshold = 0.2;
+			if (!_networkSpeechAvailableP) // embedded recognition sometimes returns confidence scores of 0.0 even with good results
+				weightThreshold = 0.0;
 			String greatestWord;
 			for (List<WeightedValue<String>> pos:components)
 			{
@@ -489,7 +508,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 					}
 						
 				}
-				if (maxWeight>weightThreshold)
+				if (maxWeight>=weightThreshold)
 				{
 					if (newSet.size()==0)
 						filtered.add(pos);
@@ -580,7 +599,10 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		WeightedValue<String> selected;
 		for (List<WeightedValue<String>> words:possibilities)
 		{
-			selected = AITools.ChooseWeightedRandomFair(words);
+			if (words.size()==1)
+				selected = words.get(0);
+			else
+				selected = AITools.ChooseWeightedRandomFair(words);
 			if (selected!=null)
 			{
 				sBuilder.append(selected.GetValue());

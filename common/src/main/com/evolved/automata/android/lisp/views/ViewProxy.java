@@ -1,6 +1,7 @@
 package com.evolved.automata.android.lisp.views;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -16,6 +17,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.view.ViewParent;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -96,13 +98,48 @@ public abstract class ViewProxy
 	protected HashMap<String, Value> _keys = null;
 	boolean _enabledP= true;
 	
+	private static LinkedList<ViewProxy> _proxyCache = new LinkedList<ViewProxy>();
+	
 	public ViewProxy(Context con, HashMap<String, Value> keywords)
 	{
 		context = con;
 		res = con.getResources();
 		_keys = keywords;
 		id = TOP_ID++;
-		
+		synchronized (_proxyCache)
+		{
+			_proxyCache.add(this);
+		}
+	}
+	
+	public static void clearDetachedViewProxies()
+	{
+		synchronized (_proxyCache)
+		{
+			
+			LinkedList<ViewProxy> newProxy = new LinkedList<ViewProxy>();
+			for (ViewProxy v:_proxyCache)
+			{
+				if (v.hasDetachedViewP())
+					v.clearView();
+				else
+					newProxy.add(v);
+			}
+			_proxyCache = newProxy;
+		}
+	}
+	
+	private boolean hasDetachedViewP()
+	{
+		if (encapsulated == null)
+			return false;
+		ViewParent parent = encapsulated.getParent();
+		return parent == null;
+	}
+	
+	private void clearView()
+	{
+		encapsulated = null;
 	}
 	
 	public void setEnabled(boolean enabled)
