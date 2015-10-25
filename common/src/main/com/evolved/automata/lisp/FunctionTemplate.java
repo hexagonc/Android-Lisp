@@ -21,7 +21,9 @@ public abstract class FunctionTemplate
 	{
 		try
 		{
-			return innerClone();
+			Object o = innerClone(); 
+			((FunctionTemplate)o).setName(_name);
+			return o;
 		}
 		catch (Exception e)
 		{

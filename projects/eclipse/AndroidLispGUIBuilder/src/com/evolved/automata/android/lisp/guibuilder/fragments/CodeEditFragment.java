@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import com.evolved.automata.AITools;
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
@@ -54,6 +55,8 @@ public class CodeEditFragment extends LispBuilderFragment
 	int _initiallySelectedItem = 0;
 	boolean _first = true;
 	Handler _main = new Handler(Looper.getMainLooper());
+	public final String _PREFIX_COMMENT_TOKEN = ";";
+	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		
@@ -80,7 +83,7 @@ public class CodeEditFragment extends LispBuilderFragment
 		predefinedSampleMap.put("lego mindstorms sample", "mindstorms_sample.lisp");
 		predefinedSampleMap.put("test", "test.lisp");
 		predefinedSampleMap.put("speech test", "speech_test.lisp");
-		String[] predefinedSamples = new String[]{"speech test", "test", "tic-tac-toe ui only", "tic-tac-toe with simple ai", "lego mindstorms sample"};
+		String[] predefinedSamples = new String[]{"lego mindstorms sample", "test", "speech test",  "tic-tac-toe ui only", "tic-tac-toe with simple ai"};
 		String assetCode = null;
 		try
 		{
@@ -164,9 +167,10 @@ public class CodeEditFragment extends LispBuilderFragment
 			@Override
 			public void onClick(View v) {
 				String command = _editText.getText().toString();
+				String commandWithoutComments = AITools.stripPrefixDelimitedComments(command, _PREFIX_COMMENT_TOKEN);
 				if (command != null && command.length()>0)
 				{
-					Value result = _data.getInterpreter().evaluateExpression(command, false);
+					Value result = _data.getInterpreter().evaluateExpression(commandWithoutComments, false);
 					if (result != null)
 					{
 						onResult(result);

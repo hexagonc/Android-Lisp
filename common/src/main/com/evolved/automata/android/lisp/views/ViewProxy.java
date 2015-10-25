@@ -85,10 +85,10 @@ public abstract class ViewProxy
 	public static final String ON_CLICK = ":on-click"; // a string expression to be evaluated
 	public static final String ON_LONG_CLICK = ":on-long-click"; // a string expression to be evaluated that can return a boolean result
 	
-	int topPadding = 0;
-	int bottomPadding = 0;
-	int rightPadding = 0;
-	int leftPadding = 0;
+	int topPadding = -1;
+	int bottomPadding = -1;
+	int rightPadding = -1;
+	int leftPadding = -1;
 	Context context;
 	Environment _currentEnv = null;
 	
@@ -951,7 +951,7 @@ public abstract class ViewProxy
 		{
 			params = processKeywords((RelativeLayout)parent, _keys);
 		}
-		else if (parent instanceof ScrollView || parent instanceof HorizontalScrollView)
+		else if (parent instanceof ScrollView || parent instanceof HorizontalScrollView || parent instanceof FrameLayout)
 		{
 			params = processKeywords((FrameLayout)parent, _keys);
 		}
@@ -1059,7 +1059,12 @@ public abstract class ViewProxy
 		// TODO: Don't set padding for radio buttons for certain devices because this breaks ui on certain
 		//		 phones, namely the HTC EVO 4G LTE.  Need a better way to handle this
 		if (!DeviceBehaviorOverrides.radioPaddingBugP() ||  !(view instanceof RadioButton))
-			view.setPadding(leftPadding, topPadding, rightPadding, bottomPadding);
+		{
+			view.setPadding((leftPadding == -1)?view.getPaddingLeft():leftPadding,
+							(topPadding == -1)?view.getPaddingTop():topPadding, 
+							(rightPadding == -1)?view.getPaddingRight():rightPadding,
+							(bottomPadding == -1)?view.getPaddingBottom():bottomPadding);
+		}
 		processOnClickListenerKeys(view, _keys);
 		processOnLongClickListenerKeys(view, _keys);
 	}

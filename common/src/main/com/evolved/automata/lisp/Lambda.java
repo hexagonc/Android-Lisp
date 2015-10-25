@@ -115,12 +115,16 @@ public class Lambda extends FunctionTemplate {
 		String name;
 		if (!_processedArgs)
 		still_binding_arguments_for_function:{
-			if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+			if (resume && _lastFunctionReturn == null)
+			{
+				System.out.println("bad");
+			}
+			if (resume && _lastFunctionReturn != null && _lastFunctionReturn.getContinuingFunction() != null)
 			only_true_if_resuming:{
 				
 				if (_appendToVargs)
 				{
-					parameterValue = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
+					parameterValue = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, true);
 					if (parameterValue.isContinuation())
 						return continuationReturn(parameterValue);
 					if (parameterValue.isReturn() || parameterValue.isBreak() || parameterValue.isSignal() || parameterValue.isSignalOut())
@@ -148,7 +152,7 @@ public class Lambda extends FunctionTemplate {
 					}
 					if (_argumentInstructionPointer < _actualParameters.length)
 					{
-						parameterValue = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
+						parameterValue = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, true);
 						if (parameterValue.isContinuation())
 							return continuationReturn(parameterValue);
 						if (parameterValue.isReturn() || parameterValue.isBreak())
@@ -256,7 +260,10 @@ public class Lambda extends FunctionTemplate {
 		Value result = Environment.getNull();
 		for (;_instructionPointer<_bodyArguments.length;_instructionPointer++)
 		{
-			result = _lastFunctionReturn = _innerEnvironment.evaluate(_bodyArguments[_instructionPointer]);
+			if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+				result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(_innerEnvironment, true);
+			else
+				result = _lastFunctionReturn = _innerEnvironment.evaluate(_bodyArguments[_instructionPointer]);
 			if (result.isReturn())
 			{
 				result.setReturn(false);

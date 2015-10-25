@@ -3,8 +3,11 @@ package com.evolved.automata.android.mindstorms;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 import com.evolved.automata.android.AppStateManager;
 
@@ -16,6 +19,11 @@ import android.util.Log;
 
 public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatusListener 
 {
+	public interface ConnectionListener
+	{
+		public void onConnectionChange(boolean isConnected);
+	}
+	
 	
 	private class State
 	{
@@ -215,17 +223,33 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 	HashMap<Integer, Sensor> _sensorMap = new HashMap<Integer, Sensor>();
 	State _currentState = null;
 	
+	HashMap<ConnectionListener, Boolean> _connectionListeners = new HashMap<ConnectionListener, Boolean>();
 
 	public NXTBluetoothInterface(Context con, BluetoothDevice device) {
 		_device = device;
 		_context = con;
 		_deviceName = _device.getName();
 		_macAddress = _device.getAddress();
-		_currentState = getBluetoothServiceStoppedState();
+		_currentState = getBluetoothDisabledState();
 		
 	}
 
+	public void addConnectionListener(ConnectionListener listener, boolean notifyImmediately)
+	{
+		if (_connectionListeners.get(listener)==null)
+			_connectionListeners.put(listener, Boolean.valueOf(true));
+		
+		if (notifyImmediately)
+		{
+			listener.onConnectionChange(isConnected());
+		}
+	}
 	
+	private void notifyConnectionListeners()
+	{
+		for (ConnectionListener listener:_connectionListeners.keySet())
+			listener.onConnectionChange(isConnected());
+	}
 
 	public String getDeviceName() {
 		return _deviceName;
@@ -240,7 +264,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 	public void onStatusChange(int adapterStatus) {
 		switch (adapterStatus) {
 		case BluetoothAdapter.STATE_ON:
-			_currentState = getDisconnectedToDeviceHandler();
+			_currentState = getDisconnectedFromDeviceState();
 			break;
 		case BluetoothAdapter.STATE_TURNING_ON:
 
@@ -273,16 +297,18 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		}
 	}
 
-	// TODO: Delegate this handler to the current state
 	
+	/**
+	 * Unused at the moment
+	 */
 	@Override
 	public void onServiceStatusChanged(int status) {
 		switch (status) {
 		case NXTBluetoothService._STOPPED:
-			_currentState = getBluetoothServiceStoppedState();
+			//_currentState = getBluetoothServiceStoppedState();
 			break;
 		case NXTBluetoothService._STARTED:
-			_currentState = getBluetoothServiceStartedState();
+			//_currentState = getBluetoothServiceStartedState();
 			break;
 		}
 	}
@@ -318,7 +344,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -336,7 +362,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -353,7 +379,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw e;
@@ -372,7 +398,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -389,7 +415,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -406,7 +432,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -423,7 +449,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -441,7 +467,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		{
 			if (disconnectedUnexpectedly(e))
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
@@ -452,29 +478,13 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 	//						State Methods
 	// *~=[o_o]=~* *~=[o_o]=~* *~=[o_o]=~* *~=[o_o]=~* *~=[o_o]=~* *~=[o_o]=~* *~=[o_o]=~*
 	
-	private State getBluetoothEnabledState()
-	{
-		return new State(new NotConnectedToNXTException("Connect to:" + _deviceName));
-	}
 	
 	private State getBluetoothDisabledState()
 	{
 		return new State(new BluetoothDisabledException("Start bluetooth adapter"));
 	}
 	
-	private State getBluetoothServiceStoppedState()
-	{
-		return new State(new BluetoothServiceNotRunningException("Start bluetooth service"));
-	}
-	
-	private State getBluetoothServiceStartedState()
-	{
-		return new State(new NotConnectedToNXTException("Connect to:" + _deviceName));
-	}
-	
-	
-	
-	private State getConnectedToDeviceHandler(){
+	private State getConnectedToDeviceState(){
 		return new State(){
 	
 		@Override
@@ -502,7 +512,8 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 			}
 			finally
 			{
-				_currentState = getDisconnectedToDeviceHandler();
+				_currentState = getDisconnectedFromDeviceState();
+				notifyConnectionListeners();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
 			}
 			return false;
@@ -653,7 +664,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 		}};
 	}
 
-	private State getDisconnectedToDeviceHandler()
+	private State getDisconnectedFromDeviceState()
 	{
 		return new State(){
 		
@@ -665,7 +676,8 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				_socket.connect();
 				_istream = _socket.getInputStream();
 				_ostream = _socket.getOutputStream();
-				_currentState = getConnectedToDeviceHandler();
+				_currentState = getConnectedToDeviceState();
+				notifyConnectionListeners();
 				NXTBluetoothManager.getInstance().showBluetoothNotification(true, true, getDeviceName());
 				return true;
 			} catch (IOException e) {
@@ -675,6 +687,12 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				return false;
 			}
 
+		}
+		
+		@Override
+		public boolean disconnect()
+		{
+			return true;
 		}
 		};
 	}

@@ -106,6 +106,27 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 		notifyListeners(_UPDATE_ALL);
 		clearServiceInterface();
 		NXTBluetoothManager.getInstance().showBluetooNotification(false);
+		
+		try
+		{
+			if (_bluetoothConnectionReceiver != null)
+				unregisterReceiver(_bluetoothConnectionReceiver);
+		}
+		catch (IllegalStateException ie)
+		{
+			
+		}
+		
+		try
+		{
+			if (_bluetoothStateReceiver != null)
+				unregisterReceiver(_bluetoothStateReceiver);
+		}
+		catch (IllegalStateException ie)
+		{
+			
+		}
+		
 		_instance = null;
 		super.onDestroy();
 	}

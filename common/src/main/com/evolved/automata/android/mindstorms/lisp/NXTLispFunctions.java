@@ -3,6 +3,7 @@ package com.evolved.automata.android.mindstorms.lisp;
 import java.util.LinkedList;
 
 import com.evolved.automata.android.AppStateManager;
+import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.mindstorms.BluetoothUnavailableException;
 import com.evolved.automata.android.mindstorms.NXTMessage;
 import com.evolved.automata.android.mindstorms.NXTBluetoothInterface;
@@ -19,6 +20,13 @@ import com.evolved.automata.lisp.Value;
 
 public class NXTLispFunctions 
 {
+	
+	/**
+	 * A lazy hack to avoid changing the signatures of a bunch of methods :-(
+	 */
+	public static AndroidLispInterpreter _lispInterpreter = null;
+	
+	
 	public static void addFunctions(final Environment env, final NXTBluetoothManager manager)
 	{
 		env.mapFunction("get-paired-devices", get_paired_devices(manager));
@@ -26,7 +34,8 @@ public class NXTLispFunctions
 		env.mapFunction("get-device-mac-address", get_device_mac_address(manager));
 		env.mapFunction("nxt-service-running-p", nxt_service_running_p(manager));
 		env.mapFunction("bluetooth-adapter-on-p", bluetooth_adapter_on_p(manager));
-		
+		env.mapFunction("bluetooth-adapter-present-p", bluetooth_adapter_present_p(manager));
+		env.mapFunction("set-connection-status-listener", set_connection_status_listener(manager));
 		env.mapFunction("connected-to-device-p", connected_to_device_p(manager));
 		
 		
@@ -51,6 +60,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -80,6 +90,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -112,6 +123,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -146,6 +158,7 @@ public class NXTLispFunctions
 		return new SimpleFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -179,6 +192,7 @@ public class NXTLispFunctions
 		return new SimpleFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -213,6 +227,7 @@ public class NXTLispFunctions
 		return new SimpleFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -256,6 +271,7 @@ public class NXTLispFunctions
 		return new SimpleFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -290,6 +306,7 @@ public class NXTLispFunctions
 		return new SimpleFunctionTemplate()
 		{
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -318,12 +335,49 @@ public class NXTLispFunctions
 		};
 	}
 	
+	private static SimpleFunctionTemplate set_connection_status_listener(final NXTBluetoothManager manager)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_connection_status_listener(manager);
+			}
+			
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) 
+			{
+				NXTBluetoothInterface binterface = (NXTBluetoothInterface)evaluatedArgs[0].getObjectValue();
+				
+				final FunctionTemplate listenerLambda = evaluatedArgs[1].getLambda();
+				
+				NXTBluetoothInterface.ConnectionListener listener = new NXTBluetoothInterface.ConnectionListener() {
+					
+					@Override
+					public void onConnectionChange(boolean isConnected) {
+						Value[] args = new Value[]{NLispTools.makeValue(isConnected)};
+						listenerLambda.setActualParameters(args);
+						_lispInterpreter.evaluateFunction(listenerLambda);
+					}
+				};
+				boolean notifyCurrentStatusImmediately = !evaluatedArgs[2].isNull();		
+				binterface.addConnectionListener(listener, notifyCurrentStatusImmediately);
+				return evaluatedArgs[0];
+				
+			}
+			
+		};
+	}
 	
 	
 	private static SimpleFunctionTemplate get_raw_sensor_value(final NXTBluetoothManager manager)
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -357,6 +411,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -391,6 +446,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -426,6 +482,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -457,6 +514,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -488,6 +546,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -507,6 +566,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -527,6 +587,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -542,10 +603,31 @@ public class NXTLispFunctions
 		};
 	}
 	
+	private static SimpleFunctionTemplate bluetooth_adapter_present_p(final NXTBluetoothManager manager)
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)bluetooth_adapter_present_p(manager);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) 
+			{
+				return NLispTools.makeValue(manager.bluetoothAdapterPresentP());
+			}
+			
+		};
+	}
+	
 	private static SimpleFunctionTemplate bluetooth_adapter_on_p(final NXTBluetoothManager manager)
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -555,11 +637,7 @@ public class NXTLispFunctions
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) 
 			{
-				NXTServiceInterface sinterface = NXTBluetoothService.getServiceInterface();
-				if (sinterface != null)
-					return NLispTools.makeValue(sinterface.bluetoothAdapterOnP());
-				else
-					return NLispTools.makeValue(false);
+				return NLispTools.makeValue(manager.bluetoothAdapterEnabledP());
 			}
 			
 		};
@@ -570,6 +648,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -594,6 +673,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -630,6 +710,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
@@ -651,6 +732,7 @@ public class NXTLispFunctions
 	{
 		return new SimpleFunctionTemplate()
 		{
+			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{

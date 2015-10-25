@@ -1,6 +1,9 @@
 package com.evolved.automata.android.lisp.views;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.apache.commons.lang3.tuple.Triple;
 
 
 import android.app.Activity;
@@ -14,8 +17,12 @@ import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -40,8 +47,8 @@ public class ViewEvaluator  {
 
 	
 	
-	public static final String ON_POSITIVE_BUTTON_CLICK_KEY = ":onPositive";
-	public static final String ON_CANCEL_BUTTON_CLICK_KEY = ":onCancel";
+	public static final String ON_POSITIVE_BUTTON_CLICK_KEY = ":on-positive";
+	public static final String ON_CANCEL_BUTTON_CLICK_KEY = ":on-cancel";
 	
 	public static final String DIALOG_TITLE_KEY = ":dialog-title";
 	public static final String DIALOG_MESSAGE_KEY = ":dialog-message";
@@ -130,6 +137,8 @@ public class ViewEvaluator  {
 		
 		env.mapFunction("scrollview", scrollview(env, activity, interpreter));
 		
+		env.mapFunction("spinner", spinner(env, activity, interpreter));
+		
 		env.mapFunction("horizontal-scrollview", horizontal_scrollview(env, activity, interpreter));
 		
 		env.mapFunction("update-parameters", update_parameters(env, activity, interpreter));
@@ -140,6 +149,7 @@ public class ViewEvaluator  {
 		env.mapFunction("add-view", add_view(env, activity, interpreter));
 		
 		env.mapFunction("dialog", dialog(env, activity, interpreter));
+		env.mapFunction("dismiss-dialog", dialog(env, activity, interpreter));
 		
 		env.mapFunction("get-id", get_id(env, activity, interpreter));
 		
@@ -150,6 +160,10 @@ public class ViewEvaluator  {
 		env.mapFunction("create-shadow-background", shadow_background(env, activity, interpreter));
 		
 		env.mapFunction("set-enabled", set_enabled(env, activity, interpreter));
+		
+		env.mapFunction("set-spinner-items", set_spinner_items(env, activity, interpreter));
+		
+		env.mapFunction("set-selected-spinner-item", set_selected_spinner_item(env, activity, interpreter));
 	}
 	
 	public static ViewFunctionTemplate set_enabled(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
@@ -447,9 +461,13 @@ public class ViewEvaluator  {
 				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
 				
 				Value proxyArg = evaluatedArgs[0];
+				boolean shouldBeGoneP = !evaluatedArgs[1].isNull();
 				final ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
 				
-				vp.setVisiblity(View.INVISIBLE);
+				if (shouldBeGoneP)
+					vp.setVisiblity(View.GONE);
+				else
+					vp.setVisiblity(View.INVISIBLE);
 				return continuationReturn(proxyArg);
 			}
 			
@@ -578,7 +596,10 @@ public class ViewEvaluator  {
 					final TextViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
 					
 					tv.setText(textArg.getString());
-					return continuationReturn(proxyArg);
+					if (tv.getView()!=null)
+						return continuationReturn(proxyArg);
+					else
+						return proxyArg;
 				}
 				catch (Exception e)
 				{
@@ -1267,7 +1288,15 @@ public class ViewEvaluator  {
 				View view = proxy.getView();
 				if (requestLayout && view != null)
 				{
-					view.requestLayout();
+					ViewParent vp = view.getParent();
+					if (vp !=null)
+					{
+						((View)vp).refreshDrawableState();
+						((View)vp).requestLayout();
+						((View)vp).invalidate();
+					}
+					//view.requestLayout();
+					
 					return continuationReturn(evaluatedArgs[0]);
 				}
 				else
@@ -1300,6 +1329,7 @@ public class ViewEvaluator  {
 	    		proxy.removeAllViews();
 	    		if (view != null)
 	    		{
+	    			view.requestLayout();
 	    			return continuationReturn(evaluatedArgs[0]);
 	    		}
 	    		else
@@ -1404,6 +1434,7 @@ public class ViewEvaluator  {
 				proxy.addChild(child);
 				if (parentV != null && childV != null)
 				{
+					parentV.requestLayout();
 					return continuationReturn(evaluatedArgs[1]);
 				}
 				else
@@ -1432,41 +1463,103 @@ public class ViewEvaluator  {
 				HashMap<String, Value> keys = kv.GetValue();
 				
 				
-				final String title = keys.get(DIALOG_TITLE_KEY).getString();
-				final String message = keys.get(DIALOG_MESSAGE_KEY).getString();
+				final String title = (keys.containsKey(DIALOG_TITLE_KEY))?keys.get(DIALOG_TITLE_KEY).getString():null;
+				final String message = (keys.containsKey(DIALOG_MESSAGE_KEY))?keys.get(DIALOG_MESSAGE_KEY).getString():null;
 				
-				final String onPositiveClick = keys.get(ON_POSITIVE_BUTTON_CLICK_KEY).getString();
-				final String onCancelClick = keys.get(ON_CANCEL_BUTTON_CLICK_KEY).getString();
+				final Value onPositiveClick = (keys.containsKey(ON_POSITIVE_BUTTON_CLICK_KEY))?keys.get(ON_POSITIVE_BUTTON_CLICK_KEY):null;
+				final Value onCancelClick = (keys.containsKey(ON_CANCEL_BUTTON_CLICK_KEY))?keys.get(ON_CANCEL_BUTTON_CLICK_KEY):null;
 				
-				final String positiveButtonText = keys.get(DIALOG_POSITIVE_BUTTON_TEXT).getString();
-				final String cancelButtonText = keys.get(DIALOG_CANCEL_BUTTON_TEXT).getString();
+				final String positiveButtonText = (keys.containsKey(DIALOG_POSITIVE_BUTTON_TEXT))?keys.get(DIALOG_POSITIVE_BUTTON_TEXT).getString():null;
+				final String cancelButtonText = (keys.containsKey(DIALOG_CANCEL_BUTTON_TEXT))?keys.get(DIALOG_CANCEL_BUTTON_TEXT).getString():null;
 				
 				AlertDialog.Builder builder = new AlertDialog.Builder(con);
 				if (title!=null)
 					builder.setTitle(title);
 				
-				if (positiveButtonText!=null && onPositiveClick != null)
+				if (positiveButtonText!=null)
 				{
-					builder.setPositiveButton(positiveButtonText, new DialogInterface.OnClickListener() {
-						
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							interpreter.evaluateExpression(onPositiveClick, true);
-							dialog.dismiss();
+					
+					if (onPositiveClick != null)
+					{
+						if (onPositiveClick.isString())
+						{
+							builder.setPositiveButton(positiveButtonText, new DialogInterface.OnClickListener() {
+								
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									Value out = interpreter.evaluateExpression(onPositiveClick.getString(), true);
+									dialog.dismiss();
+								}
+							});
 						}
-					});
+						else
+						{
+							final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(env, onPositiveClick); 
+							
+							builder.setPositiveButton(positiveButtonText, new DialogInterface.OnClickListener() {
+								
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									Value out = interpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), true);
+									dialog.dismiss();
+								}
+							});
+						}
+					}
+					else
+					{
+						builder.setPositiveButton(positiveButtonText, new DialogInterface.OnClickListener() {
+							
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								dialog.dismiss();
+							}
+						});
+					}
+					
 				}
 				
-				if (cancelButtonText!=null && onCancelClick != null)
+				if (cancelButtonText!=null)
 				{
-					builder.setPositiveButton(cancelButtonText, new DialogInterface.OnClickListener() {
-						
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							interpreter.evaluateExpression( onCancelClick, true);
-							dialog.dismiss();
+					
+					if (onCancelClick != null)
+					{
+						if (onCancelClick.isString())
+						{
+							builder.setNegativeButton(cancelButtonText, new DialogInterface.OnClickListener() {
+								
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									Value out = interpreter.evaluateExpression(onCancelClick.getString(), true);
+									dialog.dismiss();
+								}
+							});
 						}
-					});
+						else
+						{
+							final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(env, onCancelClick); 
+							
+							builder.setNegativeButton(cancelButtonText, new DialogInterface.OnClickListener() {
+								
+								@Override
+								public void onClick(DialogInterface dialog, int which) {
+									Value out = interpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), true);
+									dialog.dismiss();
+								}
+							});
+						}
+					}
+					else
+					{
+						builder.setNegativeButton(cancelButtonText, new DialogInterface.OnClickListener() {
+							
+							@Override
+							public void onClick(DialogInterface dialog, int which) {
+								dialog.dismiss();
+							}
+						});
+					}
+					
 				}
 				
 				if (message!=null)
@@ -1487,7 +1580,146 @@ public class ViewEvaluator  {
 				AlertDialog dialog = builder.create();
 				dialog.show();
 
-				return NLispTools.makeValue(1);
+				return ExtendedFunctions.makeValue(dialog);
+			}
+		};
+	}
+	
+	
+	public static ViewFunctionTemplate dismiss_dialog(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)dismiss_dialog(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				AlertDialog dialog = (AlertDialog)evaluatedArgs[0].getObjectValue();
+				dialog.dismiss();
+
+				return ExtendedFunctions.makeValue(dialog);
+			}
+		};
+	}
+	
+	public static ViewFunctionTemplate set_spinner_items(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_selected_spinner_item(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				
+				SpinnerViewProxy proxy = (SpinnerViewProxy)evaluatedArgs[0].getObjectValue();
+				
+				Value[] viewSpec = evaluatedArgs[1].getList(); 
+				ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>> spinnerSpecList = new ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>>();
+				
+				ViewProxy listDropdownView = null;
+				ViewProxy selectedItemView = null;
+				FunctionTemplate selectLambda = null;
+				for (Value choiceItem:viewSpec)
+				{
+					listDropdownView = (ViewProxy)choiceItem.getList()[0].getObjectValue();
+					selectedItemView = (ViewProxy)choiceItem.getList()[1].getObjectValue();
+					selectLambda = choiceItem.getList()[2].getLambda();
+					
+					spinnerSpecList.add(Triple.of(listDropdownView, selectedItemView, selectLambda));
+				}
+				
+				proxy.updateSpec(spinnerSpecList);
+				if (proxy.getView()!=null)
+					return continuationReturn(evaluatedArgs[0]);
+				else
+					return evaluatedArgs[0];
+			}
+			
+		};
+	}
+	
+	
+	public static ViewFunctionTemplate set_selected_spinner_item(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_selected_spinner_item(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				
+				SpinnerViewProxy proxy = (SpinnerViewProxy)evaluatedArgs[0].getObjectValue();
+				int index = (int)evaluatedArgs[1].getIntValue();
+				
+				proxy.setSelected(index);
+				Log.d("->->->", "set-selected-spinner-item" + index);
+				if (proxy.getView()!=null)
+					return continuationReturn(evaluatedArgs[0]);
+				else
+					return evaluatedArgs[0];
+			}
+			
+		};
+	}
+	
+	public static ViewFunctionTemplate spinner(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)spinner(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				
+				Value[] viewSpec = evaluatedArgs[0].getList(); 
+				ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>> spinnerSpecList = new ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>>();
+				
+				ViewProxy listDropdownView = null;
+				ViewProxy selectedItemView = null;
+				FunctionTemplate selectLambda = null;
+				for (Value choiceItem:viewSpec)
+				{
+					listDropdownView = (ViewProxy)choiceItem.getList()[0].getObjectValue();
+					selectedItemView = (ViewProxy)choiceItem.getList()[1].getObjectValue();
+					selectLambda = choiceItem.getList()[2].getLambda();
+					
+					spinnerSpecList.add(Triple.of(listDropdownView, selectedItemView, selectLambda));
+				}
+						
+				SpinnerViewProxy proxy = new SpinnerViewProxy(con, kv.GetValue(), spinnerSpecList);
+				proxy.setLispInterpreter(env, interpreter);
+
+				return ExtendedFunctions.makeValue(proxy);
 			}
 		};
 	}

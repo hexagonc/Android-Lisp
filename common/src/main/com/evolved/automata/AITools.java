@@ -2,6 +2,8 @@ package com.evolved.automata;
 import java.util.regex.*;
 import java.util.*;
 
+import org.apache.commons.lang3.StringUtils;
+
 
 public class AITools {
 	
@@ -215,4 +217,22 @@ public class AITools {
 			map.remove(baseKeyName);
 	}
 
+	public static String stripPrefixDelimitedComments(String input, String commentDelimiter)
+	{
+		String newLine = System.getProperty("line.separator");
+		String[] parts = StringUtils.split(input, newLine);
+		StringBuilder sbuilder = new StringBuilder();
+		boolean replaceNewLines =false;
+		for (int i=0;i<parts.length;i++)
+		{
+			if (!parts[i].trim().startsWith(commentDelimiter))
+			{
+				if (replaceNewLines)
+					sbuilder.append(newLine);
+				sbuilder.append(parts[i]);
+				replaceNewLines = true;
+			}
+		}
+		return sbuilder.toString();
+	}
 }

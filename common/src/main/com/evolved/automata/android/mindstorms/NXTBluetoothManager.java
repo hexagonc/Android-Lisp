@@ -8,6 +8,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import com.evolved.automata.android.AppStateManager;
+import com.evolved.automata.android.mindstorms.NXTBluetoothService.BluetoothStatusListener;
 
 import android.app.Notification;
 import android.app.NotificationManager;
@@ -16,14 +17,16 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
+import android.sax.StartElementListener;
 import android.support.v4.app.NotificationCompat;
 
-public class NXTBluetoothManager 
+public class NXTBluetoothManager implements BluetoothStatusListener
 {
 	Context _context;
 	private static  NXTBluetoothManager _manager = null;
 	BluetoothAdapter _bAdapter = null;
 	boolean _bluetoothAvailableP = false;
+	boolean _bluetoothEnabledP = false;
 	HashSet<String> _connectedNXTMap = new HashSet<String>();
 	public static boolean _debugMode = true;
 	boolean _serviceStartedP = false;
@@ -44,6 +47,7 @@ public class NXTBluetoothManager
 	{
 		if (_manager == null)
 			_manager = new NXTBluetoothManager(context);
+		
 		return _manager;
 	}
 	
@@ -53,6 +57,21 @@ public class NXTBluetoothManager
 		_context = con;
 		_bAdapter = BluetoothAdapter.getDefaultAdapter();
 		_bluetoothAvailableP = _bAdapter != null;
+		if (_bluetoothAvailableP)
+		{
+			NXTBluetoothService.addBluetoothStatusListener(this);
+			startNXTBluetoothService();
+		}
+	}
+	
+	public boolean bluetoothAdapterPresentP()
+	{
+		return _bluetoothAvailableP;
+	}
+	
+	public boolean bluetoothAdapterEnabledP()
+	{
+		return _bluetoothEnabledP;
 	}
 	
 	public LinkedList<NXTBluetoothInterface> getPairedDevices() throws BluetoothUnavailableException
@@ -201,6 +220,23 @@ public class NXTBluetoothManager
 			builder.setTicker(ticker);
 		Notification notification = builder.getNotification();
 		manager.notify(_NOTIFICATION_TAG, _NOTIFICATION_ID, notification);
+	}
+
+	@Override
+	public void onStatusChange(int state) {
+		_bluetoothEnabledP = state == BluetoothAdapter.STATE_ON;
+	}
+
+	@Override
+	public void onConnectionChange(int connectionState) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onServiceStatusChanged(int status) {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

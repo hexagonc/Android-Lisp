@@ -97,10 +97,13 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		//ViewEvaluator.bindFunctions(_env, _context, _interpreter);
 		ExtendedFunctions.addExtendedFunctions(_env);
 		NXTLispFunctions.addFunctions(_env, NXTBluetoothManager.getInstance());
+		NXTLispFunctions._lispInterpreter = _interpreter;
 		_interpreter.setResponseListener(this);
 		_backgroundLispControlListener = _backgroundInterpreter.start(this, true);
 		_env.mapFunction("evaluate-background", evaluate_background());
 		_env.mapFunction("evaluate-foreground", evaluate_foreground());
+		_env.mapValue(_ASR_AVAILABLE_VAR_NAME, NLispTools.makeValue(_asrAvailableP));
+		_env.mapValue(_SPEECH_AVAILABLE_VAR_NAME, NLispTools.makeValue(_ttsAvailableP));
 		_expectedWords = new HashSet<String>();
 		setupSpeechInterface();
 	}
@@ -116,32 +119,12 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	}
 	private void setupSpeechInterface()
 	{
-		_speechInterface = new SpeechInterface(_context, _SPEECH_LOG_LABEL, new android.speech.tts.TextToSpeech.OnInitListener() {
-			
-			@Override
-			public void onInit(int status) {
-				_ttsAvailableP = status == android.speech.tts.TextToSpeech.SUCCESS;
-				setupTTS();
-			}
-		},_expectedWords );
-		
+		_speechInterface = new SpeechInterface(_context, _SPEECH_LOG_LABEL, null,_expectedWords );
+		_speechControlInterface = _speechInterface.setSpeechListener(this);
+		_speechInterface.startup();
 		_env.mapValue(_ASR_STATUS_VAR_NAME, Environment.getNull());
 		_env.mapValue(_TTS_STATUS_VAR_NAME, Environment.getNull());
-		try
-		{
-			_speechInterface.startup();
-			_speechControlInterface = _speechInterface.setSpeechListener(this);
-			_asrAvailableP = true;
-			_env.mapFunction("register-asr-listener", register_asr_listener());
-			_env.mapFunction("start-speech-recognition", start_speech_recognition());
-			
-		}
-		catch (Exception e)
-		{
-			_asrAvailableP = false;
-			
-		}
-		_env.mapValue(_ASR_AVAILABLE_VAR_NAME, NLispTools.makeValue(_asrAvailableP));
+		
 	}
 	
 	
@@ -539,8 +522,26 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	}
 
 	@Override
-	public void onInit() {
-		
+	public void onInit(int ttsStatus, boolean asrAvailable) {
+		_ttsAvailableP = ttsStatus == android.speech.tts.TextToSpeech.SUCCESS;
+		_asrAvailableP = asrAvailable;
+		if (_asrAvailableP)
+		{
+			try
+			{
+				
+				_env.mapFunction("register-asr-listener", register_asr_listener());
+				_env.mapFunction("start-speech-recognition", start_speech_recognition());
+			}
+			catch (Exception e)
+			{
+				_asrAvailableP = false;
+			}
+			
+			
+		}
+		_env.mapValue(_ASR_AVAILABLE_VAR_NAME, NLispTools.makeValue(_asrAvailableP));
+		setupTTS();
 	}
 
 	@Override

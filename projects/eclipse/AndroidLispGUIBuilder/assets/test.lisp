@@ -15,6 +15,43 @@
 (setq up-milli 1000)
 (setq border-width 3)
 
+(setq toggle F)
+
+(defun configure-selected-tab (text selected)
+  (update-parameters text
+                     :background (if selected
+                                    (create-border :foreground-color "white"
+                                                :border-color "green"
+                                                :top-width 2
+                                                :left-width 2
+                                                :right-width 2
+                                                :bottom-width 2)
+                                    (create-shadow-background :shadow-width 4
+                                                       :shadow-color "#D8D8D8"
+                                                       :foreground-color "white"
+                                                       :shadow-angle -45)) 
+                     1))
+
+
+(defun toggle-background (view)
+	(update-parameters view 
+					   :background (if toggle 
+					   				  (create-border :foreground-color "white"
+                                                :border-color "green"
+                                                :top-width 2
+                                                :left-width 2
+                                                :right-width 2
+                                                :bottom-width 2)
+					   				  (create-shadow-background :shadow-width 4
+                                                       :shadow-color "#D8D8D8"
+                                                       :foreground-color "white"
+                                                       :shadow-angle -45))
+					   1))
+
+
+
+
+
 (vertical-layout :width "match_parent"
 				 :height "match_parent"
 				 :background-color "white"
@@ -74,6 +111,13 @@
 									 	   							  :right-width border-width)
 									 	   :margin-bottom bounce-height)
 				 					animated-text)
-				 (button "stop-animation"
-				 		 :padding 10
-				 		 :on-click (set *stop 1)))
+				 (setq test 
+				 	   (button "stop-animation"
+				 		 	  :padding 10
+				 		 	  :on-click (set *stop 1)))
+				 (button "toggle back"
+				 		 :on-click (progn
+				 		 			  (toggle-background *test)
+				 		 			  (set *toggle (not *toggle)))))
+
+

@@ -25,7 +25,9 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 	boolean _nonEvaluatedKeyPresent = false;
 	boolean _continuationReturn = false;
 	Value _previousContinuedOutput = null;
+	private Value[] _evaluatedArgs = null;
 	
+	@Override
 	public void resetFunctionTemplate()
 	{
 		_lastFunctionReturn = null;
@@ -34,12 +36,13 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 		_nonEvaluatedKeyPresent = false;
 		_previousContinuedOutput = null;
 		_continuationReturn = false;
+		_evaluatedArgs = new Value[_actualParameters.length];
 	}
 	
 	@Override
 	public Value evaluate(Environment env, boolean resume)
 			throws InstantiationException, IllegalAccessException {
-		checkActualArguments(0,true, true);
+		
 		if (!resume)
 			resetFunctionTemplate();
 		else
@@ -50,39 +53,40 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 				return resetReturn(_previousContinuedOutput);
 			}
 			
-			_lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
+			_lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, true);
 			if (_lastFunctionReturn.isContinuation())
 				return continuationReturn(_lastFunctionReturn);
+			_evaluatedArgs[_instructionPointer] = _lastFunctionReturn;
 			_instructionPointer++;
 		}
 		
-		Value[] evaluatedArgs = new Value[_actualParameters.length];
+		
 		for (;_instructionPointer<_actualParameters.length;_instructionPointer++)
 		{
 			if (_actualParameters[_instructionPointer].isKeyName() && _nonEvaluatedKeyNames.contains(_actualParameters[_instructionPointer].getString()))
 			{
 				_nonEvaluatedKeyPresent = true;
-				evaluatedArgs[_instructionPointer] = _actualParameters[_instructionPointer];
+				_evaluatedArgs[_instructionPointer] = _actualParameters[_instructionPointer];
 			}
 			else
 			{
 				if (_nonEvaluatedKeyPresent)
 				{
 					_nonEvaluatedKeyPresent = false;
-					evaluatedArgs[_instructionPointer] = _actualParameters[_instructionPointer];
+					_evaluatedArgs[_instructionPointer] = _actualParameters[_instructionPointer];
 				}
 				else
 				{
-					evaluatedArgs[_instructionPointer] = _lastFunctionReturn = env.evaluate(_actualParameters[_instructionPointer], resume);
-					if (evaluatedArgs[_instructionPointer].isContinuation()) 
-						return continuationReturn(evaluatedArgs[_instructionPointer]);
-					if (evaluatedArgs[_instructionPointer].isReturn() || evaluatedArgs[_instructionPointer].isBreak() || evaluatedArgs[_instructionPointer].isSignal() || evaluatedArgs[_instructionPointer].isSignalOut())
-						return resetReturn(evaluatedArgs[_instructionPointer]);
+					_evaluatedArgs[_instructionPointer] = _lastFunctionReturn = env.evaluate(_actualParameters[_instructionPointer], false);
+					if (_evaluatedArgs[_instructionPointer].isContinuation()) 
+						return continuationReturn(_evaluatedArgs[_instructionPointer]);
+					if (_evaluatedArgs[_instructionPointer].isReturn() || _evaluatedArgs[_instructionPointer].isBreak() || _evaluatedArgs[_instructionPointer].isSignal() || _evaluatedArgs[_instructionPointer].isSignalOut())
+						return resetReturn(_evaluatedArgs[_instructionPointer]);
 				}
 			}
 			
 		}
-		Value temp = evaluate(env, evaluatedArgs); 
+		Value temp = evaluate(env, _evaluatedArgs); 
 		if (temp.isContinuation())
 		{
 			_previousContinuedOutput = temp;

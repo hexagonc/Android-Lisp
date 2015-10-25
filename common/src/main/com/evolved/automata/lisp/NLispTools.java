@@ -3837,9 +3837,69 @@ public class NLispTools
 		}
 		);
 		
+		env.mapFunction("upper", upper());
+		
+		env.mapFunction("lower", lower());
 		
 		return env;
 	}
+	
+	//TODO: finish this later
+//	public static FunctionTemplate fixed_environment()
+//	{
+//		return new FunctionTemplate()
+//		{
+//
+//
+//			@Override
+//			public Value evaluate(Environment env, boolean resume)
+//					throws InstantiationException, IllegalAccessException {
+//				
+//				return Environment.;
+//			}
+//			
+//		};
+//	}
+	
+	
+	public static SimpleFunctionTemplate upper()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, true, false);
+				
+				String base = evaluatedArgs[0].getString();
+				
+				
+				return makeValue(base.toUpperCase());
+				
+			}
+			
+		};
+	}
+	
+	public static SimpleFunctionTemplate lower()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, true, false);
+				
+				String base = evaluatedArgs[0].getString();
+				
+				
+				return makeValue(base.toLowerCase());
+				
+			}
+			
+		};
+	}
+	
 	
 	public static Value processBackQuote(Environment env, Value backArgument) throws InstantiationException, IllegalAccessException
 	{

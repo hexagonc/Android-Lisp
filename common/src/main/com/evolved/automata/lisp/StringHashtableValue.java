@@ -36,7 +36,7 @@ public class StringHashtableValue extends Value
 		
 		for (String key:_map.keySet())
 		{
-			b.append(String.format(" (list %1$s %2$s)", key, _map.get(key).serializedForm()));
+			b.append(String.format(" (list \"%1$s\" %2$s)", key.replace("\"", "\\\""), _map.get(key).serializedForm()));
 				
 		}
 		return b.append("))").toString();

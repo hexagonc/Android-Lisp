@@ -118,6 +118,8 @@ public class TextViewProxy extends ViewProxy
 						styleValue |= Typeface.BOLD;
 					else if (spec.equalsIgnoreCase("italic"))
 						styleValue |= Typeface.ITALIC;
+					else if (spec.equalsIgnoreCase("normal"))
+						styleValue |= Typeface.NORMAL;
 					else
 						throw new EvaluateException("Invalid text style spec: " + style);
 				}
@@ -226,7 +228,7 @@ public class TextViewProxy extends ViewProxy
 		super.applyAttribures(keywords);
 		if (encapsulated != null)
 		{
-			processKeywords(_keys, (TextView)encapsulated);
+			processKeywords(keywords, (TextView)encapsulated);
 		}
 	}
 	

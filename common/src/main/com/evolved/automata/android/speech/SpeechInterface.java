@@ -67,7 +67,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	{
 		public void onTTSComplete(TTS_STATUS status);
 		public void onASRComplete(SPEECH_STATUS status, String speech, int errorCode);
-		public void onInit();
+		public void onInit(int ttsInitStatus, boolean asrAvailable);
 		public void log(String tag, String message);
 	}
 	
@@ -114,6 +114,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	String _speechLabel = "Speech";
 	ConnectivityManager _connManager = null;
 	boolean _networkSpeechAvailableP = true;
+	boolean _asrAvailableP = false;
 	
 	public SpeechInterface(Context context, String speechLabel, OnInitListener initListener, HashSet<String> dictionary)
 	{
@@ -122,6 +123,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		_speechLabel = speechLabel;
 		_dictionary = dictionary;
 		_connManager = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+		_asrAvailableP = SpeechRecognizer.isRecognitionAvailable(_context);
 	}
 	
 	public SpeechControlInterface setSpeechListener(SpeechListener listener)
@@ -136,7 +138,8 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			}
 
 			@Override
-			public void initiateListening() {
+			public void initiateListening() 
+			{
 				startRecognition();
 			}
 			
@@ -174,6 +177,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			{
 				public void run()
 				{
+					_readyForSpeechInitiated = false;
 					_recognizer.startListening(getSpeechIntent());
 					synchronized (_interfaceSynch)
 					{
@@ -265,6 +269,8 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	{
 		if (_speechListener!=null)
 		{
+			String error = mapSpeechErrorToString(errorStatus);
+			_speechListener.log("speech", error);
 			_speechListener.onASRComplete(status, null, errorStatus);
 		}
 	}
@@ -282,11 +288,16 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		_controller.setExternalInitListener(this);
 		_controller.setUtteranceEndListener(this);
 		_controller.start();
-		_recognizer =  SpeechRecognizer.createSpeechRecognizer(_context.getApplicationContext());
-		_recognizer.setRecognitionListener(this);
-		_controlReceiver = new SpeechControlReceiver();
 		
-		_context.registerReceiver(_controlReceiver, new IntentFilter(SPEECH_CONTROL_LISTENER_ACTION));
+		if (SpeechRecognizer.isRecognitionAvailable(_context))
+		{
+			_recognizer =  SpeechRecognizer.createSpeechRecognizer(_context.getApplicationContext());
+			_recognizer.setRecognitionListener(this);
+			_controlReceiver = new SpeechControlReceiver();
+			
+			_context.registerReceiver(_controlReceiver, new IntentFilter(SPEECH_CONTROL_LISTENER_ACTION));
+		}
+		
 	}
 	
 	public void shutdown()
@@ -328,10 +339,8 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 
 	@Override
 	public void onBeginningOfSpeech() {
-		// TODO Auto-generated method stub
-		
+		logMessage(":: Speech", "onBeginningOfSpeech", true);
 	}
-
 	@Override
 	public void onBufferReceived(byte[] arg0) {
 		// TODO Auto-generated method stub
@@ -340,12 +349,18 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 
 	@Override
 	public void onEndOfSpeech() {
-		// TODO Auto-generated method stub
-		
+		logMessage(":: Speech", "onEndOfSpeech", true);
 	}
 
 	@Override
 	public void onError(int error) {
+		
+		if (error == SpeechRecognizer.ERROR_NO_MATCH && !_readyForSpeechInitiated)
+		{
+			logMessage(":: Speech", "onError: ERROR_NO_MATCH probably spurious", true);
+			
+			return;
+		}
 		notifySpeechStatus(SPEECH_STATUS.RECOGNITION_ERROR, error);
 		synchronized (_interfaceSynch)
 		{
@@ -356,20 +371,23 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 
 	@Override
 	public void onEvent(int eventType, Bundle params) {
-		// TODO Auto-generated method stub
-		
+		logMessage(":: Speech", "onEvent", true);
 	}
 
 	@Override
 	public void onPartialResults(Bundle partialResults) {
-		// TODO Auto-generated method stub
+		ArrayList<String> resultList = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+		
+		Object unstable = partialResults.get("android.speech.extra.UNSTABLE_TEXT");
+		logMessage(":: Speech", resultList.toString() + " remaining: " + unstable + " ", true);
 		
 	}
 
+	boolean _readyForSpeechInitiated = false;
 	@Override
 	public void onReadyForSpeech(Bundle params) {
-		// TODO Auto-generated method stub
-		
+		logMessage(":: Speech", "ready for speecg", true);
+		_readyForSpeechInitiated = true;
 	}
 
 	@Override
@@ -643,7 +661,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			_initListener.onInit(status);
 		if (_speechListener!=null)
 		{
-			_speechListener.onInit();
+			_speechListener.onInit(status, _asrAvailableP);
 		}
 	}
 

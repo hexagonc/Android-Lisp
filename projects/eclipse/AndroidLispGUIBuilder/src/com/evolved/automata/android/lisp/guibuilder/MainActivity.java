@@ -211,7 +211,11 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	@Override
 	protected void onDestroy() {
 		if (!_data.isRunningInBackground())
+		{
 			_data.shutdownAll();
+			if (NXTBluetoothManager.getInstance()!=null)
+				NXTBluetoothManager.getInstance().stopNXTBluetoothService();
+		}
 		super.onDestroy();
 	}
 
