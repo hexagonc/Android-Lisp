@@ -37,6 +37,8 @@ import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SignalValue;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
 
 import com.evolved.automata.lisp.Value;
 import com.nostra13.universalimageloader.core.DisplayImageOptions;
@@ -58,12 +60,25 @@ public class ViewEvaluator  {
 	
 	static boolean _imageConfiguredP = false;
 	
+	public static final String BATCH_UI_UPDATE_PROPERTY_NAME = "BATCH_UI_CHANGES_PROPERTY_NAME";
+	
 	private static Value[] getEvaluatedValues(Value[] v)
 	{
 		return v;
 	}
 	
+	private static boolean getBatchUIUpdates(Environment env)
+	{
+		Value v = env.getEnvironmentProperty(BATCH_UI_UPDATE_PROPERTY_NAME);
+		return v != null && !v.isNull();
+	}
 	
+	private static boolean setBatchUIUpdates(Environment env, boolean enable)
+	{
+		env.mapEnvironmentProperty(BATCH_UI_UPDATE_PROPERTY_NAME, NLispTools.makeValue(enable));
+		
+		return enable;
+	}
 	
 	public static void bindFunctions(final Environment env, final Activity activity, final AndroidLispInterpreter interpreter) 
 	{
@@ -164,6 +179,29 @@ public class ViewEvaluator  {
 		env.mapFunction("set-spinner-items", set_spinner_items(env, activity, interpreter));
 		
 		env.mapFunction("set-selected-spinner-item", set_selected_spinner_item(env, activity, interpreter));
+		
+		env.mapFunction("set-batch-ui-updates", set_batch_ui_updates());
+	}
+	
+	public static SimpleFunctionTemplate set_batch_ui_updates()
+	{
+		return new SimpleFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_batch_ui_updates();
+			}
+			
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				
+				return NLispTools.makeValue(setBatchUIUpdates(env, !evaluatedArgs[0].isNull())) ;
+			}
+			
+		};
 	}
 	
 	public static ViewFunctionTemplate set_enabled(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
@@ -185,7 +223,7 @@ public class ViewEvaluator  {
 				ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
 				boolean enabled = !evaluatedArgs[1].isNull();
 				proxy.setEnabled(enabled);
-				if (proxy.getView()!=null)
+				if (proxy.getView()!=null && !getBatchUIUpdates(env))
 					return continuationReturn(evaluatedArgs[0]);
 				else
 					return evaluatedArgs[0];
@@ -404,8 +442,10 @@ public class ViewEvaluator  {
 				Value proxyArg = evaluatedArgs[0];
 				final ViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
 				tv.setVisiblity(View.VISIBLE);
-				
-				return continuationReturn(proxyArg);
+				if (tv.getView()!=null  && !getBatchUIUpdates(env))
+					return continuationReturn(proxyArg);
+				else
+					return proxyArg;
 			}
 			
 		};
@@ -468,7 +508,11 @@ public class ViewEvaluator  {
 					vp.setVisiblity(View.GONE);
 				else
 					vp.setVisiblity(View.INVISIBLE);
-				return continuationReturn(proxyArg);
+				
+				if (vp.getView()!=null  && !getBatchUIUpdates(env))
+					return continuationReturn(proxyArg);
+				else
+					return proxyArg;
 			}
 			
 		};
@@ -497,7 +541,10 @@ public class ViewEvaluator  {
 					final ViewProxy tv = (ViewProxy)proxyArg.getObjectValue();
 					
 					tv.setBackgroundColor(textArg.getString());
-					return continuationReturn(proxyArg);
+					if (tv.getView()!=null  && !getBatchUIUpdates(env))
+						return continuationReturn(proxyArg);
+					else
+						return proxyArg;
 				}
 				catch (Exception e)
 				{
@@ -596,7 +643,7 @@ public class ViewEvaluator  {
 					final TextViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
 					
 					tv.setText(textArg.getString());
-					if (tv.getView()!=null)
+					if (tv.getView()!=null && !getBatchUIUpdates(env))
 						return continuationReturn(proxyArg);
 					else
 						return proxyArg;
@@ -710,7 +757,10 @@ public class ViewEvaluator  {
 				
 				CheckboxViewProxy proxy = (CheckboxViewProxy)evaluatedArgs[0].getObjectValue();
 				proxy.setChecked(!evaluatedArgs[1].isNull());
-				return evaluatedArgs[1];
+				if (proxy.getView()!=null  && !getBatchUIUpdates(env))
+					return continuationReturn(evaluatedArgs[0]);
+				else
+					return evaluatedArgs[0];
 			}
 			
 		};
@@ -1286,7 +1336,7 @@ public class ViewEvaluator  {
 				final boolean requestLayout = evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull();
 				proxy.applyAttribures(keys);
 				View view = proxy.getView();
-				if (requestLayout && view != null)
+				if (requestLayout && view != null && !getBatchUIUpdates(env))
 				{
 					ViewParent vp = view.getParent();
 					if (vp !=null)
@@ -1295,12 +1345,14 @@ public class ViewEvaluator  {
 						((View)vp).requestLayout();
 						((View)vp).invalidate();
 					}
-					//view.requestLayout();
+					
 					
 					return continuationReturn(evaluatedArgs[0]);
 				}
 				else
+				{
 					return evaluatedArgs[0];
+				}
 			}
 		};
 	}
@@ -1327,7 +1379,7 @@ public class ViewEvaluator  {
 				
 	    		ViewGroup view = (ViewGroup)proxy.getView();
 	    		proxy.removeAllViews();
-	    		if (view != null)
+	    		if (view != null && !getBatchUIUpdates(env))
 	    		{
 	    			view.requestLayout();
 	    			return continuationReturn(evaluatedArgs[0]);
@@ -1398,7 +1450,7 @@ public class ViewEvaluator  {
 				ViewGroup parentV = (ViewGroup)proxy.getView();
 				View childV = (View)child.getView();
 				proxy.removeView(child);
-				if (parentV != null && childV != null)
+				if (parentV != null && childV != null && !getBatchUIUpdates(env))
 				{
 					return continuationReturn(evaluatedArgs[1]);
 				}
@@ -1432,7 +1484,7 @@ public class ViewEvaluator  {
 				View childV = (View)child.getView();
 				
 				proxy.addChild(child);
-				if (parentV != null && childV != null)
+				if (parentV != null && childV != null&& !getBatchUIUpdates(env))
 				{
 					parentV.requestLayout();
 					return continuationReturn(evaluatedArgs[1]);
@@ -1644,7 +1696,7 @@ public class ViewEvaluator  {
 				}
 				
 				proxy.updateSpec(spinnerSpecList);
-				if (proxy.getView()!=null)
+				if (proxy.getView()!=null && !getBatchUIUpdates(env))
 					return continuationReturn(evaluatedArgs[0]);
 				else
 					return evaluatedArgs[0];
@@ -1675,7 +1727,7 @@ public class ViewEvaluator  {
 				
 				proxy.setSelected(index);
 				Log.d("->->->", "set-selected-spinner-item" + index);
-				if (proxy.getView()!=null)
+				if (proxy.getView()!=null && !getBatchUIUpdates(env))
 					return continuationReturn(evaluatedArgs[0]);
 				else
 					return evaluatedArgs[0];

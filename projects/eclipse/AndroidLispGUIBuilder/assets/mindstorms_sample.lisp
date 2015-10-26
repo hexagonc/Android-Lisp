@@ -539,6 +539,7 @@
   (lambda ()
       
       (set current-nxt device)
+      (set-batch-ui-updates 1)
       (for logical-port-name
            logical-motor-port-names
            F
@@ -553,6 +554,7 @@
                      (set-selected-spinner-item (get-device-sensor-spinner device logical-port-name)
                                                 (gethash (get-device-sensor-logical-port-map device)
                                                          logical-port-name))))
+      (set-batch-ui-updates F)
 
       ))
 

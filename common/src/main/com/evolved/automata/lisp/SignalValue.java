@@ -5,7 +5,7 @@ public class SignalValue extends Value
 
 	public SignalValue(Value name, Value value, boolean out)
 	{
-		_signalValue = value;
+		_signalValue = (value == null)?Environment.getNull():value;
 		_signalName = name;
 		if (out)
 			_attrib = ExitAttribute.SIGNAL_OUT;

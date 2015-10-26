@@ -3802,7 +3802,55 @@ public class NLispTools
 		}
 		);
 		
-		env.mapFunction(">=", new SimpleFunctionTemplate()
+		env.mapFunction(">=", greater_than_or_equal());
+		
+		
+		
+		env.mapFunction("upper", upper());
+		
+		env.mapFunction("lower", lower());
+		
+		env.mapFunction("trace-label",trace_label());
+		
+		env.mapFunction("set-environment-property",set_environment_property());
+		
+		env.mapFunction("get-environment-property",get_environment_property());
+		
+		return env;
+	}
+	
+	/**
+	 * Get environment variable whose name is first argument
+	 * Optional second argument is the name of a string signal key to send if
+	 * the property doesn't exist.  Otherwise, non-existence is represented by
+	 * null return
+	 * @return Property value, NULL, or Signal of user's choice
+	 */
+	public static SimpleFunctionTemplate get_environment_property()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, true, true);
+				String name = evaluatedArgs[0].getString();
+				Value v = env.getEnvironmentProperty(name);
+				if (evaluatedArgs.length>1 && v == null)
+				{
+					return new SignalValue(evaluatedArgs[1], null, true);
+				}
+				return v;
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate greater_than_or_equal()
+	{
+		return new SimpleFunctionTemplate()
 		{
 
 			@Override
@@ -3819,10 +3867,31 @@ public class NLispTools
 				
 			}
 			
+		};
+	}
+	
+	public static SimpleFunctionTemplate set_environment_property()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				String name = evaluatedArgs[0].getString();
+				env.mapEnvironmentProperty(name, evaluatedArgs[1]);
+				return evaluatedArgs[0];
+				
+				
+			}
+			
 		}
-		);
-		
-		env.mapFunction("trace-label", new SimpleFunctionTemplate()
+		;
+	}
+	
+	public static SimpleFunctionTemplate trace_label()
+	{
+		return new SimpleFunctionTemplate()
 		{
 
 			@Override
@@ -3835,13 +3904,7 @@ public class NLispTools
 			}
 			
 		}
-		);
-		
-		env.mapFunction("upper", upper());
-		
-		env.mapFunction("lower", lower());
-		
-		return env;
+		;
 	}
 	
 	//TODO: finish this later

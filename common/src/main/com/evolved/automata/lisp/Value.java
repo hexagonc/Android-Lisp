@@ -104,6 +104,13 @@ public abstract class Value {
 		return _attrib ==  ExitAttribute.SIGNAL;
 	}
 	
+	/**
+	 * Function for changing the natural of Value from or to a signal
+	 * @param status when true, this Value is changed into a signal, when false, this value is normal
+	 * @param name - Signal key, can be any type, even NULL.  Signal name defines where the Signal can be caught at
+	 * @param value - Optional Signal value
+	 * @return
+	 */
 	public Value setSignal(boolean status, Value name, Value value)
 	{
 		if (status)

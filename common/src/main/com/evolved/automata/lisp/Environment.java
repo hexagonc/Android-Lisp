@@ -9,7 +9,7 @@ public class Environment
 	HashMap<String, FunctionTemplate> _functionMap = new HashMap<String, FunctionTemplate>();
 	HashMap<String, MacroTemplate> _macroMap = new HashMap<String, MacroTemplate>();
 	HashSet<String> _userFunctionSet = new HashSet<String>();
-	
+	HashMap<String, Value> _environmentProperties = new HashMap<String, Value>();
 	boolean _throwExceptionOnUndefinedP = true;
 	Environment _parentEnv = null;
 	
@@ -91,12 +91,27 @@ public class Environment
 		return v;
 	}
 	
+	public Value mapEnvironmentProperty(String name, Value v)
+	{
+		_environmentProperties.put(name, v);
+		return v;
+	}
+	
 	public Value getVariableValue(String name)
 	{
 		if (_valueMap.containsKey(name))
 			return _valueMap.get(name);
 		if (_parentEnv!=null)
 			return _parentEnv.getVariableValue(name);
+		return null;
+	}
+	
+	public Value getEnvironmentProperty(String name)
+	{
+		if (_environmentProperties.containsKey(name))
+			return _environmentProperties.get(name);
+		if (_parentEnv!=null)
+			return _parentEnv.getEnvironmentProperty(name);
 		return null;
 	}
 	
@@ -143,6 +158,11 @@ public class Environment
 	public boolean hasVariable(String name)
 	{
 		return _valueMap.containsKey(name);
+	}
+	
+	public boolean hasProperty(String name)
+	{
+		return _environmentProperties.containsKey(name);
 	}
 	
 	public Value evaluate(Value v) throws InstantiationException, IllegalAccessException
