@@ -60,7 +60,7 @@ public class NXTBluetoothManager implements BluetoothStatusListener
 		if (_bluetoothAvailableP)
 		{
 			NXTBluetoothService.addBluetoothStatusListener(this);
-			startNXTBluetoothService();
+			//startNXTBluetoothService();
 		}
 	}
 	

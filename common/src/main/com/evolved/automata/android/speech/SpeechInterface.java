@@ -38,7 +38,8 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	public enum SPEECH_STATUS
 	{
 		RECOGNITION_ERROR,
-		RECOGNITION_COMPLETE
+		RECOGNITION_COMPLETE,
+		OFFLINE_RECOGNITION_COMPLETE
 	}
 	
 	public class SpeechControlReceiver extends BroadcastReceiver
@@ -115,6 +116,10 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	ConnectivityManager _connManager = null;
 	boolean _networkSpeechAvailableP = true;
 	boolean _asrAvailableP = false;
+	boolean _endOfSpeechDetectedP = false;
+	boolean _readyForSpeechInitiated = false;
+	
+	ArrayList<String> _offlineSpeechTranscription = new ArrayList<String>();
 	
 	public SpeechInterface(Context context, String speechLabel, OnInitListener initListener, HashSet<String> dictionary)
 	{
@@ -269,9 +274,29 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	{
 		if (_speechListener!=null)
 		{
-			String error = mapSpeechErrorToString(errorStatus);
-			_speechListener.log("speech", error);
-			_speechListener.onASRComplete(status, null, errorStatus);
+			if (!_networkSpeechAvailableP && _readyForSpeechInitiated && _offlineSpeechTranscription.size()>0 && errorStatus == SpeechRecognizer.ERROR_NO_MATCH && _endOfSpeechDetectedP)
+			{
+				// For some phones, offline speech recognition is bugged so that they never call,
+				// RecognitionListener.onResults even though the sequence of partial recognition 
+				// results are fine.  In these cases, they will throw a bunch of spurious 
+				// ERROR_NO_MATCH errors.  This may be because the confidence is always set to 0 for
+				// offline speech recognition results.
+				
+				_readyForSpeechInitiated = false;
+				StringBuilder total = new StringBuilder();
+				String comp;
+				for (int i =0;i<_offlineSpeechTranscription.size();i++)
+				{
+					comp = _offlineSpeechTranscription.get(i);
+					if (i == 0)
+						total.append(comp);
+					else
+						total.append(" ").append(comp);
+				}
+				_speechListener.onASRComplete(SPEECH_STATUS.RECOGNITION_COMPLETE, total.toString(), 0);
+			}
+			else
+				_speechListener.onASRComplete(status, null, errorStatus);
 		}
 	}
 	
@@ -340,6 +365,8 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	@Override
 	public void onBeginningOfSpeech() {
 		logMessage(":: Speech", "onBeginningOfSpeech", true);
+		
+		_endOfSpeechDetectedP = false;
 	}
 	@Override
 	public void onBufferReceived(byte[] arg0) {
@@ -350,6 +377,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	@Override
 	public void onEndOfSpeech() {
 		logMessage(":: Speech", "onEndOfSpeech", true);
+		_endOfSpeechDetectedP = true;
 	}
 
 	@Override
@@ -376,14 +404,14 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 
 	@Override
 	public void onPartialResults(Bundle partialResults) {
-		ArrayList<String> resultList = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+		_offlineSpeechTranscription = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+		_offlineSpeechTranscription.addAll(partialResults.getStringArrayList("android.speech.extra.UNSTABLE_TEXT"));
 		
-		Object unstable = partialResults.get("android.speech.extra.UNSTABLE_TEXT");
-		logMessage(":: Speech", resultList.toString() + " remaining: " + unstable + " ", true);
-		
+		logMessage(":: Speech", "partial results:" + _offlineSpeechTranscription.toString(), true);
+		//_offlineSpeechTranscription
 	}
 
-	boolean _readyForSpeechInitiated = false;
+	
 	@Override
 	public void onReadyForSpeech(Bundle params) {
 		logMessage(":: Speech", "ready for speecg", true);
