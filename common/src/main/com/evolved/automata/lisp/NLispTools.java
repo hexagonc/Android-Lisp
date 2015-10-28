@@ -3819,6 +3819,24 @@ public class NLispTools
 		return env;
 	}
 	
+	public static SimpleFunctionTemplate destructive_append()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				Value list = evaluatedArgs[0];
+				Value item = evaluatedArgs[1];
+				
+				
+				return list.appendItem(item);
+			}
+			
+		};
+	}
+	
 	/**
 	 * Get environment variable whose name is first argument
 	 * Optional second argument is the name of a string signal key to send if
@@ -4080,6 +4098,15 @@ public class NLispTools
 	{
 		return new FloatValue(v);
 	}
+	
+	public static Value makeValue(double[] v)
+	{
+		Value[] va = new Value[v.length];
+		for (int i=0;i<va.length;i++)
+			va[i] = NLispTools.makeValue(v[i]);
+		return NLispTools.makeValue(va);
+	}
+	
 	
 	public static Value makeValue(Value[] args)
 	{

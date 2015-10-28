@@ -7,6 +7,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.math3.random.RandomDataGenerator;
 import org.junit.Test;
 
 import com.evolved.automata.lisp.LispInterpreter.LispResponseListener;
@@ -348,5 +349,64 @@ public class BasicLispTests extends TestHarnessBase
 			assertTrue(false);
 		}
 		
+	}
+	
+	@Test
+	public void testKMeans()
+	{
+		int numClusters = 3;
+		int numSamplesPerCluster = 30;
+		
+		double[] sample = new double[numClusters*numSamplesPerCluster];
+		
+		
+		int k=0;
+		double min = 0, max = 100;
+		
+		double step = (max - min)/(numClusters + 1);
+		
+		double[] expectedCentroid = new double[numClusters];
+		
+		RandomDataGenerator rgenerator = new RandomDataGenerator();
+		for (int i=0;i<numSamplesPerCluster+1;i++)
+		{
+			for (int j=1;j<=numClusters;j++)
+			{
+				if (i == 0)
+				{
+					expectedCentroid[j - 1] = min + j*step;
+				}
+				else
+				{
+					sample[k] = min + j*step + rgenerator.nextUniform(-step/2, step/2); 
+					k++;
+				}
+			}
+		}
+		
+		Environment env = new Environment();
+		ExtendedFunctions.addExtendedFunctions(env);
+		
+		double errorF = step/4;
+		Value input = NLispTools.makeValue(sample);
+		Value numCentroids = NLispTools.makeValue(numClusters);
+		Value error = NLispTools.makeValue(errorF);
+		double calculatedCentroid;
+		try {
+			FunctionTemplate ft = env.getFunction("simple-k-means");
+			ft.setActualParameters(new Value[]{input, numCentroids, error});
+			Value out = ft.evaluate(env, false);
+			for (int i=0;i<numClusters;i++)
+			{
+				calculatedCentroid = out.getList()[i].getList()[0].getFloatValue();
+				assertTrue(Math.abs(calculatedCentroid - expectedCentroid[i]) <= errorF);
+			}
+			
+			
+		} catch (InstantiationException e) {
+			assertTrue(e.toString(), false);
+		} catch (IllegalAccessException e) {
+			assertTrue(e.toString(), false);
+		}
 	}
 }

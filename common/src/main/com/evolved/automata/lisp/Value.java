@@ -29,6 +29,13 @@ public abstract class Value {
 		return null;
 	}
 	
+	
+	public Value appendItem(Value v)
+	{
+		
+		return  null;
+	}
+	
 	public boolean isIdentifier()
 	{
 		return false;

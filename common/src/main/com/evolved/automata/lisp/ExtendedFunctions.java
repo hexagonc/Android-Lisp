@@ -1394,7 +1394,14 @@ public class ExtendedFunctions
 		}
 		);
 		
-		env.mapFunction("evaluate-word-number", new SimpleFunctionTemplate()
+		env.mapFunction("evaluate-word-number", evaluate_word_number());
+		
+		env.mapFunction("simple-k-means", simple_k_means());
+	}
+	
+	public static SimpleFunctionTemplate evaluate_word_number()
+	{
+		return new SimpleFunctionTemplate()
 		{
 
 			@Override
@@ -1414,10 +1421,110 @@ public class ExtendedFunctions
 				}
 			}
 			
-		}
-		);
-		
-		
+		};
+	}
+	/**
+	 * Performs 1 dimensional k-means clustering
+	 * first argument is a list of numeric values
+	 * second argument is the number of clusters to make
+	 * optional third argument is distance between two successive estimations of a cluster
+	 * centroid below which the centroid is considered to have converged to a stable point
+	 * 
+	 * @return Returns a list of the centroid/number points in centroid pairs, ((centroid_i num_points_in_centroid), ...)
+	 */
+	public static SimpleFunctionTemplate simple_k_means()
+	{
+		return new SimpleFunctionTemplate ()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, true, true);
+				
+				int numClasses = (int)evaluatedArgs[1].getIntValue();
+				
+				Value[] points = evaluatedArgs[0].getList();
+					
+				int length = points.length;
+				
+				
+				double[] base = new double[length];
+				
+				double minValue=0, maxValue=0;
+				
+				for (int i=0;i<length; i++)
+				{
+					base[i] = points[i].getFloatValue();
+					if (i == 0)
+					{
+						minValue = maxValue = base[i];
+					}
+					else if (minValue>=base[i])
+						minValue = base[i];
+					else if (maxValue<= base[i])
+						maxValue = base[i];
+				}
+				
+				double error = (evaluatedArgs.length>2)?evaluatedArgs[2].getFloatValue():(maxValue-minValue)*0.01;
+				double[] means = new double[numClasses], newMeans = new double[numClasses];
+				
+				for (int i=0;i<numClasses;i++)
+				{
+					means[i] = minValue + (maxValue - minValue)/(numClasses + 1)*(i+1);
+				}
+				
+				int[] centroidMass = new int[numClasses];
+				
+				
+				boolean finish = false;
+				double closestDistance=0, distance;
+				int closestCentroid=0;
+				do
+				{
+					for (int i=0;i<numClasses;i++)
+					{
+						centroidMass[i] = 0;
+						newMeans[i] = 0;
+					}
+					for (int i=0;i<length;i++)
+					{
+						for (int j=0;j<numClasses;j++)
+						{
+							if (j == 0)
+							{
+								closestDistance = Math.abs(base[i] - means[j]);
+								closestCentroid = j;
+							}
+							else if ((distance = Math.abs(base[i] - means[j])) < closestDistance)
+							{
+								closestDistance = distance;
+								closestCentroid = j;
+							}
+						}
+						
+						newMeans[closestCentroid] = (newMeans[closestCentroid]*centroidMass[closestCentroid] + base[i])/(centroidMass[closestCentroid] + 1);
+						centroidMass[closestCentroid] ++;
+					}
+					finish = true;
+					for (int i = 0;i<numClasses && !finish;i++)
+					{
+						finish = finish && Math.abs(means[i] - newMeans[i])<error;
+						
+					}
+					means = newMeans;
+				}while (!finish);
+				
+				Value[] out = new Value[numClasses];
+				for (int i=0;i<numClasses;i++)
+				{
+					out[i] = NLispTools.makeValue(new Value[]{NLispTools.makeValue(newMeans[i]), NLispTools.makeValue(Integer.valueOf(centroidMass[i]))});
+					
+				}
+				
+				return NLispTools.makeValue(out);
+			}
+			
+		};
 	}
 	
 	public static <T> double  compareSets(Set<T> s1, Set<T> s2)
