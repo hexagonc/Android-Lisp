@@ -1,122 +1,98 @@
-(setq animated-text
-	  (text :width "wrap_content"
-	 	    :height "wrap_content"
-	 	    "Thanos"
-	 	    :padding 10
-	 	    :text-color "white"
-	 	    :background (create-shadow-background :shadow-angle -45
-	 	    									  :shadow-width 8
-	 	    									  :foreground-color "green"
-	 	    									  :shadow-color "#8F000000")
-	 	    ))
+(defmacro catch (exp ...)
+    (setq signal (unique-id))
 
-(setq bounce-height 50)
-(setq stop 1)
-(setq up-milli 1000)
-(setq border-width 3)
-
-(setq toggle F)
-
-(defun configure-selected-tab (text selected)
-  (update-parameters text
-                     :background (if selected
-                                    (create-background :foreground-color "white"
-                                                	  :border-color "green"
-                                                	  :border-width 2)
-                                    (create-shadow-background :shadow-width 4
-                                                       :shadow-color "#D8D8D8"
-                                                       :foreground-color "white"
-                                                       :shadow-angle -45)) 
-                     1))
-
-
-(defun toggle-background (view)
-	(update-parameters view 
-					   :background (if toggle 
-					   				  (create-background :foreground-color "white"
-                                                		 :border-color "green"
-                                                		 :border-width 2)
-					   				  (create-shadow-background :shadow-width 4
-                                                       :shadow-color "#D8D8D8"
-                                                       :foreground-color "white"
-                                                       :shadow-angle -45))
-					   1))
+    `(signal-block (,signal)
+        ((,signal) (try ,exp))
+        (("RUNTIME_ERROR" exception) ,@...)))
 
 
 
+
+
+(defun configure-robot ()
+	(comment
+		(configure-sonar current-nxt 0)
+		(configure-switch current-nxt 2)
+		(configure-switch current-nxt 3))
+
+	(funcall (get-on-motor-port-map-lambda current-nxt "left motor" 0))
+	(funcall (get-on-motor-port-map-lambda current-nxt "right motor" 2))
+
+	(funcall (get-on-sensor-port-map-lambda current-nxt "sonar sensor" 0))
+	(funcall (get-on-sensor-port-map-lambda current-nxt "left touch" 2))
+	(funcall (get-on-sensor-port-map-lambda current-nxt "right touch" 3)))
+
+(setq stop F)
+
+(defun start-simple-forward ()
+	(evaluate-background (catch 
+							(progn
+
+								(set stop F)
+								(move-forward current-nxt 10)
+								(unless (or stop
+											(get-touch current-nxt
+	                                     			   "left touch")
+	                          				
+											(get-touch current-nxt
+	                                          		   "right touch")
+	                           
+	                						(< (setq current-distance
+	                                    			 (get-sonar-value current-nxt
+	                                                         		  "sonar sensor"))
+	                						   (integer (get-text port-edit))))
+									(evaluate-foreground (set-text distance-text
+																   (string current-distance))))
+								(stop-moving current-nxt))
+							(set stop 1) (log "robot" exception) (stop-moving current-nxt))))
+
+
+(defun stop-motion ()
+	(set stop 1))
+
+(defun force-stop ()
+	(set-motor-power current-nxt
+                    0 
+                    0)
+	(set-motor-power current-nxt
+                    2 
+                    0))
+
+
+(defun get-selected-sensor ()
+	(set-text port-edit
+			  (string (get-sonar-value current-nxt
+			  						   "sonar sensor"))))
 
 
 (vertical-layout :width "match_parent"
 				 :height "match_parent"
 				 :background-color "white"
 				 :padding 15
+				 (button "configure ports"
+				 		 :on-click (configure-robot))
+				 (button "get sensor value"
+				 		 :on-click (get-selected-sensor))
 
-				 (button "test animation"
+				 (setq port-edit
+				 	   (edit "20"))
+
+				 (button "test simple forward"
 				 		 :width "wrap_content"
 				 		 :height "wrap_content"
-				 		 :background (create-background :foreground-color "black"
-				 		 								:border-color "#F8E71C"
-				 		 								:corner-radius 3
-				 		 								:border-width 2
-				 		 								:on-pressed-drawable (create-background :foreground-color "white")
-				 		 								)
+				 		 
 				 		 :padding 10
 				 		 :text-color "#F8E71C"
 				 		 :text-style "bold"
-				 		 :on-click (progn
-				 		 			  (set *stop F)
-				 		 			  
-				 		 			  (setq fract 0)
-				 		 			  (setq start-time 
-				 		 			  	    (time))
-				 		 			  
-			 		 			  	  (signal-block ("UP")
-			 		 			  	  	  (("UP") (unless *stop
-			 		 			  	  	  			  (setq fract 
-				 		 			  	  	  	  			(/ (- (time) start-time)
-				 		 			  	  	  	  			   *up-milli))
-				 		 			  	  	  		  (if (< fract 1)
-				 		 			  	  	  		  	  (progn
-				 		 			  	  	  		  	  	(log "bounce" (* fract *bounce-height))
-				 		 			  	  	  		  	  	(update-parameters animated-text
-				 		 			  	  					 	 			 :margin-bottom (* fract *bounce-height)
-				 		 			  	  					 	 			 1))
-				 		 			  	  	  		  	  (progn
-				 		 			  	  	  		  	  	 (setq stop-time 
-				 		 			  	    					   (+ (time) *up-milli))
-				 		 			  	  	  		  	  	 (signal "DOWN")))))
-			 		 			  	  	  (("DOWN") (unless *stop
-			 		 			  	  	  				(setq fract
-			 		 			  	  	  					  (/ (- stop-time (time))
-			 		 			  	  	  					  	 *up-milli))
-			 		 			  	  	  				(if (> fract 0)
-			 		 			  	  	  					(progn
-			 		 			  	  	  						(log "bounce" (* fract *bounce-height))
-			 		 			  	  	  						(update-parameters animated-text
-			 		 			  	  	  									   :margin-bottom (* fract *bounce-height)
-			 		 			  	  	  									   1))
-			 		 			  	  	  					(progn
-			 		 			  	  	  						(setq start-time
-			 		 			  	  	  							  (time))
-			 		 			  	  	  						(signal "UP"))))))))
+				 		 :on-click (start-simple-forward))
+				 (button "force-stop"
+				 		 :on-click (force-stop))
 
-				 (horizontal-layout :width "match_parent"
-				 					:height 200
-				 					:child-align "bottom"
-				 					(solid :width 30
-									 	   :height 20
-									 	   :background (create-background :foreground-color "white"
-									 	   							  	  :border-color "#05346A"
-									 	   							      :border-width border-width)
-									 	   :margin-bottom bounce-height)
-				 					animated-text)
-				 (setq test 
-				 	   (button "stop-animation"
-				 		 	  :padding 10
-				 		 	  :on-click (set *stop 1)))
-				 (button "toggle back"
-				 		 :on-click (progn
-				 		 			  (toggle-background *test)
-				 		 			  (set *toggle (not *toggle)))))
+				 (setq distance-text
+				 	   (text "distance"))
+				 (button "stop"
+				 		 :on-click (stop-motion))
+				 
+				 )
 
 

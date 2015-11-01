@@ -87,8 +87,7 @@ public class SpinnerViewProxy extends ViewProxy
 
 			@Override
 			public void onNothingSelected(AdapterView<?> parent) {
-				// TODO Auto-generated method stub
-				
+				Log.d("spinner", "On nothing selected: selection value " + _selection);
 			}
 		};
 	}

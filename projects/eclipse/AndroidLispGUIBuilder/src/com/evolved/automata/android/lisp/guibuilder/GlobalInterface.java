@@ -253,7 +253,7 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 			@Override
 			public Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
-				_backgroundLispControlListener.evaluateValue(_actualParameters[0]);
+				_backgroundLispControlListener.evaluateValue(_actualParameters[0], env);
 				return Environment.getNull();
 			}
 			

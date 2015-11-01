@@ -5,10 +5,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import com.evolved.automata.KeyValuePair;
+
 public class LispInterpreter 
 {
+	 
+	
 	Environment _env;
-	LinkedBlockingQueue<Value> _commandQueue = new LinkedBlockingQueue<Value>();
+	LinkedBlockingQueue<KeyValuePair<Environment, Value>> _commandQueue = new LinkedBlockingQueue<KeyValuePair<Environment, Value>>();
 	Thread _processThread = null;
 	private LispResponseListener _responseListener = null;
 	volatile CountDownLatch _shutdownIndicator = null;
@@ -27,6 +31,11 @@ public class LispInterpreter
 		public void evaluateExpression(String exp);
 		public Value evaluateExpressionSynchronous(String exp);
 		public void evaluateValue(Value value);
+		
+		public void evaluateExpression(String exp, Environment env);
+		public Value evaluateExpressionSynchronous(String exp, Environment env);
+		public void evaluateValue(Value value, Environment env);
+		
 		public void breakExecution();
 	}
 	
@@ -76,7 +85,7 @@ public class LispInterpreter
 				public void evaluateExpression(String exp) {
 					try
 					{
-						_commandQueue.put(NLispTools.makeValue(exp));
+						_commandQueue.put(new KeyValuePair<Environment, Value>(null, NLispTools.makeValue(exp)));
 					}
 					catch (InterruptedException ie)
 					{
@@ -88,7 +97,7 @@ public class LispInterpreter
 				public void evaluateValue(Value value) {
 					try
 					{
-						_commandQueue.put(value);
+						_commandQueue.put(new KeyValuePair<Environment, Value>(null, value));
 					}
 					catch (InterruptedException ie)
 					{
@@ -113,6 +122,43 @@ public class LispInterpreter
 					catch (Exception e)
 					{
 						throw new RuntimeException(e);
+					}
+				}
+
+				@Override
+				public void evaluateExpression(String exp, Environment env) {
+					try
+					{
+						_commandQueue.put(new KeyValuePair<Environment, Value>(env, NLispTools.makeValue(exp)));
+					}
+					catch (InterruptedException e)
+					{
+						
+					}
+				}
+
+				@Override
+				public Value evaluateExpressionSynchronous(String exp,
+						Environment env) {
+					try
+					{
+						return env.evaluate(exp, true);
+					}
+					catch (Exception e)
+					{
+						throw new RuntimeException(e);
+					}
+				}
+
+				@Override
+				public void evaluateValue(Value value, Environment env) {
+					try
+					{
+						_commandQueue.put(new KeyValuePair<Environment, Value>(env, value));
+					}
+					catch (InterruptedException e)
+					{
+						
 					}
 				}
 				 
@@ -136,7 +182,7 @@ public class LispInterpreter
 				public void evaluateExpression(String exp) {
 					try
 					{
-						_commandQueue.put(NLispTools.makeValue(exp));
+						_commandQueue.put(new KeyValuePair<Environment, Value>(null, NLispTools.makeValue(exp)));
 					}
 					catch (InterruptedException ie)
 					{
@@ -148,7 +194,7 @@ public class LispInterpreter
 				public void evaluateValue(Value value) {
 					try
 					{
-						_commandQueue.put(value);
+						_commandQueue.put(new KeyValuePair<Environment, Value>(null, value));
 					}
 					catch (InterruptedException ie)
 					{
@@ -173,6 +219,43 @@ public class LispInterpreter
 					catch (Exception e)
 					{
 						throw new RuntimeException(e);
+					}
+				}
+
+				@Override
+				public void evaluateExpression(String exp, Environment env) {
+					try
+					{
+						_commandQueue.put(new KeyValuePair<Environment, Value>(env, NLispTools.makeValue(exp)));
+					}
+					catch (Exception e)
+					{
+						throw new RuntimeException(e);
+					}
+				}
+
+				@Override
+				public Value evaluateExpressionSynchronous(String exp,
+						Environment env) {
+					try
+					{
+						return env.evaluate(exp, true);
+					}
+					catch (Exception e)
+					{
+						throw new RuntimeException(e);
+					}
+				}
+
+				@Override
+				public void evaluateValue(Value value, Environment env) {
+					try
+					{
+						_commandQueue.put(new KeyValuePair<Environment, Value>(env, value));
+					}
+					catch (InterruptedException ie)
+					{
+						
 					}
 				}
 				 
@@ -224,9 +307,12 @@ public class LispInterpreter
 			public void run()
 			{
 				_runningP = true;
-				Value command = null, out = null;
+				KeyValuePair<Environment, Value> command = null;
+				Value out = null;
 				LinkedList<Value> parsedResult = null;
 				int i;
+				Value commandValue = null;
+				Environment customEnvironment = null;
 				try
 				{
 					if (startup!=null)
@@ -234,12 +320,13 @@ public class LispInterpreter
 					while (true)
 					{
 						command = _commandQueue.take();
-						
-						if (command.isString() && !command.isContinuation())
+						commandValue = command.GetValue();
+						customEnvironment = command.GetKey();
+						if (commandValue.isString() && !commandValue.isContinuation())
 						{
 							try
 							{
-								parsedResult = Environment.parse(command.getString(), true);
+								parsedResult = Environment.parse(commandValue.getString(), true);
 								
 							}
 							catch (IncompleteLispExpressionException ile)
@@ -262,14 +349,22 @@ public class LispInterpreter
 								i = 0;
 								for (Value comp:parsedResult)
 								{
-									out = _env.evaluate(comp, false);
+									if (customEnvironment!=null)
+										out = customEnvironment.evaluate(comp, false);
+									else
+										out = _env.evaluate(comp, false);
 									
 									// Processing continuations of intermediate expressions immediately
 									if (parsedResult.size() - 1 > i)
 									{
 										while (out.isContinuation())
 										{
-											out = out.getContinuingFunction().evaluate(_env, true);
+											if (customEnvironment!=null)
+												out = out.getContinuingFunction().evaluate(customEnvironment, true);
+											else
+												out = out.getContinuingFunction().evaluate(_env, true);
+											
+											
 										}
 									}
 									i++;
@@ -285,19 +380,28 @@ public class LispInterpreter
 							}
 							
 						}
-						else if (command.isContinuation())
+						else if (commandValue.isContinuation())
 						{
-							out = command.getContinuingFunction().evaluate(_env, true);
+							if (customEnvironment!=null)
+								out = commandValue.getContinuingFunction().evaluate(customEnvironment, true);
+							else
+								out = commandValue.getContinuingFunction().evaluate(_env, true);
 						}
 						else
 						{
-							out = _env.evaluate(command, false);
+							if (customEnvironment!=null)
+								out = customEnvironment.evaluate(commandValue, false);
+							else
+								out = _env.evaluate(commandValue, false);
+							
+							
 						}
 						
 						
 						if (out.isContinuation())
 						{
-							_commandQueue.add(out);
+							
+							_commandQueue.add(new KeyValuePair<Environment, Value>(customEnvironment, out));
 						}
 						else if (_responseListener!=null)
 						{

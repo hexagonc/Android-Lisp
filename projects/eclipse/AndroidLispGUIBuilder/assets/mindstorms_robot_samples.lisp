@@ -29,13 +29,17 @@
 
 (setq nxts-to-use
       (and mindstorms-sampled-ran
+           current-nxt
            (connected-to-device-p current-nxt)))
 
 ; global variable indicating that a robot procedure should continue executing
 (setq continue F)
 
+(setq _LOG_LABEL_2 "MINDSTORMS_ROBOT_SAMPLES")
+
 (if nxts-to-use
     (stop-moving current-nxt))
+
 
 (if SPEECH_AVAILABLE_P
     (progn
@@ -147,7 +151,7 @@
     
     (setq previous-speed movement-speed)
 
-    (setq default-collision-distance "20")
+    (setq default-collision-distance "35")
 
     (defun get-collision-distance ()
         (integer (or (non-empty (trim (get-text stop-distance-view)))
@@ -170,54 +174,70 @@
         (eval check-nxt-configured)
         
         (setq finished F)
+        (log _LOG_LABEL_2 "starting forward runner")
+        (evaluate-background (catch 
+                                (progn
+                                    (log _LOG_LABEL_2 "starting forward runner in background thread")
+                                    (setq initial-tach
+                                          (average (get-logical-motor-tach "left motor")
+                                                   (get-logical-motor-tach "right motor")))
+                                    (log _LOG_LABEL_2 "reading initial tach as: "
+                                                      initial-tach)
+                                    (setq state "INITIAL-CHECK-DISTANCE")
+                                    (setq stop-distance
+                                          (integer (get-text stop-distance-view)))
+                                    (set continue 1)
+                                    (log _LOG_LABEL_2 "setting stop distance to: "
+                                                      stop-distance)
+                                    (unless (not continue)
+                                        (signal-block state
+                                            (("CHECK-DISTANCE") (setq stop-distance
+                                                                      (integer (get-text stop-distance-view)))
+                                                                (eval check-collision-code)
+                                                                (log _LOG_LABEL_2  signal-key " stop distance: " stop-distance)
+                                                               
+                                                                (evaluate-foreground (set-text travel-distance-view
+                                                                                               (string (abs (- (average (get-logical-motor-tach "left motor")
+                                                                                                                        (get-logical-motor-tach "right motor"))
+                                                                                                               initial-tach))))))
+                                            (("INITIAL-CHECK-DISTANCE") (eval check-collision-code)
+                                                                        (evaluate-foreground (set-text travel-distance-view
+                                                                                                       (string (abs (- (average (get-logical-motor-tach "left motor")
+                                                                                                                                (get-logical-motor-tach "right motor"))
+                                                                                                                       initial-tach)))))
+                                                                        (log _LOG_LABEL_2  "moving forward")
+                                                                        (move-forward current-nxt
+                                                                                      movement-speed)
 
-        (evaluate-background (progn
-                                (setq initial-tach
-                                      (average (get-logical-motor-tach "left motor")
-                                               (get-logical-motor-tach "right motor")))
-                                (setq state "INITIAL-CHECK-DISTANCE")
-                                (setq stop-distance
-                                      (integer (get-text stop-distance-view)))
-                                (unless (not continue)
-                                    (signal-block state
-                                        (("CHECK-DISTANCE") (setq stop-distance
-                                                                  (integer (get-text stop-distance-view)))
-                                                            (eval check-collision-code)
-                                                            (evaluate-foreground (set-text travel-distance-view
-                                                                                           (string (abs (- (average (get-logical-motor-tach "left motor")
-                                                                                                                    (gget-logical-motor-tach "right motor"))
-                                                                                                           initial-tach))))))
-                                        (("INITIAL-CHECK-DISTANCE") (eval check-collision-code)
-                                                                    (evaluate-foreground (set-text travel-distance-view
-                                                                                                   (string (abs (- (average (get-logical-motor-tach "left motor")
-                                                                                                                            (get-logical-motor-tach "right motor"))
-                                                                                                                   initial-tach)))))
-                                                                    (move-forward current-nxt
-                                                                                  movement-speed)
+                                                                        (setq state "CHECK-DISTANCE"))
+                                            (("LEFT-COLLISION") (if SPEECH_AVAILABLE_P
+                                                                    (tts "collision left"))
+                                                                (signal "EXIT"))
+                                            (("RIGHT-COLLISION") (if SPEECH_AVAILABLE_P
+                                                                    (tts "collision right"))
+                                                                 (signal "EXIT"))
+                                            (("FORWARD-OBJECT-TOO-CLOSE") (if SPEECH_AVAILABLE_P
+                                                                              (tts "I've detected an object"))
+                                                                          (signal "EXIT"))
 
-                                                                    (setq state "CHECK-DISTANCE"))
-                                        (("LEFT-COLLISION") (if SPEECH_AVAILABLE_P
-                                                                (tts "collision left"))
-                                                            (signal "EXIT"))
-                                        (("RIGHT-COLLISION") (if SPEECH_AVAILABLE_P
-                                                                (tts "collision right"))
-                                                             (signal "EXIT"))
-                                        (("FORWARD-OBJECT-TOO-CLOSE") (if SPEECH_AVAILABLE_P
-                                                                          (tts "I've detected an object"))
-                                                                      (signal "EXIT"))
-
-                                        (("EXIT") (stop-moving current-nxt)
-                                                  (set continue F))))
-                                (stop-moving current-nxt)
-                                (set finished
-                                     (abs (- (average (get-logical-motor-tach "left motor")
-                                                      (get-logical-motor-tach "right motor"))
-                                             initial-tach)))))
+                                            (("EXIT") (log _LOG_LABEL_2  "finishing forward motion")
+                                                      (stop-moving current-nxt)
+                                                      (set continue F))))
+                                    (stop-moving current-nxt)
+                                    (set finished
+                                         (abs (- (average (get-logical-motor-tach "left motor")
+                                                          (get-logical-motor-tach "right motor"))
+                                                 initial-tach))))
+                                (("RUNTIME_ERROR" data) (log _LOG_LABEL_2 "Error in background: " data)
+                                                        (stop-moving current-nxt)
+                                                        (set continue F))))
         
         finished)
 
     (defun stop-forward-test ()
-        (set continue F))
+        (set continue F)
+        (if check-nxt-configured
+            (stop-moving current-nxt)))
 
     (vertical-layout :width "match_parent"
                      :height "wrap_content"
@@ -244,6 +264,7 @@
                                                        (setq stop-distance-view
                                                              (edit :width "wrap_content"
                                                                    :height "wrap_content"
+                                                                   :text-color "#F8E71C"
                                                                    "25")))
                                       (vertical-layout :width "wrap_content"
                                                        :height "wrap_content"
@@ -254,6 +275,9 @@
                                                              (text :width "wrap_content"
                                                                    :height "wrap_content"
                                                                    :text-color "#F8E71C"))))
+                    (button "emergency stop"
+                            :text-color "#F8E71C"
+                            :on-click (stop-moving current-nxt))
                     (vertical-layout :width "wrap_content"
                                      :height "wrap_content"
                                      (text "Distance Traveled in Rotations:"

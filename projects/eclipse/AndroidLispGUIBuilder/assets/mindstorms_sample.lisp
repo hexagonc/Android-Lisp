@@ -407,10 +407,12 @@
            (return F)))
   (set-power current-nxt
              "left motor"
-             20)
+             (or power
+                 20))
   (set-power current-nxt
              "right motor"
-             20))
+             (or power
+                 20)))
 
 (defun rotate-left (nxt power)
   (if (or (not nxt)
@@ -426,10 +428,12 @@
            (return F)))
   (set-power current-nxt
              "left motor"
-             -20)
+             (-  (or power
+                     20)))
   (set-power current-nxt
              "right motor"
-             20))
+             (or power
+                 20)))
 
 (defun stop-moving (nxt)
   (if (or (not nxt)
@@ -464,10 +468,12 @@
            (return F)))
   (set-power current-nxt
              "left motor"
-             20)
+             (or power
+                 20))
   (set-power current-nxt
              "right motor"
-             -20))
+             (- (or power
+                    20))))
 
 (defun move-backward (nxt power)
   (if (or (not nxt)
@@ -483,10 +489,12 @@
            (return F)))
   (set-power current-nxt
              "left motor"
-             -20)
+             (- (or power
+                    20)))
   (set-power current-nxt
              "right motor"
-             -20))
+             (- (or power
+                    20)))) 
 
 ; >~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~->~-
 ;                 Main GUI Code
