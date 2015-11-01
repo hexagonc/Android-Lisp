@@ -17,7 +17,7 @@
 
 (setq sensor-port-configuration-text "Sensor Port Configuration:")
 
-(setq logical-motor-port-names ("left motor" "right motor"))
+(setq logical-motor-port-names ("left motor" "right motor" "extra"))
 
 (setq logical-sensor-port-names ("sonar sensor" "left touch" "right touch"))
 
@@ -36,22 +36,6 @@
 (defun empty (string-list-or-map)
     (or (not string-list-or-map)
         (= 0 (length string-list-or-map))))
-
-(defun add-right-shadow (proxy shadow-color width)
-    (relative :width "wrap_content"
-              :height "wrap_content"
-              :background-color shadow-color
-              (update-parameters proxy
-                                 :margin-right width)))
-
-
-(defun add-bottom-right-shadow (proxy shadow-color width)
-    (relative :width "wrap_content"
-              :height "wrap_content"
-              :background-color shadow-color
-              (update-parameters proxy
-                                 :margin-right width
-                                 :margin-bottom width)))
 
 
 ; =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ =(~ 
@@ -299,7 +283,7 @@
                                                                                    (spinner :width "match_parent"
                                                                                             :height "wrap_content"
                                                                                             (mapcar physical-port-index
-                                                                                                    (0 1 2 3)
+                                                                                                    (0 1 2)
                                                                                                     (list (create-motor-port-spinner-dropdown-view (string physical-port-index))
                                                                                                           (create-motor-port-spinner-selected-view (string physical-port-index))
                                                                                                           (get-on-motor-port-map-lambda device logical-port-name physical-port-index))))))))
@@ -559,6 +543,10 @@
       ))
 
 
+
+
+
+
 ; - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- 
 ;                 NXT Port Configuration Page
 ; - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- - -- 
@@ -603,7 +591,7 @@
                                  :width "wrap_content"
                                  :height "wrap_content"))
                        
-
+                       
                        (text motor-port-configuration-text
                              :text-size 13
                              :text-style "bold"
@@ -612,12 +600,12 @@
                                logical-motor-port-names
                                (horizontal-layout :width "match_parent"
                                                   :height "wrap_content"
-                                                  :background (create-border :foreground-color "#EBF1F9"
-                                                                             :border-color bluetooth-devices-divider-color
-                                                                              :top-width (if (> i 0) 1 0)
-                                                                              :bottom-width 0
-                                                                              :left-width 0
-                                                                              :right-width 0)
+                                                  :background (create-background :foreground-color "#EBF1F9"
+                                                                                 :border-color bluetooth-devices-divider-color
+                                                                                 :border-top-width (if (> i 0) 1 0)
+                                                                                 :border-bottom-width 0
+                                                                                 :border-left-width 0
+                                                                                 :border-right-width 0)
                                                   (text logical-port-name
                                                         :width "50%"
                                                         :height "wrap_content"
@@ -634,12 +622,12 @@
                                logical-sensor-port-names
                                (horizontal-layout :width "match_parent"
                                                   :height "wrap_content"
-                                                  :background (create-border :foreground-color "#EBF1F9"
-                                                                             :border-color bluetooth-devices-divider-color
-                                                                             :top-width 1
-                                                                             :bottom-width 0
-                                                                             :left-width 0
-                                                                             :right-width 0)
+                                                  :background (create-background :foreground-color "#EBF1F9"
+                                                                                 :border-color bluetooth-devices-divider-color
+                                                                                 :border-top-width 1
+                                                                                 :border-bottom-width 0
+                                                                                 :border-left-width 0
+                                                                                 :border-right-width 0)
                                                   (text logical-port-name
                                                         :width "50%"
                                                         :height "wrap_content"
@@ -714,12 +702,9 @@
 (defun configure-selected-tab (text selected)
   (update-parameters text
                      :background (if selected
-                                    (create-border :foreground-color "white"
-                                                :border-color "green"
-                                                :top-width 2
-                                                :left-width 2
-                                                :right-width 2
-                                                :bottom-width 2)
+                                    (create-background :foreground-color "white"
+                                                       :border-color "green"
+                                                       :border-width 2)
                                     (create-shadow-background :shadow-width 4
                                                        :shadow-color "#D8D8D8"
                                                        :foreground-color "white"
@@ -742,12 +727,9 @@
       (update-parameters view
                          :text-color "black"
                          :text-style "bold"
-                         :background (create-border :foreground-color "white"
-                                                :border-color "green"
-                                                :top-width 2
-                                                :left-width 2
-                                                :right-width 2
-                                                :bottom-width 2)
+                         :background (create-background :foreground-color "white"
+                                                        :border-color "green"
+                                                        :border-width 2)
                          1))
 
 
@@ -767,12 +749,9 @@
                                                            :padding 15
                                                            :text-color "black"
                                                            :text-style "bold"
-                                                           :background (create-border :foreground-color "white"
+                                                           :background (create-background :foreground-color "white"
                                                                                       :border-color "green"
-                                                                                      :top-width 2
-                                                                                      :left-width 2
-                                                                                      :right-width 2
-                                                                                      :bottom-width 2)
+                                                                                      :border-width 2)
                                                            :on-click (progn
                                                                         (set-border-back (gethash *tab-label-map "configure"))
                                                                         (set-shadow-back (gethash *tab-label-map "direction-control"))
@@ -832,12 +811,9 @@ to control a robot with differential drive.")
                  (vertical-layout :width "match_parent"
                                   :height "wrap_content"
                                   :padding 10
-                                  :background (create-border :foreground-color bluetooth-status-group-color
-                                                             :border-color bluetooth-status-group-border-color
-                                                             :left-width bluetooth-status-group-border-width
-                                                             :right-width bluetooth-status-group-border-width
-                                                             :top-width bluetooth-status-group-border-width
-                                                             :bottom-width bluetooth-status-group-border-width)
+                                  :background (create-background :foreground-color bluetooth-status-group-color
+                                                                 :border-color bluetooth-status-group-border-color
+                                                                 :border-width bluetooth-status-group-border-width)
                                   (text "Bluetooth Status:"
                                         :parent-align "center"
                                         :text-size bluetooth-status-group-title-size
@@ -875,12 +851,12 @@ to control a robot with differential drive.")
                                                                                   bluetooth-devices
                                                                                   (vertical-layout :width "match_parent"
                                                                                                    :height "wrap_content"
-                                                                                                   :background (create-border :foreground-color "#EBF1F9"
-                                                                                                                              :border-color bluetooth-devices-divider-color
-                                                                                                                              :top-width (if (> i 0) 1 0)
-                                                                                                                              :bottom-width 0
-                                                                                                                              :left-width 0
-                                                                                                                              :right-width 0)
+                                                                                                   :background (create-background :foreground-color "#EBF1F9"
+                                                                                                                                  :border-color bluetooth-devices-divider-color
+                                                                                                                                  :border-top-width (if (> i 0) 1 0)
+                                                                                                                                  :border-bottom-width 0
+                                                                                                                                  :border-left-width 0
+                                                                                                                                  :border-right-width 0)
                                                                                                    (gethash bluetooth-device-info-map
                                                                                                             (get-device-name device))
                                                                                                    (create-device-connect-button device))))))))

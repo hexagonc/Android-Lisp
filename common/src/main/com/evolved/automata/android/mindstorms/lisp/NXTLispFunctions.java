@@ -108,7 +108,7 @@ public class NXTLispFunctions
 				}
 				catch (Exception e)
 				{
-					AppStateManager.getInstance().onError("lisp:get-battery-millivolts", e);
+					AppStateManager.getInstance().onError("lisp:connected-to-device", e);
 				}
 				
 				return NLispTools.makeValue(false);

@@ -15,9 +15,11 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.StateSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -170,7 +172,7 @@ public class ViewEvaluator  {
 		
 		env.mapFunction("log", log(env, activity, interpreter));
 		
-		env.mapFunction("create-border", create_border(env, activity, interpreter));
+		env.mapFunction("create-background", create_background(env, activity, interpreter));
 		
 		env.mapFunction("create-shadow-background", shadow_background(env, activity, interpreter));
 		
@@ -310,7 +312,7 @@ public class ViewEvaluator  {
 		};
 	}
 	
-	public static ViewFunctionTemplate create_border(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	public static ViewFunctionTemplate create_background(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
 		return new ViewFunctionTemplate()
 		{
@@ -318,7 +320,7 @@ public class ViewEvaluator  {
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
-				return (T)create_border(env, con, interpreter);
+				return (T)create_background(env, con, interpreter);
 			}
 
 			@Override
@@ -327,18 +329,42 @@ public class ViewEvaluator  {
 				Value[] evaluatedArgs = kv.GetKey();
 				HashMap<String, Value> keys = kv.GetValue();
 				
-				int leftWidth = 0;
-				int rightWidth = 0;
-				int topWidth = 0;
-				int bottomWidth = 0;
+				int widthAround = 0;
+				
+				Value width = keys.get(":border-width");
+				if (width != null)
+					widthAround = AndroidTools.convertDPtoPX(con, (int)width.getIntValue());
+				
+				int leftWidth = widthAround;
+				int rightWidth = widthAround;
+				int topWidth = widthAround;
+				int bottomWidth = widthAround;
+				
+				float cornersAll = 0;
+				if (keys.containsKey(":corner-radius"))
+					cornersAll = AndroidTools.convertDPtoPX(con, (int)keys.get(":corner-radius").getIntValue());
+				
+				// TODO: add support for separate corner radii 
+				
+				float cornerRadiusTL = 0;
+				float cornerRadiusTR = 0;
+				float cornerRadiusBR = 0;
+				float cornerRadiusBL = 0;
+				
 				
 				Value borderColor = keys.get(":border-color");
 				Value foregroundColor = keys.get(":foreground-color");
 				
-				Value left = keys.get(":left-width");
-				Value right = keys.get(":right-width");
-				Value top = keys.get(":top-width");
-				Value bottom = keys.get(":bottom-width");
+				
+				
+				Value left = keys.get(":border-left-width");
+				Value right = keys.get(":border-right-width");
+				Value top = keys.get(":border-top-width");
+				Value bottom = keys.get(":border-bottom-width");
+				
+				Value startColor = keys.get(":foreground-start-color");
+				Value endColor = keys.get(":foreground-stop-color");
+				Value gradientDirection = keys.get(":foreground-gradient-type");
 				
 				if (left != null)
 				{
@@ -360,9 +386,43 @@ public class ViewEvaluator  {
 					bottomWidth = AndroidTools.convertDPtoPX(con, (int)bottom.getIntValue());
 				}
 				
-				LayerDrawable border = (LayerDrawable)con.getResources().getDrawable(R.drawable.border);
-				GradientDrawable borderLayout = (GradientDrawable)border.getDrawable(0);
-				GradientDrawable topLayer = (GradientDrawable)border.getDrawable(1);
+				
+				
+				GradientDrawable borderLayout = new GradientDrawable();
+				GradientDrawable topLayer = null;
+				
+				if (startColor!=null && endColor != null && gradientDirection != null)
+				{
+					int start = 0, stop = 0;
+					if (startColor.isString())
+					{
+						start = Color.parseColor(startColor.getString());
+					}
+					else
+						start = (int)startColor.getIntValue();
+					
+					
+					if (endColor.isString())
+					{
+						stop = Color.parseColor(endColor.getString());
+					}
+					else
+						stop = (int)endColor.getIntValue();
+					
+					String orientation = gradientDirection.getString();
+					
+					topLayer = new GradientDrawable(GradientDrawable.Orientation.valueOf(orientation), new int[]{start, stop});
+				}
+				else
+					topLayer = new GradientDrawable();
+				
+				LayerDrawable border = new LayerDrawable(new GradientDrawable[]{borderLayout, topLayer});
+				if (cornersAll>0)
+				{
+					
+					borderLayout.setCornerRadius(cornersAll);
+					topLayer.setCornerRadius(cornersAll);
+				}
 				
 				if (foregroundColor != null)
 				{
@@ -390,7 +450,37 @@ public class ViewEvaluator  {
 					borderLayout.setColor(color);
 				}
 				border.setLayerInset(1, leftWidth, topWidth, rightWidth, bottomWidth);
-				return ExtendedFunctions.makeValue(border);
+				
+				Value finalValue = ExtendedFunctions.makeValue(border);
+				// Handle states
+				
+				Value onDisabledValue = keys.get(":on-disabled-drawable");
+				Value onPressedValue = keys.get(":on-pressed-drawable");
+				
+				if ((onDisabledValue!=null && !onDisabledValue.isNull()) ||
+						(onPressedValue !=null && !onPressedValue.isNull()))
+				{
+					
+					StateListDrawable finalDrawable = new StateListDrawable();
+					
+					if (onDisabledValue!=null)
+					{
+						Drawable onDisabledDrawable = (Drawable)onDisabledValue.getObjectValue();
+						
+						finalDrawable.addState(new int[]{ -android.R.attr.state_enabled}, onDisabledDrawable);
+					}
+					
+					if (onPressedValue !=null )
+					{
+						Drawable onPressedDrawable = (Drawable)onPressedValue.getObjectValue();
+						finalDrawable.addState(new int[]{android.R.attr.state_pressed}, onPressedDrawable);
+					}
+					finalDrawable.addState(StateSet.WILD_CARD, border);
+					finalValue = ExtendedFunctions.makeValue(finalDrawable);
+				}
+				
+						
+				return finalValue;
 			}
 			
 		};

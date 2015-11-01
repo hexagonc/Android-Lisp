@@ -19,7 +19,7 @@ public class LispInterpreter
 	{
 		public void onOutput(Value out);
 		public void onIncompleteInputException(String message);
-		public void onGeneralException(Exception e);
+		public void onGeneralException(Throwable e);
 	}
 	
 	public interface LispInputListener
@@ -293,6 +293,8 @@ public class LispInterpreter
 						{
 							out = _env.evaluate(command, false);
 						}
+						
+						
 						if (out.isContinuation())
 						{
 							_commandQueue.add(out);
@@ -308,6 +310,11 @@ public class LispInterpreter
 					
 				}
 				catch (Exception e)
+				{
+					if (_responseListener != null)
+						_responseListener.onGeneralException(e);
+				}
+				catch (Error e)
 				{
 					if (_responseListener != null)
 						_responseListener.onGeneralException(e);

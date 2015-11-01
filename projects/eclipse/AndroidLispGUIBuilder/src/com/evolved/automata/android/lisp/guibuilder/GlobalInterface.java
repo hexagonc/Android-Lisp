@@ -4,6 +4,8 @@ import java.util.HashSet;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
@@ -83,7 +85,7 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	
 	boolean _asrAvailableP = false;
 	SpeechControlInterface _speechControlInterface = null;
-	
+	Handler _mainHandler = new Handler(Looper.getMainLooper());
 	
 	public GlobalInterface(Context context) throws InstantiationException, IllegalAccessException
 	{
@@ -181,8 +183,24 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
-				_speechControlInterface.initiateListening(); 
+				
+				if (Looper.myLooper() != Looper.getMainLooper())
+				{
+					_mainHandler.post(new Runnable()
+					{
+						public void run()
+						{
+							_speechControlInterface.initiateListening();
+						}
+					}
+					);
+				}
+				else
+				{
+					_speechControlInterface.initiateListening();
+				}
 				return NLispTools.makeValue(asrRequested());
+				
 			}
 			
 		};
@@ -201,7 +219,9 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 			
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
-				String text = evaluatedArgs[0].getString();
+				final String text = evaluatedArgs[0].getString();
+				
+				
 				_speechControlInterface.speakMessage(text);
 				ttsRequested();
 				return evaluatedArgs[0];
@@ -481,7 +501,7 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	}
 
 	@Override
-	public void onGeneralException(Exception e) {
+	public void onGeneralException(Throwable e) {
 		if (_generalLispListener != null)
 		{
 			_generalLispListener.onBackgroundError(e.toString());

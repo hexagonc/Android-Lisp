@@ -117,7 +117,7 @@ public class RenderFragment extends LispBuilderFragment
 	}
 
 	@Override
-	public void onGeneralException(Exception e) {
+	public void onGeneralException(Throwable e) {
 		AndroidTools.showshortMessageToast(e.toString(), getActivity());
 		Log.e("RenderFragment", e.toString());
 	}

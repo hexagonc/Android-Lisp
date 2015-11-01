@@ -20,12 +20,9 @@
 (defun configure-selected-tab (text selected)
   (update-parameters text
                      :background (if selected
-                                    (create-border :foreground-color "white"
-                                                :border-color "green"
-                                                :top-width 2
-                                                :left-width 2
-                                                :right-width 2
-                                                :bottom-width 2)
+                                    (create-background :foreground-color "white"
+                                                	  :border-color "green"
+                                                	  :border-width 2)
                                     (create-shadow-background :shadow-width 4
                                                        :shadow-color "#D8D8D8"
                                                        :foreground-color "white"
@@ -36,12 +33,9 @@
 (defun toggle-background (view)
 	(update-parameters view 
 					   :background (if toggle 
-					   				  (create-border :foreground-color "white"
-                                                :border-color "green"
-                                                :top-width 2
-                                                :left-width 2
-                                                :right-width 2
-                                                :bottom-width 2)
+					   				  (create-background :foreground-color "white"
+                                                		 :border-color "green"
+                                                		 :border-width 2)
 					   				  (create-shadow-background :shadow-width 4
                                                        :shadow-color "#D8D8D8"
                                                        :foreground-color "white"
@@ -55,12 +49,20 @@
 (vertical-layout :width "match_parent"
 				 :height "match_parent"
 				 :background-color "white"
-				 
+				 :padding 15
 
 				 (button "test animation"
 				 		 :width "wrap_content"
 				 		 :height "wrap_content"
+				 		 :background (create-background :foreground-color "black"
+				 		 								:border-color "#F8E71C"
+				 		 								:corner-radius 3
+				 		 								:border-width 2
+				 		 								:on-pressed-drawable (create-background :foreground-color "white")
+				 		 								)
 				 		 :padding 10
+				 		 :text-color "#F8E71C"
+				 		 :text-style "bold"
 				 		 :on-click (progn
 				 		 			  (set *stop F)
 				 		 			  
@@ -103,12 +105,9 @@
 				 					:child-align "bottom"
 				 					(solid :width 30
 									 	   :height 20
-									 	   :background (create-border :foreground-color "white"
-									 	   							  :border-color "#05346A"
-									 	   							  :top-width border-width
-									 	   							  :bottom-width border-width
-									 	   							  :left-width border-width
-									 	   							  :right-width border-width)
+									 	   :background (create-background :foreground-color "white"
+									 	   							  	  :border-color "#05346A"
+									 	   							      :border-width border-width)
 									 	   :margin-bottom bounce-height)
 				 					animated-text)
 				 (setq test 

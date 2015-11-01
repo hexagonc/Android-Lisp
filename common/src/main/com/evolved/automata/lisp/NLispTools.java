@@ -3784,27 +3784,11 @@ public class NLispTools
 		}
 		);
 		
-		env.mapFunction("<=", new SimpleFunctionTemplate()
-		{
-
-			@Override
-			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(2, false, true);
-				
-				checkNumericArguments(evaluatedArgs);
-				if (evaluatedArgs[0].getFloatValue() <= evaluatedArgs[1].getFloatValue())
-					return evaluatedArgs[1];
-				else
-					return makeValue(false);
-				
-			}
-			
-		}
-		);
+		env.mapFunction("<=", less_than_or_equal());
 		
 		env.mapFunction(">=", greater_than_or_equal());
 		
-		
+		env.mapFunction("abs", abs());
 		
 		env.mapFunction("upper", upper());
 		
@@ -3816,8 +3800,31 @@ public class NLispTools
 		
 		env.mapFunction("get-environment-property",get_environment_property());
 		
+		env.mapFunction("destructive-append",destructive_append());
+		
+		env.mapFunction("abs",abs());
+		
 		return env;
 	}
+	
+	public static SimpleFunctionTemplate abs()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, false, false);
+				
+				if (evaluatedArgs[0].isInteger())
+					return NLispTools.makeValue(Math.abs(evaluatedArgs[0].getIntValue()));
+				else
+					return NLispTools.makeValue(Math.abs(evaluatedArgs[0].getFloatValue()));
+			}
+			
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate destructive_append()
 	{
@@ -3865,7 +3872,10 @@ public class NLispTools
 		;
 	}
 	
-	
+	/**
+	 * If true always returns the argument to the left of the operator which will be the greater value
+	 * @return
+	 */
 	public static SimpleFunctionTemplate greater_than_or_equal()
 	{
 		return new SimpleFunctionTemplate()
@@ -3878,7 +3888,33 @@ public class NLispTools
 				checkNumericArguments(evaluatedArgs);
 				
 				if (evaluatedArgs[0].getFloatValue() >= evaluatedArgs[1].getFloatValue())
-					return evaluatedArgs[1];
+					return evaluatedArgs[0];
+				else
+					return makeValue(false);
+				
+				
+			}
+			
+		};
+	}
+	
+	/**
+	 * If true always returns the argument to the left of the operator which will be the lesser value
+	 * @return
+	 */
+	public static SimpleFunctionTemplate less_than_or_equal()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				checkNumericArguments(evaluatedArgs);
+				
+				if (evaluatedArgs[0].getFloatValue() <= evaluatedArgs[1].getFloatValue())
+					return evaluatedArgs[0];
 				else
 					return makeValue(false);
 				

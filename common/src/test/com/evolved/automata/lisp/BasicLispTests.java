@@ -126,7 +126,7 @@ public class BasicLispTests extends TestHarnessBase
 				}
 				
 				@Override
-				public void onGeneralException(Exception e) {
+				public void onGeneralException(Throwable e) {
 					
 				}
 			};
@@ -408,5 +408,36 @@ public class BasicLispTests extends TestHarnessBase
 		} catch (IllegalAccessException e) {
 			assertTrue(e.toString(), false);
 		}
+	}
+	
+	@Test
+	public void testDestructiveAppend()
+	{
+		Environment env = new Environment();
+		try
+		{
+			NLispTools.addDefaultFunctionsAddMacros(env);
+			addAssertFunction(env);
+			String oldTestExpression = "(setq old-method ()) (setq start (time)) (for i 10000 (- (time) start) (set old-method (append old-method i)))";
+			String newTestExpression = "(setq new-method ()) (setq start (time)) (for i 10000 (- (time) start) (destructive-append new-method i))";
+			String compareExpression = "(assert-true (equals old-method new-method))";
+			
+			
+			Value oldTimeV = env.evaluate(oldTestExpression, true);
+			Value newTimeV = env.evaluate(newTestExpression, true);
+			System.out.println("Old time: " + oldTimeV + " new method time: " + newTimeV);
+			assertTrue(oldTimeV.getIntValue()>newTimeV.getIntValue());
+			Value comp = env.evaluate(compareExpression, true);
+			
+		}
+		catch (Exception e)
+		{
+			assertTrue(e.toString(), false);
+		}
+		
+		
+		
+		
+		
 	}
 }

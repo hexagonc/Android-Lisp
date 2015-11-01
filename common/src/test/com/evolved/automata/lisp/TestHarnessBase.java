@@ -66,7 +66,7 @@ public class TestHarnessBase
 			}
 			
 			@Override
-			public void onGeneralException(Exception e) {
+			public void onGeneralException(Throwable e) {
 				assertTrue(false);
 			}
 		};

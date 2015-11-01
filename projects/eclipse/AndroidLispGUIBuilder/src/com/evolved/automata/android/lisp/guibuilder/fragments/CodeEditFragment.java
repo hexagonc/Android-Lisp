@@ -83,7 +83,8 @@ public class CodeEditFragment extends LispBuilderFragment
 		predefinedSampleMap.put("lego mindstorms sample", "mindstorms_sample.lisp");
 		predefinedSampleMap.put("test", "test.lisp");
 		predefinedSampleMap.put("speech test", "speech_test.lisp");
-		String[] predefinedSamples = new String[]{"lego mindstorms sample", "test", "speech test",  "tic-tac-toe ui only", "tic-tac-toe with simple ai"};
+		predefinedSampleMap.put("robot control samples", "mindstorms_robot_samples.lisp");
+		String[] predefinedSamples = new String[]{"robot control samples", "lego mindstorms sample", "test", "speech test",  "tic-tac-toe ui only", "tic-tac-toe with simple ai"};
 		String assetCode = null;
 		try
 		{
@@ -359,7 +360,7 @@ public class CodeEditFragment extends LispBuilderFragment
 
 
 	@Override
-	public void onGeneralException(Exception e) {
+	public void onGeneralException(Throwable e) {
 		appendResult(e.toString());
 		log(LogType.ERROR, e.toString());
 	}
