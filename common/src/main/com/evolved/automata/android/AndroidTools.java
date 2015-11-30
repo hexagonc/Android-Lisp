@@ -69,6 +69,10 @@ public class AndroidTools
 		
 	}
 	
+	
+	
+	
+	
 	public static int convertDPtoPX(Context context, int dp)
 	{
 		DisplayMetrics dm = new DisplayMetrics();

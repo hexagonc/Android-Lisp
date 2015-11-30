@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/code_template_create_dialog_height"
+    android:orientation="vertical"
+    android:padding="@dimen/code_template_create_dialog_margin" >
+    <TextView 
+        android:text = '@string/code_template_create_preview_edit_label'
+        android:layout_gravity = 'left'
+        android:layout_width = 'wrap_content'
+        android:layout_height = 'wrap_content'
+        android:textSize="@dimen/code_template_create_dialog_label_text_size"/>
+    <EditText 
+        android:id = '@+id/edit_code_template_preview'
+        android:layout_width = 'match_parent'
+        android:layout_height = '0px'
+        android:layout_weight = '0.5'
+        android:typeface="monospace"
+        android:gravity = 'left|top'
+        android:textSize="@dimen/general_code_editor_text_size"
+        android:hint="@string/code_template_not_defined_warning"
+        />
+    <TextView 
+        android:text = '@string/code_template_create_template_name_edit_label'
+        android:layout_gravity = 'left'
+        android:layout_width = 'wrap_content'
+        android:layout_height = 'wrap_content'
+        android:textSize="@dimen/code_template_create_dialog_label_text_size"/>
+    <EditText
+        android:id = '@+id/edit_code_template_name'
+        android:layout_width = 'match_parent'
+        android:layout_height = 'wrap_content'
+        android:textSize="@dimen/code_template_create_dialog_template_name_text_size"
+        android:singleLine="true"
+        android:hint="Enter template name"/>
+    <TextView
+        android:id = '@+id/txt_warning'
+        android:text = '@string/code_template_create_overwrite_warning'
+        android:layout_width = 'match_parent'
+        android:layout_height = '0px'
+        android:layout_weight = '0.25'
+        android:visibility="invisible"/>
+	<LinearLayout 
+	    android:orientation = 'horizontal'
+	    android:layout_width="match_parent"
+	    android:layout_height = '0px'
+	    android:layout_weight = '0.25'>
+	    <Button
+	        android:id = '@+id/but_ok'
+	        android:layout_width = '0px'
+	        android:layout_weight = '1'
+	        android:layout_height = 'wrap_content'
+	        android:text = 'Ok'/>
+	    <Button
+	        android:id = '@+id/but_cancel'
+	        android:layout_width = '0px'
+	        android:layout_weight = '1'
+	        android:layout_height = 'wrap_content'
+	        android:text = 'Cancel'/>
+	</LinearLayout>
+</LinearLayout>

@@ -28,7 +28,11 @@ public class GuiBuilderApplication extends Application
 			AppStateManager.create(this);
 			NXTBluetoothManager.create(this);
 			DeviceInfo.create(this);
+			GuiBuilderConfiguration.create(this);
 			_data = new GlobalInterface(this);
+			
+			CodeManager.create(this);
+			
 		}
 		catch (Exception e)
 		{

@@ -1,33 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom = 'http://schemas.android.com/apk/res-auto'
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="4dp"
     android:background="@android:color/white" >
     
-    <LinearLayout  android:layout_width = 'match_parent'
-        		   android:layout_height = 'wrap_content'
-        		   android:layout_weight = '0'
-        		   android:orientation="horizontal">
-        	<TextView android:id = '@+id/txt_title'
-        			 android:text="previous"
-        			 android:layout_width='0px'
-        			 android:layout_height ='wrap_content'
-        			 android:layout_weight="1"
-        			 android:gravity="left"
-        			 android:textSize="14sp"
-        			 android:padding = '5dp'/>
-       
-       
-	       <Spinner android:layout_width = "0px"
-	            	android:layout_height="wrap_content"
-	            	android:id = '@+id/spinner_samples'
-	        		android:layout_weight = '1'
-	        		android:gravity="right"/>
+    <TextView
+        android:id = '@+id/txt_file_title'
+        android:text = 'untitled'
+        android:layout_width = 'wrap_content'
+        android:layout_height = 'wrap_content'
+        android:layout_gravity="center"
+        android:textSize="@dimen/lisp_edit_title_text_size"
+        android:textStyle="bold"
+        android:layout_marginBottom = '@dimen/lisp_edit_title_margin'
         
-    </LinearLayout>
-    
+        />
+    <LinearLayout 
+	    android:orientation="horizontal"
+	    android:layout_width="match_parent"
+	    android:layout_height ='wrap_content'>
+	    <include 
+	        
+	        
+	        layout= '@layout/data_source_select_container'/>
+	    <FrameLayout
+	        android:id = '@+id/frm_tool_area_fragment_container'
+	        android:layout_width = 'match_parent'
+	        android:layout_height = 'wrap_content'>
+	        
+	        
+	    </FrameLayout>
+	</LinearLayout>
+    <TextView 
+        	 android:id = '@+id/txt_hint_text'
+        	 android:visibility="gone"
+             android:layout_width = 'match_parent'
+             android:layout_height = 'wrap_content'
+             android:textColor="@color/toolarea_text_color"
+             android:textSize = '@dimen/toolarea_hints_text_size'
+             android:text = ''
+             android:layout_marginTop = '@dimen/lisp_edit_hint_top_margin'/>
+      <CheckBox 
+          android:id = '@+id/chk_reset_environment'
+          android:layout_width ='wrap_content'
+          android:layout_height = 'wrap_content'
+          android:text = '@string/toolarea_reset_environment_prompt'
+          android:textColor = '@color/toolarea_text_color'/>
     
     
    <LinearLayout 
@@ -35,29 +56,49 @@
        android:layout_width="match_parent"
        android:layout_weight = '0'
        android:orientation="horizontal">
-       <Button 
-           android:text = 'Evaluate'
-           android:layout_width="0px"
-           android:layout_height='wrap_content'
-           android:layout_weight='1'
-           android:id = '@+id/but_run'
-           />
-       
-       <Button 
-           android:text = 'Clear'
-           android:layout_width="0px"
-           android:layout_height='wrap_content'
-           android:layout_weight='1'
-           android:id = '@+id/but_clear'
-           />
-       <Button 
-           android:text = 'Render'
-           android:layout_width="0px"
-           android:layout_height='wrap_content'
-           android:layout_weight='1'
-           android:id = '@+id/but_render'
-           />
-       
+	    <FrameLayout
+	        android:layout_width="0px"
+            android:layout_height='wrap_content'
+            android:layout_weight='1'
+            android:gravity = 'center'>
+	        <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = 'Evaluate'
+	           custom:textSize = '@dimen/lisp_edit_shadow_button_text_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:id = '@+id/but_run'
+	           
+	           />
+	    </FrameLayout>
+	    <FrameLayout
+	        android:layout_width="0px"
+            android:layout_height='wrap_content'
+            android:layout_weight='1'
+            android:gravity = 'center'>
+	        <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = 'Clear'
+	           custom:textSize = '@dimen/lisp_edit_shadow_button_text_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:id = '@+id/but_clear'
+	           />
+	    </FrameLayout>
+	    <FrameLayout
+	        android:layout_width="0px"
+            android:layout_height='wrap_content'
+            android:layout_weight='1'
+            android:gravity = 'center'>
+	        <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = 'Render'
+	           custom:textSize = '@dimen/lisp_edit_shadow_button_text_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:id = '@+id/but_render'
+	           />
+	    </FrameLayout>
    </LinearLayout>
    
    <EditText 

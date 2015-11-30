@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <string name="code_template_create_overwrite_warning">Warning!  You already have a code template by the name of \'%1$s\', press okay to overwrite it.</string>
+	<string name = "code_template_create_preview_edit_label">Code template preview:</string>
+	<string name = "code_template_create_template_name_edit_label">Template Name:</string>
+	<string name = "code_template_not_defined_warning">Can\'t save an empty code template</string>
+	<string name = "code_template_not_created_warning">Blank code template not created</string>
+</resources>

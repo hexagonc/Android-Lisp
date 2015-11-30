@@ -13,9 +13,6 @@
     <style name="shadow_button" parent="@style/soft_shadow_text">
     	<item name="android:background">@android:color/transparent</item>
     </style>
-    <style name = "search_multi_result_dialog" >
-        
-        
-    </style>
+    
     
 </resources>

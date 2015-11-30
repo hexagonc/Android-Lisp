@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:paddingLeft="@dimen/code_template_view_margin_LR_sides"
+    android:paddingRight="@dimen/code_template_view_margin_LR_sides"
+    android:paddingTop = '@dimen/code_template_view_margin_TB_sides'
+    android:paddingBottom = '@dimen/code_template_view_margin_TB_sides'
+    android:layout_height="match_parent" >
+    <TextView 
+        android:layout_width = 'match_parent'
+        android:layout_height='wrap_content'
+        android:id='@+id/txt_template_name'
+        android:gravity = 'center'
+        android:layout_alignParentTop = 'true'
+        android:text = 'template name'
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:layout_marginBottom='20dp'/>
+    <EditText 
+        android:id = '@+id/edit_template_view'
+        android:layout_height = '@dimen/code_template_preview_view_height'
+        android:layout_width = 'match_parent'
+        android:layout_below="@id/txt_template_name"
+        android:typeface="monospace"
+        android:textSize="@dimen/general_code_editor_text_size"
+        android:gravity = 'left|top'
+        />
+    
+    <Button 
+        android:id = '@+id/but_update_template'
+        android:layout_below = '@id/edit_template_view'
+        android:layout_alignParentRight = 'true'
+        android:layout_width = 'wrap_content'
+        android:layout_height='wrap_content'
+        android:text = 'Update Template'
+        />
+    <LinearLayout 
+        android:layout_alignParentBottom = 'true'
+        android:layout_width = 'match_parent'
+        android:layout_height = 'wrap_content'
+        android:orientation = 'horizontal'>
+        <Button 
+            android:id = '@+id/but_load_template'
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:text = 'Load'/>
+        <Button 
+            android:id = '@+id/but_cancel_op'
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:text = 'Cancel'/>
+        <Button 
+            android:id = '@+id/but_back'
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:text = 'Back'/>
+    </LinearLayout>
+    
+
+</RelativeLayout>

@@ -20,11 +20,23 @@
 <ivy-module version="2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd">
     <info
-        organisation="com.evolved.automata.android.lisp.guibuilder"
-        module="AndroidLispGuiBuilder"
-        status="integration">
+        organisation="evolved"
+        module="androidlispgui"
+        status="release">
 	</info>
 	<dependencies>
-		<dependency org="de.greenrobot" name="eventbus" rev="2.4.0"/>
-	</dependencies>
+    <dependency org="de.greenrobot" name="eventbus" rev="2.4.0"/>
+    <dependency org = "com.fasterxml.jackson.core" name = "jackson-core" rev = "2.5.4"  />
+    <dependency org = "com.fasterxml.jackson.core" name = "jackson-annotations" rev = "2.5.4"/>
+    <dependency org = "com.squareup.okhttp" name = "okhttp" rev = "2.4.0"/>
+    <dependency org = "com.googlecode.json-simple" name = "json-simple" rev = "1.1.1">
+      <exclude org = "org.hamcrest"/>
+    </dependency>
+    
+    <dependency org = "com.google.android" name = "support-v4" rev = "r7">
+        <exclude org="xpp3"/>
+        <exclude org="xerces"/>
+        <exclude org="com.google.android"  name = "android"/>
+    </dependency>
+  </dependencies>
 </ivy-module>

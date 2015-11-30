@@ -4,8 +4,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Stack;
 import java.util.UUID;
+
+import org.apache.commons.math3.random.RandomDataGenerator;
 
 import com.evolved.automata.KeyValuePair;
 
@@ -2928,7 +2931,7 @@ public class NLispTools
 				
 				int start = (int)evaluatedArgs[0].getIntValue();
 				int end = (int)evaluatedArgs[1].getIntValue();
-				Value[] list = new Value[(start - end)];
+				Value[] list = new Value[(end - start + 1)];
 				for (int i=start;i<=end;i++)
 					list[i] = NLispTools.makeValue(i); 
 				return NLispTools.makeValue(list);
@@ -3295,43 +3298,7 @@ public class NLispTools
 		}
 		);
 		
-		env.mapFunction("random-perm", new SimpleFunctionTemplate()
-		{
-
-			@Override
-			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(1, false, true);
-				if (evaluatedArgs[0].isList())
-				{
-					int len = evaluatedArgs[0].getList().length;
-					Value[] newCons = new Value[len];
-					int selectedIndex;
-					Value temp;
-					for (int i=0;i<len;i++)
-					{
-						selectedIndex = Math.min(len-1, (int)(Math.random()*(len-i))+i);
-						if (newCons[selectedIndex]==null)
-						{
-							newCons[i]=evaluatedArgs[0].getList()[selectedIndex];
-							newCons[selectedIndex]=evaluatedArgs[0].getList()[i];
-						}
-						else
-						{
-							temp=newCons[selectedIndex];
-							newCons[i] = temp;
-							newCons[selectedIndex]=temp;
-						}
-							
-					}
-					return makeValue(newCons);
-				}
-				else 
-					throw new RuntimeException("First argument to 'random-select' must be a list");
-				
-			}
-			
-		}
-		);
+		
 		
 		env.mapFunction("cross-join", new SimpleFunctionTemplate()
 		{
@@ -3747,42 +3714,11 @@ public class NLispTools
 		}
 		);
 		
-		env.mapFunction("<", new SimpleFunctionTemplate()
-		{
-
-			@Override
-			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(2, false, true);
-				
-				checkNumericArguments(evaluatedArgs);
-				if (evaluatedArgs[0].getFloatValue() < evaluatedArgs[1].getFloatValue())
-					return evaluatedArgs[1];
-				else
-					return makeValue(false);
-				
-				
-			}
-			
-		}
-		);
 		
-		env.mapFunction(">", new SimpleFunctionTemplate()
-		{
-
-			@Override
-			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(2, false, true);
-				
-				checkNumericArguments(evaluatedArgs);
-				if (evaluatedArgs[0].getFloatValue() > evaluatedArgs[1].getFloatValue())
-					return evaluatedArgs[1];
-				else
-					return makeValue(false);
-				
-			}
-			
-		}
-		);
+		
+		env.mapFunction("<", less());
+		
+		env.mapFunction(">", greater());
 		
 		env.mapFunction("<=", less_than_or_equal());
 		
@@ -3804,8 +3740,124 @@ public class NLispTools
 		
 		env.mapFunction("abs",abs());
 		
+		env.mapFunction("char-to-code",char_to_code());
+		
+		env.mapFunction("random-perm", random_perm());
+		
+		env.mapFunction("pow", pow());
 		return env;
 	}
+	
+	public static SimpleFunctionTemplate pow()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double base = evaluatedArgs[0].getFloatValue();
+				double power =evaluatedArgs[1].getFloatValue();
+				
+				return makeValue(Math.pow(base, power));
+			}
+			
+		}
+		;
+	}
+	public static SimpleFunctionTemplate random_perm()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				if (evaluatedArgs[0].isList())
+				{
+					int len = evaluatedArgs[0].getList().length;
+					
+					RandomDataGenerator rdg = new RandomDataGenerator();
+					
+					List<Value> l = Arrays.asList(evaluatedArgs[0].getList());
+					Object[] out = rdg.nextSample(l, len);
+					Value[] v = new Value[out.length];
+					for (int i=0;i<len;i++)
+						v[i]= (Value)out[i];
+					
+					return makeValue(v);
+				}
+				else 
+					throw new RuntimeException("First argument to 'random-select' must be a list");
+				
+			}
+			
+		}
+		;
+	}
+	
+	public static SimpleFunctionTemplate less()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				checkNumericArguments(evaluatedArgs);
+				
+				if (evaluatedArgs[0].getFloatValue() < evaluatedArgs[1].getFloatValue())
+					return evaluatedArgs[0];
+				else
+					return makeValue(false);
+				
+				
+			}
+			
+		};
+	}
+	
+	public static SimpleFunctionTemplate greater()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				checkNumericArguments(evaluatedArgs);
+				
+				if (evaluatedArgs[0].getFloatValue() > evaluatedArgs[1].getFloatValue())
+					return evaluatedArgs[0];
+				else
+					return makeValue(false);
+				
+				
+			}
+			
+		};
+	}
+	
+	
+	public static SimpleFunctionTemplate char_to_code()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, false, false);
+				
+				
+				return NLispTools.makeValue(Long.valueOf(Character.codePointAt(evaluatedArgs[0].getString(), 0)));
+			}
+			
+		};
+	}
+	
 	
 	public static SimpleFunctionTemplate abs()
 	{

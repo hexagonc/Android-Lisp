@@ -30,4 +30,46 @@ public class AIToolsTest {
 					inputResponsePairs[i][1]);
 		}
 	}
+	
+	@Test
+	public void testEncryption()
+	{
+		String key = "0b";
+		long seed = 0;
+		
+		String input = "h";
+		String dictionary = "abcdefghijklmnopqrstuvwxyz";
+		String encypted = AITools.encodeDecode(input, dictionary,  3, key.length()/2, key, seed);
+		org.junit.Assert.assertEquals(input, AITools.encodeDecode(encypted, dictionary, 3,key.length()/2, key, seed));
+
+	}
+	
+	@Test
+	public void testEncryptionWithExtraCharacters()
+	{
+		String key = "0b";
+		long seed = 0;
+		
+		String input = "hello world";
+		String dictionary = "abcdefghijklmnopqrstuvwxyz";
+		String encypted = AITools.encodeDecode(input, dictionary,  3, key.length()/2, key, seed);
+		org.junit.Assert.assertEquals(input, AITools.encodeDecode(encypted, dictionary, 3,key.length()/2, key, seed));
+
+	}
+	
+	@Test
+	public void testEncryptionWithMultipleRotors()
+	{
+		String key = "012zat";
+		long seed = 0;
+		
+		String input = "hello world";
+		String dictionary = "abcdefghijklmnopqrstuvwxyz";
+		String encypted = AITools.encodeDecode(input, dictionary,  3, key.length()/2, key, seed);
+		org.junit.Assert.assertEquals(input, AITools.encodeDecode(encypted, dictionary, 3,key.length()/2, key, seed));
+
+	}
+	
+	
+	
 }
