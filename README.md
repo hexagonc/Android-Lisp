@@ -120,11 +120,11 @@ Improvements and bugs are broken up by project.
 * Improve better app state logging.  The [AppStateManager](https://github.com/hexagonc/Android-Lisp/blob/master/common/src/main/com/evolved/automata/android/AppStateManager.java) seemed like a good idea at the time but I haven't put it to good enough use yet.
 * Improve general application logging support.  This is purely for diagnostics and is tied to the previous item about app state logging.  Basically, the plan is to expose some of the application logging as a Content Provider and create a separate Android application which can view the logs after a crash on the device itself without having to connect and debug the app with ADB.
 * Improve basic Dropbox handling, especially:
-  * Update to the more recent Dropbox client api when it comes out of beta.  Currently I'm using version 1 because version 2 appears to be in beta.
+  * Update to the more recent Dropbox client api when it comes out of beta.  Currently I'm using version 1.
   * Improve the layout of the Dropbox authorization dialog.  There is a problem where the soft keyboard can obscure the password field in the authentication page.  This is partly a result of the decision to render the authentication page in a dialog instead of in a whole activity.  I may revisit that decision if this becomes too much of a problem.
   * Add better handling of version conflicts with Dropbox (which can happen when you try to upload a file to Dropbox that has changed since you last downloaded it)
   * Improve handling when Dropbox is unavailable, such as saving a cached file
-* Add more polish to the File Chooser Dialog, especially allowing a custom title for the dialog (currently the title asks the user to select a file to load even when the actual purpose of the dialog was to allow the user to create the name of a brand new file to saved to).  Also, need to support a custom description of the ProgressDialog that can appear when accessing a directory takes time (such as it does for Dropbox navigation).
+* Add more polish to the [File Chooser Dialog](https://github.com/hexagonc/Android-Lisp/blob/master/projects/eclipse/AndroidLispGUIBuilder/src/com/evolved/automata/android/lisp/guibuilder/FileChooserDialog.java), especially allowing a custom title for the dialog (currently the title asks the user to select a file to load even when the actual purpose of the dialog was to allow the user to create the name of a brand new file to saved to).  Also, need to support a custom description of the ProgressDialog that can appear when accessing a directory takes time (such as it does for Dropbox navigation).
 * The File Chooser Dialog code should probably be moved to the AndroidTools project anyway, since it is general enough to be of use to nearly any Android program that handles files.
 * Prevent attempting to load binary files into the code editor
 * Need to display a notification after resyncing the code editor text back to Dropbox
@@ -140,7 +140,7 @@ Improvements and bugs are broken up by project.
 * Add Lisp support for ListView
 * Improve the support for __layout_weight__ for the Lisp equivalents to LinearLayout.  Currently, the Lisp LinearLayout proxies don't properly (implementation is buggy and I haven't looked at it in months) support having a layout weight of 1, so that child Views are distributed evenly along a parent's length.  Instead, you have to specifically set the percentage of the LinearLayout's length to allocate for each child.
 * Allow users to set ids and tags for Views created by Lisp
-* Support more layout attributes for the RelayoutLayout Lisp wrapper, https://github.com/hexagonc/Android-Lisp/blob/master/common/src/main/com/evolved/automata/android/lisp/views/RelativeLayoutViewProxy.java
+* Support more layout attributes for the RelativeLayout Lisp wrapper, https://github.com/hexagonc/Android-Lisp/blob/master/common/src/main/com/evolved/automata/android/lisp/views/RelativeLayoutViewProxy.java
 * Add a Lisp function for accessing Application resources
 
 ### DesktopLispTester
