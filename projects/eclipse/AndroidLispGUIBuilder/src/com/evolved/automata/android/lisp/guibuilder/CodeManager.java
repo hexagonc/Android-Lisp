@@ -157,38 +157,58 @@ public class CodeManager {
 			return null;
 	}
 	
-	public String getLastLoadedDropboxParentFolder()
+	public String getLastLoadedDropboxFile()
 	{
-		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_dropbox_parent_folder);
+		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_dropbox_file);
 		return _guiConfiguration.getString(key, "/");
 	}
 	
-	public String getLastLoadedLocalStorageParentFolder()
+	public String getLastLoadedLocalStorageFile()
 	{
-		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_local_storage_parent_folder);
-		return _guiConfiguration.getString(key, _context.getExternalFilesDir(null).getAbsolutePath());
+		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_local_storage_file);
+		return _guiConfiguration.getString(key, null);
 	}
 	
-	public void setLastLoadedLocalStorageParentFolder(String path)
+	public String getParentFolder(File f)
 	{
-		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_local_storage_parent_folder);
-		_guiConfiguration.putString(key, path);
+		return f.getParent();
 	}
 	
-	public void setLastLoadedDropboxParentFolder(String path)
+	public String getParentFolder(String name)
 	{
-		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_dropbox_parent_folder);
-		_guiConfiguration.putString(key, path);
+		return getParentFolder(new File(name));
+	}
+	
+	public void setLastLoadedLocalStorageFile(String file)
+	{
+		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_local_storage_file);
+		_guiConfiguration.putString(key, file);
+	}
+	
+	public void setLastLoadedDropboxFile(String file)
+	{
+		String key = _guiConfiguration.getStringResource(R.string.pref_key_last_loaded_dropbox_file);
+		_guiConfiguration.putString(key, file);
 	}
 	
 	public void showLocalStorageFileSelectDialog(final Activity activity, final OnFileSelectedListener listener)
 	{
-		final String basePath = getLastLoadedLocalStorageParentFolder();
-		FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", getLocalStoragePathChooserItem(new File(basePath), listener));
-		dialog.show();
+		final String lastFile = getLastLoadedLocalStorageFile();
+		if (lastFile == null)
+		{
+			FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", getLocalStoragePathChooserItem(_context.getExternalFilesDir(null), listener));
+			dialog.show();
+		}
+		else
+		{
+			FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", getLocalStoragePathChooserItem(new File(getParentFolder(lastFile)), listener));
+			dialog.show();
+		}
+		
+		
 	}
 	
-	public void showCodeTemplateCreateDialog(final Activity activity, String value)
+	public void showCodeTemplateCreateDialog(final Activity activity, String codePreview)
 	{
 		final Dialog dialog = new Dialog(activity);
 		dialog.setTitle("Name this template");
@@ -202,7 +222,7 @@ public class CodeManager {
 		
 		
 		final EditText previewText = (EditText)dialog.findViewById(R.id.edit_code_template_preview);
-		previewText.setText(value);
+		previewText.setText(codePreview);
 		final EditText nameText = (EditText)dialog.findViewById(R.id.edit_code_template_name);
 		final TextView warningText = (TextView)dialog.findViewById(R.id.txt_warning);
 		nameText.addTextChangedListener(new TextWatcher()
@@ -272,7 +292,7 @@ public class CodeManager {
 	
 	public void showDropboxFileSelectDialog(final Activity activity, final OnFileSelectedListener listener)
 	{
-		final String basePath = getLastLoadedDropboxParentFolder();
+		final String basePath = getLastLoadedDropboxFile();
 		DropboxManager.get().getFile(basePath, new DropboxFile.DropboxFileResponseListener() {
 			
 			@Override
@@ -420,7 +440,7 @@ public class CodeManager {
 					reader.close();
 					reader = null;
 					
-					setLastLoadedLocalStorageParentFolder(f.getParent());
+					setLastLoadedLocalStorageFile(f.getAbsolutePath());
 					setLastLoadedFileUrl(f.getAbsolutePath(), PathProtocol.LOCAL_STORAGE);
 					listener.onFileSelected(f.getAbsolutePath(), out.toString(), PathProtocol.LOCAL_STORAGE, true);
 				}

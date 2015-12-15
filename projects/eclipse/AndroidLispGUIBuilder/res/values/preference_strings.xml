@@ -15,7 +15,7 @@
     
     
     <string name="pref_key_last_loaded_file_url">pref_key_last_loaded_file_url</string>
-    <string name="pref_key_last_loaded_dropbox_parent_folder">pref_key_last_loaded_dropbox_parent_folder</string>
-    <string name="pref_key_last_loaded_local_storage_parent_folder">pref_key_last_loaded_local_storage_parent_folder</string>
+    <string name="pref_key_last_loaded_dropbox_file">pref_key_last_loaded_dropbox_file</string>
+    <string name="pref_key_last_loaded_local_storage_file">pref_key_last_loaded_local_storage_file</string>
     <string name="pref_key_last_clicked_toolarea_type">pref_key_last_clicked_toolarea_type</string>
 </resources>

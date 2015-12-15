@@ -92,7 +92,7 @@ public class LocalStorageToolAreaFragment extends ToolAreaFragment
 					fistream.write(newContents.getBytes(Charset.forName("UTF-8")));
 					
 					CodeManager.get().setLastLoadedFileUrl(fullPath, protocol);
-					CodeManager.get().setLastLoadedLocalStorageParentFolder(fullPath);
+					CodeManager.get().setLastLoadedLocalStorageFile(fullPath);
 					String[] parts = StringUtils.split(fullPath, "/");
 					_uiInterface.setCodeTitle(parts[parts.length-1]);
 				}
@@ -143,6 +143,7 @@ public class LocalStorageToolAreaFragment extends ToolAreaFragment
 					_uiInterface.insertCodeAtEditCursor(fileContents);
 				
 				String url = CodeManager.get().getLastLoadedFileUrl();
+				
 				String filenameshort = CodeManager.get().getShortFileNameFromPathUrl(url);
 				_uiInterface.setCodeTitle(filenameshort);
 					

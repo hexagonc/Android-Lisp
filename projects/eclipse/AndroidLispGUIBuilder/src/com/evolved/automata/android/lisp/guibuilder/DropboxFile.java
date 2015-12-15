@@ -443,7 +443,7 @@ public class DropboxFile
 					Exception e) {
 				if (e == null)
 				{
-					CodeManager.get().setLastLoadedDropboxParentFolder(getParent().getFullFileName());
+					CodeManager.get().setLastLoadedDropboxFile(getFullFileName());
 					CodeManager.get().setLastLoadedFileUrl(getFullFileName(), CodeManager.PathProtocol.DROPBOX);
 					listener.onFileSelected(getFullFileName(), contents, CodeManager.PathProtocol.DROPBOX, true);
 					
