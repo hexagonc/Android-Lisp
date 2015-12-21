@@ -16,6 +16,7 @@ import com.evolved.automata.KeyValuePair;
 
 public class NLispTools 
 {
+	public static final String _FREEZE_PARENT_VALUE_INDICATOR = "*";
 	public static final Class stackTraceClass = FunctionTemplate.class;
 	public static final String _signalKeyBindingName = "signal-key";
 	
@@ -4260,34 +4261,32 @@ public class NLispTools
 		return new KeyValuePair<Value[], HashMap<String, Value>>(normalValues.toArray(new Value[0]), keyMap);
 	}
 	
-	public static final String _SKIP_PREFIX = "*";
 	
-	public static KeyValuePair<Environment, Value> getMinimalEnvironment(Environment base, Value value)
-	{
-		return getMinimalEnvironment(base, null, value);
-	}
 	
-	private static KeyValuePair<Environment, Value> getMinimalEnvironment(Environment base, Environment currentEnvironment, Value value)
+	/**
+	 * This function allows you to evaluate an s-expression within a fixed lexical context.  This is most useful if you have 
+	 * constructed an s-expression, [value], that is dependent on variables in a parent Environment that might change between the time that
+	 * the s-expression is created and when it will be evaluated.  References in [value] to variables from the parent Environment whose value you want to freeze
+	 * to their value at the point that [value] is created are be proceeded by an *.  <br/><br/>Thus, if you want to freeze the value of a variable named 'name' in the parent
+	 * Environment, then you must refer to it within s-expression [value] as '*name'.  If the parent Environment doesn't contain a variable
+	 * called 'name' then this function leaves the reference to '*name' as it is.  If [base] or an ancestor does contain a variable called 'name' and 
+	 * 'name' is reference in [value], then normal variable resolution rules apply.   
+	 * @param base: an Environment that [value] will be evaluated in
+	 * @param value: an unevaluated expression, usually an s-expression that might reference variables from [base] or an ancestor of [base]
+	 * @return A transformed version of [value] where references to frozen variables (by prepending *) in the parent environment are replaced by the
+	 * current values of those variables
+	 */
+	public static Value getMinimalEnvironment(Environment base, Value value)
 	{
-		if (currentEnvironment == null)
-			currentEnvironment = new Environment(base);
-		
-		if (value.isIdentifier() && !value.getString().startsWith(_SKIP_PREFIX))
+		if (value.isIdentifier() && value.getString().startsWith(_FREEZE_PARENT_VALUE_INDICATOR))
 		{
-			
-			if (!currentEnvironment.hasVariable(value.getString()))
+			Value boundValue = base.getVariableValue(value.getString().substring(1));
+			if (boundValue != null)
 			{
-				Value boundValue = base.getVariableValue(value.getString());
-				if (boundValue != null)
-				{
-					currentEnvironment.mapValue(value.getString(), boundValue);
-				}
+				return boundValue;
 			}
-			return new KeyValuePair<Environment, Value>(currentEnvironment, value);
-		}
-		else if (value.isIdentifier() && value.getString().startsWith(_SKIP_PREFIX))
-		{
-			return new KeyValuePair<Environment, Value>(currentEnvironment, NLispTools.makeValue(value.getString().substring(1), true));
+			else
+				return value;
 		}
 		
 		if (value.isList() && value.getList().length>1)
@@ -4295,27 +4294,23 @@ public class NLispTools
 			Value[] oldList = value.getList();
 			Value[] newList = new Value[oldList.length];
 			
-			Value nValue = null;
-			KeyValuePair<Environment, Value> kv;
-			
 			for (int i = 0;i<newList.length;i++)
 			{
-				if (i == 0)
+				if (i == 0) // don't process function calls
 					newList[i] = oldList[i];
 				else
 				{
-					kv = getMinimalEnvironment(base, currentEnvironment, oldList[i]);
-					nValue = kv.GetValue();
-					currentEnvironment = kv.GetKey();
-					newList[i] = nValue;
+					
+					newList[i] = getMinimalEnvironment(base, oldList[i]);
 				}
 			}
-			return new KeyValuePair<Environment, Value>(currentEnvironment, NLispTools.makeValue(newList));
+			return NLispTools.makeValue(newList);
 		}
 			 
-		return new KeyValuePair<Environment, Value>(currentEnvironment, value);
-		
+		return value;
 	}
+	
+
 
 	
 }

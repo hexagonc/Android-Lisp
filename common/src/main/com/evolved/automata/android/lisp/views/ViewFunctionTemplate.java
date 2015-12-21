@@ -14,6 +14,7 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 				{
 					add(ViewProxy.ON_CLICK);
 					add(ViewProxy.ON_LONG_CLICK);
+					add(SeekBarViewProxy.SEEK_CHANGE_LISTENER_KEY);
 				}
 			};
 			

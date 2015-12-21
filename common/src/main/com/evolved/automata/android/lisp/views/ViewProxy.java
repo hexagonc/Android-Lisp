@@ -267,13 +267,13 @@ public abstract class ViewProxy
 		}
 		else
 		{
-			final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(_currentEnv, code);
+			final Value transformed = NLispTools.getMinimalEnvironment(_currentEnv, code);
 			_onClickListener = new View.OnClickListener()
 			{
 
 				@Override
 				public void onClick(View v) {
-					_lispInterpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), true);
+					_lispInterpreter.evaluatePreParsedValue(_currentEnv, transformed, true);
 				}
 				
 			};
@@ -318,14 +318,14 @@ public abstract class ViewProxy
 		}
 		else
 		{
-			final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(_currentEnv, code); 
+			final Value transformed = NLispTools.getMinimalEnvironment(_currentEnv, code); 
 			
 			_onLongClickListener = new View.OnLongClickListener()
 			{
 
 				@Override
 				public boolean onLongClick(View v) {
-					Value out = _lispInterpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), false);
+					Value out = _lispInterpreter.evaluatePreParsedValue(_currentEnv, transformed, false);
 					return out!=null&&!out.isNull();
 				}
 

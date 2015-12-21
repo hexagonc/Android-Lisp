@@ -49,7 +49,7 @@
 
 
 				 (set-enabled (button "start listening"
-				 		 			  :on-click (if (and *ASR_AVAILABLE_P
+				 		 			  :on-click (if (and ASR_AVAILABLE_P
 			 		 			  						 (not (already-listening-p)))
 			 		 			  					(start-speech-recognition)))
 				 		 	  ASR_AVAILABLE_P)
@@ -60,10 +60,10 @@
 				 	   (edit :width "match_parent"
 				 	   		 :height "wrap_content"))
 				 (set-enabled (button "speak message"
-				 					  :on-click (if (and *SPEECH_AVAILABLE_P
+				 					  :on-click (if (and SPEECH_AVAILABLE_P
 				 					  					 (not (already-speaking-p))
 				 					  					 (> (length (trim (setq s
-				 					  					 	   			  		(get-text *speech-edit))))
+				 					  					 	   			  		(get-text speech-edit))))
 				 					  					 	0))
 				 					  				(tts s)))
 				 			 SPEECH_AVAILABLE_P))

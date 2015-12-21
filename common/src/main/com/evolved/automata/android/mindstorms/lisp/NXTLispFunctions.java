@@ -266,6 +266,13 @@ public class NXTLispFunctions
 		};
 	}
 	
+	/**
+	 * Returns the 
+	 * First argument - an nxt interface <br/>
+	 * Second argument - motor port
+	 * @param manager
+	 * @return motor current absolute tachometer
+	 */
 	private static SimpleFunctionTemplate get_motor_tach(final NXTBluetoothManager manager)
 	{
 		return new SimpleFunctionTemplate()

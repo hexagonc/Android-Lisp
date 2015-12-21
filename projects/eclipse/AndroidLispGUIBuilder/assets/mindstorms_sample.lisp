@@ -211,8 +211,8 @@
            (button (if (connected-to-device-p device)
                         "disconnect"
                         "connect")
-                   :on-click (if (not (empty *bluetooth-devices))
-                                 (do-on-click-for-connection-button *device))
+                   :on-click (if (not (empty bluetooth-devices))
+                                 (do-on-click-for-connection-button device))
                    :width "wrap_content"
                    :height "wrap_content")))
 
@@ -674,27 +674,27 @@
                                    :child-align "center"
                                    (button "forward"
                                            :padding 10
-                                           :on-click (move-forward *current-nxt 20)))
+                                           :on-click (move-forward current-nxt 20)))
                       (relative :width "match_parent"
                                 :height "wrap_content"
                                 (button "left"
                                         :padding 10
                                         :parent-align "left"
-                                        :on-click (rotate-left *current-nxt 20))
+                                        :on-click (rotate-left current-nxt 20))
                                 (button "stop"
                                         :padding 10
                                         :parent-align "center"
-                                        :on-click (stop-moving *current-nxt))
+                                        :on-click (stop-moving current-nxt))
                                 (button "right"
                                         :padding 10
                                         :parent-align "right"
-                                        :on-click (rotate-right *current-nxt 20)))
+                                        :on-click (rotate-right current-nxt 20)))
                       (horizontal-layout :width "match_parent"
                                          :height "wrap_content"
                                          :child-align "center"
                                          (button "back"
                                                  :padding 10
-                                                 :on-click (move-backward *current-nxt 20)))
+                                                 :on-click (move-backward current-nxt 20)))
 
                        ))
 
@@ -761,11 +761,11 @@
                                                                                       :border-color "green"
                                                                                       :border-width 2)
                                                            :on-click (progn
-                                                                        (set-border-back (gethash *tab-label-map "configure"))
-                                                                        (set-shadow-back (gethash *tab-label-map "direction-control"))
-                                                                        (remove-all-views *content-view)
-                                                                        (add-view *content-view
-                                                                                  (gethash *tab-view-map
+                                                                        (set-border-back (gethash tab-label-map "configure"))
+                                                                        (set-shadow-back (gethash tab-label-map "direction-control"))
+                                                                        (remove-all-views content-view)
+                                                                        (add-view content-view
+                                                                                  (gethash tab-view-map
                                                                                            "configure")))
                                                            ))
                                    (list "direction-control" (text "direction-control"
@@ -774,11 +774,11 @@
                                                                    :text-style "normal"
                                                                    :on-click (progn
                                                                                 (update-direction-control-status-text)
-                                                                                (set-border-back (gethash *tab-label-map "direction-control"))
-                                                                                (set-shadow-back (gethash *tab-label-map "configure"))
-                                                                                (remove-all-views *content-view)
-                                                                                (add-view *content-view
-                                                                                          (gethash *tab-view-map
+                                                                                (set-border-back (gethash tab-label-map "direction-control"))
+                                                                                (set-shadow-back (gethash tab-label-map "configure"))
+                                                                                (remove-all-views content-view)
+                                                                                (add-view content-view
+                                                                                          (gethash tab-view-map
                                                                                                    "direction-control")))
                                                                    :background (create-shadow-background :shadow-width 4
                                                                                                          :shadow-color "#D8D8D8"

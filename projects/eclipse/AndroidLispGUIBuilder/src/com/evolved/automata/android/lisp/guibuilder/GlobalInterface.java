@@ -87,6 +87,8 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	SpeechControlInterface _speechControlInterface = null;
 	Handler _mainHandler = new Handler(Looper.getMainLooper());
 	
+	
+	
 	public GlobalInterface(Context context) throws InstantiationException, IllegalAccessException
 	{
 		_context = context;
@@ -104,6 +106,9 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		_backgroundLispControlListener = _backgroundInterpreter.start(this, true);
 		_env.mapFunction("evaluate-background", evaluate_background());
 		_env.mapFunction("evaluate-foreground", evaluate_foreground());
+		_env.mapFunction("cancel-background-actions", clear_background_processes());
+		_env.mapFunction("cancel-foreground-actions", clear_foreground_processes());
+		
 		_env.mapValue(_ASR_AVAILABLE_VAR_NAME, NLispTools.makeValue(_asrAvailableP));
 		_env.mapValue(_SPEECH_AVAILABLE_VAR_NAME, NLispTools.makeValue(_ttsAvailableP));
 		_expectedWords = new HashSet<String>();
@@ -149,6 +154,45 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 			
 		};
 	}
+	
+	private SimpleFunctionTemplate clear_background_processes()
+	{
+		return new SimpleFunctionTemplate()
+		{
+			
+			public <T extends FunctionTemplate> T innerClone()
+			{
+				return (T)clear_background_processes();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				_backgroundLispControlListener.breakExecution();
+				return NLispTools.makeValue(true);
+			}
+			
+		};
+	}
+	
+	private SimpleFunctionTemplate clear_foreground_processes()
+	{
+		return new SimpleFunctionTemplate()
+		{
+			
+			public <T extends FunctionTemplate> T innerClone()
+			{
+				return (T)clear_foreground_processes();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				_interpreter.breakProcessing();
+				return NLispTools.makeValue(true);
+			}
+			
+		};
+	}
+	
 	
 	private SimpleFunctionTemplate register_asr_listener()
 	{

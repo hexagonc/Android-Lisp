@@ -156,6 +156,8 @@ public class ViewEvaluator  {
 		
 		env.mapFunction("spinner", spinner(env, activity, interpreter));
 		
+		env.mapFunction("seek-bar", seekBar(env, activity, interpreter));
+		
 		env.mapFunction("horizontal-scrollview", horizontal_scrollview(env, activity, interpreter));
 		
 		env.mapFunction("update-parameters", update_parameters(env, activity, interpreter));
@@ -183,6 +185,8 @@ public class ViewEvaluator  {
 		env.mapFunction("set-selected-spinner-item", set_selected_spinner_item(env, activity, interpreter));
 		
 		env.mapFunction("set-batch-ui-updates", set_batch_ui_updates());
+		
+		env.mapFunction("set-seek-value", setSeekValue());
 	}
 	
 	public static SimpleFunctionTemplate set_batch_ui_updates()
@@ -1599,7 +1603,7 @@ public class ViewEvaluator  {
 			}
 			
 			@Override
-			public Value evaluate(Environment env, Value[] args) {
+			public Value evaluate(final Environment env, Value[] args) {
 				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
 				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
 				HashMap<String, Value> keys = kv.GetValue();
@@ -1636,13 +1640,13 @@ public class ViewEvaluator  {
 						}
 						else
 						{
-							final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(env, onPositiveClick); 
+							final Value transformed = NLispTools.getMinimalEnvironment(env, onPositiveClick); 
 							
 							builder.setPositiveButton(positiveButtonText, new DialogInterface.OnClickListener() {
 								
 								@Override
 								public void onClick(DialogInterface dialog, int which) {
-									Value out = interpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), true);
+									Value out = interpreter.evaluatePreParsedValue(env, transformed, true);
 									dialog.dismiss();
 								}
 							});
@@ -1679,13 +1683,13 @@ public class ViewEvaluator  {
 						}
 						else
 						{
-							final KeyValuePair<Environment, Value> transformed = NLispTools.getMinimalEnvironment(env, onCancelClick); 
+							final Value transformed = NLispTools.getMinimalEnvironment(env, onCancelClick); 
 							
 							builder.setNegativeButton(cancelButtonText, new DialogInterface.OnClickListener() {
 								
 								@Override
 								public void onClick(DialogInterface dialog, int which) {
-									Value out = interpreter.evaluatePreParsedValue(transformed.GetKey(), transformed.GetValue(), true);
+									Value out = interpreter.evaluatePreParsedValue(env, transformed, true);
 									dialog.dismiss();
 								}
 							});
@@ -1861,6 +1865,68 @@ public class ViewEvaluator  {
 				SpinnerViewProxy proxy = new SpinnerViewProxy(con, kv.GetValue(), spinnerSpecList);
 				proxy.setLispInterpreter(env, interpreter);
 
+				return ExtendedFunctions.makeValue(proxy);
+			}
+		};
+	}
+	
+	public static ViewFunctionTemplate seekBar(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+	{
+		return new ViewFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)seekBar(env, con, interpreter);
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+				
+				 
+				Value minValue = evaluatedArgs[0];
+				Value maxValue = evaluatedArgs[1];
+				
+						
+				SeekBarViewProxy proxy = new SeekBarViewProxy(con, kv.GetValue(), minValue.getFloatValue(), maxValue.getFloatValue());
+				proxy.setLispInterpreter(env, interpreter);
+				
+				if (evaluatedArgs.length>2)
+				{
+					Value currentValue = evaluatedArgs[2];
+					proxy.setCurrentValue(currentValue.getFloatValue());
+				}
+				return ExtendedFunctions.makeValue(proxy);
+			}
+		};
+	}
+	
+	
+	public static ViewFunctionTemplate setSeekValue()
+	{
+		return new ViewFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)setSeekValue();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+					
+				SeekBarViewProxy proxy = (SeekBarViewProxy)evaluatedArgs[0].getObjectValue();
+				Value value = evaluatedArgs[1];
+				
+				proxy.setCurrentValue(value.getFloatValue());
 				return ExtendedFunctions.makeValue(proxy);
 			}
 		};

@@ -292,7 +292,15 @@ public class CodeManager {
 	
 	public void showDropboxFileSelectDialog(final Activity activity, final OnFileSelectedListener listener)
 	{
-		final String basePath = getLastLoadedDropboxFile();
+		String prevFile = getLastLoadedDropboxFile();
+		if (prevFile == null)
+			prevFile = "/";
+		else
+		{
+			prevFile = getParentFolder(prevFile);
+		}
+		final String basePath = prevFile;
+		
 		DropboxManager.get().getFile(basePath, new DropboxFile.DropboxFileResponseListener() {
 			
 			@Override

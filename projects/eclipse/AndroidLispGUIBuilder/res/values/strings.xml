@@ -35,6 +35,10 @@
     -->
     <string name="enc_dropbox_app_key"></string>
     
+    <!-- Enter the name of your Dropbox application.  This in the name of the Dropbox folder underneath 
+    Apps that users of your application can save and load files.  It is also the name that you registered
+    with Dropbox when setting up your developer account. -->
+    
     <string name="dropbox_app_client_name"></string>
     
     <string name = 'file_chooser_file_select_text'>Select file</string>

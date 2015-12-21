@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import android.content.Context;
@@ -23,6 +24,10 @@ public class AndroidLispInterpreter
 	Context _context;
 	Handler _mainThreadHandler;
 	ResponseListener _eListener;
+	boolean _breakRequestedP = false;
+	LinkedList<Runnable> _pendingEvaluationMap = new LinkedList<Runnable>();
+	boolean _runningProcessP = false;
+	Object _breakSynch = new Object();
 	
 	
 	public AndroidLispInterpreter(Context context, Environment env, ResponseListener listener)
@@ -47,6 +52,22 @@ public class AndroidLispInterpreter
 	public void setNewEnvironment(Environment env)
 	{
 		_env = env;
+	}
+	
+	public void breakProcessing()
+	{
+		synchronized(_breakSynch)
+		{
+			if (_runningProcessP)
+				_breakRequestedP = true;
+			while (_pendingEvaluationMap.size()>0)
+			{
+				Runnable next = _pendingEvaluationMap.removeFirst();
+				_mainThreadHandler.removeCallbacks(next);
+			}
+		}
+		
+		
 	}
 	
 	
@@ -92,31 +113,47 @@ public class AndroidLispInterpreter
 			} catch (Exception e) {
 				notifyError(e);
 				return null;
-			} 
-			if (tout.isContinuation())
+			}
+			if (_breakRequestedP && tout.isContinuation())
 			{
-				_mainThreadHandler.post(getEvaluationSlice(env, tout, remaining));
+				_breakRequestedP = false;
 				return null;
 			}
-			else if (alwaysUseCallbackP)
+			synchronized(_breakSynch)
 			{
-				if (remaining.size()>0)
-					evaluatePreParsedValue(env, remaining.removeFirst(), remaining, alwaysUseCallbackP);
-				else if (_eListener!=null)
-					_eListener.onResult(tout);
-				return null;
-			}
-			else
-			{
-				if (remaining.size()>0)
-					return evaluatePreParsedValue(env, remaining.removeFirst(), remaining, alwaysUseCallbackP);
+				if (tout.isContinuation())
+				{
+					_mainThreadHandler.post(getEvaluationSlice(env, tout, remaining));
+					return null;
+				}
+				else if (alwaysUseCallbackP)
+				{
+					if (remaining.size()>0)
+						evaluatePreParsedValue(env, remaining.removeFirst(), remaining, alwaysUseCallbackP);
+					else if (_eListener!=null)
+						_eListener.onResult(tout);
+					return null;
+				}
 				else
-					return tout;
+				{
+					if (remaining.size()>0)
+						return evaluatePreParsedValue(env, remaining.removeFirst(), remaining, alwaysUseCallbackP);
+					else
+						return tout;
+				}
 			}
+			
 		}
 		else
 		{
-			_mainThreadHandler.post(getEvaluationSlice(env, value, remaining));
+			synchronized(_breakSynch)
+			{
+				if (!_breakRequestedP)
+					_mainThreadHandler.post(getEvaluationSlice(env, value, remaining));
+				else
+					_breakRequestedP = false;
+			}
+			
 			return null;
 		}
 	}
@@ -133,67 +170,129 @@ public class AndroidLispInterpreter
 	
 	public Value evaluateFunction(final FunctionTemplate function)
 	{
-		if (Looper.myLooper() == Looper.getMainLooper())
+		try
 		{
-			try
+			
+			if (Looper.myLooper() == Looper.getMainLooper())
 			{
-				Value out = function.evaluate(_env, false);
-				if (out.isContinuation())
+				_runningProcessP = true;
+				try
 				{
-					_mainThreadHandler.post(getEvaluationSlice(_env, out, new LinkedList<Value>()));
-					return null;
+					
+					Value out = function.evaluate(_env, false);
+					synchronized (_breakSynch)
+					{
+						_runningProcessP = false;
+						if (_breakRequestedP && out.isContinuation())
+						{
+							_breakRequestedP = false;
+							return null;
+						}
+						
+						if (out.isContinuation())
+						{
+							if (!_breakRequestedP)
+								_mainThreadHandler.post(getEvaluationSlice(_env, out, new LinkedList<Value>()));
+							else
+								_breakRequestedP = false;
+							return null;
+						}
+						else
+							return out;
+					}
+					
 				}
-				else
-					return out;
+				catch (Exception e)
+				{
+					notifyError(e);
+				}
+				return null;
 			}
-			catch (Exception e)
+			else
 			{
-				notifyError(e);
+				synchronized (_breakSynch)
+				{
+					if (!_breakRequestedP)
+					{				
+						_mainThreadHandler.post(new Runnable()
+						{
+							public void run()
+							{
+								evaluateFunction(function);
+							}
+						});
+					}
+					else
+						_breakRequestedP = false;
+				}
+				
+				return null;
 			}
-			return null;
 		}
-		else
+		finally
 		{
-			_mainThreadHandler.post(new Runnable()
-			{
-				public void run()
-				{
-					evaluateFunction(function);
-				}
-			});
-			return null;
+			_runningProcessP = false;
 		}
+		
 		
 		
 	}
 	
 	private Runnable getEvaluationSlice(final Environment env, final Value input, final LinkedList<Value> remaining)
 	{
-		return new Runnable()
+		
+		Runnable record = new Runnable()
 		{
 			public void run()
 			{
-				Value tout = null;
-				try {
-					if (input.isContinuation())
-						tout = input.getContinuingFunction().evaluate(env, true);
-					else
-						tout = env.evaluate(input, false);
-				} catch (Exception e) {
-					notifyError(e);
-					return;
-				} 
-				if (tout.isContinuation())
+				_runningProcessP = true;
+				try
 				{
-					_mainThreadHandler.post(getEvaluationSlice(env, tout, remaining));
+					_pendingEvaluationMap.remove(this);
+					Value tout = null;
+					try {
+						
+						if (input.isContinuation())
+							tout = input.getContinuingFunction().evaluate(env, true);
+						else
+							tout = env.evaluate(input, false);
+					} catch (Exception e) {
+						notifyError(e);
+						return;
+					}
+					
+					synchronized (_breakSynch)
+					{
+						_runningProcessP = false;
+						if (_breakRequestedP && tout.isContinuation())
+							return;
+						if (tout.isContinuation())
+						{
+							if (!_breakRequestedP)
+								_mainThreadHandler.post(getEvaluationSlice(env, tout, remaining));
+							
+						}
+						else if (remaining.size() > 0) 
+						{
+							if (!_breakRequestedP)
+								_mainThreadHandler.post(getEvaluationSlice(env, remaining.removeFirst(), remaining));
+							
+						} else if (_eListener!=null)
+							_eListener.onResult(tout);
+						
+					}
 				}
-				else if (remaining.size() > 0) 
+				finally
 				{
-					_mainThreadHandler.post(getEvaluationSlice(env, remaining.removeFirst(), remaining));
-				} else if (_eListener!=null)
-					_eListener.onResult(tout);
+					_breakRequestedP = false;
+					_runningProcessP = false;
+					
+				}
+				
 			}
 		};
+		_pendingEvaluationMap.add(record);
+		return record;
 	}
 	
 	
