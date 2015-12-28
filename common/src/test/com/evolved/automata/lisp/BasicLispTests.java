@@ -7,9 +7,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import junit.framework.Assert;
+
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.junit.Test;
 
+import com.evolved.automata.lisp.LispInterpreter.LispInputListener;
 import com.evolved.automata.lisp.LispInterpreter.LispResponseListener;
 
 public class BasicLispTests extends TestHarnessBase
@@ -269,6 +272,142 @@ public class BasicLispTests extends TestHarnessBase
 		
 	}
 	
+	@Test
+	public void testAsynchEarlyContinuationBreak()
+	{
+		Environment env = new Environment();
+		Thread t = null;
+		try
+		{
+			final CountDownLatch finishLatch = new CountDownLatch(1);
+			NLispTools.addDefaultFunctionsAddMacros(env);
+			int timeoutMilli = 4000;
+			final int breakMilli = 1000;
+			int failureTimeout = timeoutMilli + 1000;
+			env.mapValue("timeout", NLispTools.makeValue(timeoutMilli));
+			addAssertFunction(env);
+			long startTime = System.currentTimeMillis();
+			LispInterpreter interpreter = new LispInterpreter(env);
+			
+			final LispInputListener inputListener = interpreter.start(new LispResponseListener()
+			{
+
+				@Override
+				public void onOutput(Value out) {
+					if (finishLatch.getCount()>0)
+						finishLatch.countDown();
+				}
+
+				@Override
+				public void onIncompleteInputException(String message) {
+					Assert.assertTrue("Incomplete input exception", false);
+					if (finishLatch.getCount()>0)
+						finishLatch.countDown();
+				}
+
+				@Override
+				public void onGeneralException(Throwable e) {
+					Assert.assertTrue("Lisp Exception: " + e.toString(), false);
+					if (finishLatch.getCount()>0)
+						finishLatch.countDown();
+				}
+				
+			}, true);
+			
+			inputListener.evaluateExpression("(progn (setq stop-time (+ timeout (time))) (unless (> (time) stop-time)) (assert-true F \"break failure\"))");
+			t = new Thread()
+			{
+				public void run()
+				{
+					try
+					{
+						Thread.sleep(breakMilli);
+						inputListener.breakExecution();
+						if (finishLatch.getCount()>0)
+							finishLatch.countDown();
+					}
+					catch (InterruptedException ie)
+					{
+						
+					}
+				}
+						
+			};
+			t.start();
+			Assert.assertTrue("Exception due to general failure", finishLatch.await(failureTimeout, TimeUnit.MILLISECONDS));
+			Assert.assertTrue((System.currentTimeMillis() - startTime) < (timeoutMilli + breakMilli)/2 );
+			interpreter.stop(false, 1000);
+		}
+		catch (Exception e)
+		{
+			Assert.assertTrue("Exception: " + e.toString(), false);
+			if (t!=null && t.isAlive())
+				t.interrupt();
+		}
+		
+	}
+	
+	
+	@Test
+	public void testSimulataneousTimers()
+	{
+		int processCount = 4;
+		
+		Environment env = new Environment();
+		
+		env.mapValue("process-count", NLispTools.makeValue(processCount));
+		LispInterpreter interpreter = new LispInterpreter(env);
+		CountDownLatch completionLatch = new CountDownLatch(processCount);
+		final LispInputListener inputListener = interpreter.start(new LispResponseListener()
+		{
+
+			@Override
+			public void onOutput(Value out) {
+				
+			}
+
+			@Override
+			public void onIncompleteInputException(String message) {
+				Assert.assertTrue("Incomplete input exception", false);
+				
+			}
+
+			@Override
+			public void onGeneralException(Throwable e) {
+				Assert.assertTrue("Lisp Exception: " + e.toString(), false);
+				
+			}
+			
+		}, true);
+		
+		addEvaluateBackgroundFunction(env, inputListener);
+		
+		addCountdownFunction(env, completionLatch);
+		addPrintFunction(env);
+		int failureTimeout = processCount * 1000*2;
+		long start = System.currentTimeMillis();
+		long lowerBound = start + 1000*processCount, upperBound = start + 1500*processCount;
+		try
+		{
+			NLispTools.addDefaultFunctionsAddMacros(env);
+			inputListener.evaluateExpression("(defun countdown (count) (evaluate-background (for i count (latch-count-down) (progn (print \"Countdown: \" count \": \" i) (setq stop (+ (time) 1000)) (unless (> (time) stop)))))) (for i process-count process-count (countdown (+ i 1)))");
+			Assert.assertTrue("await timeout failure: ",completionLatch.await(failureTimeout, TimeUnit.MILLISECONDS));
+			long stop = System.currentTimeMillis();
+			Assert.assertTrue("Process completion failure", stop >=lowerBound && stop <= upperBound);
+		}
+		catch (Exception e)
+		{
+			Assert.assertTrue("General test error: " + e.toString(), false);
+		}
+		finally
+		{
+			interpreter.stop(false, 1000);
+		}
+		
+	}
+	
+	
+	
 	
 	@Test
 	public void testAsynchLispInterpreterContinuation2()
@@ -435,9 +574,7 @@ public class BasicLispTests extends TestHarnessBase
 			assertTrue(e.toString(), false);
 		}
 		
-		
-		
-		
-		
 	}
+	
+
 }

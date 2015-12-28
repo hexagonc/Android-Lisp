@@ -18,6 +18,9 @@ public class LispInterpreter
 	volatile CountDownLatch _shutdownIndicator = null;
 	Object _synch = new Object();
 	volatile boolean _runningP = false;
+	boolean _breakRequested = false;
+	Object _breakSynch = new Object();
+	boolean _idle = true;
 	
 	public interface LispResponseListener
 	{
@@ -85,7 +88,10 @@ public class LispInterpreter
 				public void evaluateExpression(String exp) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(null, NLispTools.makeValue(exp)));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(null, NLispTools.makeValue(exp)));
+						}
 					}
 					catch (InterruptedException ie)
 					{
@@ -97,7 +103,10 @@ public class LispInterpreter
 				public void evaluateValue(Value value) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(null, value));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(null, value));
+						}
 					}
 					catch (InterruptedException ie)
 					{
@@ -108,7 +117,13 @@ public class LispInterpreter
 
 				@Override
 				public void breakExecution() {
-					_commandQueue.clear();
+					
+					synchronized (_breakSynch)
+					{
+						if (_idle && _commandQueue.size() == 0)
+							return;
+						_breakRequested = true;
+					}
 					
 				}
 
@@ -129,7 +144,10 @@ public class LispInterpreter
 				public void evaluateExpression(String exp, Environment env) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(env, NLispTools.makeValue(exp)));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(env, NLispTools.makeValue(exp)));
+						}
 					}
 					catch (InterruptedException e)
 					{
@@ -154,7 +172,10 @@ public class LispInterpreter
 				public void evaluateValue(Value value, Environment env) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(env, value));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(env, value));
+						}
 					}
 					catch (InterruptedException e)
 					{
@@ -182,7 +203,10 @@ public class LispInterpreter
 				public void evaluateExpression(String exp) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(null, NLispTools.makeValue(exp)));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(null, NLispTools.makeValue(exp)));
+						}
 					}
 					catch (InterruptedException ie)
 					{
@@ -194,7 +218,10 @@ public class LispInterpreter
 				public void evaluateValue(Value value) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(null, value));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(null, value));
+						}
 					}
 					catch (InterruptedException ie)
 					{
@@ -205,8 +232,10 @@ public class LispInterpreter
 
 				@Override
 				public void breakExecution() {
-					_commandQueue.clear();
-					
+					synchronized (_breakSynch)
+					{
+						_breakRequested = true;
+					}
 				}
 
 				@Override
@@ -226,7 +255,10 @@ public class LispInterpreter
 				public void evaluateExpression(String exp, Environment env) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(env, NLispTools.makeValue(exp)));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(env, NLispTools.makeValue(exp)));
+						}
 					}
 					catch (Exception e)
 					{
@@ -251,7 +283,10 @@ public class LispInterpreter
 				public void evaluateValue(Value value, Environment env) {
 					try
 					{
-						_commandQueue.put(new KeyValuePair<Environment, Value>(env, value));
+						synchronized (_breakSynch)
+						{
+							_commandQueue.put(new KeyValuePair<Environment, Value>(env, value));
+						}
 					}
 					catch (InterruptedException ie)
 					{
@@ -276,7 +311,10 @@ public class LispInterpreter
 			if (_processThread != null)
 			{
 				_shutdownIndicator = new CountDownLatch(1);
-				_commandQueue.clear();
+				synchronized (_breakSynch)
+				{
+					_commandQueue.clear();
+				}
 				_processThread.interrupt();
 				try {
 					if (maxWaitMilli < 0)
@@ -319,7 +357,25 @@ public class LispInterpreter
 						startup.countDown();
 					while (true)
 					{
+						
+						
+						synchronized (_breakSynch)
+						{
+							_idle = true;
+						}
 						command = _commandQueue.take();
+						
+						synchronized (_breakSynch)
+						{
+							_idle = false;
+							if (_breakRequested)
+							{
+								_commandQueue.clear();
+								_breakRequested = false;
+								continue;
+							}
+						}
+						
 						commandValue = command.GetValue();
 						customEnvironment = command.GetKey();
 						if (commandValue.isString() && !commandValue.isContinuation())
@@ -400,8 +456,10 @@ public class LispInterpreter
 						
 						if (out.isContinuation())
 						{
-							
-							_commandQueue.add(new KeyValuePair<Environment, Value>(customEnvironment, out));
+							synchronized (_breakSynch)
+							{
+								_commandQueue.add(new KeyValuePair<Environment, Value>(customEnvironment, out));
+							}
 						}
 						else if (_responseListener!=null)
 						{
