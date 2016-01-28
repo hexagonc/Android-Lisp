@@ -17,6 +17,8 @@ import java.util.HashMap;
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter.ResponseListener;
+import com.evolved.automata.android.lisp.guibuilder.events.ActivityLifeCycleEventListener;
+import com.evolved.automata.android.lisp.guibuilder.events.EventManager;
 import com.evolved.automata.android.lisp.guibuilder.fragments.CodeEditFragment;
 import com.evolved.automata.android.lisp.guibuilder.fragments.LispBuilderFragment;
 import com.evolved.automata.android.lisp.guibuilder.fragments.RenderFragment;
@@ -41,14 +43,14 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	GlobalInterface _data = null;
 	
 	String _CONSOLE_TAB_NAME = "Console";
-	String _RENDER_TAB_NAME = "Render";
+	String _RENDER_TAB_NAME = "Rendered";
 	String _startTabLabel = _CONSOLE_TAB_NAME;
 	
 	public enum LogType
 	{
 		INFO, ERROR, VERBOSE
 	}
-	
+	ActivityLifeCycleEventListener _activityEventListener;
 	
 	
 	@Override
@@ -70,7 +72,9 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		}
 		
 		configureActionBarUI();
+		_activityEventListener = EventManager.getInstance().getLifeCycleEventNotifier();
 		
+		_activityEventListener.onCreate(this);
 	}
 	
 	private void log(String msg)
@@ -104,6 +108,12 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		_data.setViewProxy(null);
 	}
 	
+	private void updateWorkspaceInActionbarTitle()
+	{
+		ActionBar bar = getActionBar();
+		bar.setTitle(CodeManager.get().getWorkspace().getCurrentProject().getName());
+	}
+	
 	private void configureActionBarUI()
 	{
 		ActionBar.Tab tab = null;
@@ -121,6 +131,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 			_tabMap.put(label, tab);
 		}
 		bar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
+		
 		bar.show();
 	}
 
@@ -136,11 +147,8 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		// Handle action bar item clicks here. The action bar will
 		// automatically handle clicks on the Home/Up button, so long
 		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
-		if (id == R.id.action_settings) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
+		
+		return MenuManager.get().onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
 	}
 
 	@Override
@@ -216,6 +224,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 			if (NXTBluetoothManager.getInstance()!=null)
 				NXTBluetoothManager.getInstance().stopNXTBluetoothService();
 		}
+		_activityEventListener.onDestroy(this);
 		super.onDestroy();
 	}
 
@@ -223,6 +232,39 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	public Activity getActivity() {
 	
 		return this;
+	}
+
+	@Override
+	protected void onStart() {
+
+		super.onStart();
+		updateWorkspaceInActionbarTitle();
+		_activityEventListener.onStart(this);
+	}
+
+	@Override
+	protected void onResume() {
+
+		super.onResume();
+		_activityEventListener.onResume(this);
+	}
+
+	@Override
+	protected void onPause() {
+		_activityEventListener.onPause(this);
+		super.onPause();
+	}
+
+	@Override
+	protected void onStop() {
+		_activityEventListener.onStop(this);
+		super.onStop();
+	}
+
+	@Override
+	public boolean onPrepareOptionsMenu(Menu menu) {
+		
+		return MenuManager.get().onPrepareOptionsMenu(menu) || super.onPrepareOptionsMenu(menu);
 	}
 	
 }

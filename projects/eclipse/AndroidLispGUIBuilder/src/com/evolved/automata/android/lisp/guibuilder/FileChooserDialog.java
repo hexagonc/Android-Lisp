@@ -51,7 +51,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 	FileChooserItem _selectedFile = null;
 	
 	String _title;
-	
+	String _progressBarTitle = "";
 	Activity _activity;
 	public FileChooserDialog(Activity activity, String title, FileChooserItem baseFolder)
 	{
@@ -65,6 +65,11 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 			_currentFolder.onClickListener(null);
 			_nothingToDo = true;
 		}
+	}
+	
+	public void setProgressTitle(String progressTitle)
+	{
+		_progressBarTitle = progressTitle;
 	}
 
 	private boolean childExists(String name)
@@ -258,7 +263,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 				{
 					if (_progressDialog==null && _showProgressRequestedP)
 					{
-						_progressDialog = ProgressDialog.show(_parent,"", "");
+						_progressDialog = ProgressDialog.show(_parent,_progressBarTitle, "");
 					}
 				}
 			};
@@ -268,7 +273,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 		{
 			if (_progressDialog==null && _showProgressRequestedP)
 			{
-				_progressDialog = ProgressDialog.show(_parent,"", "");
+				_progressDialog = ProgressDialog.show(_parent,_progressBarTitle, "");
 			}
 			
 		}

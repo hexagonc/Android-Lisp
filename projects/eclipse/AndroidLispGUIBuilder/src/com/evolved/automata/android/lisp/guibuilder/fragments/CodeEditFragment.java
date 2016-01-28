@@ -3,30 +3,51 @@ package com.evolved.automata.android.lisp.guibuilder.fragments;
 
 
 import java.io.BufferedReader;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
+
+import org.apache.commons.lang3.StringUtils;
 
 import com.evolved.automata.AITools;
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager;
+import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
 import com.evolved.automata.android.lisp.guibuilder.GuiBuilderConfiguration;
+import com.evolved.automata.android.lisp.guibuilder.MenuManager;
+import com.evolved.automata.android.lisp.guibuilder.ProjectManagementView;
 import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnCodeTemplateSelectedListener;
+import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnFileSelectedListener;
+import com.evolved.automata.android.lisp.guibuilder.CodeManager.PathProtocol;
+import com.evolved.automata.android.lisp.guibuilder.DropboxManager.OnFileUploadListener;
 import com.evolved.automata.android.lisp.guibuilder.MainActivity.LogType;
+import com.evolved.automata.android.lisp.guibuilder.events.ActivityLifeCycleEventListener;
+import com.evolved.automata.android.lisp.guibuilder.events.EventManager;
+import com.evolved.automata.android.lisp.guibuilder.events.ProjectEventListener;
+import com.evolved.automata.android.lisp.guibuilder.events.ToolAreaEventListener;
 import com.evolved.automata.android.lisp.guibuilder.toolareas.CodeManagementUIInterface;
 import com.evolved.automata.android.lisp.guibuilder.toolareas.CodeTemplateToolAreaFragment;
 import com.evolved.automata.android.lisp.guibuilder.toolareas.DropboxToolAreaFragment;
 import com.evolved.automata.android.lisp.guibuilder.toolareas.LocalStorageToolAreaFragment;
 import com.evolved.automata.android.lisp.guibuilder.toolareas.ToolAreaFragment;
+import com.evolved.automata.android.lisp.guibuilder.workspace.CodePage;
+import com.evolved.automata.android.lisp.guibuilder.workspace.Project;
+import com.evolved.automata.android.lisp.guibuilder.workspace.Workspace;
 import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.android.widgets.ShadowButton;
 import com.evolved.automata.lisp.Value;
 
+import android.app.ActionBar;
+import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -64,6 +85,10 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     ShadowButton _renderButton = null;
     ShadowButton _clearScreenButton = null;
     
+    
+    ShadowButton _historyBackButton = null;
+    ShadowButton _historyForwardButton = null;
+    
     int _hintTextDuration = 0;
     
     EditText _editText = null;
@@ -81,10 +106,36 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     Handler _main = new Handler(Looper.getMainLooper());
     public final String _PREFIX_COMMENT_TOKEN = ";";
     
+    ProjectEventListener _projectEventListener;
+    ToolAreaEventListener _toolAreaNotifier;
+    
     @Override
     public void onCreate(Bundle savedInstanceState) {
         
         super.onCreate(savedInstanceState);
+        _projectEventListener = new ProjectEventListener()
+        {
+
+			@Override
+			public void currentCodePageDeleted(String newPageTitle,
+					String newPageText, boolean hasPrevious, boolean hasNext) {
+				_titleText.setText(newPageTitle);
+				_editText.setText(newPageText);
+				if (hasPrevious)
+					_historyBackButton.setVisibility(View.VISIBLE);
+				else
+					_historyBackButton.setVisibility(View.INVISIBLE);
+				
+				if (hasNext)
+					_historyForwardButton.setVisibility(View.VISIBLE);
+				else
+					_historyForwardButton.setVisibility(View.INVISIBLE);
+			}
+        	
+        };
+        EventManager.getInstance().setProjectEventListener(_projectEventListener);
+        
+        _toolAreaNotifier = EventManager.getInstance().getToolAreaEventNotifier();
         
         _prompt = getActivity().getString(R.string.console_prompt);
         if (_first)
@@ -98,7 +149,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         _localStorageFragment = new LocalStorageToolAreaFragment(this);
         
         _dropboxFragment = new DropboxToolAreaFragment(this);
-        
+        MenuManager.get().setUIInterface(this);
     }
     
 
@@ -125,18 +176,18 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         if (prior != null)
             _editText.setText(prior);
         
-        String priorFilePath = CodeManager.get().getLastLoadedFileUrl();
-        if (priorFilePath != null)
-        {
-        	String shortName = CodeManager.get().getShortFileNameFromPathUrl(priorFilePath);
-        	setCodeTitle(shortName);
-        }
+        MenuManager.get().setCodeEditorMenuMode();
     }
 
     @Override
     public void onResume() {
     
         super.onResume();
+        Project proj = CodeManager.get().getCurrentProject();
+		if (proj != null)
+		{
+			updateHistoryButtonEnability(proj);
+		}
     }
 
     @Override
@@ -156,6 +207,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     public void onDestroyView() {
         super.onDestroyView();
         _cachedView = null;
+        MenuManager.get().setUIInterface(null);
     }
     
     
@@ -167,6 +219,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             ft.replace(R.id.frm_tool_area_fragment_container, _dropboxFragment);
             ft.commit();
             _currentToolAreaFragment = _dropboxFragment;
+            _toolAreaNotifier.dropboxToolsSelected();
         }
     }
     
@@ -178,6 +231,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             ft.replace(R.id.frm_tool_area_fragment_container, _codeTemplateFragment);
             ft.commit();
             _currentToolAreaFragment = _codeTemplateFragment;
+            _toolAreaNotifier.codeTemplateToolsSelected();
         }
     }
     
@@ -189,6 +243,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             ft.replace(R.id.frm_tool_area_fragment_container, _localStorageFragment);
             ft.commit();
             _currentToolAreaFragment = _localStorageFragment;
+            _toolAreaNotifier.localStorageToolsSelected();
         }
     }
     
@@ -336,12 +391,12 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             @Override
             public void onClick(View v) {
                 _editText.setText("");
-                setCodeTitle("");
+                setCodeTitle(GuiBuilderConfiguration.get().getStringResource(R.string.undefined_code_page_label));
                 CodeManager.get().clearLastLoadedFileUrl();
             }
         });
         
-        // TODO: Consider adding a separate but to start a new file
+
         _editText = (EditText)_cachedView.findViewById(R.id.edit_code_view);
         _messageText = (EditText)_cachedView.findViewById(R.id.edit_console_output);
         _editText.setHorizontallyScrolling(true);
@@ -350,6 +405,58 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         
         _hintText = (TextView)_cachedView.findViewById(R.id.txt_hint_text);     
         
+        _historyBackButton = (ShadowButton)_cachedView.findViewById(R.id.but_history_back);
+        _historyForwardButton = (ShadowButton)_cachedView.findViewById(R.id.but_history_forward);
+        
+        _historyForwardButton.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				Project proj = CodeManager.get().getCurrentProject();
+				if (proj != null)
+				{
+					
+					KeyValuePair<String, String> kv = proj.gotoNextPage();
+					updateCodeDisplay(kv);
+					updateHistoryButtonEnability(proj);
+				}
+			}
+		});
+        
+        _historyBackButton.setOnClickListener(new View.OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+				Project proj = CodeManager.get().getCurrentProject();
+				if (proj != null)
+				{
+					KeyValuePair<String, String> kv = proj.gotoPrevPage();
+					updateCodeDisplay(kv);
+					updateHistoryButtonEnability(proj);
+				}
+				
+			}
+		});
+        
+        Project proj = CodeManager.get().getCurrentProject();
+		if (proj != null)
+		{
+			updateHistoryButtonEnability(proj);
+			
+			String url;
+			if (proj.hasCurrentPage() && (url = proj.getCurrentPage().GetKey())!=null)
+			{
+				setCodeTitle(CodeManager.get().getShortFileNameFromPathUrl(url));
+			}
+			else
+				setCodeTitle(GuiBuilderConfiguration.get().getStringResource(R.string.undefined_code_page_label));
+		}
+		else
+		{
+			String url = CodeManager.get().getLastLoadedFileUrl();
+			if (url != null)
+				setCodeTitle(CodeManager.get().getShortFileNameFromPathUrl(url));
+		}
     }
 
     @Override
@@ -368,14 +475,116 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
                 _lastResult = v;
             }
             String svalue = v.toString();
+            
             log(LogType.INFO, svalue);
             appendResult(svalue);
+            updateHistoryWithResult();
         }
         else
             appendResult("null");
     }
     
+    private void updateHistoryWithResult()
+    {
+    	
+        String code = _editText.getText().toString();
+        String lastLoadedUrl = CodeManager.get().getLastLoadedFileUrl();
+        
+        Project proj = CodeManager.get().getCurrentProject();
+        
+        if (proj != null)
+        {
+        	proj.updateLastEvaluatedCode(lastLoadedUrl, code);
+        	updateHistoryButtonEnability(proj);
+        }
+    	
+    }
     
+    private void updateDisplayWithCurrentProjectPage()
+    {
+    	Project proj = CodeManager.get().getCurrentProject();
+        
+        if (proj != null)
+        {
+        	updateHistoryButtonEnability(proj);
+        	CodePage page = proj.getCurrentCodePage();
+        	updateCodeDisplay(page);
+        	updateHistoryButtonEnability(proj);
+        }
+        
+        	
+    	
+    }
+    
+    private void updateCodeDisplay(CodePage page)
+    {
+    	if (page != null)
+    	{
+    		String fileUrl = page.getFileUrl();
+        	String code = page.getCode();
+        	
+        	if (fileUrl != null)
+        	{
+        		setCodeTitle(CodeManager.get().getShortFileNameFromPathUrl(fileUrl));
+        		CodeManager.get().setLastLoadedFileUrl(fileUrl);
+        	}
+        	else
+        	{
+        		setCodeTitle(GuiBuilderConfiguration.get().getStringResource(R.string.undefined_code_page_label));
+        	}
+    		replaceCodeEdit(code);
+    	}
+    	else
+    	{
+    		setCodeTitle(GuiBuilderConfiguration.get().getStringResource(R.string.undefined_code_page_label));
+    		replaceCodeEdit("");
+    	}
+    }
+    
+    
+    private void updateCodeDisplay(KeyValuePair<String, String> codeSpec)
+    {
+    	if (codeSpec != null)
+    	{
+    		String fileUrl = codeSpec.GetKey();
+        	String code = codeSpec.GetValue();
+        	
+        	if (fileUrl != null)
+        	{
+        		setCodeTitle(CodeManager.get().getShortFileNameFromPathUrl(fileUrl));
+        		CodeManager.get().setLastLoadedFileUrl(fileUrl);
+        	}
+        	else
+        	{
+        		setCodeTitle(GuiBuilderConfiguration.get().getStringResource(R.string.undefined_code_page_label));
+        	}
+    		replaceCodeEdit(code);
+    		
+    		
+    	}
+    }
+    
+    private void updateHistoryButtonEnability(Project proj)
+    {
+    	if (proj.getCurrentPage()!=null)
+    	{
+    		if (proj.hasNextPage())
+    			_historyForwardButton.setVisibility(View.VISIBLE);
+    		else
+    			_historyForwardButton.setVisibility(View.INVISIBLE);
+    		
+    		if (proj.hasPrevPage())
+    			_historyBackButton.setVisibility(View.VISIBLE);
+    		else
+    			_historyBackButton.setVisibility(View.INVISIBLE);
+    	
+    	}
+    	else
+    	{
+    		_historyBackButton.setVisibility(View.INVISIBLE);
+    		_historyForwardButton.setVisibility(View.INVISIBLE);
+    	}
+    }
     
     
     private void log(String msg)
@@ -536,5 +745,243 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         };
         GuiBuilderConfiguration.get().getMainHandler().post(startRunnable);
     }
-    
+
+
+
+	@Override
+	public void saveCurrentCodeEditorToDropbox() {
+		final OnFileUploadListener uploadListener = new OnFileUploadListener() {
+			
+			@Override
+			public void uploaded(String filename) {
+				
+			}
+			
+			@Override
+			public void onError(String message, Exception e) {
+				onError(message, e);
+			}
+		};
+		
+		// TODO: implement a save-as function and allow saving brand new files
+		String lastFileUrl = CodeManager.get().getLastLoadedFileUrl();
+		if (lastFileUrl!=null && CodeManager.get().getPathProtocol(lastFileUrl) == CodeManager.PathProtocol.DROPBOX)
+		{
+			DropboxManager.get().resynchLastDownloadedDropboxFile(getCurrentLispEditorCode(), uploadListener);
+			
+		}
+	}
+
+
+
+	@Override
+	public void saveCurrentCodeEditorToLocalStorage() {
+		final OnFileSelectedListener listener = new OnFileSelectedListener()
+		{
+
+			@Override
+			public void onFileSelected(String fullPath, String fileContents,
+					PathProtocol protocol, boolean replaceEditor) {
+				
+				String newContents = getCurrentLispEditorCode();
+				FileOutputStream fistream = null;
+				try
+				{
+					
+					fistream = new FileOutputStream(fullPath, false);
+					fistream.write(newContents.getBytes(Charset.forName("UTF-8")));
+					
+					CodeManager.get().setLastLoadedFileUrl(fullPath, protocol);
+					CodeManager.get().setLastLoadedLocalStorageFile(fullPath);
+					String[] parts = StringUtils.split(fullPath, "/");
+					setCodeTitle(parts[parts.length-1]);
+				}
+				catch (Exception e)
+				{
+					onError("Error saving file: " + fullPath,e);
+				}
+				finally
+				{
+					if (fistream != null)
+						try {
+							fistream.close();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+				}
+				
+					
+			}
+
+			@Override
+			public void onError(String message, Exception e) {
+				onError(message, e);
+			}
+			
+		};
+	
+		CodeManager.get().showLocalStorageFileSelectDialog(getActivity(), listener, true);
+	}
+
+
+
+	@Override
+	public void loadCurrentCodeEditorFromLocalStorage() {
+		final OnFileSelectedListener listener = new OnFileSelectedListener()
+		{
+
+			@Override
+			public void onFileSelected(String fullPath, String fileContents,
+					PathProtocol protocol, boolean replaceEditor) {
+				if (replaceEditor)
+					replaceCodeEdit(fileContents);
+				else
+					insertCodeAtEditCursor(fileContents);
+				
+				String url = CodeManager.get().getLastLoadedFileUrl();
+				
+				String filenameshort = CodeManager.get().getShortFileNameFromPathUrl(url);
+				setCodeTitle(filenameshort);
+					
+			}
+
+			@Override
+			public void onError(String message, Exception e) {
+				onError(message, e);
+			}
+			
+		};
+		
+		CodeManager.get().showLocalStorageFileSelectDialog(getActivity(), listener, false);
+	}
+
+
+
+	@Override
+	public void loadCurrentCodeEditorFromDropbox() {
+		final GuiBuilderConfiguration.OnDropboxAuthorizedListener listener = new GuiBuilderConfiguration.OnDropboxAuthorizedListener()
+		{
+			
+			
+			@Override
+			public void onAuthorized() 
+			{
+				CodeManager.get().showDropboxFileSelectDialog(getActivity(), getFileSelectedListener(), false);
+			}
+			
+		};
+		
+		if (GuiBuilderConfiguration.get().hasDropboxAuthorizationP())
+		{
+			CodeManager.get().showDropboxFileSelectDialog(getActivity(), getFileSelectedListener(), false);
+		}
+		else
+		{
+			GuiBuilderConfiguration.get().showDropboxLoginDialog(getActivity(), listener);
+		}
+		
+	}
+ 
+	
+	// separate
+	
+	protected OnFileSelectedListener getFileSelectedListener()
+	{
+		return new OnFileSelectedListener()
+		{
+
+			@Override
+			public void onFileSelected(String path, String fileContents,
+					PathProtocol protocol, boolean replaceEditor) {
+				if (replaceEditor)
+				{
+					replaceCodeEdit(fileContents);
+				}
+				else
+					insertCodeAtEditCursor(fileContents);
+				String previousUri = CodeManager.get().getLastLoadedFileUrl();
+				setCodeTitle(CodeManager.get().getShortFileNameFromPathUrl(previousUri));
+				
+				
+			}
+
+			@Override
+			public void onError(String message, Exception e) {
+				onError(message, e);
+			}
+			
+		};
+	}
+
+
+
+	@Override
+	public void showTemplateCreateDialog() {
+		String code = getHighlightedText();
+		if (code!=null && code.trim().length()>0)
+		{
+			CodeManager.get().showCodeTemplateCreateDialog(getActivity(), code);
+		}
+		else
+			showHintText("Can't create a blank code template", 7000);
+		
+	}
+
+
+
+	@Override
+	public void showTemplateSelectDialog() {
+		final OnCodeTemplateSelectedListener listener = new OnCodeTemplateSelectedListener()
+		{
+
+			@Override
+			public void templateSelected(String template, boolean replaceEditor) {
+				if (replaceEditor)
+					replaceCodeEdit(template);
+				else
+					insertCodeAtEditCursor(template);
+			}
+			
+		};
+		
+		CodeManager.get().showCodeTemplateSelectDialog(getActivity(), listener);
+	}
+	
+	@Override
+	public void showProjectManagerDialog()
+	{
+		final Dialog d = new Dialog(getActivity());
+		d.setTitle("Manage Projects");
+		d.setContentView(R.layout.project_management_dialog_container);
+		ProjectManagementView proj = (ProjectManagementView)d.findViewById(R.id.proj_management_container);
+		proj.setManagementListener(new ProjectManagementView.ProjectSelectedListener() {
+			
+			@Override
+			public void onSelected(String projectName) {
+				Workspace w = CodeManager.get().getWorkspace();
+				w.switchCurrentProject(projectName);
+				updateDisplayWithCurrentProjectPage();
+				
+				d.dismiss();
+			}
+			
+			@Override
+			public void onCancelled() {
+				d.dismiss();
+			}
+		});
+		d.setOnDismissListener(new DialogInterface.OnDismissListener() {
+			
+			@Override
+			public void onDismiss(DialogInterface dialog) {
+				ActionBar bar = getActivity().getActionBar();
+				Workspace w = CodeManager.get().getWorkspace();
+				Project proj = w.getCurrentProject();
+				bar.setTitle(proj.getName());
+			}
+		});
+		d.show();
+	}
+	
 }

@@ -28,6 +28,7 @@
 		<dependency org="junit" name="junit" rev="4.12"/>
 		<dependency org="org.apache.commons" name="commons-lang3" rev="3.4"/>
 		<dependency org="org.apache.commons" name="commons-math3" rev="3.5"/>
+		<dependency org = "com.fasterxml.jackson.core" name="jackson-databind" rev = "2.6.0"/>
 	</dependencies>
 	
 </ivy-module>

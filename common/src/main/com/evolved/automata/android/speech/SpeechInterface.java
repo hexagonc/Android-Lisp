@@ -358,6 +358,10 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			{
 				
 			}
+			catch (IllegalArgumentException ie) // If not already registered
+			{
+				
+			}
 			
 		}
 	}

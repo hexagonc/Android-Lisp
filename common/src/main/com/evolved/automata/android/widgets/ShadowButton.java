@@ -68,6 +68,7 @@ public class ShadowButton extends RelativeLayout
 		
 		
 	}
+	
 	void initializeFromAttributes(AttributeSet attrs)
 	{
 		TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.Standard_Custom);

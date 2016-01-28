@@ -18,6 +18,16 @@ import com.dropbox.core.DbxRequestUtil;
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
+import com.evolved.automata.android.lisp.guibuilder.events.ActivityLifeCycleEventListener;
+import com.evolved.automata.android.lisp.guibuilder.events.EventManager;
+import com.evolved.automata.android.lisp.guibuilder.workspace.CodePage;
+import com.evolved.automata.android.lisp.guibuilder.workspace.Project;
+import com.evolved.automata.android.lisp.guibuilder.workspace.Workspace;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 
 
@@ -53,6 +63,9 @@ public class CodeManager {
 	GuiBuilderConfiguration _guiConfiguration = null;
 	
 	final LinkedList<KeyValuePair<String, String>> _predefinedSamples;
+	Workspace _workspace = null;
+	ActivityLifeCycleEventListener _lifeCycleEventListener;
+	
 	
 	public interface OnCodeTemplateSelectedListener
 	{
@@ -93,6 +106,48 @@ public class CodeManager {
 		_context = con;
 		_guiConfiguration = GuiBuilderConfiguration.get();
 		_predefinedSamples = setPredefinedCodeTemplates();
+		
+		_lifeCycleEventListener = new ActivityLifeCycleEventListener()
+		{
+
+			@Override
+			public void onCreate(Object obj) {
+				initializeWorkspace();
+			}
+
+			@Override
+			public void onDestroy(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onPause(Object obj) {
+				if (_workspace!=null)
+				{
+					saveWorkspace();
+				}
+			}
+
+			@Override
+			public void onResume(Object obj) {
+				
+			}
+
+			@Override
+			public void onStart(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public void onStop(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+		};
+		EventManager.getInstance().setActivityLifeCycleEventListener(_lifeCycleEventListener);
 	}
 	
 	public static CodeManager create(Context con)
@@ -138,6 +193,11 @@ public class CodeManager {
 	{
 		String url = getPathUrl(basePath, protocol);
 		GuiBuilderConfiguration.get().putString(GuiBuilderConfiguration.get().getStringResource(R.string.pref_key_last_loaded_file_url), url);
+	}
+	
+	public void setLastLoadedFileUrl(String fileUrl)
+	{
+		GuiBuilderConfiguration.get().putString(GuiBuilderConfiguration.get().getStringResource(R.string.pref_key_last_loaded_file_url), fileUrl);
 	}
 	
 	public String getLastLoadedFileUrl()
@@ -191,17 +251,22 @@ public class CodeManager {
 		_guiConfiguration.putString(key, file);
 	}
 	
-	public void showLocalStorageFileSelectDialog(final Activity activity, final OnFileSelectedListener listener)
+	public void showLocalStorageFileSelectDialog(final Activity activity, final OnFileSelectedListener listener, boolean savingP)
 	{
 		final String lastFile = getLastLoadedLocalStorageFile();
+		String dialogTitle;
+		if (savingP)
+			dialogTitle = _guiConfiguration.getStringResource(R.string.local_storage_file_save_dialog_title);
+		else
+			dialogTitle = _guiConfiguration.getStringResource(R.string.local_storage_file_load_dialog_title);
 		if (lastFile == null)
 		{
-			FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", getLocalStoragePathChooserItem(_context.getExternalFilesDir(null), listener));
+			FileChooserDialog dialog = new FileChooserDialog(activity, dialogTitle, getLocalStoragePathChooserItem(_context.getExternalFilesDir(null), listener));
 			dialog.show();
 		}
 		else
 		{
-			FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", getLocalStoragePathChooserItem(new File(getParentFolder(lastFile)), listener));
+			FileChooserDialog dialog = new FileChooserDialog(activity, dialogTitle, getLocalStoragePathChooserItem(new File(getParentFolder(lastFile)), listener));
 			dialog.show();
 		}
 		
@@ -211,7 +276,7 @@ public class CodeManager {
 	public void showCodeTemplateCreateDialog(final Activity activity, String codePreview)
 	{
 		final Dialog dialog = new Dialog(activity);
-		dialog.setTitle("Name this template");
+		dialog.setTitle(_guiConfiguration.getStringResource(R.string.code_template_name_select_dialog_title));
 		
 		
 		dialog.setContentView(R.layout.code_template_create_dialog);
@@ -290,8 +355,15 @@ public class CodeManager {
 	}
 	
 	
-	public void showDropboxFileSelectDialog(final Activity activity, final OnFileSelectedListener listener)
+	public void showDropboxFileSelectDialog(final Activity activity, final OnFileSelectedListener listener, boolean savingP)
 	{
+		final String dialogTitle;
+		
+		if (savingP)
+			dialogTitle = _guiConfiguration.getStringResource(R.string.dropbox_save_file_dialog_title);
+		else
+			dialogTitle = _guiConfiguration.getStringResource(R.string.dropbox_load_file_dialog_title);
+		
 		String prevFile = getLastLoadedDropboxFile();
 		if (prevFile == null)
 			prevFile = "/";
@@ -319,18 +391,18 @@ public class CodeManager {
 			public void onAcquiredFile(final DropboxFile file, Exception e) {
 				if (e!=null)
 				{
-					showDropboxFileSelectDialog(activity, "/", listener);
+					showDropboxFileSelectDialog(activity, "/", listener, dialogTitle);
 				}
 				else
 				{
-					FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", file.asFileChooserItem(listener));
+					FileChooserDialog dialog = new FileChooserDialog(activity, dialogTitle, file.asFileChooserItem(listener));
 					dialog.show();
 				}
 			}
 		});
 	}
 	
-	private void showDropboxFileSelectDialog(final Activity activity, final String basePath, final OnFileSelectedListener listener)
+	private void showDropboxFileSelectDialog(final Activity activity, final String basePath, final OnFileSelectedListener listener, final String dialogTitle)
 	{
 		
 		DropboxManager.get().getFile(basePath, new DropboxFile.DropboxFileResponseListener() {
@@ -353,7 +425,7 @@ public class CodeManager {
 					listener.onError( "Error getting base dropbox path at: " + basePath, e);
 				else
 				{
-					FileChooserDialog dialog = new FileChooserDialog(activity, "Select file to view", file.asFileChooserItem(listener));
+					FileChooserDialog dialog = new FileChooserDialog(activity, dialogTitle, file.asFileChooserItem(listener));
 					dialog.show();
 				}
 			}
@@ -393,6 +465,92 @@ public class CodeManager {
 		codeTemplateParent.setData(tmap, internalListener);
 		
 		dialog.show();
+	}
+	
+	
+	private void initializeWorkspace() 
+	{
+		String serializedWorkspace = _guiConfiguration.getString(R.string.pref_key_workspace_serialized, null);
+		Workspace workspace = null;
+		if (serializedWorkspace == null)
+		{
+			String defaultProjectName = getDefaultProjectName();
+			workspace = new Workspace();
+			workspace.createNewProject(defaultProjectName, true);
+		}
+		else
+		{
+			ObjectMapper om = new ObjectMapper();
+			try
+			{
+				workspace = om.readValue(serializedWorkspace, Workspace.class);
+				Project proj = workspace.getCurrentProject();
+				if (proj!=null)
+					workspace.getProjectMap().put(proj.getName(), proj);
+				CodePage cp;
+				for (String pName:workspace.getProjectMap().keySet())
+				{
+					proj = workspace.getProjectMap().get(pName);
+					cp = proj.getCurrentCodePage();
+					if (cp !=null)
+					{
+						proj.getPageMap().put(cp.getPageKey(), cp);
+					}
+					
+				}
+			}
+			catch (Exception e)
+			{
+				AppStateManager.getInstance().onError("CodeManager:getWorkspace()", e);
+			}
+			
+		}
+		_workspace = workspace;
+	}
+	
+	
+	
+	public Workspace getWorkspace() 
+	{
+		return _workspace;
+	}
+	
+	public Project getCurrentProject()
+	{
+		if (_workspace != null)
+		{
+			return _workspace.getCurrentProject();
+			
+		}
+		return null;
+	}
+	
+	public String getDefaultProjectName()
+	{
+		return _guiConfiguration.getStringResource(R.string.default_project_name);
+	}
+	
+	public boolean saveWorkspace()
+	{
+		try
+		{
+			if (_workspace != null)
+			{
+				ObjectMapper om = new ObjectMapper();
+				
+				String serializedJSON = om.writeValueAsString(_workspace);
+				_guiConfiguration.putString(R.string.pref_key_workspace_serialized, serializedJSON);
+				return true;
+			}
+			else
+				return false;
+		}
+		catch (Exception e)
+		{
+			AppStateManager.getInstance().onError("CodeManager:saveWorkspace()", e);
+			return false;
+		}
+		
 	}
 	
 	public FileChooserItem getLocalStoragePathChooserItem(final File f, final OnFileSelectedListener listener)

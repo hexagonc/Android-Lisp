@@ -10,7 +10,7 @@ import com.evolved.automata.KeyValuePair;
 public class LispInterpreter 
 {
 	 
-	
+	private static int _interpreterCount = 0;
 	Environment _env;
 	LinkedBlockingQueue<KeyValuePair<Environment, Value>> _commandQueue = new LinkedBlockingQueue<KeyValuePair<Environment, Value>>();
 	Thread _processThread = null;
@@ -340,7 +340,8 @@ public class LispInterpreter
 	
 	Thread getProcessThread(final CountDownLatch startup)
 	{
-		return new Thread()
+		_interpreterCount++;
+		return new Thread("LispInterpreter: " + _interpreterCount)
 		{
 			public void run()
 			{

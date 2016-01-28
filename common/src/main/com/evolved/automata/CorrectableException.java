@@ -1,6 +1,6 @@
 package com.evolved.automata;
 
-public abstract class CorrectableException extends RuntimeException
+public abstract class CorrectableException extends Exception
 {
 	public CorrectableException(String message)
 	{

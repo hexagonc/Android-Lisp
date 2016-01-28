@@ -26,8 +26,9 @@
 	</info>
 	<dependencies>
     <dependency org="de.greenrobot" name="eventbus" rev="2.4.0"/>
-    <dependency org = "com.fasterxml.jackson.core" name = "jackson-core" rev = "2.5.4"  />
-    <dependency org = "com.fasterxml.jackson.core" name = "jackson-annotations" rev = "2.5.4"/>
+    <dependency org = "com.fasterxml.jackson.core" name = "jackson-core" rev = "2.6.0"  />
+    <dependency org = "com.fasterxml.jackson.core" name = "jackson-annotations" rev = "2.6.0"/>
+    <dependency org = "com.fasterxml.jackson.core" name="jackson-databind" rev = "2.6.0"/>
     <dependency org = "com.squareup.okhttp" name = "okhttp" rev = "2.4.0"/>
     <dependency org = "com.googlecode.json-simple" name = "json-simple" rev = "1.1.1">
       <exclude org = "org.hamcrest"/>

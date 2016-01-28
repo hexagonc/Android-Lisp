@@ -316,9 +316,20 @@ public class GuiBuilderConfiguration
 		return value;
 	}
 	
+	public String putString(int resourceKey, String value)
+	{
+		_sPreferences.edit().putString(getStringResource(resourceKey), value).commit();
+		return value;
+	}
+	
 	public String getString(String key, String defaultValue)
 	{
 		return _sPreferences.getString(key, defaultValue);
+	}
+	
+	public String getString(int resourceKey, String defaultValue)
+	{
+		return _sPreferences.getString(getStringResource(resourceKey), defaultValue);
 	}
 	
 	public boolean getBoolean(String key, boolean defaultValue)

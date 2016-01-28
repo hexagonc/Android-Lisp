@@ -1,6 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder.toolareas;
 
 import com.evolved.automata.android.lisp.guibuilder.CodeManager;
+import com.evolved.automata.android.lisp.guibuilder.MenuManager;
 import com.evolved.automata.android.lisp.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnCodeTemplateSelectedListener;
 
@@ -42,25 +43,26 @@ public class CodeTemplateToolAreaFragment extends ToolAreaFragment
 
 	@Override
 	public void onResume() {
-		// TODO Auto-generated method stub
+
 		super.onResume();
+		MenuManager.get().setCodeEditorMenuType(MenuManager.MenuType.DEFAULT_AND_CODE_TEMPLATES);
 	}
 
 	@Override
 	public void onPause() {
-		// TODO Auto-generated method stub
+
 		super.onPause();
 	}
 
 	@Override
 	public void onDestroyView() {
-		// TODO Auto-generated method stub
+
 		super.onDestroyView();
 	}
 
 	@Override
 	public void onDestroy() {
-		// TODO Auto-generated method stub
+
 		super.onDestroy();
 	}
 
@@ -81,14 +83,7 @@ public class CodeTemplateToolAreaFragment extends ToolAreaFragment
 			
 			@Override
 			public void onClick(View v) {
-				String code = _uiInterface.getHighlightedText();
-				if (code!=null && code.trim().length()>0)
-				{
-					CodeManager.get().showCodeTemplateCreateDialog(getActivity(), code);
-				}
-				else
-					_uiInterface.showHintText("Can't create a blank code template", 7000);
-				
+				_uiInterface.showTemplateCreateDialog();
 				
 			}
 		};
@@ -97,24 +92,13 @@ public class CodeTemplateToolAreaFragment extends ToolAreaFragment
 	
 	private View.OnClickListener getInsertButtonOnClickListener()
 	{
-		final OnCodeTemplateSelectedListener listener = new OnCodeTemplateSelectedListener()
-		{
-
-			@Override
-			public void templateSelected(String template, boolean replaceEditor) {
-				if (replaceEditor)
-					_uiInterface.replaceCodeEdit(template);
-				else
-					_uiInterface.insertCodeAtEditCursor(template);
-			}
-			
-		};
+		
 		
 		return new View.OnClickListener() {
 			
 			@Override
 			public void onClick(View v) {
-				CodeManager.get().showCodeTemplateSelectDialog(getActivity(), listener);
+				_uiInterface.showTemplateSelectDialog();
 				
 				
 			}

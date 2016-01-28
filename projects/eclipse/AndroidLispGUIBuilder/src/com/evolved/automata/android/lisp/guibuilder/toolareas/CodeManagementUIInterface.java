@@ -10,4 +10,16 @@ public interface CodeManagementUIInterface {
 
 	public void showHintText(String text, int duration);
 	public void showHintText(String text);
+	
+	
+	public void saveCurrentCodeEditorToDropbox();
+	public void saveCurrentCodeEditorToLocalStorage();
+	
+	public void loadCurrentCodeEditorFromLocalStorage();
+	public void loadCurrentCodeEditorFromDropbox();
+	
+	public void showTemplateCreateDialog();
+	public void showTemplateSelectDialog();
+	
+	public void showProjectManagerDialog();
 }

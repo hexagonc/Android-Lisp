@@ -2,6 +2,7 @@ package com.evolved.automata.lisp;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -14,6 +15,7 @@ import org.junit.Test;
 
 import com.evolved.automata.lisp.LispInterpreter.LispInputListener;
 import com.evolved.automata.lisp.LispInterpreter.LispResponseListener;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class BasicLispTests extends TestHarnessBase
 {
@@ -576,5 +578,77 @@ public class BasicLispTests extends TestHarnessBase
 		
 	}
 	
+	@Test
+	public void testCodePageSerialDeSerialization()
+	{
+		try
+		{
+			String code = "(for x (\"x\" \"y\") (print x) (print x))";
+			String pageKey = java.util.UUID.randomUUID().toString();
+			String nextKey = null;
+			String prevKey = "";
+			String url = "/Users/Evolved8/Dropbox/knowledge/test.sql";
+			CodePage page = new CodePage(pageKey, url, nextKey, prevKey, code);
+			
+			ObjectMapper om = new ObjectMapper();
+			String json = om.writeValueAsString(page);
+			
+			CodePage newPage = om.readValue(json, CodePage.class);
+			
+			Assert.assertTrue("Serialization failure", page.equals(newPage));
+			
+			Assert.assertTrue("Null check failure", newPage.getNextPage() == null);
+		}
+		catch (Exception e)
+		{
+			Assert.assertTrue("General exception: " + e.toString(), false);
+		}
+	}
+	
+	@Test
+	public void testCodePageMapSerialDeSerialzation()
+	{
+		try
+		{
+			String code = "(for x (\"x\" \"y\") (print x) (print x))";
+			String pageKey = java.util.UUID.randomUUID().toString();
+			String nextKey = null;
+			String prevKey = null;
+			String url = "/Users/Evolved8/Dropbox/knowledge/test.sql";
+			CodePage page = new CodePage(pageKey, url, nextKey, prevKey, code);
+			
+			CodePageMap cpm = new CodePageMap();
+			
+			cpm.setCurrentPage(pageKey);
+			HashMap<String, CodePage> map = new HashMap<String, CodePage>();
+			map.put(pageKey, page);
+			
+			ObjectMapper om = new ObjectMapper();
+			
+			String json = om.writeValueAsString(cpm);
+			
+			CodePageMap recovered = om.readValue(json, CodePageMap.class);
+			Assert.assertTrue("Equality error", cpm.equals(recovered));
+			
+		}
+		catch (Exception e)
+		{
+			Assert.assertTrue("General exception in serialize map: " + e.toString(), false);
+		}
+	}
+	
+	public void testCode()
+	{
+		double late = 37.7940865;
+		double lone = -122.4115304;
+		
+		double lats = 40.7481018;
+		double lons = -73.9848219;
+		
+		double dlon = Math.PI/180*(lone - lons);
+		double dlat = Math.PI/180*(late = lats);
+		
+		
+	}
 
 }
