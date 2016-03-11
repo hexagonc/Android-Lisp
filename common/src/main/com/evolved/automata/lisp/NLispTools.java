@@ -3715,7 +3715,7 @@ public class NLispTools
 		}
 		);
 		
-		
+		env.mapFunction("set-nth", set_nth());
 		
 		env.mapFunction("<", less());
 		
@@ -3747,6 +3747,31 @@ public class NLispTools
 		
 		env.mapFunction("pow", pow());
 		return env;
+	}
+	
+	public static SimpleFunctionTemplate set_nth()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(3, false, true);
+				if (evaluatedArgs[0].isList())
+				{
+					Value[] values = evaluatedArgs[0].getList();
+					int index = (int)evaluatedArgs[1].getIntValue();
+					Value n = evaluatedArgs[2];
+					values[index] = n;
+					return makeValue(values);
+				}
+				else 
+					throw new RuntimeException("First argument to 'set-nth' must be a list");
+				
+			}
+			
+		};
+		
 	}
 	
 	public static SimpleFunctionTemplate pow()
