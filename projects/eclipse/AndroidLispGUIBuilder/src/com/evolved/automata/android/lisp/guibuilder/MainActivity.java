@@ -6,6 +6,9 @@ import android.app.ActionBar.TabListener;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
+import android.content.ComponentName;
+import android.content.Context;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -51,7 +54,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		INFO, ERROR, VERBOSE
 	}
 	ActivityLifeCycleEventListener _activityEventListener;
-	
+	ComponentName cname;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +78,9 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		_activityEventListener = EventManager.getInstance().getLifeCycleEventNotifier();
 		
 		_activityEventListener.onCreate(this);
+		AudioManager manager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+		cname = new ComponentName(this, BluetoothButtonEventReceiver.class);
+		manager.registerMediaButtonEventReceiver(cname);
 	}
 	
 	private void log(String msg)
@@ -225,6 +231,8 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 				NXTBluetoothManager.getInstance().stopNXTBluetoothService();
 		}
 		_activityEventListener.onDestroy(this);
+		AudioManager manager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+		manager.unregisterMediaButtonEventReceiver(cname);
 		super.onDestroy();
 	}
 

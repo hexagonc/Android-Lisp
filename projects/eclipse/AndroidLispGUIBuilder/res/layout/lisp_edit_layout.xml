@@ -114,6 +114,21 @@
             android:layout_weight='1'
             android:gravity = 'center'>
 	        <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = 'EvExp'
+	           custom:textSize = '@dimen/lisp_edit_shadow_button_text_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:id = '@+id/but_run_expr'
+	           
+	           />
+	    </FrameLayout>
+	    <FrameLayout
+	        android:layout_width="0px"
+            android:layout_height='wrap_content'
+            android:layout_weight='1'
+            android:gravity = 'center'>
+	        <com.evolved.automata.android.widgets.ShadowButton 
 	           custom:text = 'Clear'
 	           custom:textSize = '@dimen/lisp_edit_shadow_button_text_size'
 	           custom:textColor = '#000'
@@ -146,6 +161,8 @@
        android:typeface="monospace"
        android:textSize="12sp"
        android:gravity = 'left|top'
+       
+       android:scrollbarStyle="insideOverlay"
        />
    <TextView android:layout_width = 'wrap_content'
        android:layout_height = 'wrap_content'

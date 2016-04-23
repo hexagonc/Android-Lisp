@@ -22,4 +22,6 @@ public interface CodeManagementUIInterface {
 	public void showTemplateSelectDialog();
 	
 	public void showProjectManagerDialog();
+	
+	public void toggleEditorReadOnlyStatus(boolean readOnly);
 }

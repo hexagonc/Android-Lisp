@@ -211,7 +211,10 @@ public class Environment
 		}
 		catch (Exception e)
 		{
-			return null;
+			if (e instanceof RuntimeException)
+				throw (RuntimeException)e;
+			else
+				throw new RuntimeException(e.toString());
 		}
 		return result;
 	}

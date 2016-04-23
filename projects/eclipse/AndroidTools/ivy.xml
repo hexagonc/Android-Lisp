@@ -26,7 +26,11 @@
 	</info>
 	<dependencies>
 		<dependency org="com.nostra13.universalimageloader" name="universal-image-loader" rev="1.9.1" transitive = "false"/>
-		<dependency org="com.google.android" name="support-v4" rev="r7"/>
+		<dependency org = "com.google.android" name = "support-v4" rev = "r7">
+        <exclude org="xpp3"/>
+        <exclude org="xerces"/>
+        <exclude org="com.google.android"  name = "android"/>
+    </dependency>
 		<dependency org="org.apache.commons" name="commons-lang3" rev="3.4"/>
 		<dependency org="org.apache.commons" name="commons-math3" rev="3.5"/>
 	</dependencies>

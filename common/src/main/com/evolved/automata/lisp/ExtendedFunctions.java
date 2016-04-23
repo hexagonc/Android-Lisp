@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.NavigableSet;
+import java.util.TreeSet;
+
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.PatternMap;
 import com.evolved.automata.filetools.StandardTools;
@@ -1116,81 +1119,253 @@ public class ExtendedFunctions
 		);
 		
 		
-		env.mapFunction("make-descending-heap", new SimpleFunctionTemplate()
+		
+		
+		env.mapFunction("make-ascending-sorted-int-set", new SimpleFunctionTemplate()
 		{
 			// The only argument to this function is a lambda function or 
 			// function spec that maps a Value to number
-			// Returns a heap with the property that it removes objects in the
-			// order of the largest element according to the function specified
+			// Returns a sorted set
 			@Override
 			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
-				checkActualArguments(1, true, true);
-				Value functionSpec = evaluatedArgs[0];
-				final FunctionTemplate f;
-				if (!functionSpec.isLambda())
-				{
-					if (functionSpec.isString())
-					{
-						
-						try {
-							f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
-						}
-						if (f == null)
-							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
-					}
-					else
-						throw new RuntimeException("First argument to apply must be a FunctionTemplate or the name of a function: " + functionSpec);
-				}
-				else
-					f = functionSpec.getLambda();
+				NavigableSet<Long> sset = new TreeSet<Long>();
 				
-				PriorityQueue<Value> scoreHeap = new PriorityQueue<Value>(1, new Comparator<Value>()
-						{
-							public int compare(Value left, Value right)
-							{
-								try
-								{
-									f.setActualParameters(new Value[]{left});
-									
-									Value lresult = f.evaluate(env, false);
-									f.setActualParameters(new Value[]{right});
-									Value rresult = f.evaluate(env, false);
-									
-									if (lresult.getFloatValue() > rresult.getFloatValue())
-										return -1;
-									else if (lresult.getFloatValue() == rresult.getFloatValue())
-										return 0;
-									else
-										return 1;
-								}
-								catch (Exception e)
-								{
-									throw new RuntimeException(e.toString());
-								}
-								
-							}
-						});
 				
-				if (evaluatedArgs.length>1)
-					if (evaluatedArgs[1].isList())
-					{
-						for (Value v:evaluatedArgs[1].getList())
-							scoreHeap.add(v);
-					}
-					else
-						scoreHeap.add(evaluatedArgs[1]);
-				
-				return makeValue(scoreHeap);
+				return makeValue(sset);
 				
 			}
 			
 		}
 		);
+		
+		
+		env.mapFunction("make-descending-sorted-int-set", new SimpleFunctionTemplate()
+		{
+			// The only argument to this function is a lambda function or 
+			// function spec that maps a Value to number
+			// Returns a sorted set
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				NavigableSet<Long> sset = new TreeSet<Long>(new Comparator<Long>()
+						{
+
+							@Override
+							public int compare(Long lhs, Long rhs) {
+							
+								return -lhs.compareTo(rhs);
+							}
+							 
+						}
+						);
+				
+				
+				return makeValue(sset);
+			}
+			
+		}
+		);
+		
+		env.mapFunction("set-contains-key", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			// The second argument to this function is a Value that should map
+			// to an Integral value
+			// 
+			// Returns the input value if it is in the TreeSet
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long key = evaluatedArgs[1].getIntValue();
+				
+				if (sset.contains(key))
+					return evaluatedArgs[1];
+				else
+					return Environment.getNull();
+			}
+			
+		});
+		
+		env.mapFunction("remove-key-from-set", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			// The second argument to this function is a Value that should map
+			// to an Integral value
+			// 
+			// Returns the input value if it was removed from the TreeSet
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long key = evaluatedArgs[1].getIntValue();
+				
+				if (sset.contains(key))
+				{
+					sset.remove(key);
+					return evaluatedArgs[1];
+				}
+				else
+					return Environment.getNull();
+			}
+			
+		});
+		
+		env.mapFunction("add-key-to-set", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			// The second argument to this function is a Value that should map
+			// to an Integral value
+			// 
+			// Returns the input value if it was added to the TreeSet
+			// or false if the key was already present
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long key = evaluatedArgs[1].getIntValue();
+				
+				if (sset.add(key))
+				{
+					return evaluatedArgs[1];
+				}
+				else
+					return Environment.getNull();
+			}
+			
+		});
+		
+		env.mapFunction("get-set-key-range", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			// The second argument to this function is a Value that should map
+			// to an Integral value of the minimum key according to this set's sort
+			// order
+			// The Third argument is the greater key
+			// Optional Fourth and Fifth arguments indicate whether the start or
+			// end keys SHOULD BE EXCLUSIVE in the range or not.  Missing or null
+			// parameters indicate inclusivity
+			// Returns a list of the keys between second argument and third according
+			// to inclusivity rules
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(3, true, true);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long startKey = evaluatedArgs[1].getIntValue();
+				Long endKey = evaluatedArgs[2].getIntValue();
+				boolean reverse = evaluatedArgs.length >5 && !evaluatedArgs[5].isNull();
+				
+				boolean inclusiveStart = evaluatedArgs.length <= 3 || evaluatedArgs[3].isNull();
+				boolean inclusiveEnd = evaluatedArgs.length <= 4 || evaluatedArgs[4].isNull();
+				
+				return getSortedSetRange(sset, startKey, inclusiveStart, endKey, inclusiveEnd, reverse);
+				
+			}
+			
+		});
+		
+		env.mapFunction("get-smallest-set-key", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			
+			// Returns the minimum key in this set according to the comparator
+			// 
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, true, true);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long minimum = sset.first();
+				if (minimum == null)
+					return Environment.getNull();
+				else
+					return NLispTools.makeValue(minimum.longValue()); 
+			}
+			
+		});
+		
+		env.mapFunction("get-largest-set-key", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			
+			// Returns the maximum key in this set according to the comparator
+			// 
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, true, true);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long maximum = sset.last();
+				if (maximum == null)
+					return Environment.getNull();
+				else
+					return NLispTools.makeValue(maximum.longValue()); 
+			}
+			
+		});
+		
+		env.mapFunction("get-lower-set-keys", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			// Second argument is an Integral key
+			// Optional third argument indicates whether to include the given
+			// key, defaults to false
+			// Returns the set of keys less than (or if third argument true, equal to) second argument in reverse order, in the order
+			// of largest (closest to given key)
+			// 
+			// 
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, true, true);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long maximumKey = evaluatedArgs[1].getIntValue();
+				boolean includeKey = evaluatedArgs.length>2 && !evaluatedArgs[2].isNull();
+				
+				NavigableSet<Long> outSet = sset.headSet(maximumKey, includeKey);
+				
+				int i = 0, length = outSet.size();
+				Value[] outValues = new Value[length];
+				for (Long keyInRange:outSet)
+				{
+					outValues[length - i - 1] = NLispTools.makeValue(keyInRange.longValue());
+					i++;
+				}
+				
+				return NLispTools.makeValue(outValues);
+				
+			}
+			
+		});
+		
+		env.mapFunction("get-higher-set-keys", new SimpleFunctionTemplate()
+		{
+			// The first argument is a TreeSet
+			// Second argument is an Integral key
+			// Optional third argument indicates whether to include the given
+			// key, defaults to false
+			// Returns the set of keys greater than (or if third argument true, equal to) second argument in the order
+			// of smallest (closest to given key)
+			// 
+			// 
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, true, true);
+				NavigableSet<Long> sset = (NavigableSet)evaluatedArgs[0].getObjectValue();
+				Long maximumKey = evaluatedArgs[1].getIntValue();
+				boolean includeKey = evaluatedArgs.length>2 && !evaluatedArgs[2].isNull();
+				
+				NavigableSet<Long> outSet = sset.tailSet(maximumKey, includeKey);
+				
+				int i = 0, length = outSet.size();
+				Value[] outValues = new Value[length];
+				for (Long keyInRange:outSet)
+				{
+					outValues[i] = NLispTools.makeValue(keyInRange.longValue());
+					i++;
+				}
+				
+				return NLispTools.makeValue(outValues);
+				
+			}
+			
+		});
 		
 		env.mapFunction("make-ascending-heap", new SimpleFunctionTemplate()
 		{
@@ -1260,6 +1435,82 @@ public class ExtendedFunctions
 					}
 					else
 						scoreHeap.add(evaluatedArgs[1]);
+				return makeValue(scoreHeap);
+				
+			}
+			
+		}
+		);
+		
+		env.mapFunction("make-descending-heap", new SimpleFunctionTemplate()
+		{
+			// The only argument to this function is a lambda function or 
+			// function spec that maps a Value to number
+			// Returns a heap with the property that it removes objects in the
+			// order of the largest element according to the function specified
+			@Override
+			public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, true, true);
+				Value functionSpec = evaluatedArgs[0];
+				final FunctionTemplate f;
+				if (!functionSpec.isLambda())
+				{
+					if (functionSpec.isString())
+					{
+						
+						try {
+							f = env.getFunction(functionSpec.getString());
+						} catch (InstantiationException e) {
+							
+							throw new RuntimeException(e);
+						} catch (IllegalAccessException e) {
+							throw new RuntimeException(e);
+						}
+						if (f == null)
+							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
+					}
+					else
+						throw new RuntimeException("First argument to apply must be a FunctionTemplate or the name of a function: " + functionSpec);
+				}
+				else
+					f = functionSpec.getLambda();
+				
+				PriorityQueue<Value> scoreHeap = new PriorityQueue<Value>(1, new Comparator<Value>()
+						{
+							public int compare(Value left, Value right)
+							{
+								try
+								{
+									f.setActualParameters(new Value[]{left});
+									
+									Value lresult = f.evaluate(env, false);
+									f.setActualParameters(new Value[]{right});
+									Value rresult = f.evaluate(env, false);
+									
+									if (lresult.getFloatValue() > rresult.getFloatValue())
+										return -1;
+									else if (lresult.getFloatValue() == rresult.getFloatValue())
+										return 0;
+									else
+										return 1;
+								}
+								catch (Exception e)
+								{
+									throw new RuntimeException(e.toString());
+								}
+								
+							}
+						});
+				
+				if (evaluatedArgs.length>1)
+					if (evaluatedArgs[1].isList())
+					{
+						for (Value v:evaluatedArgs[1].getList())
+							scoreHeap.add(v);
+					}
+					else
+						scoreHeap.add(evaluatedArgs[1]);
+				
 				return makeValue(scoreHeap);
 				
 			}
@@ -1398,6 +1649,27 @@ public class ExtendedFunctions
 		
 		env.mapFunction("simple-k-means", simple_k_means());
 	}
+	
+	private static Value getSortedSetRange(NavigableSet<Long> set, Long startKey, boolean inclusiveStart, Long endKey, boolean inclusiveEnd, boolean reverseRange)
+	{
+		NavigableSet<Long> outSet = set.subSet(startKey, inclusiveStart, endKey, inclusiveEnd);
+		
+		int i = 0, length = outSet.size();
+		Value[] outValues = new Value[length];
+		for (Long keyInRange:outSet)
+		{
+			if (reverseRange)
+			{
+				outValues[length - i - 1] = NLispTools.makeValue(keyInRange.longValue());
+			}
+			else
+				outValues[i] = NLispTools.makeValue(keyInRange.longValue());
+			i++;
+		}
+		
+		return NLispTools.makeValue(outValues);
+	}
+	
 	
 	public static SimpleFunctionTemplate evaluate_word_number()
 	{
@@ -1551,6 +1823,8 @@ public class ExtendedFunctions
 	
 	public static Value makeValue(Object obj)
 	{
+		if (obj == null)
+			return Environment.getNull();
 		return new UserObjectValue(obj);
 	}
 	

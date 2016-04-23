@@ -3746,6 +3746,18 @@ public class NLispTools
 		env.mapFunction("random-perm", random_perm());
 		
 		env.mapFunction("pow", pow());
+		
+		env.mapFunction("Ln", Ln());
+		env.mapFunction("sqrt", sqrt());
+		
+		env.mapFunction("sin", sin());
+		env.mapFunction("cos", cos());
+		env.mapFunction("tan", tan());
+		
+		env.mapFunction("asin", asin());
+		env.mapFunction("acos", acos());
+		env.mapFunction("atan", atan());
+		
 		return env;
 	}
 	
@@ -3772,6 +3784,165 @@ public class NLispTools
 			
 		};
 		
+	}
+
+	public static SimpleFunctionTemplate sqrt()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.sqrt(arg));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate Ln()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.log(arg));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate atan()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.atan(arg));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate asin()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.asin(arg));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate acos()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.acos(arg));
+				
+			}
+			
+		}
+		;
+	}
+	
+	public static SimpleFunctionTemplate tan()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.tan(arg));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate cos()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.cos(arg));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate sin()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double arg = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.sin(arg));
+			}
+			
+		}
+		;
 	}
 	
 	public static SimpleFunctionTemplate pow()

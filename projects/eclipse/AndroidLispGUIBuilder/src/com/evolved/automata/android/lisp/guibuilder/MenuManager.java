@@ -206,7 +206,10 @@ public class MenuManager
 	private class MenuModeCodeEditor implements MenuMode
 	{
 		
+		
 		public boolean onPrepareOptionsMenu(Menu menu) {
+			
+			
 			switch (_currentMenuType)
 			{
 				case DEFAULT_AND_CODE_TEMPLATES:
@@ -220,6 +223,9 @@ public class MenuManager
 					MenuType.DEFAULT_AND_DROPBOX.removeItems(menu);
 					return true;
 			}
+			
+			
+			
 			return false;
 		}
 		
@@ -242,6 +248,14 @@ public class MenuManager
 								_eventNotifier.currentCodePageDeleted("" , newPaage.GetValue(), project.hasPrevPage(), project.hasNextPage());
 						}
 					}
+					return true;
+				case R.id.menu_readonly_mode:
+					if (item.isChecked())
+						item.setChecked(false);
+					else
+						item.setChecked(true);
+					_uiInterface.toggleEditorReadOnlyStatus(item.isChecked());
+					
 					return true;
 				case R.id.menu_load_dropbox_file:
 					_uiInterface.loadCurrentCodeEditorFromDropbox();

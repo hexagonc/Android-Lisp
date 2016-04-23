@@ -51,8 +51,12 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
+import android.text.Layout;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -82,6 +86,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     
     ViewGroup _cachedView = null;
     ShadowButton _runButton = null;
+    ShadowButton _runExpButton = null;
     ShadowButton _renderButton = null;
     ShadowButton _clearScreenButton = null;
     
@@ -105,14 +110,16 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     boolean _first = true;
     Handler _main = new Handler(Looper.getMainLooper());
     public final String _PREFIX_COMMENT_TOKEN = ";";
-    
+    boolean isReadOnlyP = false;
+    int _cursorPosition = -1;
     ProjectEventListener _projectEventListener;
     ToolAreaEventListener _toolAreaNotifier;
-    
+    GestureDetector _gestureDetector;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         
         super.onCreate(savedInstanceState);
+        _gestureDetector = new GestureDetector(this.getActivity(), _gestureDetectorListener, _main);
         _projectEventListener = new ProjectEventListener()
         {
 
@@ -350,7 +357,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     
     private void configureView()
     {
-                
+    	_cursorPosition = -1;        
         
         configureToolArea();
         _titleText = (TextView)_cachedView.findViewById(R.id.txt_file_title);
@@ -371,6 +378,23 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
                 }
             }
         });
+        
+        _runExpButton= (ShadowButton)_cachedView.findViewById(R.id.but_run_expr);
+        _runExpButton.setOnClickListener(new View.OnClickListener() {
+            
+            @Override
+            public void onClick(View v) {
+                String command = _editText.getText().toString();
+               
+                if (command != null && command.length()>0)
+                {
+                    int cursor = _editText.getSelectionStart();
+                    evaluateCursorExpression(command, cursor);
+                }
+            }
+        });
+        
+        
         
         _renderButton = (ShadowButton)_cachedView.findViewById(R.id.but_render);
         _renderButton.setOnClickListener(new View.OnClickListener() {
@@ -402,7 +426,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         _editText.setHorizontallyScrolling(true);
         _editText.setHorizontalScrollBarEnabled(true);
         _editText.setVerticalScrollBarEnabled(true);
-        
+//        _editText.setScrollBarStyle(TextView.SCROLLBARS_INSIDE_OVERLAY);
         _hintText = (TextView)_cachedView.findViewById(R.id.txt_hint_text);     
         
         _historyBackButton = (ShadowButton)_cachedView.findViewById(R.id.but_history_back);
@@ -415,7 +439,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 				Project proj = CodeManager.get().getCurrentProject();
 				if (proj != null)
 				{
-					
+					_retainScroll = false;
 					KeyValuePair<String, String> kv = proj.gotoNextPage();
 					updateCodeDisplay(kv);
 					updateHistoryButtonEnability(proj);
@@ -430,6 +454,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 				Project proj = CodeManager.get().getCurrentProject();
 				if (proj != null)
 				{
+					_retainScroll = false;
 					KeyValuePair<String, String> kv = proj.gotoPrevPage();
 					updateCodeDisplay(kv);
 					updateHistoryButtonEnability(proj);
@@ -458,6 +483,52 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 				setCodeTitle(CodeManager.get().getShortFileNameFromPathUrl(url));
 		}
     }
+    
+    
+    private void evaluateCursorExpression(String text, int cursorStart)
+    {
+    	
+    	try
+    	{
+    		int stack = 1;
+        	
+        	int endIndex = 0;
+        	for (endIndex = cursorStart;endIndex<text.length();endIndex++)
+        	{
+        		if (text.charAt(endIndex) == ')')
+        		{
+        			stack--;
+        		}
+        		else if (text.charAt(endIndex) == '(')
+        		{
+        			stack++;
+        		}
+        		if (stack == 0)
+        			break;
+        	}
+        	if (endIndex == text.length())
+        		endIndex--;
+        	
+        	int start = cursorStart;
+        	for (start= cursorStart; start>=0;start--)
+        	{
+        		if (text.charAt(start) == '(')
+        			break;
+        	}
+        	
+        	Value result = _data.getInterpreter().evaluateExpression(text.substring(start, endIndex+1), false);
+            if (result != null)
+            {
+            	onResultWithoutHistory(result);
+            }
+    	}
+    	catch (Exception e)
+    	{
+    		onError(e);
+    	}
+    	
+    	
+    }
 
     @Override
     public void onError(Exception e) {
@@ -479,6 +550,25 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             log(LogType.INFO, svalue);
             appendResult(svalue);
             updateHistoryWithResult();
+        }
+        else
+            appendResult("null");
+    }
+    
+    
+    public void onResultWithoutHistory(Value v)
+    {
+        if (v != null)
+        {
+            if (v.getObjectValue() instanceof ViewProxy)
+            {
+                _lastResult = v;
+            }
+            String svalue = v.toString();
+            
+            log(LogType.INFO, svalue);
+            appendResult(svalue);
+            
         }
         else
             appendResult("null");
@@ -668,10 +758,21 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     }
 
 
-
+    boolean _retainScroll = true; 
     @Override
     public void replaceCodeEdit(String newCode) {
+    	
+    	if (_retainScroll)
+    		_cursorPosition = _editText.getScrollY();
+    	//if (<0)
+    	//	_cursorPosition = Math.min(_editText.getSelectionStart(), newCode.length());
+    	//else
+    	//	_cursorPosition = Math.min(_cursorPosition, newCode.length());
         _editText.setText(newCode);
+        if (_retainScroll)
+        	_editText.setScrollY(_cursorPosition);
+        
+        _retainScroll = true;
     }
 
 
@@ -982,6 +1083,112 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 			}
 		});
 		d.show();
+	}
+	
+	
+	@Override
+	public void toggleEditorReadOnlyStatus(boolean readOnly)
+	{
+		isReadOnlyP = readOnly;
+		updateEditorReadOnlyStatus();
+	}
+	
+	
+	
+	GestureDetector.OnGestureListener getGestureListener()
+	{
+		return new GestureDetector.OnGestureListener() {
+			
+			@Override
+			public boolean onSingleTapUp(MotionEvent e) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+			
+			@Override
+			public void onShowPress(MotionEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX,
+					float distanceY) {
+				_editText.scrollBy((int)distanceX, (int)distanceY);
+				return true;
+			}
+			
+			@Override
+			public void onLongPress(MotionEvent e) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
+					float velocityY) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+			
+			@Override
+			public boolean onDown(MotionEvent e) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+		};
+	}
+	
+	
+	GestureDetector.OnGestureListener _gestureDetectorListener = getGestureListener();
+	int offset = -1;
+	private void updateEditorReadOnlyStatus()
+	{
+		if (isReadOnlyP)
+		{
+			//
+			//_editText.setInputType(InputType.);
+			//_editText.setFocusable(false);
+			
+			_editText.setOnTouchListener(new View.OnTouchListener() {
+
+				@Override
+				public boolean onTouch(View v, MotionEvent event) {
+					_gestureDetector.onTouchEvent(event);
+				    switch (event.getAction()) {
+				      case MotionEvent.ACTION_UP:
+				          Layout layout = ((EditText) v).getLayout();
+				          float x = event.getX() + _editText.getScrollX();
+				          float y = event.getY() + _editText.getScrollY();            
+				          int line = layout.getLineForVertical((int) y);                      
+				
+				          // Here is what you wanted:
+				
+				          offset = layout.getOffsetForHorizontal( line,  x);
+				
+				          _editText.post(new Runnable()
+			                {
+			                public void run()
+			                    {
+			                    	_editText.setSelection(offset);
+			                    }
+			                });
+			            
+				          break;
+				        }
+				    return true;
+				}
+
+				});
+			
+			
+			
+			
+		}
+		else
+		{
+			_editText.setOnTouchListener(null);
+		}
 	}
 	
 }
