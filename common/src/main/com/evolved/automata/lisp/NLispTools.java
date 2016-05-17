@@ -294,7 +294,7 @@ public class NLispTools
 						throw new RuntimeException(e);
 					}
 					if (template == null)
-						throw new RuntimeException("Undefined function name for #': " + evaluatedArgs[0].getString());
+						return Environment.getNull();
 					return new LambdaValue(template);
 				}
 				else
@@ -2063,6 +2063,71 @@ public class NLispTools
 		}
 		);
 		
+		env.mapFunction("with*", new FunctionTemplate()
+		{
+
+			Lambda _lambda;
+			
+			public void resetFunctionTemplate()
+			{
+				_lastFunctionReturn = null;
+				_instructionPointer = 0;
+				_lambda = null;
+			}
+			
+			
+			@Override
+			public Value evaluate(Environment env, boolean resume)
+					throws InstantiationException, IllegalAccessException {
+				checkActualArguments(1, true, true);
+				if (!resume)
+					resetFunctionTemplate();
+				Value result = Environment.getNull();
+				
+				
+				for (;_instructionPointer<_actualParameters.length;_instructionPointer++)
+				{
+					if (_instructionPointer == 0)
+					{
+						if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+							result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
+						else
+							result = _lastFunctionReturn = env.evaluate(_actualParameters[_instructionPointer], false);
+						
+						if (result.isContinuation())
+							return continuationReturn(result);
+						if (result.isNull() || result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+							return resetReturn(result);
+						
+						if (!result.isLambda())
+							throw new RuntimeException("First argument to 'with' must be a lambda function: " + result);
+						if (result.getLambda().hasNameP())
+							throw new RuntimeException("Only annonymous lambda functions can be the first argument to 'with' functions");
+						
+						_lambda = (Lambda)result.getLambda();
+						
+					}
+					else
+					{
+						if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+							result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(_lambda.getInnerEnvironment(), resume);
+						else
+							result = _lastFunctionReturn = _lambda.getInnerEnvironment().evaluate(_actualParameters[_instructionPointer], false);
+						
+						if (result.isContinuation())
+							return continuationReturn(result);
+						if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+							return resetReturn(new LambdaValue(_lambda));
+						
+					}
+					
+				}
+				
+				return resetReturn(new LambdaValue(_lambda));
+			}
+		}
+		);
+		
 		env.mapFunction("progn", new FunctionTemplate()
 		{
 
@@ -2375,6 +2440,29 @@ public class NLispTools
 		}
 		);
 		
+		
+		env.mapFunction("parse", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, false);
+				if (evaluatedArgs[0].isString())
+				{
+					LinkedList<Value> results = env.parse(evaluatedArgs[0].getString(), true);
+					if (results.size() == 1)
+						return results.getFirst();
+					else
+						return NLispTools.makeValue(results.toArray(new Value[0]));
+					
+				}
+		
+				throw new RuntimeException("parse requires a string input");
+				
+			}
+			
+		}
+		);
 		
 		env.mapFunction("defhash", new SimpleFunctionTemplate()
 		{

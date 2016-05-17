@@ -473,7 +473,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 			
 		}
 		
-		if (interpretation!=null)
+		if (interpretation!=null && interpretation.length()>0)
 		{
 			notifySpeechStatus(SPEECH_STATUS.RECOGNITION_COMPLETE, interpretation);
 		}
@@ -535,11 +535,25 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		if (results.containsKey(SpeechRecognizer.CONFIDENCE_SCORES))
 		{
 			float[] confidence = results.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES);
+			
+			if (confidence[0] == 0)
+			// First return result is always the highest confidence result
+			// If highest rated is 0 then just use this value
+			{
+				return resultList.get(0);
+			}
+			
 			LinkedList<List<WeightedValue<String>>> components = convertResultList(resultList, confidence), filtered = new LinkedList<List<WeightedValue<String>>>();
 			List<WeightedValue<String>> newSet;
 			double maxWeight = 0.0, weightThreshold = 0.2;
+			
+			
 			if (!_networkSpeechAvailableP) // embedded recognition sometimes returns confidence scores of 0.0 even with good results
+				
+			{
 				weightThreshold = 0.0;
+				
+			}
 			String greatestWord;
 			for (List<WeightedValue<String>> pos:components)
 			{

@@ -64,6 +64,13 @@ public class Environment
 			}
 
 			@Override
+			public String serializedForm()
+			{
+				return "F";
+			}
+
+			
+			@Override
 			public Value clone() {
 				
 				return getNull();

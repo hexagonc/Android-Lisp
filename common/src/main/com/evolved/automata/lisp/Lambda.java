@@ -35,22 +35,111 @@ public class Lambda extends FunctionTemplate {
 	public String toString()
 	{
 		StringBuilder sBuilder = null;
+		String local;
 		if (hasNameP())
 		{
 			sBuilder = new StringBuilder("(#' " + _name + ")");
 		}
 		else
 		{
-			sBuilder = new StringBuilder("(lambda ");
-			sBuilder.append(getParameterListString());
-			sBuilder.append(" ");
-			sBuilder.append(getBodyListString(" "));
-			sBuilder.append(")");
+			String innerfunctions = getInnerFunctions();
+			local = getLocalVariableValues();
+			if (innerfunctions.length() == 0)
+			{
+				sBuilder = new StringBuilder("(lambda ");
+				sBuilder.append(getParameterListString());
+				sBuilder.append("\n");
+//				sBuilder.append(innerfunctions);
+//				if (innerfunctions.length()>0)
+//					sBuilder.append("\n");
+				sBuilder.append(getBodyListString(" "));
+				
+				sBuilder.append(")");
+			}
+			else
+			{
+				sBuilder = new StringBuilder("(with* (funcall (lambda ");
+				sBuilder.append(getParameterListString());
+				sBuilder.append("\n");
+				sBuilder.append(innerfunctions);
+				if (innerfunctions.length()>0)
+					sBuilder.append("\n");
+				sBuilder.append(getBodyListString(" "));
+				sBuilder.append(" this)) \n");
+				
+				if (local.length()>0)
+					sBuilder.append("\n").append(local).append(")");
+			}
+			
+			
 		}
 		
 		
 		return sBuilder.toString();
 		
+	}
+	
+	
+	public String getInnerFunctions (){
+		
+		
+		StringBuilder serialized = new StringBuilder();
+		
+		for (String key: _innerEnvironment._functionMap.keySet())
+		{
+			serialized.append(" \n").append(getInnerFunctionDefinition(key));
+		}
+		return serialized.toString();
+	}
+	
+	private String getInnerFunctionDefinition(String name){
+		
+		FunctionTemplate t = _innerEnvironment._functionMap.get(name);
+		Lambda l = (Lambda)t;
+		StringBuilder sBuilder = new StringBuilder("(defun " + name + " ");
+		
+		sBuilder.append(l.getParameterListString());
+		sBuilder.append(l.getLocalVariableValues());
+		sBuilder.append(" ");
+		sBuilder.append(l.getBodyListString(" "));
+		sBuilder.append(")");
+		
+		return sBuilder.toString();
+	}
+	
+	
+	private String getLocalVariableValues(){
+		if (_innerEnvironment._valueMap.size()== 0)
+			return "";
+		
+		StringBuilder binding = new StringBuilder("\n(multiple-bind ("), values = new StringBuilder("(list ");
+		Value check;
+		boolean first = true;
+		for (String name: _innerEnvironment._valueMap.keySet()){
+			if (name.equals("this"))
+				continue;
+			if (first) {
+				binding.append(name);
+				first =false;
+				check = _innerEnvironment.getVariableValue(name);
+				if (check.isLambda() && check.getLambda() == this)
+					values.append("this");
+				else
+					values.append(check.serializedForm());
+			}
+			else
+			{
+				binding.append(" ").append(name);
+				check = _innerEnvironment.getVariableValue(name);
+				if (check.isLambda() && check.getLambda() == this)
+					values.append(" ").append("this");
+				else
+					values.append(" ").append(check.serializedForm());
+			}
+		}
+		binding.append(") ").toString();
+		values.append("))");
+		return binding.append(values).toString();
 	}
 	
 	public String getBodyListString(String delimiter)
@@ -255,7 +344,7 @@ public class Lambda extends FunctionTemplate {
 			_processedArgs = true;
 		}
 		
-		
+		_innerEnvironment.mapValue("this", new LambdaValue(this));
 		
 		Value result = Environment.getNull();
 		for (;_instructionPointer<_bodyArguments.length;_instructionPointer++)
