@@ -2355,6 +2355,36 @@ public class NLispTools
 		}
 		);
 		
+		env.mapFunction("contains-hash-key", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				if (evaluatedArgs[0].isIntHashtable())
+				{
+					if (evaluatedArgs[0].getIntHashtable().containsKey(evaluatedArgs[1].getIntValue()))
+						return evaluatedArgs[1];
+					else
+						return makeValue(false);
+				}
+				else if (evaluatedArgs[0].isStringHashtable())
+				{
+					if (evaluatedArgs[0].getStringHashtable().containsKey(evaluatedArgs[1].getString()))
+						return evaluatedArgs[1];
+					else
+						return makeValue(false);
+				}
+				else 
+					throw new RuntimeException("Arguments to contains-hash-key must be matched string hashtable and string key or integer hashtable and integer key"); 
+				
+				
+			}
+			
+		}
+		);
+		
 		env.mapFunction("is-int-hashtable", new SimpleFunctionTemplate()
 		{
 

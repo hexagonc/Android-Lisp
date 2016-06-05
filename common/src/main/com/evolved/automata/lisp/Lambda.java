@@ -1,13 +1,17 @@
 package com.evolved.automata.lisp;
 
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.LinkedList;
+
+
 
 
 
 public class Lambda extends FunctionTemplate {
 	final String[] _formalParameters;
 	final Environment _innerEnvironment;
+	final Environment _argEnv;
 	final Value[] _bodyArguments;
 	boolean _appendToVargs = false;
 	static final String _THIS_VAR_NAME = "this";
@@ -22,7 +26,8 @@ public class Lambda extends FunctionTemplate {
 		assert innerEnv!=null;
 		assert formalParameters != null;
 		assert bodyArgs != null;
-		_innerEnvironment = new Environment(innerEnv);
+		_argEnv = new Environment(innerEnv);
+		_innerEnvironment = new Environment(_argEnv);
 		_formalParameters = formalParameters;
 		_bodyArguments = bodyArgs;
 		_previousKeyArgumentName = null;
@@ -30,9 +35,8 @@ public class Lambda extends FunctionTemplate {
 		
 	}
 	
-	
 	@Override
-	public String toString()
+	public String serialize()
 	{
 		StringBuilder sBuilder = null;
 		String local;
@@ -44,31 +48,59 @@ public class Lambda extends FunctionTemplate {
 		{
 			String innerfunctions = getInnerFunctions();
 			local = getLocalVariableValues();
-			if (innerfunctions.length() == 0)
+			if (_bodyArguments.length == 1 && _bodyArguments[0].isIdentifier() && "this".equals(_bodyArguments[0].getString()))
 			{
-				sBuilder = new StringBuilder("(lambda ");
-				sBuilder.append(getParameterListString());
-				sBuilder.append("\n");
-//				sBuilder.append(innerfunctions);
-//				if (innerfunctions.length()>0)
-//					sBuilder.append("\n");
-				sBuilder.append(getBodyListString(" "));
+				if (local.length()>0)
+				{
+					sBuilder = new StringBuilder("(with* (funcall (lambda ");
+					sBuilder.append(getParameterListString());
+					sBuilder.append("\n");
+					sBuilder.append(innerfunctions);
+					if (innerfunctions.length()>0)
+						sBuilder.append("\n");
+					sBuilder.append(getBodyListString(" "));
+					sBuilder.append(")) \n");
+					sBuilder.append("\n").append(local).append(")");
+				}
+				else
+				{
+					sBuilder = new StringBuilder("(funcall (lambda ");
+					sBuilder.append(getParameterListString());
+					sBuilder.append("\n");
+					sBuilder.append(innerfunctions);
+					if (innerfunctions.length()>0)
+						sBuilder.append("\n");
+					sBuilder.append(getBodyListString(" "));
+					sBuilder.append(")) \n");
+					
+				}
 				
-				sBuilder.append(")");
 			}
 			else
 			{
-				sBuilder = new StringBuilder("(with* (funcall (lambda ");
-				sBuilder.append(getParameterListString());
-				sBuilder.append("\n");
-				sBuilder.append(innerfunctions);
-				if (innerfunctions.length()>0)
-					sBuilder.append("\n");
-				sBuilder.append(getBodyListString(" "));
-				sBuilder.append(" this)) \n");
-				
 				if (local.length()>0)
+				{
+					sBuilder = new StringBuilder("(with* (lambda ");
+					sBuilder.append(getParameterListString());
+					sBuilder.append("\n");
+					sBuilder.append(innerfunctions);
+					if (innerfunctions.length()>0)
+						sBuilder.append("\n");
+					sBuilder.append(getBodyListString(" "));
+					sBuilder.append(") \n");
 					sBuilder.append("\n").append(local).append(")");
+				}
+				else
+				{
+					sBuilder = new StringBuilder("(lambda ");
+					sBuilder.append(getParameterListString());
+					sBuilder.append("\n");
+					sBuilder.append(innerfunctions);
+					if (innerfunctions.length()>0)
+						sBuilder.append("\n");
+					sBuilder.append(getBodyListString(" "));
+					sBuilder.append(") \n");
+				}
 			}
 			
 			
@@ -76,6 +108,33 @@ public class Lambda extends FunctionTemplate {
 		
 		
 		return sBuilder.toString();
+	}
+	
+	
+	@Override
+	public String toString()
+	{
+		
+		if (hasNameP())
+		{
+			return "(#' " + _name + ")";
+		}
+		else
+		{
+			String serialized = serialize();
+			try {
+				
+				
+				return "(# " + ExtendedFunctions.getSha1Sum(serialized) + ")";
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}
+			
+		}
+		
+		
+		
 		
 	}
 	
@@ -180,7 +239,7 @@ public class Lambda extends FunctionTemplate {
 	@Override
 	public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 	{
-		T l = (T) new Lambda(_innerEnvironment, _formalParameters, _bodyArguments);
+		T l = (T) new Lambda(_innerEnvironment.getParent().getParent(), _formalParameters, _bodyArguments);
 		l.setName(_name);
 		return l;
 	}
@@ -263,12 +322,12 @@ public class Lambda extends FunctionTemplate {
 							}
 						}
 						else
-							_innerEnvironment.mapValue(name, parameterValue);
+							_argEnv.mapValue(name, parameterValue);
 						_argumentInstructionPointer++;
 					}
 					else
 					{
-						_innerEnvironment.mapValue(name, Environment.getNull());
+						_argEnv.mapValue(name, Environment.getNull());
 					}
 				}
 			}
@@ -306,11 +365,11 @@ public class Lambda extends FunctionTemplate {
 						
 					}
 					else
-						_innerEnvironment.mapValue(name, parameterValue);
+						_argEnv.mapValue(name, parameterValue);
 				}
 				else
 				missing_actual_parameters:{
-					_innerEnvironment.mapValue(name, Environment.getNull());
+					_argEnv.mapValue(name, Environment.getNull());
 				}
 			}
 			
@@ -335,16 +394,20 @@ public class Lambda extends FunctionTemplate {
 					else
 						_variableArgs.add(parameterValue);
 				}
-				_innerEnvironment.mapValue(_VAR_ARGNAME, new ListValue(_variableArgs.toArray(new Value[0])));
-				_innerEnvironment.mapValue(_KEY_VALUE_MAP_VAR_NAME, new StringHashtableValue(_argumentKeyMap));
+				_argEnv.mapValue(_VAR_ARGNAME, new ListValue(_variableArgs.toArray(new Value[0])));
+				_argEnv.mapValue(_KEY_VALUE_MAP_VAR_NAME, new StringHashtableValue(_argumentKeyMap));
 			}
-			_innerEnvironment.mapValue(_THIS_VAR_NAME, new LambdaValue(this));
+			_argEnv.mapValue(_THIS_VAR_NAME, new LambdaValue(this));
 			
 			_instructionPointer = 0;
 			_processedArgs = true;
 		}
 		
-		_innerEnvironment.mapValue("this", new LambdaValue(this));
+		_argEnv.mapValue("this", new LambdaValue(this));
+		if (hasNameP())
+			_argEnv.mapValue("this-name", NLispTools.makeValue(getName()));
+		else
+			_argEnv.mapValue("this-name", Environment.getNull());
 		
 		Value result = Environment.getNull();
 		for (;_instructionPointer<_bodyArguments.length;_instructionPointer++)

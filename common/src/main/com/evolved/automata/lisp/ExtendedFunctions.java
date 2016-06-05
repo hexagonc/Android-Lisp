@@ -5,7 +5,10 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,6 +20,8 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.NavigableSet;
 import java.util.TreeSet;
+
+
 
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.PatternMap;
@@ -39,7 +44,7 @@ public class ExtendedFunctions
 {
 	public static Value _number_grammar;
 	static CFGParser parser = null;
-	
+	private static MessageDigest _sha1digest = null;
 	static
 	{
 		InputStreamReader reader = null;
@@ -98,12 +103,32 @@ public class ExtendedFunctions
 			
 		}
 		
+		try
+		{
+			_sha1digest = MessageDigest.getInstance("SHA-1");
+		}
+		catch (NoSuchAlgorithmException nsa){
+			nsa.printStackTrace();
+		}
 		
 	}
 	
 	
 	public static void addExtendedFunctions(Environment env)
 	{
+		env.mapFunction("serialize", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				return NLispTools.makeValue(evaluatedArgs[0].serializedForm());
+				
+			}
+			
+		}
+		);
+		
 		env.mapFunction("make-structure", new SimpleFunctionTemplate()
 		{
 
@@ -1648,7 +1673,73 @@ public class ExtendedFunctions
 		env.mapFunction("evaluate-word-number", evaluate_word_number());
 		
 		env.mapFunction("simple-k-means", simple_k_means());
+		
+		env.mapFunction("to-sha1", to_sha1_sum());
 	}
+	
+	/* Taken from: http://docs.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html#AppA
+     * Converts a byte to hex digit and writes to the supplied buffer
+     */
+    private static void byte2hex(byte b, StringBuffer buf) {
+        char[] hexChars = { '0', '1', '2', '3', '4', '5', '6', '7', '8',
+                            '9', 'A', 'B', 'C', 'D', 'E', 'F' };
+        int high = ((b & 0xf0) >> 4);
+        int low = (b & 0x0f);
+        buf.append(hexChars[high]);
+        buf.append(hexChars[low]);
+    }
+
+    /* Taken from: http://docs.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html#AppA
+     * Converts a byte array to hex string
+     */
+    private static String toHexString(byte[] block) {
+        StringBuffer buf = new StringBuffer();
+
+        int len = block.length;
+
+        for (int i = 0; i < len; i++) {
+             byte2hex(block[i], buf);
+             if (i < len-1) {
+                 buf.append(":");
+             }
+        }
+        return buf.toString();
+    }
+    
+    // TODO - Optimize this
+	public static String getSha1Sum(String input) throws UnsupportedEncodingException{
+		
+		
+		
+		byte[] raw = input.getBytes("UTF-8");
+		return toHexString(_sha1digest.digest(raw));
+	}
+	
+	
+	
+	public static SimpleFunctionTemplate to_sha1_sum()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, false, false);
+				String stringForm = evaluatedArgs[0].serializedForm();
+				
+				try
+				{
+					return NLispTools.makeValue(getSha1Sum(stringForm));
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+			
+		};
+	}
+	
 	
 	private static Value getSortedSetRange(NavigableSet<Long> set, Long startKey, boolean inclusiveStart, Long endKey, boolean inclusiveEnd, boolean reverseRange)
 	{

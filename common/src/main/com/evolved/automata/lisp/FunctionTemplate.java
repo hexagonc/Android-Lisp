@@ -85,6 +85,11 @@ public abstract class FunctionTemplate
 		return "(#' " + _name + ")";
 	}
 	
+	public String serialize()
+	{
+		return toString();
+	}
+	
 	public void resetFunctionTemplate()
 	{
 		_lastFunctionReturn = null;

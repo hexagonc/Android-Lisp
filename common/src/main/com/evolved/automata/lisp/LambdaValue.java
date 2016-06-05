@@ -40,6 +40,6 @@ public class LambdaValue extends Value {
 	@Override
 	public String serializedForm()
 	{
-		return addQualifiers(_lambda.toString());
+		return addQualifiers(_lambda.serialize());
 	}
 }
