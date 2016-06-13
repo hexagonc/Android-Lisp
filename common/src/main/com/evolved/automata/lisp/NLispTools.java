@@ -2540,6 +2540,42 @@ public class NLispTools
 						HashMap<Long, Value> nMap = new HashMap<Long, Value>();
 						nMap.putAll(map);
 						nMap.put(Long.valueOf(evaluatedArgs[1].getIntValue()), evaluatedArgs[2]);
+						return evaluatedArgs[0];
+					}
+					if (evaluatedArgs[0].isStringHashtable())
+						
+					{
+						HashMap<String, Value> map = evaluatedArgs[0].getStringHashtable();
+						HashMap<String, Value> nMap = new HashMap<String, Value>();
+						nMap.putAll(map);
+						nMap.put(evaluatedArgs[1].getString(), evaluatedArgs[2]);
+						return evaluatedArgs[0];
+					} 
+					
+					
+				}
+		
+				throw new RuntimeException("Incorrect argument type: expected hashtable");
+				
+			}
+			
+		}
+		);
+		
+		env.mapFunction("defhash*+", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(3, false, false);
+				if (evaluatedArgs[0].isHashtable())
+				{
+					if (evaluatedArgs[0].isIntHashtable())
+					{
+						HashMap<Long, Value> map = evaluatedArgs[0].getIntHashtable();
+						HashMap<Long, Value> nMap = new HashMap<Long, Value>();
+						nMap.putAll(map);
+						nMap.put(Long.valueOf(evaluatedArgs[1].getIntValue()), evaluatedArgs[2]);
 						return new IntHashtableValue(nMap);
 					}
 					if (evaluatedArgs[0].isStringHashtable())
@@ -4546,6 +4582,7 @@ public class NLispTools
 	
 	public static Value[] subSequence(Value[] input, int start, int end)
 	{
+		end = Math.min(end, input.length);
 		Value[] out = new Value[end - start];
 		for (int i=start;i<end;i++)
 			out[i-start] = input[i];
