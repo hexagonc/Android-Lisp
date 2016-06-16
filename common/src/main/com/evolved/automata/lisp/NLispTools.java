@@ -2537,18 +2537,16 @@ public class NLispTools
 					if (evaluatedArgs[0].isIntHashtable())
 					{
 						HashMap<Long, Value> map = evaluatedArgs[0].getIntHashtable();
-						HashMap<Long, Value> nMap = new HashMap<Long, Value>();
-						nMap.putAll(map);
-						nMap.put(Long.valueOf(evaluatedArgs[1].getIntValue()), evaluatedArgs[2]);
+						
+						map.put(Long.valueOf(evaluatedArgs[1].getIntValue()), evaluatedArgs[2]);
 						return evaluatedArgs[0];
 					}
 					if (evaluatedArgs[0].isStringHashtable())
 						
 					{
 						HashMap<String, Value> map = evaluatedArgs[0].getStringHashtable();
-						HashMap<String, Value> nMap = new HashMap<String, Value>();
-						nMap.putAll(map);
-						nMap.put(evaluatedArgs[1].getString(), evaluatedArgs[2]);
+						
+						map.put(evaluatedArgs[1].getString(), evaluatedArgs[2]);
 						return evaluatedArgs[0];
 					} 
 					

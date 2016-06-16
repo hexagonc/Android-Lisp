@@ -110,6 +110,48 @@ public class Lambda extends FunctionTemplate {
 		return sBuilder.toString();
 	}
 	
+	public String serializeAsObject()
+	{
+		StringBuilder sBuilder = null;
+		String local;
+		if (hasNameP())
+		{
+			sBuilder = new StringBuilder("(#' " + _name + ")");
+		}
+		else
+		{
+			String innerfunctions = getInnerFunctions();
+			local = getLocalVariableValues(true);
+			if (local.length()>0)
+			{
+				sBuilder = new StringBuilder("(with* (funcall (lambda () this))");
+				
+				sBuilder.append("\n");
+				sBuilder.append(innerfunctions);
+				if (innerfunctions.length()>0)
+					sBuilder.append("\n");
+				
+				sBuilder.append("\n").append(local).append(")");
+			}
+			else
+			{
+				sBuilder = new StringBuilder("(funcall (lambda () ");
+				
+				sBuilder.append("\n");
+				sBuilder.append(innerfunctions);
+				if (innerfunctions.length()>0)
+					sBuilder.append("\n");
+				sBuilder.append("this");
+				sBuilder.append(")) \n");
+				
+			}
+			
+			
+		}
+		
+		
+		return sBuilder.toString();
+	}
 	
 	@Override
 	public String toString()
@@ -200,6 +242,54 @@ public class Lambda extends FunctionTemplate {
 		values.append("))");
 		return binding.append(values).toString();
 	}
+	
+	private String getLocalVariableValues(boolean serializeLambdasAsObjects){
+		// TODO: clean this up.  Shouldn't have too different functions
+		if (!serializeLambdasAsObjects)
+			return getLocalVariableValues();
+		if (_innerEnvironment._valueMap.size()== 0)
+			return "";
+		
+		StringBuilder binding = new StringBuilder("\n(multiple-bind ("), values = new StringBuilder("(list ");
+		Value check;
+		boolean first = true;
+		for (String name: _innerEnvironment._valueMap.keySet()){
+			if (name.equals("this"))
+				continue;
+			if (first) {
+				binding.append(name);
+				first =false;
+				check = _innerEnvironment.getVariableValue(name);
+				if (check.isLambda() && check.getLambda() == this)
+					values.append("this");
+				else
+					if (check.isLambda())
+					{
+						values.append(((LambdaValue)check).serializedForm(true));
+					}
+					else
+					{
+						values.append(check.serializedForm());
+					}
+			}
+			else
+			{
+				binding.append(" ").append(name);
+				check = _innerEnvironment.getVariableValue(name);
+				if (check.isLambda() && check.getLambda() == this)
+					values.append(" ").append("this");
+				else if (check.isLambda())
+				{
+					values.append(" ").append(((LambdaValue)check).serializedForm(true));
+				}else
+					values.append(" ").append(check.serializedForm());
+			}
+		}
+		binding.append(") ").toString();
+		values.append("))");
+		return binding.append(values).toString();
+	}
+	
 	
 	public String getBodyListString(String delimiter)
 	{

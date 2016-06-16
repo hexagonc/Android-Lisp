@@ -121,8 +121,13 @@ public class ExtendedFunctions
 
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
-				checkActualArguments(1, false, true);
-				return NLispTools.makeValue(evaluatedArgs[0].serializedForm());
+				checkActualArguments(1, true, true);
+				if (evaluatedArgs.length>1 && !evaluatedArgs[1].isNull() && evaluatedArgs[0].isLambda())
+				{
+					return NLispTools.makeValue(((LambdaValue)evaluatedArgs[0]).serializedForm(true));
+				}
+				else
+					return NLispTools.makeValue(evaluatedArgs[0].serializedForm());
 				
 			}
 			

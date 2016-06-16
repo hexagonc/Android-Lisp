@@ -42,4 +42,16 @@ public class LambdaValue extends Value {
 	{
 		return addQualifiers(_lambda.serialize());
 	}
+	
+	
+	public String serializedForm(boolean serializeLambdasAsObjects)
+	{
+		if (!serializeLambdasAsObjects)
+			return serializedForm();
+		if (_lambda.hasNameP())
+			return serializedForm();
+		else
+			return addQualifiers(((Lambda)_lambda).serializeAsObject());
+	}
+	
 }

@@ -89,6 +89,28 @@ public class ListValue extends Value
 		builder.append(")");
 		return addQualifiers(builder.toString());
 	}
+	
+	@Override
+	public String serializedForm()
+	{
+		if (!_listValidP)
+		{
+			_listValidP = true;
+			_values = _backingStructure.toArray(new Value[0]);
+		}
+		if (_values.length==0)
+			return "()";
+		StringBuilder builder = new StringBuilder("(" + _values[0].serializedForm());
+		
+		for (int i=1;i<_values.length;i++)
+		{
+			builder.append(" ");
+			builder.append(_values[i].serializedForm());
+		}
+		builder.append(")");
+		return addQualifiers(builder.toString());
+	}
+	
 
 	@Override
 	public synchronized Value clone() {
