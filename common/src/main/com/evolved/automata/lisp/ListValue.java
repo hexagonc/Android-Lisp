@@ -100,7 +100,7 @@ public class ListValue extends Value
 		}
 		if (_values.length==0)
 			return "()";
-		StringBuilder builder = new StringBuilder("(" + _values[0].serializedForm());
+		StringBuilder builder = new StringBuilder("(list " + _values[0].serializedForm());
 		
 		for (int i=1;i<_values.length;i++)
 		{
