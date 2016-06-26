@@ -57,10 +57,10 @@ public class GuiBuilderApplication extends Application
 	static String _DELETE_ALL_AGED_KEY = "delete from objects where context=? and last_access < ?";
 	
 	
-	static String _STANDARD_CREATE_MAIN_TABLE = "create table if not exists objects (name text primary key, context varchar(500),  value text, value_bin blob, last_access integer, primary key (name, context))";
+	static String _STANDARD_CREATE_MAIN_TABLE = "create table if not exists objects (name text, context varchar(500),  value text, value_bin blob, last_access integer, primary key (name, context))";
 	
 	
-	boolean rebuildTable = true;
+	boolean rebuildTable = false;
 	public SQLiteDatabase appDB;
 	
 	SQLiteStatement insertStatement = null;

@@ -45,6 +45,7 @@ public class ExtendedFunctions
 	public static Value _number_grammar;
 	static CFGParser parser = null;
 	private static MessageDigest _sha1digest = null;
+	private static MessageDigest _md5digest = null;
 	static
 	{
 		InputStreamReader reader = null;
@@ -106,6 +107,7 @@ public class ExtendedFunctions
 		try
 		{
 			_sha1digest = MessageDigest.getInstance("SHA-1");
+			_md5digest = MessageDigest.getInstance("MD5");
 		}
 		catch (NoSuchAlgorithmException nsa){
 			nsa.printStackTrace();
@@ -1680,6 +1682,8 @@ public class ExtendedFunctions
 		env.mapFunction("simple-k-means", simple_k_means());
 		
 		env.mapFunction("to-sha1", to_sha1_sum());
+		
+		env.mapFunction("to-md5", to_md5_sum());
 	}
 	
 	/* Taken from: http://docs.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html#AppA
@@ -1720,7 +1724,37 @@ public class ExtendedFunctions
 		return toHexString(_sha1digest.digest(raw));
 	}
 	
-	
+	 // TODO - Optimize this
+	public static String getMd5Sum(String input) throws UnsupportedEncodingException{
+		
+		
+		
+		byte[] raw = input.getBytes("UTF-8");
+		return toHexString(_md5digest.digest(raw));
+	}
+		
+	public static SimpleFunctionTemplate to_md5_sum()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, false, false);
+				String stringForm = evaluatedArgs[0].serializedForm();
+				
+				try
+				{
+					return NLispTools.makeValue(getMd5Sum(stringForm));
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+			
+		};
+	}
 	
 	public static SimpleFunctionTemplate to_sha1_sum()
 	{
