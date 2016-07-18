@@ -34,6 +34,7 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		public void switchToRenderTab();
 		public void switchToCommandEditTab();
 		public Activity getActivity();
+		public void onEnvironmentReset();
 	}
 	
 	public interface LispResponseListener
@@ -94,25 +95,41 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		_context = context;
 		_env = new Environment();
 		_interpreter = new AndroidLispInterpreter(context, _env, null);
-		
-		_backgroundInterpreter = new LispInterpreter(_env);
-		
-		NLispTools.addDefaultFunctionsAddMacros(_env);
-		//ViewEvaluator.bindFunctions(_env, _context, _interpreter);
-		ExtendedFunctions.addExtendedFunctions(_env);
-		NXTLispFunctions.addFunctions(_env, NXTBluetoothManager.getInstance());
 		NXTLispFunctions._lispInterpreter = _interpreter;
+		_backgroundInterpreter = new LispInterpreter(_env);
 		_interpreter.setResponseListener(this);
 		_backgroundLispControlListener = _backgroundInterpreter.start(this, true);
-		_env.mapFunction("evaluate-background", evaluate_background());
-		_env.mapFunction("evaluate-foreground", evaluate_foreground());
-		_env.mapFunction("cancel-background-actions", clear_background_processes());
-		_env.mapFunction("cancel-foreground-actions", clear_foreground_processes());
-		
-		_env.mapValue(_ASR_AVAILABLE_VAR_NAME, NLispTools.makeValue(_asrAvailableP));
-		_env.mapValue(_SPEECH_AVAILABLE_VAR_NAME, NLispTools.makeValue(_ttsAvailableP));
+		resetEnvironment(_env);
 		_expectedWords = new HashSet<String>();
 		setupSpeechInterface();
+	}
+	
+	
+	
+	public void resetEnvironment(Environment env) throws InstantiationException, IllegalAccessException
+	{
+		_env = env;
+		NLispTools.addDefaultFunctionsAddMacros(env);
+		//ViewEvaluator.bindFunctions(_env, _context, _interpreter);
+		ExtendedFunctions.addExtendedFunctions(env);
+		NXTLispFunctions.addFunctions(env, NXTBluetoothManager.getInstance());
+		
+		
+		env.mapFunction("evaluate-background", evaluate_background());
+		env.mapFunction("evaluate-foreground", evaluate_foreground());
+		env.mapFunction("cancel-background-actions", clear_background_processes());
+		env.mapFunction("cancel-foreground-actions", clear_foreground_processes());
+		 
+		onInit((_ttsAvailableP)?android.speech.tts.TextToSpeech.SUCCESS:android.speech.tts.TextToSpeech.ERROR , _asrAvailableP);
+		
+		
+		_interpreter.breakProcessing();
+		_interpreter.setNewEnvironment(env);
+		
+		_backgroundLispControlListener.breakExecution();
+		
+		_proxy = null;
+		
 	}
 	
 	public boolean isRunningInBackground()

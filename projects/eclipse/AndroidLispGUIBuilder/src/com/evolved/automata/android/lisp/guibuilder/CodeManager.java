@@ -145,6 +145,11 @@ public class CodeManager {
 				// TODO Auto-generated method stub
 				
 			}
+
+			@Override
+			public void onResetEnvironmentRequested(Object obj) {
+				
+			}
 			
 		};
 		EventManager.getInstance().setActivityLifeCycleEventListener(_lifeCycleEventListener);

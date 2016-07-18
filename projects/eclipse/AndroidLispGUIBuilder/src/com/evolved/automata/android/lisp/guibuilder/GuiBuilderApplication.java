@@ -143,6 +143,23 @@ public class GuiBuilderApplication extends Application
 		
 	}
 	
+	
+	public void resetEnvironment() throws InstantiationException, IllegalAccessException
+	{
+		Environment env = new Environment();
+		env.mapFunction("set-data-value", setObjectDataValue(appDB, insertStatement, updateSpecificStatement));
+		env.mapFunction("get-data-value", getObjectDataValue(appDB, updateSpecificAccessStatement));
+		env.mapFunction("delete-all-data", deleteAllData(deleteStatement));
+		env.mapFunction("delete-data-value", deleteDataValue(deleteValueStatement));
+		env.mapFunction("check-data-exists", testDataExists(appDB));
+		env.mapFunction("delete-old-data", deleteOldData(deleteOldDataStatement));
+		env.mapFunction("select-old-data-names", selectOldData(appDB));
+		env.mapFunction("get-all-names", selectAllDataKeys(appDB));
+		
+		_data.resetEnvironment(env);
+	}
+	
+	
 	public GlobalInterface getGlobalData()
 	{
 		return _data;

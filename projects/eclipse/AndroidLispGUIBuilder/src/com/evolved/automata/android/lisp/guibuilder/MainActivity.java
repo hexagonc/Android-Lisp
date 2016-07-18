@@ -54,6 +54,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		INFO, ERROR, VERBOSE
 	}
 	ActivityLifeCycleEventListener _activityEventListener;
+	ActivityLifeCycleEventListener _innerListener;
 	ComponentName cname;
 	
 	@Override
@@ -81,6 +82,70 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		AudioManager manager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
 		cname = new ComponentName(this, BluetoothButtonEventReceiver.class);
 		manager.registerMediaButtonEventReceiver(cname);
+		registerLifeCycleEventListener();
+	}
+	
+	
+	private void registerLifeCycleEventListener()
+	{
+		_innerListener = new ActivityLifeCycleEventListener() {
+			
+			@Override
+			public void onStop(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onStart(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onResume(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onResetEnvironmentRequested(Object obj) {
+				try
+				{
+					((GuiBuilderApplication)getApplication()).resetEnvironment();
+					if (_currentFragment!=null)
+						_currentFragment.onEnvironmentReset();
+					ViewEvaluator.bindFunctions(_data.getEnvironment(), MainActivity.this, _data.getInterpreter());
+				}
+				catch (Exception e)
+				{
+					if (_currentFragment!=null)
+						_currentFragment.onError(e);
+				}
+				
+				
+				
+			}
+			
+			@Override
+			public void onPause(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onDestroy(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void onCreate(Object obj) {
+				// TODO Auto-generated method stub
+				
+			}
+		};
+		EventManager.getInstance().setActivityLifeCycleEventListener(_innerListener);
 	}
 	
 	private void log(String msg)
@@ -274,5 +339,13 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		
 		return MenuManager.get().onPrepareOptionsMenu(menu) || super.onPrepareOptionsMenu(menu);
 	}
+
+	
+	@Override
+	public void onEnvironmentReset() {
+		
+	}
+
+	
 	
 }

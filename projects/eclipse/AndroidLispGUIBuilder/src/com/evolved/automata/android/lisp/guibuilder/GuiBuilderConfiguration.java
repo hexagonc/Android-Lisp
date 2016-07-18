@@ -245,7 +245,7 @@ public class GuiBuilderConfiguration
 		String codeSpec = getCodeSnippetsRaw();
 		String codeDelimiter = getCodeSnippetDelimiter();
 		
-		String[] snippets = StringUtils.split(codeSpec, codeDelimiter);
+		String[] snippets = StringUtils.splitByWholeSeparator(codeSpec, codeDelimiter);
 		_codeSnippetMap = new LinkedHashMap<String, String>();
 		String[] pair = null;
 		String label = null;
@@ -253,7 +253,7 @@ public class GuiBuilderConfiguration
 		String pairDelimiter = getCodeLabelDelimiter();
 		for (String keyCodePair:snippets)
 		{
-			pair = StringUtils.split(keyCodePair, pairDelimiter);
+			pair = StringUtils.splitByWholeSeparator(keyCodePair, pairDelimiter);
 			label = pair[0].trim();
 			code = pair[1].trim();
 			_codeSnippetMap.put(label, code);

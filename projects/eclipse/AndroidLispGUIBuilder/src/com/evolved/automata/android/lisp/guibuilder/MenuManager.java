@@ -143,8 +143,15 @@ public class MenuManager
 	
 	public boolean onOptionsItemSelected(MenuItem item)
 	{
-		return _currentMode.onOptionsItemSelected(item);
-		
+		if (!_currentMode.onOptionsItemSelected(item))
+		{
+			switch (item.getItemId())
+			{
+				case R.id.menu_reset_environment:
+					return resetEnvironment(); 
+			}
+		}
+		return false;
 	}
 	
 	
@@ -174,6 +181,8 @@ public class MenuManager
 			{
 				case R.id.menu_show_help:
 					return showHelpMenuItem();
+				case R.id.menu_reset_environment:
+					return resetEnvironment();
 					
 			}
 			return false;
@@ -197,6 +206,8 @@ public class MenuManager
 			{
 				case R.id.menu_show_help:
 					return showHelpMenuItem();
+				case R.id.menu_reset_environment:
+					return resetEnvironment();
 					
 			}
 			return false;
@@ -286,6 +297,12 @@ public class MenuManager
 	
 	private boolean showHelpMenuItem()
 	{
+		return true;
+	}
+	
+	private boolean resetEnvironment()
+	{
+		EventManager.getInstance().getLifeCycleEventNotifier().onResetEnvironmentRequested(this);
 		return true;
 	}
 }

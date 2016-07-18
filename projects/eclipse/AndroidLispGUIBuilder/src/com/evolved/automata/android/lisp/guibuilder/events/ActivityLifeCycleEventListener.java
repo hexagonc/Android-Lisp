@@ -8,5 +8,5 @@ public interface ActivityLifeCycleEventListener
 	public void onResume(Object obj);
 	public void onStart(Object obj);
 	public void onStop(Object obj);
-	
+	public void onResetEnvironmentRequested(Object obj);
 }

@@ -38,4 +38,7 @@ public abstract class LispBuilderFragment extends Fragment implements LispInterp
 		
 	}
 	
+	
+	public abstract void onEnvironmentReset();
+	
 }

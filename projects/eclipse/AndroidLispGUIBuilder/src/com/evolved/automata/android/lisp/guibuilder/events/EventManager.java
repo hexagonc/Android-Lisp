@@ -92,11 +92,21 @@ public class EventManager
 		};
 	}
 	
+	/**
+	 * Sets the objects that will be notified when the events occurs
+	 * 
+	 */
 	public void setActivityLifeCycleEventListener(ActivityLifeCycleEventListener listener)
 	{
 		_lifeCycleEventSet.add(listener);
 	}
 	
+	/**
+	 * Gets a temporary object that will be used to notify the activity life cycle listeners.  Call
+	 * the appropriate methods indicating the event that occurred
+	 * 
+	 * @return
+	 */
 	public ActivityLifeCycleEventListener getLifeCycleEventNotifier()
 	{
 		return new ActivityLifeCycleEventListener()
@@ -147,6 +157,14 @@ public class EventManager
 				for (ActivityLifeCycleEventListener listener:_lifeCycleEventSet)
 				{
 					listener.onStop(obj);
+				}
+			}
+
+			@Override
+			public void onResetEnvironmentRequested(Object obj) {
+				for (ActivityLifeCycleEventListener listener:_lifeCycleEventSet)
+				{
+					listener.onResetEnvironmentRequested(obj);
 				}
 			}
 			

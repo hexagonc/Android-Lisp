@@ -40,8 +40,10 @@ public class RenderFragment extends LispBuilderFragment
 
 	@Override
 	public void onResume() {
-		// TODO Auto-generated method stub
+
 		super.onResume();
+		if (_data.getViewProxy() == null)
+			onEnvironmentReset();
 	}
 
 	@Override
@@ -122,6 +124,15 @@ public class RenderFragment extends LispBuilderFragment
 	public void onGeneralException(Throwable e) {
 		AndroidTools.showshortMessageToast(e.toString(), getActivity());
 		Log.e("RenderFragment", e.toString());
+	}
+	
+	
+
+	@Override
+	public void onEnvironmentReset() {
+		_currentProxy = null;
+		if (_cachedView != null)
+			_cachedView.removeAllViews();
 	}
 	
 }

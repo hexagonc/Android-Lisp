@@ -1190,5 +1190,17 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 			_editText.setOnTouchListener(null);
 		}
 	}
+
+
+
+
+
+
+
+	@Override
+	public void onEnvironmentReset() {
+		// TODO Auto-generated method stub
+		
+	}
 	
 }
