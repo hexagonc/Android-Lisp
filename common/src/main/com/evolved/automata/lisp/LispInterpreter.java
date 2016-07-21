@@ -50,6 +50,11 @@ public class LispInterpreter
 		_env = env;
 	}
 	
+	public void setEnvironment(Environment env)
+	{
+		_env = env;
+	}
+	
 	/**
 	 * Starts the LispCommandInterpreter.  Has no effect if the interpreter is already running
 	 * @param responseListener
@@ -439,18 +444,39 @@ public class LispInterpreter
 						}
 						else if (commandValue.isContinuation())
 						{
-							if (customEnvironment!=null)
-								out = commandValue.getContinuingFunction().evaluate(customEnvironment, true);
-							else
-								out = commandValue.getContinuingFunction().evaluate(_env, true);
+							try
+							{
+								if (customEnvironment!=null)
+									out = commandValue.getContinuingFunction().evaluate(customEnvironment, true);
+								else
+									out = commandValue.getContinuingFunction().evaluate(_env, true);
+							}
+							catch (Exception e)
+							{
+								if (e instanceof InterruptedException)
+									return;
+								if (_responseListener != null)
+									_responseListener.onGeneralException(e);
+								continue;
+							}
 						}
 						else
 						{
-							if (customEnvironment!=null)
-								out = customEnvironment.evaluate(commandValue, false);
-							else
-								out = _env.evaluate(commandValue, false);
-							
+							try
+							{
+								if (customEnvironment!=null)
+									out = customEnvironment.evaluate(commandValue, false);
+								else
+									out = _env.evaluate(commandValue, false);
+							}
+							catch (Exception e)
+							{
+								if (e instanceof InterruptedException)
+									return;
+								if (_responseListener != null)
+									_responseListener.onGeneralException(e);
+								continue;
+							}
 							
 						}
 						
@@ -486,6 +512,7 @@ public class LispInterpreter
 				{
 					if (_shutdownIndicator != null)
 						_shutdownIndicator.countDown();
+					_runningP = false;
 				}
 				
 				

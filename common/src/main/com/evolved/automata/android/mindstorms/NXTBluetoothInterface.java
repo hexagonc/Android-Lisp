@@ -120,7 +120,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 	}
 	
 	public class Switch extends Sensor {
-		private final int ON_THRESHOLD = 200;
+		private final int ON_THRESHOLD = 1;
 
 		Switch(int port) {
 			super(port);

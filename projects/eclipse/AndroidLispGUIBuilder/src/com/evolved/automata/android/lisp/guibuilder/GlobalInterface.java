@@ -104,7 +104,15 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		setupSpeechInterface();
 	}
 	
+	public void restartBackgroundLispListener()
+	{
+		_backgroundLispControlListener = _backgroundInterpreter.start(this, true);
+	}
 	
+	public boolean isBackgroundLispInterpreterRunning()
+	{
+		return _backgroundInterpreter.isRunning();
+	}
 	
 	public void resetEnvironment(Environment env) throws InstantiationException, IllegalAccessException
 	{

@@ -173,6 +173,9 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 	{
 		
 		_data = ((GuiBuilderApplication)getApplication()).getGlobalData();
+		if (!_data.isBackgroundLispInterpreterRunning())
+			_data.restartBackgroundLispListener();
+			
 		ViewEvaluator.bindFunctions(_data.getEnvironment(), this, _data.getInterpreter());
 		_data.setForegroundLispResponseListener(this);
 		_data.setControlListener(this);
