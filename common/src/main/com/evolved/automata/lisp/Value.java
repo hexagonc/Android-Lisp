@@ -24,6 +24,8 @@ public abstract class Value {
 	Value _signalValue = null;
 	Value _signalName = null;
 	
+	FunctionTemplate _cachedFunction = null;
+	
 	public Value[] getList()
 	{
 		return null;
@@ -46,7 +48,15 @@ public abstract class Value {
 		return isIdentifier() && getString().startsWith(":");
 	}
 	
+	public FunctionTemplate getCachedFunctionTemplate()
+	{
+		return _cachedFunction;
+	}
 	
+	public void setCachedFunctionTemplate(FunctionTemplate cachedFunction)
+	{
+		_cachedFunction = _cachedFunction;
+	}
 	
 	public boolean isContinuation()
 	{

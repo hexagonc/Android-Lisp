@@ -1,5 +1,5 @@
 package com.evolved.automata.lisp;
-
+import com.evolved.automata.filetools.StandardTools;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -340,7 +340,7 @@ public class NLispTools
 				
 				Value v = makeValue(new Value[0]);
 				if (_actualParameters.length > 1)
-					v = env.evaluate(_actualParameters[1]);
+					v = env.evaluate(_actualParameters[1].clone());
 				if (!v.isList())
 					throw new RuntimeException("Second argument to apply must be a list");
 				
@@ -583,7 +583,7 @@ public class NLispTools
 
 			
 			@Override
-			public Value evaluate(Environment env, boolean resume)
+			public synchronized Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
 				checkActualArguments(2, true, true);
 				
@@ -621,7 +621,7 @@ public class NLispTools
 			}
 			
 			@Override
-			public Value evaluate(Environment env, boolean resume)
+			public synchronized Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
 				checkActualArguments(2, true, true);
 				
@@ -1409,6 +1409,13 @@ public class NLispTools
 						case BINDING_VARIABLES:
 							if (_loopIndex>=_maxIndex)
 							{
+//								for (int k = 0;k<_outList.length;k++)
+//								{
+//									if (_outList[k].isNull())
+//									{
+//										System.out.println("Bad");
+//									}
+//								}
 								return resetReturn(makeValue(_outList));
 							}
 							if (_actualParameters[0].isList())
@@ -2731,7 +2738,7 @@ public class NLispTools
 		{
 
 			@Override
-			public Value evaluate(Environment env, boolean resume)
+			public synchronized Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
 				if (!resume)
 					resetFunctionTemplate();
@@ -2772,7 +2779,7 @@ public class NLispTools
 		{
 			
 			@Override
-			public Value evaluate(Environment env, boolean resume)
+			public synchronized Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
 				if (!resume)
 					resetFunctionTemplate();
@@ -2884,7 +2891,7 @@ public class NLispTools
 							
 						}
 						else
-							throw new RuntimeException("First argument to append-item must be a list");
+							throw new RuntimeException("First argument to append must be a list");
 					}
 					else
 					{
@@ -3383,6 +3390,24 @@ public class NLispTools
 				}
 				else 
 					throw new RuntimeException("First argument to 'second' must be a list");
+				
+			}
+			
+		}
+		);
+		
+		
+		env.mapFunction("flush", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				for (String s:Environment.logs)
+				{
+					StandardTools.writeToFile("/Users/Evolved8/fuck.txt", s, false);
+				}
+				
+				return makeValue(false);
 				
 			}
 			

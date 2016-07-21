@@ -46,6 +46,8 @@ public class ExtendedFunctions
 	static CFGParser parser = null;
 	private static MessageDigest _sha1digest = null;
 	private static MessageDigest _md5digest = null;
+	static Object _globalSynch = new Object();
+	
 	static
 	{
 		InputStreamReader reader = null;
@@ -1684,6 +1686,41 @@ public class ExtendedFunctions
 		env.mapFunction("to-sha1", to_sha1_sum());
 		
 		env.mapFunction("to-md5", to_md5_sum());
+		
+		env.mapFunction("synchronized", new FunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, boolean resume)
+					throws InstantiationException, IllegalAccessException {
+				checkActualArguments(0, true, true);
+				if (!resume)
+					resetFunctionTemplate();
+				
+				Value result = Environment.getNull();
+				synchronized (_globalSynch)
+				{
+					for (;_instructionPointer<_actualParameters.length;_instructionPointer++)
+					{
+						if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+							result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
+						else
+							result = _lastFunctionReturn = env.evaluate(_actualParameters[_instructionPointer], false);
+						
+						if (result.isContinuation())
+							return continuationReturn(result);
+						if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+							return resetReturn(result);
+					}
+				}
+				
+				
+				return resetReturn(result);
+			}
+		}
+		);
+		
+		env.mapFunction("async-for", new AsyncFor());
 	}
 	
 	/* Taken from: http://docs.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html#AppA

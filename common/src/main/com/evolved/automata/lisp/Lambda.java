@@ -13,6 +13,8 @@ public class Lambda extends FunctionTemplate {
 	final Environment _innerEnvironment;
 	final Environment _argEnv;
 	final Value[] _bodyArguments;
+	FunctionTemplate[] _cachedFunctionList = null;
+	
 	boolean _appendToVargs = false;
 	static final String _THIS_VAR_NAME = "this";
 	static final String _KEY_VALUE_MAP_VAR_NAME = "key-map";
@@ -20,6 +22,8 @@ public class Lambda extends FunctionTemplate {
 	LinkedList<Value> _variableArgs = null;
 	String _previousKeyArgumentName = null;
 	HashMap<String, Value> _argumentKeyMap = null;
+	Value[] _executed;
+	
 	
 	public Lambda(Environment innerEnv, String[] formalParameters, Value[] bodyArgs)
 	{
@@ -329,7 +333,7 @@ public class Lambda extends FunctionTemplate {
 	@Override
 	public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 	{
-		T l = (T) new Lambda(_innerEnvironment.getParent().getParent(), _formalParameters, _bodyArguments);
+		T l = (T) new Lambda(_innerEnvironment.getParent().getParent(), _formalParameters, (Value[])_bodyArguments.clone());
 		l.setName(_name);
 		return l;
 	}
@@ -343,6 +347,7 @@ public class Lambda extends FunctionTemplate {
 		_variableArgs = new LinkedList<Value>();
 		_previousKeyArgumentName = null;
 		_argumentKeyMap = new HashMap<String, Value>();
+		_executed = new Value[_bodyArguments.length];
 	}
 	
 	public Value evaluate(Environment env, boolean resume) throws InstantiationException, IllegalAccessException
@@ -468,6 +473,7 @@ public class Lambda extends FunctionTemplate {
 				for (;_argumentInstructionPointer<_actualParameters.length;_argumentInstructionPointer++)
 				{
 					parameterValue = _lastFunctionReturn = env.evaluate(_actualParameters[_argumentInstructionPointer]);
+					
 					if (parameterValue.isContinuation())
 						return continuationReturn(parameterValue);
 					if (parameterValue.isReturn() || parameterValue.isBreak() || parameterValue.isSignal() || parameterValue.isSignalOut())
@@ -502,10 +508,21 @@ public class Lambda extends FunctionTemplate {
 		Value result = Environment.getNull();
 		for (;_instructionPointer<_bodyArguments.length;_instructionPointer++)
 		{
+			if (Environment._DEBUG) 
+			{
+				String log = Thread.currentThread().getName() + " - [" + ((_name!=null)?_name:"null") + " - raw instance " + this.hashCode() + "][logical instance - " + this.toString() + "]:" + _instructionPointer + " " + _bodyArguments[_instructionPointer];
+				Environment.log(log);
+			}
 			if (resume && _lastFunctionReturn.getContinuingFunction() != null)
 				result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(_innerEnvironment, true);
 			else
-				result = _lastFunctionReturn = _innerEnvironment.evaluate(_bodyArguments[_instructionPointer]);
+			{
+				if (Environment._useCacheP && _cachedFunctionList[_instructionPointer]!=null)
+					result = _lastFunctionReturn = _cachedFunctionList[_instructionPointer].evaluate(_innerEnvironment, false);
+				else
+					result = _lastFunctionReturn = _innerEnvironment.evaluate(_bodyArguments[_instructionPointer]);
+			}
+			_executed[_instructionPointer] = result;
 			if (result.isReturn())
 			{
 				result.setReturn(false);

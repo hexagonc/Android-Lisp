@@ -5,19 +5,21 @@ import com.evolved.automata.filetools.StandardTools;
 
 public class Environment 
 {
-	HashMap<String, Value> _valueMap = new HashMap<String, Value>();
-	HashMap<String, FunctionTemplate> _functionMap = new HashMap<String, FunctionTemplate>();
-	HashMap<String, MacroTemplate> _macroMap = new HashMap<String, MacroTemplate>();
-	HashSet<String> _userFunctionSet = new HashSet<String>();
-	HashMap<String, Value> _environmentProperties = new HashMap<String, Value>();
+	public static final boolean _DEBUG = false;
+	
+	volatile HashMap<String, Value> _valueMap = new HashMap<String, Value>();
+	volatile HashMap<String, FunctionTemplate> _functionMap = new HashMap<String, FunctionTemplate>();
+	volatile HashMap<String, MacroTemplate> _macroMap = new HashMap<String, MacroTemplate>();
+	volatile HashSet<String> _userFunctionSet = new HashSet<String>();
+	volatile HashMap<String, Value> _environmentProperties = new HashMap<String, Value>();
 	boolean _throwExceptionOnUndefinedP = true;
-	Environment _parentEnv = null;
+	volatile Environment _parentEnv = null;
 	
-	
+	static LinkedList<String> logs = new LinkedList<String>();
 	
 	public final String _NULL_NAME = "F";
 	
-	
+	public static boolean _useCacheP = false;
 	
 	public static class ParserResult
 	{
@@ -90,21 +92,29 @@ public class Environment
 		System.out.println(message);
 	}
 	
+	public synchronized static void log(String message){
+		//StandardTools.writeToFile("/Users/Evolved8/fuck.txt", message, false);
+		logs.add(message);
+	}
 	
+	public static void flush()
+	{
+		logs.clear();
+	}
 	
-	public Value mapValue(String name, Value v)
+	public synchronized Value mapValue(String name, Value v)
 	{
 		_valueMap.put(name,  v);
 		return v;
 	}
 	
-	public Value mapEnvironmentProperty(String name, Value v)
+	public synchronized Value mapEnvironmentProperty(String name, Value v)
 	{
 		_environmentProperties.put(name, v);
 		return v;
 	}
 	
-	public Value getVariableValue(String name)
+	public synchronized Value getVariableValue(String name)
 	{
 		if (_valueMap.containsKey(name))
 			return _valueMap.get(name);
@@ -113,7 +123,7 @@ public class Environment
 		return null;
 	}
 	
-	public Value getEnvironmentProperty(String name)
+	public synchronized Value getEnvironmentProperty(String name)
 	{
 		if (_environmentProperties.containsKey(name))
 			return _environmentProperties.get(name);
@@ -122,19 +132,19 @@ public class Environment
 		return null;
 	}
 	
-	public FunctionTemplate mapFunction(String name, FunctionTemplate f)
+	public synchronized FunctionTemplate mapFunction(String name, FunctionTemplate f)
 	{
 		f.setName(name);
 		_functionMap.put(name,  f);
 		return f;
 	}
 	
-	public void mapMacro(String name, MacroTemplate f)
+	public synchronized void mapMacro(String name, MacroTemplate f)
 	{
 		_macroMap.put(name,  f);
 	}
 	
-	public FunctionTemplate getFunction(String name) throws InstantiationException, IllegalAccessException
+	public synchronized FunctionTemplate getFunction(String name) throws InstantiationException, IllegalAccessException
 	{
 		if (hasFunction(name))
 			return (FunctionTemplate)_functionMap.get(name).clone();
@@ -143,12 +153,12 @@ public class Environment
 		return null;
 	}
 	
-	public boolean hasFunction(String name)
+	public synchronized boolean hasFunction(String name)
 	{
 		return _functionMap.containsKey(name);
 	}
 	
-	public MacroTemplate getMacro(String name) throws InstantiationException, IllegalAccessException
+	public synchronized MacroTemplate getMacro(String name) throws InstantiationException, IllegalAccessException
 	{
 		if (hasMacro(name))
 			return (MacroTemplate)_macroMap.get(name).clone();
@@ -157,17 +167,17 @@ public class Environment
 		return null;
 	}
 	
-	public boolean hasMacro(String name)
+	public synchronized boolean hasMacro(String name)
 	{
 		return _macroMap.containsKey(name);
 	}
 	
-	public boolean hasVariable(String name)
+	public synchronized boolean hasVariable(String name)
 	{
 		return _valueMap.containsKey(name);
 	}
 	
-	public boolean hasProperty(String name)
+	public synchronized boolean hasProperty(String name)
 	{
 		return _environmentProperties.containsKey(name);
 	}
@@ -228,6 +238,9 @@ public class Environment
 	
 	public Value evaluate(Value v, boolean resume) throws InstantiationException, IllegalAccessException
 	{
+		
+		if (Thread.currentThread().isInterrupted())
+			throw new RuntimeException("Done");
 		if (v.isNull())
 			return v;
 		if (v.isCommaDelimited() || v.isCommaListDelimited())
@@ -280,6 +293,10 @@ public class Environment
 							actualArgs[i] = values[i+1];
 						template.setActualParameters(actualArgs);
 						Value result = template.evaluate(this, resume);
+						if (Environment._useCacheP)
+						{
+							result.setCachedFunctionTemplate(template);
+						}
 						return result;
 					}
 					else if (_throwExceptionOnUndefinedP)
