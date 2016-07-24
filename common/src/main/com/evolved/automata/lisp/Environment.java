@@ -19,7 +19,7 @@ public class Environment
 	
 	public final String _NULL_NAME = "F";
 	
-	public static boolean _useCacheP = false;
+	
 	
 	public static class ParserResult
 	{
@@ -293,10 +293,7 @@ public class Environment
 							actualArgs[i] = values[i+1];
 						template.setActualParameters(actualArgs);
 						Value result = template.evaluate(this, resume);
-						if (Environment._useCacheP)
-						{
-							result.setCachedFunctionTemplate(template);
-						}
+						
 						return result;
 					}
 					else if (_throwExceptionOnUndefinedP)

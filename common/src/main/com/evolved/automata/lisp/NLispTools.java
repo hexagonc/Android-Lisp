@@ -525,6 +525,24 @@ public class NLispTools
 		}
 		);
 		
+		
+		env.mapFunction("var-exists-p", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				
+				String name =  evaluatedArgs[0].getString();
+				
+				return makeValue(env.getVariableValue(name) != null);
+				
+			}
+			
+		}
+		);
+		
+		
 		env.mapFunction("not", new SimpleFunctionTemplate()
 		{
 

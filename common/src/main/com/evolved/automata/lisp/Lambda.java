@@ -36,7 +36,7 @@ public class Lambda extends FunctionTemplate {
 		_bodyArguments = bodyArgs;
 		_previousKeyArgumentName = null;
 		_argumentKeyMap = new HashMap<String, Value>();
-		
+		_appendToVargs = false;
 	}
 	
 	@Override
@@ -517,10 +517,7 @@ public class Lambda extends FunctionTemplate {
 				result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(_innerEnvironment, true);
 			else
 			{
-				if (Environment._useCacheP && _cachedFunctionList[_instructionPointer]!=null)
-					result = _lastFunctionReturn = _cachedFunctionList[_instructionPointer].evaluate(_innerEnvironment, false);
-				else
-					result = _lastFunctionReturn = _innerEnvironment.evaluate(_bodyArguments[_instructionPointer]);
+				result = _lastFunctionReturn = _innerEnvironment.evaluate(_bodyArguments[_instructionPointer]);
 			}
 			_executed[_instructionPointer] = result;
 			if (result.isReturn())
