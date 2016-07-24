@@ -2182,6 +2182,50 @@ public class NLispTools
 		}
 		);
 		
+		// Return value will be the second to last expression or the value of any signals
+		// Last s-expression is always evaluated purely as a side-effect
+		env.mapFunction("finally", new FunctionTemplate()
+		{
+			
+			
+			@Override
+			public Value evaluate(Environment env, boolean resume)
+					throws InstantiationException, IllegalAccessException {
+				checkActualArguments(0, true, true);
+				if (!resume)
+					resetFunctionTemplate();
+				
+				Value result = Environment.getNull();
+				
+				for (;_instructionPointer<_actualParameters.length - 1;_instructionPointer++)
+				{
+					if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+						
+						result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
+					else
+						result = _lastFunctionReturn = env.evaluate(_actualParameters[_instructionPointer], false);
+					
+					if (result.isContinuation())
+					{
+						env.evaluate(_actualParameters[_actualParameters.length - 1]);
+						return continuationReturn(result);
+					}
+					if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+					{
+						env.evaluate(_actualParameters[_actualParameters.length - 1]);
+						return resetReturn(result);
+					}
+					
+				}
+				
+				env.evaluate(_actualParameters[_actualParameters.length - 1]);
+				
+				return resetReturn(result);
+			}
+		}
+		);
+		
+		
 		
 		// First argument is a list of declarations and can be empty
 		env.mapFunction("let", new FunctionTemplate()
