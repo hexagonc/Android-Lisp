@@ -635,6 +635,7 @@ public class PatternParser
 		 * matchers.  This flag resets to false when reset() is called
 		 * @return
 		 */
+		// TODO: Rename this to something like "last character matched"
 		public boolean anyMatches()
 		{
 			return _anyMatches;

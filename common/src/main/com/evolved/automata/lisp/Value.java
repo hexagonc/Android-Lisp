@@ -23,14 +23,54 @@ public abstract class Value {
 	FunctionTemplate _continuingFunction = null;
 	Value _signalValue = null;
 	Value _signalName = null;
-	
+	Value _metaData = null;
 	FunctionTemplate _cachedFunction = null;
+	
+	boolean _hasMetaData = false;
 	
 	public Value[] getList()
 	{
 		return null;
 	}
 	
+	public Value setMetaData(Value data)
+	{
+		_metaData = data;
+		_hasMetaData = true;
+		return this;
+	}
+	
+	/**
+	 * Make the meta-data accessible at least one more time after the clearing it so that it can be
+	 * accessed after being passed out of a function
+	 */
+	public Value getMetaData()
+	{
+		Value out = _metaData;
+		if (_hasMetaData == false)
+			_metaData = null;
+		return out;
+	}
+	
+	
+	public boolean hasMetaData()
+	{
+		if (_metaData != null)
+			return true;
+		else
+			return _hasMetaData;
+	}
+	
+	/**
+	 * This doesn't immediately make the meta-data accessible but from this point forward, you can 
+	 * only access the meta-data one more time
+	 * @return
+	 */
+	public Value clearMetaData()
+	{
+		_hasMetaData = false;
+		return this;
+	}
 	
 	public Value appendItem(Value v)
 	{
@@ -267,6 +307,11 @@ public abstract class Value {
 	{
 		_isCommaListDelimited = set;
 		return this;
+	}
+	
+	public Type getType()
+	{
+		return _type;
 	}
 	
 	public String getString()

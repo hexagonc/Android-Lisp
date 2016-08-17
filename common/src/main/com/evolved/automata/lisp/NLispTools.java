@@ -617,7 +617,7 @@ public class NLispTools
 					if (_lastFunctionReturn.isReturn() || _lastFunctionReturn.isBreak() || _lastFunctionReturn.isSignal() || _lastFunctionReturn.isSignalOut())
 						return resetReturn(_lastFunctionReturn);
 					
-					return resetReturn(env.mapValue(_actualParameters[0].getString(), _lastFunctionReturn));
+					return resetReturn(env.mapValue(_actualParameters[0].getString(), _lastFunctionReturn.clearMetaData()));
 				}
 				else
 					throw new RuntimeException("Invalid argument error: first parameter to setq must be an identifier");
@@ -669,7 +669,7 @@ public class NLispTools
 					if (_lastFunctionReturn.isReturn() || _lastFunctionReturn.isBreak() || _lastFunctionReturn.isSignal() || _lastFunctionReturn.isSignalOut())
 						return resetReturn(_lastFunctionReturn);
 					
-					return resetReturn(_target.mapValue(_actualParameters[0].getString(), _lastFunctionReturn));
+					return resetReturn(_target.mapValue(_actualParameters[0].getString(), _lastFunctionReturn.clearMetaData()));
 						
 				}
 				else
@@ -1826,7 +1826,7 @@ public class NLispTools
 			@Override
 			public Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
-				checkActualArguments(1, false, false);
+				checkActualArguments(1, true, true);
 				
 				if (!resume)
 					resetFunctionTemplate();
@@ -1849,6 +1849,11 @@ public class NLispTools
 				catch (Throwable e)
 				{
 					Value signalName = makeValue("RUNTIME_ERROR");
+					if (_actualParameters.length == 2 && _actualParameters[1].isList())
+					{
+						Value[] values = _actualParameters[1].getList();
+						return resetReturn(new SignalValue(values[0], (values.length>1)?values[1]:Environment.getNull() , false));
+					}
 					Value signalValue;
 					StackTraceElement[] stack = e.getStackTrace();
 					int offset = 0;
@@ -2823,7 +2828,7 @@ public class NLispTools
 					{
 						bindingName = _actualParameters[0].getList()[i];
 						if (i<mappingValues.length)
-							env.mapValue(bindingName.getString(), mappingValues[i]);
+							env.mapValue(bindingName.getString(), mappingValues[i].clearMetaData());
 						else
 							env.mapValue(bindingName.getString(), Environment.getNull());
 					}
@@ -2875,7 +2880,7 @@ public class NLispTools
 							targetEnv = env;
 						
 						if (i<mappingValues.length)
-							targetEnv.mapValue(bindingName, mappingValues[i]);
+							targetEnv.mapValue(bindingName, mappingValues[i].clearMetaData());
 						else
 							targetEnv.mapValue(bindingName, Environment.getNull());
 					}
@@ -3677,13 +3682,56 @@ public class NLispTools
 		}
 		);
 		
+		env.mapFunction("set-meta-data", new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				Value base = evaluatedArgs[0].setMetaData(evaluatedArgs[1]);
+				return base;
+			}
+			
+		}
+		);
+		
+		env.mapFunction("get-meta-data", new SimpleFunctionTemplate()
+		{
+
+			
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				Value meta = evaluatedArgs[0].getMetaData();
+				if (meta != null)
+					return meta;
+				else
+					return Environment.getNull();
+				
+				
+			}
+			
+		}
+		);
+		
+		env.mapFunction("has-meta-data", new SimpleFunctionTemplate()
+		{
+
+			
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				return NLispTools.makeValue(evaluatedArgs[0].hasMetaData());
+				
+			}
+			
+		}
+		);
+		
+		
 		env.mapFunction("string-p", new SimpleFunctionTemplate()
 		{
 
-			private void stringP()
-			{
-				
-			}
 			
 			@Override
 			public Value evaluate(Environment env,Value[] evaluatedArgs) {
@@ -3697,6 +3745,7 @@ public class NLispTools
 			
 		}
 		);
+		
 		
 		env.mapFunction("time", new SimpleFunctionTemplate()
 		{
@@ -3953,6 +4002,8 @@ public class NLispTools
 			
 		}
 		);
+		
+		env.mapFunction("string-compare", string_compare());
 		
 		env.mapFunction("set-nth", set_nth());
 		
@@ -4312,6 +4363,24 @@ public class NLispTools
 			
 		};
 	}
+	
+	public static SimpleFunctionTemplate string_compare()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				String lvalue = evaluatedArgs[0].getString();
+				String rvalue = evaluatedArgs[1].getString();
+				return NLispTools.makeValue((long)lvalue.compareTo(rvalue));
+				
+			}
+			
+		};
+	}
+	
 	
 	
 	public static SimpleFunctionTemplate destructive_append()
