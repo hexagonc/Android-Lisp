@@ -402,7 +402,16 @@ public class SpeechMap {
 			if (key != null)
 			{
 				Pair<String, String[]> groupSpec = getGroupSpec(key);
-				sbuilder.append(_evaluationExternalInterface.toString(argMap.get(groupSpec.getKey())));
+				ScoredValue v = argMap.get(groupSpec.getKey());
+				if (v.value != null)
+				{
+					sbuilder.append(_evaluationExternalInterface.toString(v));
+				}
+				else
+				{
+					sbuilder.append(v.toString());
+				}
+				
 			}
 			else 
 			{
@@ -543,6 +552,7 @@ public class SpeechMap {
 								transformMap.put(patternToken, ScoredValue.from(capturedTokens));
 								inputIndex = i;
 								transformedInput.add(tokenizedPattern[patternIndex]); // raw token representation
+								capturedTokens.clear();
 								break;
 							}
 							else
@@ -557,6 +567,7 @@ public class SpeechMap {
 							inputIndex = i + 1;
 							transformMap.put(patternToken, ScoredValue.from(capturedTokens));
 							transformedInput.add(tokenizedPattern[patternIndex]);
+							capturedTokens.clear();
 							break;
 						}
 					}
@@ -568,8 +579,8 @@ public class SpeechMap {
 					
 					firstToken = false;
 				}
-				
-				if (controller.anyMatches())
+				// Test for breaking pattern at end of string
+				if (i >= maxInput && capturedTokens.size()>0 && controller.anyMatches())
 				{
 					if (controller.getCurrentMatches().size()>0)
 					{
