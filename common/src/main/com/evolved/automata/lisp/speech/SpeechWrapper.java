@@ -238,6 +238,10 @@ public class SpeechWrapper
 		return ExtendedFunctions.makeValue(this);
 	}
 	
+	public SpeechMap getSpeechMap()
+	{
+		return _sMap;
+	}
 	
 	// .:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:.
 	//					Helper Functions
