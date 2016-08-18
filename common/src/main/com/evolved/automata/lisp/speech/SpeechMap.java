@@ -32,6 +32,7 @@ public class SpeechMap {
 	{
 		FUNCTION_APPLICABILITY_STATUS status;
 		public double score;
+		public double relativeScore;
 		public HashMap<String, ScoredValue> argMap;
 		public String functionName;
 		public int initiallySkippedTokens = 0;
@@ -156,9 +157,9 @@ public class SpeechMap {
 		@Override
 		public int compare(FunctionApplicabilityData left,
 				FunctionApplicabilityData right) {
-			if (left.score > right.score)
+			if (left.relativeScore < right.relativeScore)
 				return 1;
-			else if (left.score == right.score)
+			else if (left.relativeScore == right.relativeScore)
 				return 0;
 			else
 				return -1;
@@ -1254,7 +1255,7 @@ public class SpeechMap {
 
 				if (cachedAppData.isSuccess())
 				{
-					
+					cachedAppData.relativeScore = cachedAppData.score;
 					switch (precedencePolicy)
 					{
 						case FULL:
@@ -1273,6 +1274,7 @@ public class SpeechMap {
 							{
 								maxScore = effectiveScore;
 								maxApplicability = cachedAppData;
+								maxApplicability.relativeScore = effectiveScore;
 							}
 							break;
 					}
@@ -1294,6 +1296,7 @@ public class SpeechMap {
 					
 					if (functionApplicability.isSuccess() && functionApplicability.score >= minimumPatternScore)
 					{
+						functionApplicability.relativeScore = functionApplicability.score;
 						switch (precedencePolicy)
 						{
 							case  FULL:
@@ -1312,13 +1315,15 @@ public class SpeechMap {
 								{
 									maxScore = effectiveScore;
 									maxApplicability = functionApplicability;
+									functionApplicability.relativeScore = effectiveScore;
 								}
 								break;
 						}
 					}
 				}
 				
-				if (maxApplicability == null && maxVariationHeap.size() == 0)
+				if (((precedencePolicy != PRECEDENCE_ADHERENCE_POLICY.FULL) && maxApplicability == null) || 
+						((precedencePolicy == PRECEDENCE_ADHERENCE_POLICY.FULL) && maxVariationHeap.size() == 0))
 				{
 					_cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), new FunctionApplicabilityData(0, null).setFunctionName(functionName).setFailureMissingTokens() , new ScoredValue(null, 0));
 				}
@@ -1346,7 +1351,7 @@ public class SpeechMap {
 						functionApplicability.addArgument(_speechConfig.getCanonicalPhraseArgumentKey(),  ScoredValue.from(canonicalPhrase));
 						
 						result = _cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), functionApplicability, _evaluationExternalInterface.evaluate(functionName, functionApplicability.argMap));
-						
+						result.score*=functionApplicability.score;
 						
 					}
 					if (result.score > minResultScore)
@@ -1401,6 +1406,7 @@ public class SpeechMap {
 							
 							if (result!=null)
 							{
+								result.score*=functionApplicability.score;
 								_cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), functionApplicability, result);
 							}
 							else
@@ -1437,6 +1443,7 @@ public class SpeechMap {
 						
 						if (result!=null)
 						{
+							result.score*=functionApplicability.score;
 							_cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), functionApplicability, result);
 						}
 						else
