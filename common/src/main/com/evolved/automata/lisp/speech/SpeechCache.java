@@ -2,9 +2,11 @@ package com.evolved.automata.lisp.speech;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
 import com.evolved.automata.parser.general.PatternParser;
@@ -12,11 +14,20 @@ import com.evolved.automata.parser.general.PatternParser;
 public class SpeechCache {
 	
 	
+	public static enum SUB_CACHE
+	{
+		FUNCTION_LIST_RESULT,
+		FUNCTION_RESULT,
+		INDEXED_SPEECH,
+		PATTERN_ASSESSMENT
+	}
+	
 	HashMap<String, HashSet<String>> _failedInitialTokenMap;
 	HashMap<String, PatternParser.MatcherController> _grammarControllerMap;
 	SpeechConfig _config;
 	SpeechExternalInterface _evaluationConfig;
-	HashMap<String, Pair<String, String[]>> _groupSpecCacheMap;
+	
+	HashMap<String, Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY>> _groupSpecCacheMap;
 	int _firstResultIsBestCount = 0;
 	int _firstResultIsOnlyCount = 0;
 	int _numResultSearches = 0;
@@ -24,23 +35,93 @@ public class SpeechCache {
 	HashMap<String, FunctionApplicabilityData> _assessPatternMap;
 	HashMap<String, Integer> _minimumPatternCache;
 	
-	public HashMap<String, ScoredValue> _phraseCache;
+	/**
+	 * This cache will generally become invalid if the default precedence order changes
+	 */
+	public HashMap<String, ScoredValue> _functionListResultCache;
 	HashMap<String, String[]> _tokenizedPatternMap;
 	HashMap<String, FunctionApplicabilityData> _functionValueMap;
+	HashMap<String, HashSet<String>> _markerSpeechFunctionIndexMap = null;
+	HashSet<String> _indexedSpeechFunctionSet = new HashSet<String>();
 	
 	public SpeechCache(SpeechConfig config, SpeechExternalInterface econfig)
 	{
+		_markerSpeechFunctionIndexMap = new HashMap<String, HashSet<String>>();
 		_functionValueMap = new HashMap<String, FunctionApplicabilityData>();
-		_phraseCache = new HashMap<String, ScoredValue>();
+		_functionListResultCache = new HashMap<String, ScoredValue>();
 		_minimumPatternCache = new HashMap<String, Integer>();
 		_assessPatternMap = new HashMap<String, SpeechMap.FunctionApplicabilityData>();
 		_config = config;
 		_evaluationConfig = econfig;
 		_failedInitialTokenMap = new HashMap<String, HashSet<String>>();
 		_grammarControllerMap = new HashMap<String, PatternParser.MatcherController>();
-		_groupSpecCacheMap = new HashMap<String, Pair<String,String[]>>();
+		_groupSpecCacheMap = new HashMap<String, Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY>>();
 		_tokenizedPatternMap = new HashMap<String, String[]>();
 		_transformedInputCacheMap = new HashMap<String, Pair<String[],HashMap<String,ScoredValue>>>();
+	}
+	
+	
+	public void clearCache(SUB_CACHE cacheType)
+	{
+		switch (cacheType)
+		{
+			case FUNCTION_LIST_RESULT:
+				_functionListResultCache.clear();
+				break;
+			case FUNCTION_RESULT:
+				_functionValueMap.clear();
+				break;
+			case INDEXED_SPEECH:
+				_markerSpeechFunctionIndexMap.clear();
+				break;
+			case PATTERN_ASSESSMENT:
+				_assessPatternMap.clear();
+				break;
+		}
+	}
+	
+	
+	public void addSpeechFunctionMarker(String speechFunction, String marker)
+	{
+		HashSet<String> functions = _markerSpeechFunctionIndexMap.get(marker);
+		if (functions == null)
+		{
+			_markerSpeechFunctionIndexMap.put(marker, functions = new HashSet<String>());
+		}
+		functions.add(speechFunction);
+	}
+	
+	public void addSpeechFunctionToCompletionIndex(String speechFunction)
+	{
+		_indexedSpeechFunctionSet.add(speechFunction);
+	}
+	
+	public HashSet<String> getViableSpeechFunctions(String[] tokenizedInput)
+	{
+		HashSet<String> consistentFunctions = new HashSet<String>(), indexedFunctions;
+		for (String token: tokenizedInput)
+		{
+			indexedFunctions = _markerSpeechFunctionIndexMap.get(token);
+			if (indexedFunctions != null)
+			{
+				consistentFunctions.addAll(indexedFunctions);
+			}
+		}
+		
+		return consistentFunctions;
+		
+	}
+	
+	
+	
+	public boolean hasCompleteSpeechFunctionIndex()
+	{
+		return (_indexedSpeechFunctionSet.size() == _config.getPatternSpecMap().size());
+	}
+	
+	public boolean isSpeechFunctionIndexed(String speechFunction)
+	{
+		return _indexedSpeechFunctionSet.contains(speechFunction);
 	}
 	
 	Pair<Boolean, String> hasCachedFunctionValue(String[] tokenizedInput, String functionName)
@@ -159,12 +240,12 @@ public class SpeechCache {
 		return value;
 	}
 	
-	public Pair<String, String[]> getGroupSpec(String patternName)
+	public Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> getGroupSpec(String patternName)
 	{
 		return _groupSpecCacheMap.get(patternName);
 	}
 	
-	public Pair<String, String[]> setGroupSpec(String groupName, Pair<String, String[]> value)
+	public Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> setGroupSpec(String groupName, Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> value)
 	{
 		_groupSpecCacheMap.put(groupName, value);
 		return value;
@@ -202,22 +283,22 @@ public class SpeechCache {
 	}
 	
 	
-	ScoredValue getCachedPhraseValue(String[] phrase, String[] functionPrec)
+	ScoredValue getCachedPhraseValue(SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedence, String[] phrase, String[] functionPrec)
 	{
-		return getCachedPhraseValue(getPhraseCacheKey(phrase, functionPrec));
+		return getCachedPhraseValue(getPhraseCacheKey(precedence, phrase, functionPrec));
 	}
 	
 	ScoredValue setCachedPhraseValue(String phraseKey, ScoredValue value)
 	{
 		if (phraseKey != null)
-			_phraseCache.put(phraseKey, value);
+			_functionListResultCache.put(phraseKey, value);
 		return value;
 	}
 	
 	
 	ScoredValue getCachedPhraseValue(String phraseKey)
 	{
-		ScoredValue s = _phraseCache.get(phraseKey);
+		ScoredValue s = _functionListResultCache.get(phraseKey);
 		if (s!=null)
 			return s.copy();
 		return null;
@@ -225,7 +306,7 @@ public class SpeechCache {
 	
 	
 	
-	Pair<Boolean, String> hasCachedPhraseValue(String[] phrase, String[] functionPrec)
+	Pair<Boolean, String> hasCachedPhraseValue(SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedence, String[] phrase, String[] functionPrec)
 	{
 		for (String function: functionPrec)
 		{
@@ -233,14 +314,14 @@ public class SpeechCache {
 				return Pair.of(Boolean.valueOf(false), null); // can't cache a function with side-effects
 		}
 		
-		String key = getPhraseCacheKey(phrase, functionPrec);
-		return Pair.of(Boolean.valueOf(_phraseCache.containsKey(key)), key);
+		String key = getPhraseCacheKey(precedence, phrase, functionPrec);
+		return Pair.of(Boolean.valueOf(_functionListResultCache.containsKey(key)), key);
 	}
 	
-	private String getPhraseCacheKey(String[] phrase, String[] functionPrec)
+	private String getPhraseCacheKey(SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedence, String[] phrase, String[] functionPrec)
 	{
 		StringBuilder sbuilder = new StringBuilder(StringUtils.join(phrase, ':'));
-		sbuilder.append("+").append(StringUtils.join(functionPrec, ':'));
+		sbuilder.append("+").append(StringUtils.join(functionPrec, ':')).append("+").append(precedence.toString());
 		return sbuilder.toString(); 
 	}
 	

@@ -483,14 +483,14 @@ public class SpeechProcessingTests extends TestHarnessBase
 		String [] tokenizedInput = testTokenizer("10 plus 10");
 		
 		
-		FunctionApplicabilityData result = map.assessPattern(new ProcessStateInfo(), tokenizedInput, tokenizedPattern);
+		FunctionApplicabilityData result = map.assessPattern(new ProcessStateInfo("speech-add"), tokenizedInput, tokenizedPattern);
 		double argumentScore = result.score;
 		Assert.assertTrue("Score of perfectly matching pattern should be 1, was :" + argumentScore, argumentScore==1.0);
 		
 		// test hierarchical, indirect matches
 		
 		tokenizedInput = testTokenizer("10 plus 10 plus 20");
-		result = map.assessPattern(new ProcessStateInfo(), tokenizedInput, tokenizedPattern);
+		result = map.assessPattern(new ProcessStateInfo("speech-add"), tokenizedInput, tokenizedPattern);
 		argumentScore = result.score;
 		Assert.assertTrue("Score of hierachical pattern [" + "10 plus 10 plus 20" + "] should be 1, was :" + argumentScore, argumentScore==1.0);
 	}

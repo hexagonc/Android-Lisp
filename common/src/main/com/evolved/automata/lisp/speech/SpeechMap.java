@@ -145,7 +145,11 @@ public class SpeechMap {
 	static class ProcessStateInfo
 	{
 		public LinkedList<String> tokensSkippedFromPreviousStage = new LinkedList<String>();
-		
+		public String speechFunction = null;
+		public ProcessStateInfo(String speechFunctionName)
+		{
+			speechFunction = speechFunctionName;
+		}
 	}
 	
 	final SpeechCache _cache;
@@ -268,9 +272,9 @@ public class SpeechMap {
 		return null;
 	}
 	
-	Pair<String, String[]> getGroupSpec(String groupName)
+	Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> getGroupSpec(String groupName)
 	{
-		Pair<String, String[]> result = _cache.getGroupSpec(groupName);
+		Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> result = _cache.getGroupSpec(groupName);
 		if (result != null)
 			return result;
 		String[] parts = StringUtils.split(groupName, '#');
@@ -279,17 +283,20 @@ public class SpeechMap {
 		
 		if (parts.length == 1 && spec.containsKey(baseName))
 		{
-			return _cache.setGroupSpec(groupName, Pair.of(baseName, new String[]{baseName}));
+			return _cache.setGroupSpec(groupName, Triple.of(baseName, new String[]{baseName}, _speechConfig.getPrecedencePolicy()));
 		}
 		
 		HashMap<String, LinkedList<String>> typeMap = _speechConfig.getTypeMap();
 		if (parts.length == 1 && typeMap.containsKey(baseName))
 		{
-			return _cache.setGroupSpec(groupName, Pair.of(baseName, typeMap.get(baseName).toArray(new String[0])));
+			return _cache.setGroupSpec(groupName, Triple.of(baseName, typeMap.get(baseName).toArray(new String[0]), _speechConfig.getTypePrecedencePolicy(baseName)));
 		}
 		
 		LinkedList<String> functionPrecList = new LinkedList<String>();
 		String type;
+		// Mixing functions from 
+		
+		SpeechConfig.PRECEDENCE_ADHERENCE_POLICY policy = _speechConfig.getPrecedencePolicy();
 		for (int i = 1;i<parts.length;i++)
 		{
 			type = parts[i];
@@ -299,6 +306,7 @@ public class SpeechMap {
 			}
 			else if (typeMap.containsKey(type))
 			{ 
+				policy = _speechConfig.getTypePrecedencePolicy(type);
 				functionPrecList.addAll(typeMap.get(type));
 			}
 			else
@@ -307,16 +315,16 @@ public class SpeechMap {
 		
 		if (functionPrecList.size() > 0)
 		{
-			return _cache.setGroupSpec(groupName, Pair.of(baseName, functionPrecList.toArray(new String[0])));
+			return _cache.setGroupSpec(groupName, Triple.of(baseName, functionPrecList.toArray(new String[0]), policy));
 		}
 		else
-			return _cache.setGroupSpec(groupName, Pair.of(baseName, (String[])null));
+			return _cache.setGroupSpec(groupName, Triple.of(baseName, (String[])null, policy));
 		
 	}
 	
-	boolean isUnstructuredTextGroup(Pair<String, String[]> groupSpec)
+	boolean isUnstructuredTextGroup(Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> groupSpec)
 	{
-		return groupSpec.getRight() == null;
+		return groupSpec.getMiddle() == null;
 	}
 	
 	boolean isUnstructuredTextGroup(String groupName)
@@ -324,20 +332,20 @@ public class SpeechMap {
 		return isUnstructuredTextGroup(getGroupSpec(groupName));
 	}
 	
-	int getMinimumTokensForMatchingGroup(String groupName, int recursiveLimit)
+	int getMinimumTokensForMatchingGroup(String speechFunction, String groupName, int recursiveLimit)
 	{
 		if (isUnstructuredTextGroup(groupName) || recursiveLimit <= 0)
 			return 1;
 		int minValue = Integer.MAX_VALUE;
 		
-		Pair<String, String[]> spec = getGroupSpec(groupName);
+		Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> spec = getGroupSpec(groupName);
 		HashMap<String, LinkedList<String>> patternSpec = _speechConfig.getPatternSpecMap();
 		int value;
-		for (String function: spec.getRight())
+		for (String function: spec.getMiddle())
 		{
 			for (String rawPattern:patternSpec.get(function))
 			{
-				value = getMinimumTokensForMatchingPattern(_cache.getTokenizedPattern(rawPattern), recursiveLimit - 1);
+				value = getMinimumTokensForMatchingPattern(speechFunction, _cache.getTokenizedPattern(rawPattern), recursiveLimit - 1);
 				if (value < minValue)
 					minValue = value;
 			}
@@ -346,7 +354,7 @@ public class SpeechMap {
 		
 	}
 	
-	int getMinimumTokensForMatchingPattern(String[] tokenizedPattern, int recursiveLimit)
+	int getMinimumTokensForMatchingPattern(String speechFunction, String[] tokenizedPattern, int recursiveLimit)
 	{
 		Pair<Boolean, String> hasCached = _cache.hasCachedMinimumTokens(tokenizedPattern, recursiveLimit);
 		
@@ -365,18 +373,24 @@ public class SpeechMap {
 			{
 				if (recursiveLimit > 0)
 				{
-					matchCount += getMinimumTokensForMatchingGroup(group, recursiveLimit-1);
+					matchCount += getMinimumTokensForMatchingGroup(speechFunction, group, recursiveLimit-1);
 				}
 				else
 					matchCount++;
 				simpleTextCounted = false;
 			}
-			else if (!simpleTextCounted)
+			else
 			{
-				matchCount++;
-				simpleTextCounted = true;
+				if (!simpleTextCounted)
+				{
+					matchCount++;
+					simpleTextCounted = true;
+				}
+				_cache.addSpeechFunctionMarker(speechFunction, rawToken);
 			}
 		}
+		
+		
 		return _cache.setCachedMinimumTokens(hasCached.getRight(), recursiveLimit, matchCount) ;
 	}
 	
@@ -402,8 +416,8 @@ public class SpeechMap {
 			
 			if (key != null)
 			{
-				Pair<String, String[]> groupSpec = getGroupSpec(key);
-				ScoredValue v = argMap.get(groupSpec.getKey());
+				Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> groupSpec = getGroupSpec(key);
+				ScoredValue v = argMap.get(groupSpec.getLeft());
 				if (v.value != null)
 				{
 					sbuilder.append(_evaluationExternalInterface.toString(v));
@@ -869,6 +883,10 @@ public class SpeechMap {
 		
 	}
 	
+	private boolean purelySemanticPattern(String[] tokenizedPattern)
+	{
+		return (tokenizedPattern.length == 1 && isUnstructuredTextGroup(tokenizedPattern[0]));
+	}
 	
 	// TODO: Need to improve strategy for finding optimal input size for matching group
 	private FunctionApplicabilityData assessingLeadingStructuredGroup(ProcessStateInfo pinfo, String structuredGroupName, String[] tokenizedInput, String[] remainingPatternTokens)
@@ -884,16 +902,16 @@ public class SpeechMap {
 		{
 			resultRemaining = new FunctionApplicabilityData(0, null).setFailureTooFewTokens();
 		}
-		Pair<String, String[]> groupSpec = getGroupSpec(structuredGroupName);
+		Triple<String, String[], SpeechConfig.PRECEDENCE_ADHERENCE_POLICY> groupSpec = getGroupSpec(structuredGroupName);
 		
 		String parameterName = groupSpec.getLeft();
-		String[] functionPrec = groupSpec.getRight();
-		
+		String[] functionPrec = groupSpec.getMiddle();
+		SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy = groupSpec.getRight();
 		ScoredValue initialResultValue, resultValue;
 		
 		
 		
-		int minimumPatternSize = getMinimumTokensForMatchingGroup(structuredGroupName, 2);
+		int minimumPatternSize = getMinimumTokensForMatchingGroup(pinfo.speechFunction, structuredGroupName, 2);
 		
 		
 		// TODO: handle the case better with shifting
@@ -910,7 +928,7 @@ public class SpeechMap {
 		int minTokensToMatchRemainingPattern = 0;
 		if (remainingPatternTokens.length > 0)
 		{
-			minTokensToMatchRemainingPattern = getMinimumTokensForMatchingPattern(remainingPatternTokens, 2);
+			minTokensToMatchRemainingPattern = getMinimumTokensForMatchingPattern(pinfo.speechFunction, remainingPatternTokens, 2);
 			maxTokensForMatchingCurrentGroup = tokenizedInput.length - minTokensToMatchRemainingPattern;
 		}
 		else
@@ -935,7 +953,7 @@ public class SpeechMap {
 					inner: for (numTokensForMatchingCurrentGroup = minimumPatternSize; (tokenizedInput.length - (currentInputOffset + numTokensForMatchingCurrentGroup)) >= minTokensToMatchRemainingPattern;numTokensForMatchingCurrentGroup++)
 					{
 						String[] input = slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup);
-						resultValue = evaluate(input, functionPrec, false);
+						resultValue = evaluate(input, functionPrec, false, precedencePolicy);
 						if (resultValue.score <= 0)
 							continue;
 						if (!skipRemaining)
@@ -1000,7 +1018,7 @@ public class SpeechMap {
 							{
 								return finalOutput.setFailureTooFewTokens();
 							}
-							initialResultValue = evaluate(slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false);
+							initialResultValue = evaluate(slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false, precedencePolicy);
 							if (!skipRemaining)
 								resultRemaining = assessPatternArguments(pinfo, slice(tokenizedInput, currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
 							if (initialResultValue.score > 0 && resultRemaining.isSuccess())
@@ -1054,7 +1072,7 @@ public class SpeechMap {
 								break;
 							}
 							
-							resultValue = evaluate(slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false);
+							resultValue = evaluate(slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false, precedencePolicy);
 							if (!skipRemaining)
 								resultRemaining = assessPatternArguments(pinfo, slice(tokenizedInput, currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
 							
@@ -1113,7 +1131,7 @@ public class SpeechMap {
 	
 	FunctionApplicabilityData assessPatternArguments(ProcessStateInfo pinfo, String[] tokenizedInput, String[] tokenizedPattern)
 	{
-		int minimumTokensForMatch = getMinimumTokensForMatchingPattern(tokenizedPattern, 2);
+		int minimumTokensForMatch = getMinimumTokensForMatchingPattern(pinfo.speechFunction, tokenizedPattern, 2);
 		if (tokenizedInput.length < minimumTokensForMatch)
 			return new FunctionApplicabilityData(0, null).setFailureTooFewTokens();
 		
@@ -1190,8 +1208,16 @@ public class SpeechMap {
 		
 		// TODO: fix handling of transformed input for recursively called patterns
 		Pair<String[], HashMap<String, ScoredValue>> transformedData = getTransformedInput(tokenizedInput, tokenizedPattern);
+		String[] transformedInput = transformedData.getKey();
+		boolean purelySemanticPattern = purelySemanticPattern(tokenizedPattern);
+		// Purely semantic patterns can't be assessed based on their grammatical structure; instead, they must be evaluated by a 
+		// function
+		if (_cache.isSpeechFunctionIndexed(pinfo.speechFunction) && !purelySemanticPattern && !_cache.getViableSpeechFunctions(transformedInput).contains(pinfo.speechFunction))
+		{
+			return new FunctionApplicabilityData(0, new HashMap<String, ScoredValue>()).setFailureMissingTokens();
+		}
 		
-		FunctionApplicabilityData argumentSpec = assessPatternArguments(pinfo, transformedData.getLeft(), tokenizedPattern);
+		FunctionApplicabilityData argumentSpec = assessPatternArguments(pinfo, transformedInput, tokenizedPattern);
 		
 		if (argumentSpec.isFailure())
 			return _cache.setCachedAssessmentValue(hasCache.getRight(), argumentSpec);
@@ -1206,22 +1232,23 @@ public class SpeechMap {
 		}
 		
 		
-		double maxScore = getMinimumTokensForMatchingPattern(tokenizedPattern, 0);
+		double maxScore = getMinimumTokensForMatchingPattern(pinfo.speechFunction, tokenizedPattern, 0);
 		double actualScore = argumentSpec.score/maxScore;
 		
 		return _cache.setCachedAssessmentValue(hasCache.getRight(), argumentSpec.setScore(actualScore));
 		
 	}
 	
-	private ScoredValue evaluate(String[] tokenizedInput, String[] functionPrecedence, boolean top)
+	private ScoredValue evaluate(String[] tokenizedInput, String[] functionPrecedence, boolean top, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
 	{
-		Pair<Boolean, String> hasCached = _cache.hasCachedPhraseValue(tokenizedInput, functionPrecedence);
+		
+		Pair<Boolean, String> hasCached = _cache.hasCachedPhraseValue(precedencePolicy, tokenizedInput, functionPrecedence);
 		if (hasCached.getLeft().booleanValue())
 		{
 			return _cache.getCachedPhraseValue(hasCached.getRight());
 		}
 		Pair<Boolean, String> hasCachedFunctionValue = null;
-		SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy = _speechConfig.getPrecedencePolicy();
+		
 		
 		ScoredValue result;
 		HashMap<String, LinkedList<String>> patternSpec = _speechConfig.getPatternSpecMap();
@@ -1288,7 +1315,7 @@ public class SpeechMap {
 			{
 				for (String pattern:patternVariations)
 				{
-					ProcessStateInfo pinfo = new ProcessStateInfo();
+					ProcessStateInfo pinfo = new ProcessStateInfo(functionName);
 					tokenizedPattern = _evaluationExternalInterface.tokenize(pattern);
 					functionApplicability = assessPattern(pinfo, tokenizedInput, tokenizedPattern);
 					functionApplicability.setFunctionName(functionName);
@@ -1321,6 +1348,8 @@ public class SpeechMap {
 						}
 					}
 				}
+				
+				_cache.addSpeechFunctionToCompletionIndex(functionName);
 				
 				if (((precedencePolicy != PRECEDENCE_ADHERENCE_POLICY.FULL) && maxApplicability == null) || 
 						((precedencePolicy == PRECEDENCE_ADHERENCE_POLICY.FULL) && maxVariationHeap.size() == 0))
@@ -1512,14 +1541,53 @@ public class SpeechMap {
 	// [-_-] (o.o) [-_-] (o.o) [-_-] (o.o) [-_-] (o.o) [-_-] (o.o) [-_-] (o.o)
 	
 	
-	public ScoredValue evaluate(String[] tokenizedInput)
+	public ScoredValue evaluate(String[] tokenizedInput, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
 	{
-		return evaluate(tokenizedInput, _speechConfig.getDefaultFunctionPrecedence(), true);
+		return evaluate(tokenizedInput, _speechConfig.getDefaultFunctionPrecedence(), true, precedencePolicy);
 	}
 	
 	
+	public ScoredValue evaluate(String[] tokenizedInput)
+	{
+		return evaluate(tokenizedInput, _speechConfig.getPrecedencePolicy());
+	}
 	
 	
+	//TODO: fix flex-evaluate to work properly with non-terminals
+	/**
+	 * This is a desperation function.  Call it as a last resort if you really need a response.  It doesn't work as well
+	 * if you have a lot of grammars since it filters speech-funtions based on the raw speech text instead of the text 
+	 * modified from context-free grammar patterns.  Any patterns that are reliant on CFGs may be excluded from this 
+	 * function.
+	 * 
+	 * @param tokenizedInput
+	 * @return
+	 */
+
+	public ScoredValue flexEvaluate(String[] tokenizedInput)
+	{
+		SpeechConfig.PRECEDENCE_ADHERENCE_POLICY policy = SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.NONE;
+		if (_cache.hasCompleteSpeechFunctionIndex())
+		{
+			HashSet<String> viableFunctions = _cache.getViableSpeechFunctions(tokenizedInput);
+			if (viableFunctions.size() > 0)
+			{
+				String[] functionPrec = viableFunctions.toArray(new String[0]);
+				return evaluate(tokenizedInput, functionPrec, true, policy);
+			}
+			else
+				return new ScoredValue(null, 0);
+		}
+		else
+		{
+			return evaluate(tokenizedInput, _speechConfig.getPatternSpecMap().keySet().toArray(new String[0]), true, policy);
+		}
+		
+	}
 	
+	public void clearCache(SpeechCache.SUB_CACHE cache)
+	{
+		_cache.clearCache(cache);
+	}
 	
 }

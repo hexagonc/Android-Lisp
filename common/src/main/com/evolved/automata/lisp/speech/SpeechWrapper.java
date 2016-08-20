@@ -173,6 +173,23 @@ public class SpeechWrapper
 			return Environment.getNull();
 	}
 	
+	/**
+	 * Desperation evaluate function.  Call this if you really think there should be a match to the speech but 
+	 * can't get a response from evaluate.
+	 * @param tokenizedInput
+	 * @return
+	 */
+	public Value flexEvaluate(Value tokenizedInput)
+	{
+		String[] input = LispUtilities.convertStringArray(tokenizedInput);
+		ScoredValue result = _sMap.flexEvaluate(input);
+		if (result != null && result.score > 0)
+			return convertScoredValue(result);
+		else
+			return Environment.getNull();
+	}
+	
+	
 	// <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> 
 	//						Configuration Methods
 	// <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(> <)o(>
@@ -199,8 +216,30 @@ public class SpeechWrapper
 		return ExtendedFunctions.makeValue(this);
 	}
 	
+	public Value setTypePrecedencePolicy(Value typeName, Value precedenceType)
+	{
+		String type = typeName.getString();
+		String policyName = precedenceType.getString();
+		SpeechConfig.PRECEDENCE_ADHERENCE_POLICY policy = SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.valueOf(policyName);
+		_internalConfig.setDefaultTypePrecedencePolicy(type, policy);
+		return ExtendedFunctions.makeValue(this);
+	}
+	
+	public Value clearCache(Value cacheTypeName)
+	{
+		String type = cacheTypeName.getString();
+		SpeechCache.SUB_CACHE subCache = SpeechCache.SUB_CACHE.valueOf(type);
+		
+		_sMap.clearCache(subCache);
+		
+		return ExtendedFunctions.makeValue(this);
+	}
+	
+	
+	
 	/**
-	 * 
+	 * Functions with side-effects cannot be cached because their return value is assummed to potential change
+	 * with each evaluation
 	 * @return
 	 */
 	public Value addFunctionsWithSideEffects(Value functionNameList)

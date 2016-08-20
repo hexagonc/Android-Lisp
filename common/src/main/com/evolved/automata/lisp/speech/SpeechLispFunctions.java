@@ -18,6 +18,9 @@ public class SpeechLispFunctions
 		env.mapFunction("add-intrinsically-ambig-function", add_intrinsically_ambig_function());
 		env.mapFunction("set-ambiguity-threshold", set_ambiguity_threshold());
 		env.mapFunction("update-function-precedence", update_function_precedence());
+		env.mapFunction("set-type-prec-policy", set_type_prec_policy()); 
+		env.mapFunction("clear-speech-sub-cache", clear_speech_cache_subtype());
+		env.mapFunction("flex-evaluate", flex_evaluate());
 		return env;
 	}
 	
@@ -103,6 +106,59 @@ public class SpeechLispFunctions
 			}
 		};
 	}
+	
+	
+	private static SimpleFunctionTemplate clear_speech_cache_subtype()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			// first argument is the speech wrapper, second argument is the cache subtype name
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)clear_speech_cache_subtype();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				return wrapper.clearCache(evaluatedArgs[1]);
+				
+				
+			}
+		};
+	}
+	
+	private static SimpleFunctionTemplate flex_evaluate()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			// first argument is the speech wrapper
+			// second argument is the tokenized input
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)flex_evaluate();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				return wrapper.flexEvaluate(evaluatedArgs[1]);
+				
+				
+			}
+		};
+	}
+	
 	
 	private static SimpleFunctionTemplate add_functions_with_side_effects()
 	{
@@ -202,6 +258,36 @@ public class SpeechLispFunctions
 			}
 		};
 	}
+	
+	private static SimpleFunctionTemplate set_type_prec_policy()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_type_prec_policy();
+			}
+			
+			
+			// First argument is the speech wrappert
+			// Second argument is the type name
+			// Third argument is the string form of the precedence policy
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(3, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				return wrapper.setTypePrecedencePolicy(evaluatedArgs[1], evaluatedArgs[2]);
+				
+				
+			}
+		};
+	}
+	
 	
 	private static SimpleFunctionTemplate set_ambiguous_result_policy()
 	{

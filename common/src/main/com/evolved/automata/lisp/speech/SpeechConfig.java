@@ -54,6 +54,8 @@ public class SpeechConfig {
 	PatternParser _simpleGrammarParser;
 	HashMap<String, LinkedList<String>> _patternSpecificationMap;
 	HashMap<String, LinkedList<String>> _patternTypeMap;
+	HashMap<String, PRECEDENCE_ADHERENCE_POLICY> _defaultTypePrecedencePolicyMap;
+	
 	AMBIGUITY_NOTICATION_POLICY _ambiguityPolicy;
 	HashSet<String> _intrinsicallyAmbiguousFunctions;
 	HashSet<String> _functionsWithSideEffects;
@@ -70,6 +72,7 @@ public class SpeechConfig {
 	
 	public SpeechConfig(HashMap<String, LinkedList<String>> patternSpec, HashMap<String, LinkedList<String>> typeSpec, String[] defaultPrecedence)
 	{
+		_defaultTypePrecedencePolicyMap = new HashMap<String, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY>();
 		_patternSpecificationMap = patternSpec;
 		_patternTypeMap = typeSpec;
 		_defaultFunctionPrecedence = defaultPrecedence;
@@ -78,12 +81,29 @@ public class SpeechConfig {
 				 
 	}
 	
+	public void setDefaultTypePrecedencePolicy(String typename, PRECEDENCE_ADHERENCE_POLICY policy)
+	{
+		_defaultTypePrecedencePolicyMap.put(typename, policy);
+	}
 	
+	
+	public PRECEDENCE_ADHERENCE_POLICY getTypePrecedencePolicy(String typename)
+	{
+		PRECEDENCE_ADHERENCE_POLICY policy = _defaultTypePrecedencePolicyMap.get(typename);
+		if (policy == null)
+		{
+			return precedencePolicy;
+		}
+		else
+			return policy;
+	}
 	
 	public SpeechConfig addFunctionWithSideEffects(String functionName){
 		_functionsWithSideEffects.add(functionName);
 		return this;
 	}
+	
+	
 	
 	
 	public SpeechConfig addIntrinsicallyAmbiguousFunction(String functionName){
