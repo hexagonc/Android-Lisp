@@ -17,6 +17,7 @@ public class SpeechLispFunctions
 		env.mapFunction("set-ambiguous-result-policy", set_ambiguous_result_policy());
 		env.mapFunction("add-intrinsically-ambig-function", add_intrinsically_ambig_function());
 		env.mapFunction("set-ambiguity-threshold", set_ambiguity_threshold());
+		env.mapFunction("update-function-precedence", update_function_precedence());
 		return env;
 	}
 	
@@ -126,6 +127,32 @@ public class SpeechLispFunctions
 			}
 		};
 	}
+	
+	
+	private static SimpleFunctionTemplate update_function_precedence()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)update_function_precedence();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				return wrapper.updateDefaultFunctionPrecedence(evaluatedArgs[1]);
+				
+				
+			}
+		};
+	}
+	
 	
 	private static SimpleFunctionTemplate add_intrinsically_ambig_function()
 	{

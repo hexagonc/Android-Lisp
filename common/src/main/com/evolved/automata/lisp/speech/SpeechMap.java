@@ -38,7 +38,7 @@ public class SpeechMap {
 		public int initiallySkippedTokens = 0;
 		public String[] pattern;
 		public ScoredValue resultValue;
-		
+		public String cacheKey;
 		public FunctionApplicabilityData(double s, HashMap<String, ScoredValue> map)
 		{
 			
@@ -1379,7 +1379,7 @@ public class SpeechMap {
 		while (maxVariationHeap.size()>0)
 		{
 			functionApplicability = maxVariationHeap.poll();
-			if (prevScore == -1 || (functionApplicability.score >= ( prevScore * ambiguityThreshold)))
+			if (prevScore == -1 || (functionApplicability.relativeScore >= ( prevScore * ambiguityThreshold)))
 			{
 				functionName = functionApplicability.functionName;
 				hasCachedFunctionValue = _cache.hasCachedFunctionValue(tokenizedInput, functionName);
@@ -1454,7 +1454,7 @@ public class SpeechMap {
 					if (result != null && result.score > 0)
 					{
 						functionApplicability.resultValue = result;
-						prevScore = functionApplicability.score;
+						prevScore = functionApplicability.relativeScore;
 						if (ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.ALWAYS_NOTIFY || 
 								(ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.NOTIFY_ONLY_AT_TOP_LEVEL && top))
 						{
@@ -1476,6 +1476,9 @@ public class SpeechMap {
 		ScoredValue finalResult = new ScoredValue(null, 0); 
 		if (ambiguityList.size() == 1)
 		{
+			
+			
+			
 			return _cache.setCachedPhraseValue(hasCached.getRight(), ambiguityList.getFirst().resultValue);
 		}
 		else if (ambiguityList.size() > 0)

@@ -4,7 +4,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.speech.SpeechMap.FUNCTION_APPLICABILITY_STATUS;
+import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
 import com.evolved.automata.parser.general.PatternParser;
 
 public class LispUtilities {
@@ -69,5 +72,50 @@ public class LispUtilities {
 	{
 		return SpeechConfig.BOUNDING_PATTERN_EVALUATION_STRATEGY.valueOf(strategyString.getString());
 	}
+	
+	
+	/**
+	 * Input is a list formated as: 
+	 * (score, arg-map, function-name, pattern, scored-value, canonical-phrase, status)
+	 * @param lispData
+	 * @return
+	 */
+	public static FunctionApplicabilityData convertToFunctionApplicabilityData(SpeechConfig config, Value lispData)
+	{
+		Value[] arguments = lispData.getList();
+		
+		double score = arguments[0].getFloatValue();
+		HashMap<String, Value> map = arguments[1].getStringHashtable();
+		HashMap<String, ScoredValue> argMap = new HashMap<String, ScoredValue>();
+		Value argValue;
+		for (String key: map.keySet())
+		{
+			argValue = map.get(key);
+			if (!argValue.isNull())
+			{
+				if (key.equals(config.getCanonicalPhraseArgKeyName()))
+					argMap.put(key, ScoredValue.from(argValue.getString()));
+				else
+					argMap.put(key, new ScoredValue(argValue, 1));
+				
+			}
+			else
+				argMap.put(key, new ScoredValue(null, 0));
+		}
+		
+		
+		String functionName = arguments[2].getString();
+		String[] pattern = LispUtilities.convertStringArray(arguments[3]);
+		// TODO: handle restoring proper scores of scored values, although this is less important since this value was explicitly chosen by the user
+		ScoredValue cachedResult = (arguments[4].isNull())?null:(new ScoredValue(arguments[4], 1));
+		Value statusString = arguments[6];
+		FunctionApplicabilityData data = new FunctionApplicabilityData(score, argMap);
+		data.functionName = functionName;
+		data.pattern = pattern;
+		data.resultValue = cachedResult;
+		data.status = FUNCTION_APPLICABILITY_STATUS.valueOf(statusString.getString());
+		return data;
+	}
+	
 	
 }

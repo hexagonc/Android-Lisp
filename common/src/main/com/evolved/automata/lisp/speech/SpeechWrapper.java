@@ -121,7 +121,7 @@ public class SpeechWrapper
 				_onAmbiguousResultHandler.setActualParameters(args);
 				try
 				{
-					return convertToFunctionApplicabilityData(_onAmbiguousResultHandler.evaluate(_environment, false));
+					return LispUtilities.convertToFunctionApplicabilityData(_internalConfig, _onAmbiguousResultHandler.evaluate(_environment, false));
 				}
 				catch (Exception e)
 				{
@@ -237,6 +237,19 @@ public class SpeechWrapper
 		_internalConfig.setAmbiguityThresholdFraction(fraction);
 		return ExtendedFunctions.makeValue(this);
 	}
+	
+	
+	/**
+	 * Update default function precedence
+	 * @return
+	 */
+	public Value updateDefaultFunctionPrecedence(Value functionNameList)
+	{
+		String[] names = LispUtilities.convertStringArray(functionNameList);
+		_internalConfig.setDefaultFunctionPrecedence(names);
+		return ExtendedFunctions.makeValue(this);
+	}
+	
 	
 	public SpeechMap getSpeechMap()
 	{
@@ -356,41 +369,6 @@ public class SpeechWrapper
 	}
 	
 	
-	/**
-	 * Input is a list formated as: 
-	 * (score, arg-map, function-name, pattern, scored-value, canonical-phrase, status)
-	 * @param lispData
-	 * @return
-	 */
-	FunctionApplicabilityData convertToFunctionApplicabilityData(Value lispData)
-	{
-		Value[] arguments = lispData.getList();
-		
-		double score = arguments[0].getFloatValue();
-		HashMap<String, Value> map = arguments[1].getStringHashtable();
-		HashMap<String, ScoredValue> argMap = new HashMap<String, ScoredValue>();
-		Value argValue;
-		for (String key: map.keySet())
-		{
-			argValue = map.get(key);
-			if (!argValue.isNull())
-				argMap.put(key, new ScoredValue(argValue, 1));
-			else
-				argMap.put(key, new ScoredValue(null, 0));
-		}
-		
-		
-		String functionName = arguments[2].getString();
-		String[] pattern = LispUtilities.convertStringArray(arguments[3]);
-		// TODO: handle restoring proper scores of scored values
-		ScoredValue cachedResult = (arguments[4].isNull())?null:(new ScoredValue(arguments[4], 1));
-		Value statusString = arguments[6];
-		FunctionApplicabilityData data = new FunctionApplicabilityData(score, argMap);
-		data.functionName = functionName;
-		data.pattern = pattern;
-		data.resultValue = cachedResult;
-		data.status = FUNCTION_APPLICABILITY_STATUS.valueOf(statusString.getString());
-		return data;
-	}
+	
 	
 }

@@ -21,6 +21,7 @@ import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.TestHarnessBase;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.speech.SpeechMap.FUNCTION_APPLICABILITY_STATUS;
 import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
 import com.evolved.automata.lisp.speech.SpeechMap.ProcessStateInfo;
 import com.evolved.automata.parser.general.PatternParser;
@@ -101,7 +102,10 @@ public class SpeechProcessingTests extends TestHarnessBase
 			"speech-set",
 			"speech-variable-get"};
 			
+	Value selectedOption;
+	int ambiguousOptionCount = 0;
 	
+	SpeechConfig config;
 	String[] baseTypeNames = new String[]{
 			"number", 
 			"predicate"};
@@ -111,6 +115,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{ "speech-add", "speech-subtract", "speech-times", "speech-divide", "speech-number", "speech-set", "speech-variable-get"}, 
 			{"speech-equals", "speech-less", "speech-greater" }};
 	
+	String ambiguity_handler_function_name = "on-ambiguity-handler";
 	
 	@SuppressWarnings("serial")
 	HashMap<String, String> baseFunctionDefMap = new HashMap<String, String>(){
@@ -219,10 +224,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 		env.mapFunction("create-speech-config", create_speech_config());
 		env.mapFunction("evaluate-speech-fast", evaluate_speech_fast());
 		env.mapFunction("add-function-wo-side-effects", add_function_wo_side_effects());
+		env.mapFunction("on-ambiguity-handler", on_ambiguity_handler());
 		env.mapValue("parser", ExtendedFunctions.makeValue(new PatternParser(grammar )));
 		env.evaluate("(setq var-map (make-string-hashtable))", true);
-		
-		
+		selectedOption = null;
+		ambiguousOptionCount = 0;
 		
 		for (String function:baseFunctionDefMap.keySet())
 		{
@@ -238,9 +244,6 @@ public class SpeechProcessingTests extends TestHarnessBase
 	public void testNumberEvaluation()
 	{
 		// Test number evaluation
-		
-		
-		
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number"});
 		String[] functionPrec = {"speech-number"};
 		String utterance = "10";
@@ -361,6 +364,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 	
 	private void setupSpeechMap(HashSet<String> availableFunctions, String[] functionPrec)
 	{
+		setupSpeechMap(availableFunctions, functionPrec, SpeechConfig.AMBIGUITY_NOTICATION_POLICY.NEVER_NOTIFY, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.FULL);
+	}
+	
+	private void setupSpeechMap(HashSet<String> availableFunctions, String[] functionPrec, SpeechConfig.AMBIGUITY_NOTICATION_POLICY ambigPolicy, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
+	{
 		boolean success = false;
 		try
 		{
@@ -400,12 +408,18 @@ public class SpeechProcessingTests extends TestHarnessBase
 		}
 		Assert.assertTrue("Failed to bind lisp function-prec", success);
 		
+	
+		
 		try
 		{
 			success = false; 
 			env.evaluate("(setq speech-config (create-speech-config pattern-spec type-spec function-prec parser))", true);
 			env.evaluate("(add-function-wo-side-effects speech-config \"speech-set\")", true);
 			env.evaluate("(add-function-wo-side-effects speech-config \"speech-variable-get\")", true);
+			Value configValue = env.getVariableValue("speech-config");
+			config = ((SpeechConfigLispWrapper)configValue.getObjectValue()).getConfig();
+			config.setAmbiguityNotificationPolicy(ambigPolicy);
+			config.setPrecedencePolicy(precedencePolicy);
 			success = true;
 		}
 		catch (Exception e)
@@ -418,6 +432,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 		{
 			success = false;
 			env.evaluate("(setq speech-map (create-speech-map speech-config))", true);
+			
+			
 			success = true;
 		}
 		catch (Exception e)
@@ -669,6 +685,69 @@ public class SpeechProcessingTests extends TestHarnessBase
 	
 	
 	@Test
+	public void testAmbiguityEvaluation()
+	{
+		
+		
+		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-times", "speech-number", "speech-add"});
+		String[] functionPrec = { "speech-add", "speech-times", "speech-number"};
+		
+		setupSpeechMap(availableFunctions, functionPrec, SpeechConfig.AMBIGUITY_NOTICATION_POLICY.NOTIFY_ONLY_AT_TOP_LEVEL, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.PARTIAL);
+		
+		
+		String utterance = "20 times plus 2";
+		boolean success = true;
+		
+		
+		
+		try
+		{
+			success = false;
+			env.mapValue("utterance", LispUtilities.convertStringArray(StringUtils.split(utterance, ' ')));
+			success = true;
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
+		
+		Value expectedResult = NLispTools.makeValue(22);	
+		
+		Value actualResult = null;
+		
+		try
+		{
+			success = false;
+			env.evaluate("(setq result (evaluate-speech-fast speech-map utterance))", true);
+			success = true;
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
+		
+		
+		try
+		{
+			actualResult = env.getVariableValue("result");
+			success = actualResult != null && ambiguousOptionCount == 2;
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			Assert.fail("Failed due to invalid result");
+		}
+		Assert.assertTrue( "Failed to get valid result for: '" + utterance + "'", success);
+		
+		Assert.assertTrue( "Failed to get valid type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), NLispTools.isNumericType(actualResult));
+		Assert.assertTrue( "Incorrect result valued for: '" + utterance + "', expected: " + expectedResult + ", got: " + actualResult, actualResult.getIntValue() == expectedResult.getIntValue());
+	}
+	
+	
+	
+	@Test
 	public void testAssignment()
 	{
 		// Test number evaluation
@@ -911,7 +990,28 @@ public class SpeechProcessingTests extends TestHarnessBase
 		public FunctionApplicabilityData onAmbiguousResult(
 				FunctionApplicabilityData[] possibilities, boolean isTop) {
 
-			return new FunctionApplicabilityData(0, null).setFailureRejected();
+			try
+			{
+				FunctionTemplate template = env.getFunction(ambiguity_handler_function_name);
+				Value[] args = new Value[possibilities.length];
+				FunctionApplicabilityData data;
+				for (int i = 0;i<args.length;i++)
+				{
+					data = possibilities[i];
+					args[i] = convertFunctionApplicabilityData(config, data);
+				}
+				
+				Value[] fargs = {NLispTools.makeValue(args), NLispTools.makeValue(isTop)};
+				template.setActualParameters(fargs);
+				Value returnValue = template.evaluate(env, false);
+				return LispUtilities.convertToFunctionApplicabilityData(config, returnValue);
+				
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace();
+				return new FunctionApplicabilityData(0, null).setFailureRejected();
+			}
 		}
 		
 	};
@@ -960,6 +1060,39 @@ public class SpeechProcessingTests extends TestHarnessBase
 		else
 			return Environment.getNull();
 			
+	}
+	
+	/**
+	 * FunctionApplicabilityData gets converted into a list:
+	 * (score, arg-map, function-name, pattern, scored-value, canonical-phrase)
+	 * @param data
+	 * @return
+	 */
+	public Value  convertFunctionApplicabilityData(SpeechConfig config, FunctionApplicabilityData data)
+	{
+		Value[] result = new Value[7];
+		result[0] = NLispTools.makeValue(data.score);
+		HashMap<String, Value> map = new HashMap<String, Value>();
+		HashMap<String, ScoredValue> argMap = data.argMap;
+		if (argMap != null)
+		{
+			for (String key: argMap.keySet())
+			{
+				map.put(key, convertScoredValue(argMap.get(key)));
+			}
+		}
+		else
+			argMap = new HashMap<String, ScoredValue>();
+		
+		result[1] = new StringHashtableValue(map);
+		result[2] = NLispTools.makeValue(data.functionName);
+		result[3] = LispUtilities.convertStringArray(data.pattern);
+		result[4] = convertScoredValue(data.resultValue);
+		result[5] = map.get(config.getCanonicalPhraseArgKeyName());
+		FUNCTION_APPLICABILITY_STATUS status = data.status;
+		String s = status.name();
+		result[6] = NLispTools.makeValue(s);
+		return NLispTools.makeValue(result);
 	}
 	
 	Value convertRawStringTokens(Value stringArray)
@@ -1041,6 +1174,35 @@ public class SpeechProcessingTests extends TestHarnessBase
 			}
 		};
 	}
+	
+	
+	
+	public SimpleFunctionTemplate on_ambiguity_handler()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)on_ambiguity_handler();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, false);
+				Value[] options = evaluatedArgs[0].getList();
+				if (options != null)
+					ambiguousOptionCount = options.length;
+				else
+					ambiguousOptionCount = 0;
+				return options[0];
+			}
+		};
+	}
+	
+	
 	
 	public SimpleFunctionTemplate add_function_wo_side_effects()
 	{
