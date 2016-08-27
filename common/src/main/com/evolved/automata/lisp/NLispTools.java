@@ -4036,6 +4036,7 @@ public class NLispTools
 		env.mapFunction("random-perm", random_perm());
 		
 		env.mapFunction("pow", pow());
+		env.mapFunction("exp", exp());
 		
 		env.mapFunction("Ln", Ln());
 		env.mapFunction("sqrt", sqrt());
@@ -4043,6 +4044,10 @@ public class NLispTools
 		env.mapFunction("sin", sin());
 		env.mapFunction("cos", cos());
 		env.mapFunction("tan", tan());
+		
+		env.mapFunction("sinh", sinh());
+		env.mapFunction("cosh", cosh());
+		env.mapFunction("tanh", tanh());
 		
 		env.mapFunction("asin", asin());
 		env.mapFunction("acos", acos());
@@ -4253,6 +4258,87 @@ public class NLispTools
 		}
 		;
 	}
+	
+	public static SimpleFunctionTemplate exp()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double power = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.exp(power));
+			}
+			
+		}
+		;
+	}
+	
+	public static SimpleFunctionTemplate tanh()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double radians = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.tanh(radians));
+			}
+			
+		}
+		;
+	}
+	
+	public static SimpleFunctionTemplate cosh()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double radians = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.cosh(radians));
+			}
+			
+		}
+		;
+	}
+	
+	
+	public static SimpleFunctionTemplate sinh()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+				checkNumericArguments(evaluatedArgs);
+				double radians = evaluatedArgs[0].getFloatValue();
+				
+				
+				return makeValue(Math.sinh(radians));
+			}
+			
+		}
+		;
+	}
+	
+	
+	
+	
 	public static SimpleFunctionTemplate random_perm()
 	{
 		return new SimpleFunctionTemplate()
