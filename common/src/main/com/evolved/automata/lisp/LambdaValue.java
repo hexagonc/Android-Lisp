@@ -31,10 +31,10 @@ public class LambdaValue extends Value {
 	@Override
 	public Value clone() {
 		
-		if (_lambda.getName() == null || _lambda.getName().trim().length()==0)
+		//if (_lambda.getName() == null || _lambda.getName().trim().length()==0)
 			return new LambdaValue(_lambda);
-		else
-			return Environment.parse(serializedForm(), true).getFirst();
+		//else
+		//	return Environment.parse(serializedForm(), true).getFirst();
 	}
 
 	@Override

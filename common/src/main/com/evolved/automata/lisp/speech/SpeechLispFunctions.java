@@ -1,10 +1,13 @@
 package com.evolved.automata.lisp.speech;
 
+import java.util.HashMap;
+
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
 
 public class SpeechLispFunctions 
 {
@@ -15,12 +18,26 @@ public class SpeechLispFunctions
 		env.mapFunction("add-functions-with-side-effects", add_functions_with_side_effects());
 		env.mapFunction("set-default-function-prec-policy", set_default_prec_policy());
 		env.mapFunction("set-ambiguous-result-policy", set_ambiguous_result_policy());
-		env.mapFunction("add-intrinsically-ambig-function", add_intrinsically_ambig_function());
+		env.mapFunction("add-intrinsically-ambig-functions", add_intrinsically_ambig_functions());
 		env.mapFunction("set-ambiguity-threshold", set_ambiguity_threshold());
 		env.mapFunction("update-function-precedence", update_function_precedence());
 		env.mapFunction("set-type-prec-policy", set_type_prec_policy()); 
 		env.mapFunction("clear-speech-sub-cache", clear_speech_cache_subtype());
 		env.mapFunction("flex-evaluate", flex_evaluate());
+		
+		// 
+		env.mapFunction("get-pattern-index-cache", get_pattern_index_cache());
+		env.mapFunction("get-function-list-cache", get_function_list_cache());
+		env.mapFunction("get-function-result-cache", get_function_result_cache());
+		env.mapFunction("get-pattern-assessment-cache", get_pattern_assessment_cache());
+		
+		
+		env.mapFunction("set-pattern-index-cache", set_pattern_index_cache());
+		env.mapFunction("set-function-list-cache", set_function_list_cache());
+		env.mapFunction("set-function-result-cache", set_function_result_cache());
+		env.mapFunction("set-pattern-assessment-cache", set_pattern_assessment_cache());
+		
+		
 		return env;
 	}
 	
@@ -210,7 +227,7 @@ public class SpeechLispFunctions
 	}
 	
 	
-	private static SimpleFunctionTemplate add_intrinsically_ambig_function()
+	private static SimpleFunctionTemplate add_intrinsically_ambig_functions()
 	{
 		return new SimpleFunctionTemplate()
 		{
@@ -219,7 +236,7 @@ public class SpeechLispFunctions
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
-				return (T)add_intrinsically_ambig_function();
+				return (T)add_intrinsically_ambig_functions();
 			}
 			
 			@Override
@@ -338,4 +355,217 @@ public class SpeechLispFunctions
 		};
 	}
 	
+	
+	
+	
+	private static SimpleFunctionTemplate get_pattern_assessment_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_pattern_assessment_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				return wrapper.convertPatternAssessmentCache(cache.getPatternAssessmentCache());
+				
+				
+			}
+		};
+	}
+	
+	private static SimpleFunctionTemplate get_function_result_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_function_result_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				return wrapper.convertFunctionResultCache(cache.getFunctionResultCache());
+				
+				
+			}
+		};
+	}
+	
+	private static SimpleFunctionTemplate get_function_list_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_function_list_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				return wrapper.convertFunctionListCache(cache.getFunctionListResultCache());
+				
+				
+			}
+		};
+	}
+	
+	
+	private static SimpleFunctionTemplate get_pattern_index_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_pattern_index_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				return wrapper.convertIndexedPatternCache(cache.getIndexedPatternCache());
+				
+				
+			}
+		};
+	}
+	
+	
+	// next
+	
+	private static SimpleFunctionTemplate set_pattern_assessment_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_pattern_assessment_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				
+				HashMap<String, FunctionApplicabilityData> subCache = wrapper.convertPatternAssessmentCache(evaluatedArgs[1]);
+				cache.setPatternAssessmentCache(subCache);
+				return evaluatedArgs[0];
+			}
+		};
+	}
+	
+	private static SimpleFunctionTemplate set_function_result_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_function_result_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				
+				HashMap<String, FunctionApplicabilityData> subCache = wrapper.convertFunctionResultCache(evaluatedArgs[1]);
+				cache.setFunctionResultCache(subCache);
+				
+				return evaluatedArgs[0];
+			}
+		};
+	}
+	
+	private static SimpleFunctionTemplate set_function_list_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_function_list_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				
+				HashMap<String, ScoredValue> subCache = wrapper.convertFunctionListCache(evaluatedArgs[1]);
+				cache.setFunctionListResultCache(subCache);
+				return evaluatedArgs[0];
+				
+				
+			}
+		};
+	}
+	
+	
+	private static SimpleFunctionTemplate set_pattern_index_cache()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_pattern_index_cache();
+			}
+			
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, false, true);
+				
+				SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+				SpeechCache cache = wrapper.getSpeechCache();
+				cache.setIndexedPatternCache(wrapper.convertIndexedPatternCache(evaluatedArgs[1]));
+				return evaluatedArgs[0];
+				
+			}
+		};
+	}
 }

@@ -38,7 +38,7 @@ public class SpeechCache {
 	/**
 	 * This cache will generally become invalid if the default precedence order changes
 	 */
-	public HashMap<String, ScoredValue> _functionListResultCache;
+	HashMap<String, ScoredValue> _functionListResultCache;
 	HashMap<String, String[]> _tokenizedPatternMap;
 	HashMap<String, FunctionApplicabilityData> _functionValueMap;
 	HashMap<String, HashSet<String>> _markerSpeechFunctionIndexMap = null;
@@ -78,6 +78,55 @@ public class SpeechCache {
 				_assessPatternMap.clear();
 				break;
 		}
+	}
+	
+	public HashMap<String, FunctionApplicabilityData> getPatternAssessmentCache()
+	{
+		return _assessPatternMap;
+	}
+	
+	public SpeechCache setPatternAssessmentCache(HashMap<String, FunctionApplicabilityData> cache)
+	{
+		_assessPatternMap = cache;
+		return this;
+	}
+	
+	public HashMap<String, ScoredValue> getFunctionListResultCache()
+	{
+		return _functionListResultCache;
+	}
+	
+	public SpeechCache setFunctionListResultCache(HashMap<String, ScoredValue> cache)
+	{
+		_functionListResultCache = cache;
+		return this;
+	}
+	
+	
+	
+	public HashMap<String, FunctionApplicabilityData> getFunctionResultCache()
+	{
+		return _functionValueMap;
+	}
+	
+	public SpeechCache setFunctionResultCache(HashMap<String, FunctionApplicabilityData> cache)
+	{
+		_functionValueMap = cache;
+		return this;
+	}
+	
+	
+	
+	public HashMap<String, HashSet<String>> getIndexedPatternCache()
+	{
+		return _markerSpeechFunctionIndexMap;
+	}
+	
+	
+	public SpeechCache setIndexedPatternCache(HashMap<String, HashSet<String>> cache)
+	{
+		_markerSpeechFunctionIndexMap = cache;
+		return this;
 	}
 	
 	

@@ -1,6 +1,7 @@
 package com.evolved.automata.lisp.speech;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import org.apache.commons.lang3.StringUtils;
@@ -230,7 +231,7 @@ public class SpeechWrapper
 		String type = cacheTypeName.getString();
 		SpeechCache.SUB_CACHE subCache = SpeechCache.SUB_CACHE.valueOf(type);
 		
-		_sMap.clearCache(subCache);
+		_sMap.clearSubCache(subCache);
 		
 		return ExtendedFunctions.makeValue(this);
 	}
@@ -295,6 +296,11 @@ public class SpeechWrapper
 		return _sMap;
 	}
 	
+	public SpeechCache getSpeechCache()
+	{
+		return _sMap.getCache();
+	}
+	
 	// .:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:.
 	//					Helper Functions
 	// .:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:..:OO:.
@@ -353,6 +359,9 @@ public class SpeechWrapper
 			
 	}
 	
+	
+	
+	
 	/**
 	 * Converts the string array from a ScoredValue representing an unstructured group into a Value to used
  	 * for the speech functions
@@ -390,7 +399,7 @@ public class SpeechWrapper
 	 */
 	Value convertFunctionApplicabilityData(FunctionApplicabilityData data)
 	{
-		Value[] result = new Value[6];
+		Value[] result = new Value[7];
 		result[0] = NLispTools.makeValue(data.score);
 		HashMap<String, Value> map = new HashMap<String, Value>();
 		HashMap<String, ScoredValue> argMap = data.argMap;
@@ -408,6 +417,127 @@ public class SpeechWrapper
 	}
 	
 	
+	// 
 	
+	
+	
+	
+	public Value convertIndexedPatternCache(HashMap<String, HashSet<String>> cache)
+	{
+		HashMap<String, Value> out = new HashMap<String, Value>();
+		for (String key: cache.keySet())
+		{
+			out.put(key, convertStringHashSet(cache.get(key)));
+		}
+		
+		return new StringHashtableValue(out);
+	}
+	
+	public HashMap<String, HashSet<String>> convertIndexedPatternCache(Value cache)
+	{
+		HashMap<String, Value> map = cache.getStringHashtable();
+		HashMap<String, HashSet<String>> out = new HashMap<String, HashSet<String>>();
+		for (String key: map.keySet())
+		{
+			out.put(key, convertStringHashSet(map.get(key)));
+		}
+		
+		return out;
+	}
+	
+	
+	
+	public Value convertFunctionResultCache(HashMap<String, FunctionApplicabilityData> cache)
+	{
+		HashMap<String, Value> out = new HashMap<String, Value>();
+		for (String key: cache.keySet())
+		{
+			out.put(key, convertFunctionApplicabilityData(cache.get(key)));
+		}
+		return new StringHashtableValue(out);
+	}
+	
+	public HashMap<String, FunctionApplicabilityData> convertFunctionResultCache(Value cache)
+	{
+		HashMap<String, FunctionApplicabilityData> out = new HashMap<String, FunctionApplicabilityData>();
+		HashMap<String, Value> map = cache.getStringHashtable();
+		for (String key: map.keySet())
+		{
+			out.put(key, LispUtilities.convertToFunctionApplicabilityData(_internalConfig, map.get(key)) );
+		}
+		return out;
+	}
+	
+	
+	
+	public Value convertFunctionListCache(HashMap<String, ScoredValue> cache)
+	{
+		HashMap<String, Value> out = new HashMap<String, Value>();
+		for (String key: cache.keySet())
+		{
+			out.put(key, convertScoredValue(cache.get(key)));
+		}
+		return new StringHashtableValue(out);
+	}
+	
+	
+	public HashMap<String, ScoredValue> convertFunctionListCache(Value cache)
+	{
+		HashMap<String, Value> map = cache.getStringHashtable();
+		HashMap<String, ScoredValue> out = new HashMap<String, ScoredValue>();
+		for (String key: map.keySet())
+		{
+			out.put(key, LispUtilities.convertToScoredValue(map.get(key)));
+		}
+		return out;
+	}
+	
+	
+	
+	public Value convertPatternAssessmentCache(HashMap<String, FunctionApplicabilityData> cache)
+	{
+		HashMap<String, Value> out = new HashMap<String, Value>();
+		for (String key: cache.keySet())
+		{
+			out.put(key, convertFunctionApplicabilityData(cache.get(key)));
+		}
+		return new StringHashtableValue(out);
+	}
+	
+	public HashMap<String, FunctionApplicabilityData> convertPatternAssessmentCache(Value cache)
+	{
+		HashMap<String, FunctionApplicabilityData> out = new HashMap<String, FunctionApplicabilityData>();
+		HashMap<String, Value> map = cache.getStringHashtable();
+		for (String key: map.keySet())
+		{
+			out.put(key, LispUtilities.convertToFunctionApplicabilityData(_internalConfig, map.get(key)) );
+		}
+		return out;
+	}
+	
+	
+	// 
+	
+	
+	Value convertStringHashSet(HashSet<String> set)
+	{
+		HashMap<String, Value> lispv = new HashMap<String, Value>();
+		for (String key: set)
+		{
+			lispv.put(key, NLispTools.makeValue(true));
+		}
+		return new StringHashtableValue(lispv);
+	}
+	
+	HashSet<String> convertStringHashSet(Value value )
+	{
+		HashSet<String> set = new HashSet<String>();
+		HashMap<String, Value> lispv = value.getStringHashtable();
+		for (String key: lispv.keySet())
+		{
+			set.add(key);
+		}
+		return set;
+	}
 	
 }

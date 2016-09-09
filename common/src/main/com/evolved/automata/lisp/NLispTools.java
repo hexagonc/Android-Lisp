@@ -417,6 +417,7 @@ public class NLispTools
 				
 				Value functionSpec = env.evaluate(_actualParameters[0]);
 				FunctionTemplate f = null;
+				
 				if (!functionSpec.isLambda())
 				{
 					if (functionSpec.isString())
@@ -434,7 +435,7 @@ public class NLispTools
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}
 					else
-						throw new RuntimeException("First argument to apply must be a FunctionTemplate or the name of a function: " + functionSpec);
+						throw new RuntimeException("First argument to funcall must be a FunctionTemplate or the name of a function: " + functionSpec);
 				}
 				else
 					f = functionSpec.getLambda();
@@ -3456,7 +3457,7 @@ public class NLispTools
 					return values[(int)evaluatedArgs[1].getIntValue()].clone();
 				}
 				else 
-					throw new RuntimeException("First argument to 'second' must be a list");
+					throw new RuntimeException("First argument to 'nth' must be a list");
 				
 			}
 			

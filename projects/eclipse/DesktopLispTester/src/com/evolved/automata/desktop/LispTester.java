@@ -6,6 +6,7 @@ import com.evolved.automata.lisp.IncompleteLispExpressionException;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -668,6 +669,7 @@ public class LispTester {
 			top = new Environment();
 			NLispTools.addDefaultFunctionsAddMacros(top);
 			ExtendedFunctions.addExtendedFunctions(top);
+			SpeechLispFunctions.addSpeechFunctions(top);
 			top.mapFunction("println",getPrintln(display));
 			top.mapFunction("set-data-value", setObjectDataValue(testStatement, insertStatement, updateSpecificStatement));
 			top.mapFunction("get-data-value", getObjectDataValue(selectStatement, updateSpecificAccessStatement));

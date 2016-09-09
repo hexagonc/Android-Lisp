@@ -73,6 +73,22 @@ public class LispUtilities {
 		return SpeechConfig.BOUNDING_PATTERN_EVALUATION_STRATEGY.valueOf(strategyString.getString());
 	}
 	
+	//TODO: Need to really come up with a good way to recover the score.  Most of the time there will not be meta-data
+	public static ScoredValue convertToScoredValue(Value value)
+	{
+		double score = 1;
+		if (value.hasMetaData())
+		{
+			Value meta = value.getMetaData();
+			score = meta.getFloatValue();
+		}
+		if (value.isString())
+			return ScoredValue.from(value.getString()).setScore(score);
+		else if (value.isNull())
+			return new ScoredValue(null, 0);
+		else
+			return new ScoredValue(value, score);
+	}
 	
 	/**
 	 * Input is a list formated as: 
@@ -107,7 +123,7 @@ public class LispUtilities {
 		String functionName = arguments[2].getString();
 		String[] pattern = LispUtilities.convertStringArray(arguments[3]);
 		// TODO: handle restoring proper scores of scored values, although this is less important since this value was explicitly chosen by the user
-		ScoredValue cachedResult = (arguments[4].isNull())?null:(new ScoredValue(arguments[4], 1));
+		ScoredValue cachedResult = convertToScoredValue(arguments[4]);
 		Value statusString = arguments[6];
 		FunctionApplicabilityData data = new FunctionApplicabilityData(score, argMap);
 		data.functionName = functionName;

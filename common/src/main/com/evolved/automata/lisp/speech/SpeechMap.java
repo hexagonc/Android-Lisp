@@ -1585,9 +1585,24 @@ public class SpeechMap {
 		
 	}
 	
-	public void clearCache(SpeechCache.SUB_CACHE cache)
+	public void clearSubCache(SpeechCache.SUB_CACHE cache)
 	{
 		_cache.clearCache(cache);
+	}
+	
+	public void clearAllSubCaches()
+	{
+		
+		for (SpeechCache.SUB_CACHE cache: SpeechCache.SUB_CACHE.values())
+		{
+			_cache.clearCache(cache);
+		}
+		
+	}
+	
+	public SpeechCache getCache()
+	{
+		return _cache;
 	}
 	
 }
