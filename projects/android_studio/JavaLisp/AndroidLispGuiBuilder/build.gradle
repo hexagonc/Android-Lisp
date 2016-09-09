@@ -15,5 +15,12 @@ android {
 	compiledSdkVersion 19
 	buildToolsVersion "23.1.0"
 
-	
+
+}
+
+
+
+dependencies {
+	compile project(':common-library')
+	compile project(':AndroidTools')
 }
