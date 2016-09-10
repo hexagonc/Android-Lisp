@@ -3145,7 +3145,7 @@ public class NLispTools
 				int end = (int)evaluatedArgs[1].getIntValue();
 				Value[] list = new Value[(end - start + 1)];
 				for (int i=start;i<=end;i++)
-					list[i] = NLispTools.makeValue(i); 
+					list[i - start] = NLispTools.makeValue(i);
 				return NLispTools.makeValue(list);
 				
 			}

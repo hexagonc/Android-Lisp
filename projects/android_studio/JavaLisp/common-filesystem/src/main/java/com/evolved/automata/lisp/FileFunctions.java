@@ -17,16 +17,14 @@ public class FileFunctions {
                 try
                 {
                     String[] lines = StandardTools.getDataFileLines(fileName);
-                    env.getRootEnvironment().loadFromFileLines(lines);
+
+                    return env.getRootEnvironment().loadFromFileLines(lines);
                 }
                 catch (IOException ie)
                 {
                     throw new RuntimeException(ie);
                 }
 
-
-
-                return null;
             }
         });
         return env;
