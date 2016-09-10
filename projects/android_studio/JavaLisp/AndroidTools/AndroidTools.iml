@@ -81,8 +81,8 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="commons-lang3-3.4" level="project" />
     <orderEntry type="library" exported="" name="universal-image-loader-1.9.1" level="project" />
-    <orderEntry type="library" exported="" name="commons-math3-3.5" level="project" />
     <orderEntry type="library" exported="" name="support-v4-r7" level="project" />
+    <orderEntry type="library" exported="" name="commons-math3-3.5" level="project" />
     <orderEntry type="module" module-name="common-library" exported="" />
   </component>
 </module>

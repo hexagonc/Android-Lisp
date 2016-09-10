@@ -18,8 +18,17 @@ repositories {
 android {
 	compileSdkVersion 19
 	buildToolsVersion "22.0.1"
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_1_7
+		targetCompatibility JavaVersion.VERSION_1_7
+	}
 
-
+	packagingOptions {
+		exclude 'META-INF/LICENSE'
+		exclude 'META-INF/NOTICE'
+		exclude 'META-INF/LICENSE.txt'
+		exclude 'META-INF/NOTICE.txt'
+	}
 }
 
 
@@ -27,4 +36,7 @@ android {
 dependencies {
 	compile project(':common-library')
 	compile project(':AndroidTools')
+	compile fileTree(dir: 'libs', include: ['*.jar'])
+	compile "com.fasterxml.jackson.core:jackson-databind:2.6.0"
+
 }

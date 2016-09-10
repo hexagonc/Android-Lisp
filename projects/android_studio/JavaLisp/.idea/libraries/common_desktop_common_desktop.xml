@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="common-desktop.common-desktop">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/common-desktop/build/libs/common-desktop.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

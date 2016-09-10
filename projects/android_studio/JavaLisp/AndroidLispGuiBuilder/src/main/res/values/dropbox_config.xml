@@ -10,11 +10,11 @@
     	 should probably also define your own encryption combination key in GuiBuilderConfiguration
     	 before using it to encrypt your key.
     -->
-    <string name="enc_dropbox_app_key">/g^t0YOdXj@OG9*</string>
+    <string name="enc_dropbox_app_key"></string>
     
     <!-- Enter the name of your Dropbox application.  This in the name of the Dropbox folder underneath 
     Apps that users of your application can save and load files.  It is also the name that you registered
     with Dropbox when setting up your developer account. -->
     
-    <string name="dropbox_app_client_name">AndroidLispGUIBuilder</string>
+    <string name="dropbox_app_client_name"></string>
 </resources>
