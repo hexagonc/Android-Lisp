@@ -132,91 +132,31 @@ public class CFGParser {
 		compiledComponents = new Hashtable<String, Matcher>();
 		_grammarDefinition = null;
 	}
-	
-	
-	public CFGParser(String[] definitionComponent) 
+
+	private static String[] getDataLines(BufferedReader lineReader) throws IOException
 	{
-		_grammarDefinition = definitionComponent;
-		String[] defParts;
-		namedComponents = new Hashtable<String, String>();
-		
-		for (String definition:definitionComponent)
+		LinkedList<String> lines = new LinkedList<>();
+		String line;
+		try
 		{
-			if (definition.length()>0)
+			while ((line = lineReader.readLine()) != null)
 			{
-				if (!definition.substring(0, 1).equals(Parser.commentChar))
-				{
-					defParts = Parser.splitPattern(definition, '=', true);
-					namedComponents.put(defParts[0], defParts[1]);
-				}
+				lines.add(line.trim());
 			}
+			return lines.toArray(new String[0]);
 		}
-		
-		endStates = null;
-		
-		processedDistributions = new Hashtable<String, StringDistribution>();
-		
-		String value;
-		String[]  subParts;
-		StringDistribution sDistribution;
-		for (String sName:namedComponents.keySet())
+		finally
 		{
-			value = namedComponents.get(sName);
-			subParts = Parser.disjuctionofLiterals(value);
-			if (subParts!=null)
-			{
-				sDistribution = new StringDistribution();
-				for (String s:subParts)
-					sDistribution.addString(s);
-				processedDistributions.put(sName, sDistribution);
-			}
+			lineReader.close();
 		}
-		buildNonTerminalParseMap();
+	}
+
+	public CFGParser(BufferedReader lineReader) throws IOException
+	{
+		this(getDataLines(lineReader));
 	}
 	
-	public CFGParser(LinkedList<String> definitionComponent) throws IOException
-	{
-		_grammarDefinition = definitionComponent.toArray(new String[0]);
-		String[] defParts;
-		namedComponents = new Hashtable<String, String>();
-		
-		for (String definition:definitionComponent)
-		{
-			if (definition.trim().length()>0)
-			{
-				if (!definition.substring(0, 1).equals(Parser.commentChar))
-				{
-					defParts = Parser.splitPattern(definition, '=', true);
-					//namedComponents.put(defParts[0], GrammarState.stringToTerminalSequence(defParts[1]));
-					namedComponents.put(defParts[0], defParts[1]);
-				}
-			}
-		}
-		
-		endStates = null;
-		
-		processedDistributions = new Hashtable<String, StringDistribution>();
-		
-		String value;
-		String[]  subParts;
-		StringDistribution sDistribution;
-		for (String sName:namedComponents.keySet())
-		{
-			value = namedComponents.get(sName);
-			subParts = Parser.disjuctionofLiterals(value);
-			if (subParts!=null)
-			{
-				sDistribution = new StringDistribution();
-				for (String s:subParts)
-					sDistribution.addString(s);
-				processedDistributions.put(sName, sDistribution);
-			}
-		}
-		buildNonTerminalParseMap();
-	}
-	
-	
-	public CFGParser(String grammarFileFullName) throws IOException
+	public CFGParser(String[] definitionComponent) throws IOException
 	{
 		String pattern = "<\\s*(\\S+)>";
 		Pattern p = Pattern.compile(pattern);
@@ -224,7 +164,7 @@ public class CFGParser {
 		String includeResource;
 		String[] defParts;
 		namedComponents = new Hashtable<String, String>();
-		String[] definitionComponent = com.evolved.automata.filetools.StandardTools.getDataFileLines(grammarFileFullName);
+
 		for (String definition:definitionComponent)
 		{
 			if (definition.trim().length()>0)
@@ -249,71 +189,6 @@ public class CFGParser {
 		}
 		
 		endStates = null;
-		processedDistributions = new Hashtable<String, StringDistribution>();
-		
-		String value;
-		String[]  subParts;
-		StringDistribution sDistribution;
-		for (String sName:namedComponents.keySet())
-		{
-			value = namedComponents.get(sName);
-			subParts = Parser.disjuctionofLiterals(value);
-			if (subParts!=null)
-			{
-				sDistribution = new StringDistribution();
-				for (String s:subParts)
-					sDistribution.addString(s);
-				processedDistributions.put(sName, sDistribution);
-			}
-		}
-		buildNonTerminalParseMap();
-	}
-	
-	public CFGParser(BufferedReader grammarResourceName) throws IOException
-	{
-		
-		String pattern = "<\\s*(\\S+)>";
-		Pattern p = Pattern.compile(pattern);
-		
-		String includeResource;
-		String[] defParts;
-		namedComponents = new Hashtable<String, String>();
-		String definition;
-		LinkedList<String> defList = new LinkedList<String>();
-		try
-		{
-			while ((definition = grammarResourceName.readLine())!=null)
-			{
-				defList.add(definition);
-				if (definition.trim().length()>0)
-				{
-					if (!definition.substring(0, 1).equals(Parser.commentChar))
-					{
-						includeResource = includeReference(p, definition);
-						if (includeResource==null)
-						{
-							defParts = Parser.splitPattern(definition, '=', true);
-							//namedComponents.put(defParts[0], GrammarState.stringToTerminalSequence(defParts[1]));
-							namedComponents.put(defParts[0], defParts[1]);
-						}
-						else
-						{
-							addGrammarFromResource(p, includeResource, namedComponents);
-						}
-					}
-				}
-			}
-		}
-		finally
-		{
-			if (grammarResourceName!=null)
-			{
-				grammarResourceName.close();
-			}
-		}
-		_grammarDefinition = defList.toArray(new String[0]);
-		endStates = null;
-		
 		processedDistributions = new Hashtable<String, StringDistribution>();
 		
 		String value;
@@ -766,8 +641,7 @@ public class CFGParser {
 	/**
 	 * Simplest method for matching a string against a pattern.  This is for matching a single pattern<br/>
 	 * @param inputString
-	 * @param EBNF-like pattern string to parse into a parse-tree
-	 * @param captureNames names of non-terminals to capture
+	 * @param grammarComponent-like pattern string to parse into a parse-tree
 	 */
 	public boolean match(String inputString, String grammarComponent)
 	{
@@ -779,7 +653,7 @@ public class CFGParser {
 	/**
 	 * Main method for matching a string against a parse-tree of unit pattern matchers.
 	 * @param inputString 
-	 * @param EBNF-like pattern string to parse into a parse-tree
+	 * @param grammarComponent-like pattern string to parse into a parse-tree
 	 * @param captureNames names of non-terminals to capture
 	 */
 	public boolean match(String inputString, String grammarComponent, String[] captureNames)
@@ -795,7 +669,7 @@ public class CFGParser {
 	/**
 	 * Main method for matching a string against a parse-tree of unit pattern matchers.
 	 * @param inputString 
-	 * @param EBNF-like pattern string to parse into a parse-tree
+	 * @param pattern-like pattern string to parse into a parse-tree
 	 * @param captureNames names of non-terminals to capture
 	 * @param defaultQuantifiersGreedyP 
 	 * @param capturedComponents input parameters

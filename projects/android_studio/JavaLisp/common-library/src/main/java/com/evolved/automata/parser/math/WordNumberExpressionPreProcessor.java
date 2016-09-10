@@ -2,13 +2,14 @@ package com.evolved.automata.parser.math;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.Vector;
 
-import com.evolved.automata.filetools.StandardTools;
+
 import com.evolved.automata.parser.CFGParser;
 import com.evolved.automata.parser.StringDistribution;
 import com.evolved.automata.parser.math.ExpressionFactory.TokenResult;
@@ -18,8 +19,8 @@ public class WordNumberExpressionPreProcessor extends ReferenceExpressionPreProc
 	CFGParser expressionParser;
 	public WordNumberExpressionPreProcessor() throws IOException
 	{
-		BufferedReader greader;
-		greader = StandardTools.getReaderFromPackageResource("/com/evolved/automata/parser/math/number_pattern.txt");
+		BufferedReader greader = new BufferedReader(new InputStreamReader(WordNumberExpressionPreProcessor.class.getResourceAsStream("/com/evolved/automata/parser/math/number_pattern.txt")));
+
 		initialize(new CFGParser(greader));
 	}
 	

@@ -162,9 +162,9 @@ public class PatternParser
 		/**
 		 * Adds a nonterminal to the number of possible alternatives to the mapped value of another<br/>
 		 * nonterminal
-		 * @param nonTerminalName
-		 * @param disjunctiveNonTerminal
-		 * @param When true, creates [targetNonTerminalName] when it does not exists
+		 * @param targetNonTerminalName
+		 * @param disjunctiveChildNonTerminal
+		 * @param createIfTargetNotExists When true, creates [targetNonTerminalName] when it does not exists
 		 */
 		public void addNonterminalToDisjunction(String targetNonTerminalName, String disjunctiveChildNonTerminal, boolean createIfTargetNotExists)
 		{
@@ -997,14 +997,7 @@ public class PatternParser
 	String[] _nonTerminals;
 	
 	Hashtable<String, Integer> _weightDistribution;
-	
-	
-	
-	public PatternParser(String inputfileFullname) throws IOException
-	{
-		String[] definitionComponent = com.evolved.automata.filetools.StandardTools.getDataFileLines(inputfileFullname);
-		init(definitionComponent, false);
-	}
+
 	
 	public PatternParser(String[] grammarDefinition) 
 	{

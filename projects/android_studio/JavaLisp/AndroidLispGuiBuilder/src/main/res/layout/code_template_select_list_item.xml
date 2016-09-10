@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+    <TextView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:gravity="center|left"
+        android:padding = '@dimen/code_template_select_page_list_item_padding'
+        android:id = '@+id/text'
+        android:layout_width = "match_parent"
+        android:layout_height = 'wrap_content'
+        android:textSize="@dimen/code_template_select_page_list_item_text_size"
+        android:textColor="@color/code_template_select_list_item_text_color"
+        />
+
+

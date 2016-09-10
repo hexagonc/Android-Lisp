@@ -52,12 +52,7 @@ class Parser
 		
 	}
 	
-	public static PatternParser.GlobalState buildGlobalState(String inputFileFullName, boolean stringsAsCharacter) throws IOException
-	{
-		String[] definitionComponent = com.evolved.automata.filetools.StandardTools.getDataFileLines(inputFileFullName);
-		return buildGlobalState( definitionComponent, stringsAsCharacter);
-		
-	}
+
 	
 	public static PatternParser.GlobalState buildGlobalState(HashSet<String> functions, HashMap<String, CustomTerminalMatcher> customMap,  String[] definitionComponent, boolean stringsAsCharacter) 
 	{
@@ -1159,7 +1154,7 @@ class Parser
 	 * Splits a string representing a regular expression pattern on a character unless that character <br/>
 	 * is quoted in single quotes
 	 * @param tokenizedString The pattern string
-	 * @param slitChar character to split on
+	 * @param splitChar character to split on
 	 * @param trim if true, each component delimited by the splitChar is trimmed
 	 * @return Returns a string array of each component delimited by the splitChar
 	 */

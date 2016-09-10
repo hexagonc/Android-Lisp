@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:custom = 'http://schemas.android.com/apk/res-auto'
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingLeft="@dimen/project_management_page_left_right_padding_size"
+    android:paddingRight="@dimen/project_management_page_left_right_padding_size"
+    android:paddingTop="@dimen/project_management_page_top_right_padding_size"
+    android:paddingBottom="@dimen/project_management_page_top_right_padding_size" >
+    <TextView 
+        android:textSize="@dimen/project_management_page_title_text_size"
+        android:layout_width="wrap_content"
+        android:layout_height='wrap_content'
+        android:text = '@string/project_management_page_title'/>
+    <ListView
+        android:layout_width = 'match_parent'
+        android:layout_height="@dimen/project_management_projects_listview_size"
+        android:id = '@+id/lst_project_names'
+        />
+    <LinearLayout 
+        android:orientation = 'horizontal'
+        android:layout_width = 'match_parent'
+        android:layout_height="wrap_content">
+        <TextView
+            android:layout_width = 'wrap_content'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '0'
+            android:text = '@string/project_selected_label_title'
+            android:textSize="@dimen/project_selected_label_text_size"/>
+        <EditText
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:singleLine="true"
+            android:hint = '@string/project_name_hint_text'
+            android:id = '@+id/edit_project_name'
+            />
+    </LinearLayout>
+    <LinearLayout 
+        android:orientation = 'horizontal'
+        android:layout_width = 'match_parent'
+        android:layout_height="wrap_content">
+        <LinearLayout 
+            android:layout_width="0px"
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:gravity = 'center'
+            android:orientation="vertical">
+            <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = '@string/project_create_button_label'
+	           custom:textSize = '@dimen/project_management_button_label_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:tag="create"
+	           android:id = '@+id/sdw_but_project_create'/>
+            <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = '@string/project_select_button_label'
+	           custom:textSize = '@dimen/project_management_button_label_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:tag="select"
+	           android:layout_height='wrap_content'
+	           android:id = '@+id/sdw_but_project_select'/>
+            
+        </LinearLayout>
+        <LinearLayout 
+            android:layout_width="0px"
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:gravity = 'center'
+            android:orientation="vertical">
+            <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = '@string/project_rename_button_label'
+	           custom:textSize = '@dimen/project_management_button_label_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:tag="rename"
+	           android:id = '@+id/sdw_but_project_rename'/>
+            
+        </LinearLayout>
+        <LinearLayout 
+            android:layout_width="0px"
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:gravity = 'center'
+            android:orientation="vertical">
+            <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = '@string/project_delete_button_label'
+	           custom:textSize = '@dimen/project_management_button_label_size'
+	           custom:textColor = '#000'
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:tag="delete"
+	           android:id = '@+id/sdw_but_project_delete'/>
+            <com.evolved.automata.android.widgets.ShadowButton 
+	           custom:text = '@string/project_management_cancel_label'
+	           custom:textSize = '@dimen/project_management_button_label_size'
+	           custom:textColor = '#000'
+	           android:tag="cancel"
+	           android:layout_width="wrap_content"
+	           android:layout_height='wrap_content'
+	           android:id = '@+id/sdw_but_project_cancel'/>
+            
+        </LinearLayout>
+        
+        
+    </LinearLayout>
+
+
+</LinearLayout>

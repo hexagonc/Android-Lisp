@@ -1,5 +1,5 @@
 package com.evolved.automata.lisp;
-import com.evolved.automata.filetools.StandardTools;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -2894,23 +2894,7 @@ public class NLispTools
 			
 		}
 		);
-		
-		
-		env.mapFunction("load", new SimpleFunctionTemplate()
-		{
 
-			@Override
-			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(1, false, false);
-				String filename = evaluatedArgs[0].getString();
-				Environment target =  env.getRootEnvironment();
-				
-				return target.loadFromFile(filename);
-				
-			}
-			
-		}
-		);
 		
 		env.mapFunction("append-item", new SimpleFunctionTemplate()
 		{
@@ -3465,22 +3449,7 @@ public class NLispTools
 		);
 		
 		
-		env.mapFunction("flush", new SimpleFunctionTemplate()
-		{
 
-			@Override
-			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				for (String s:Environment.logs)
-				{
-					StandardTools.writeToFile("/Users/Evolved8/fuck.txt", s, false);
-				}
-				
-				return makeValue(false);
-				
-			}
-			
-		}
-		);
 		
 		env.mapFunction("rest", new SimpleFunctionTemplate()
 		{

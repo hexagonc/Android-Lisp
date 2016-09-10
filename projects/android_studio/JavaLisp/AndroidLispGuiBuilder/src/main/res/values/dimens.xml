@@ -1,0 +1,21 @@
+<resources>
+
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="activity_horizontal_margin">16dp</dimen>
+    <dimen name="activity_vertical_margin">16dp</dimen>
+	<dimen name = 'general_code_editor_text_size'>12sp</dimen>
+	<dimen name = 'file_chooser_filename_label_text_size'>12sp</dimen>
+	<dimen name = 'file_chooser_filename_edit_text_size'>12sp</dimen>
+	<dimen name = 'file_chooser_buttons_text_size'>12sp</dimen>
+	<dimen name = 'history_button_text_size'>24sp</dimen>
+	<dimen name = 'history_button_padding_left_right'>0dp</dimen>
+	<dimen name = 'history_button_padding_top_bottom'>0dp</dimen>
+	
+	<dimen name = 'simple_dialog_message_text_size'>11sp</dimen>
+	<dimen name = 'simple_dialog_input_text_size'>12sp</dimen>
+	<dimen name = 'simple_dialog_button_text_size'>11sp</dimen>
+	<dimen name = 'simple_dialog_padding'>5dp</dimen>
+	
+	<dimen name = 'simple_dialog_message_input_separation'>3dp</dimen>
+	<dimen name = 'simple_dialog_padding_input_button_separator'>5dp</dimen>
+</resources>

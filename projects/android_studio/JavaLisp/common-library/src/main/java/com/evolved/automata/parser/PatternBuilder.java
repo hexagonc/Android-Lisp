@@ -1,6 +1,5 @@
 package com.evolved.automata.parser;
-import com.evolved.automata.*;
-import com.evolved.automata.filetools.*;
+
 
 
 import java.io.*;
@@ -16,8 +15,8 @@ public class PatternBuilder {
 	
 	public PatternBuilder(String[] grammarLines) throws IOException
 	{
-		BufferedReader bReader = StandardTools.getReaderFromPackageResource("/com/evolved/automata/parser/CFG_grammar.txt");
-		conformanceparser = new CFGParser(bReader);
+		BufferedReader numberGrammarReader = new BufferedReader(new InputStreamReader(PatternBuilder.class.getResourceAsStream("/com/evolved/automata/parser/CFG_grammar.txt")));
+		conformanceparser = new CFGParser(getReaderLines(numberGrammarReader));
 		distribution = new Hashtable<String, PatternGenerator>();
 		components = new Hashtable<String, String>();
 		
@@ -43,8 +42,8 @@ public class PatternBuilder {
 	
 	public PatternBuilder() throws IOException
 	{
-		BufferedReader bReader = StandardTools.getReaderFromPackageResource("/com/evolved/automata/parser/CFG_grammar.txt");
-		conformanceparser = new CFGParser(bReader);
+		BufferedReader numberGrammarReader = new BufferedReader(new InputStreamReader(PatternBuilder.class.getResourceAsStream("/com/evolved/automata/parser/CFG_grammar.txt")));
+		conformanceparser = new CFGParser(getReaderLines(numberGrammarReader));
 		distribution = new Hashtable<String, PatternGenerator>();
 		components = new Hashtable<String, String>();
 		
@@ -52,10 +51,7 @@ public class PatternBuilder {
 		addPatternInfo();
 	}
 	
-	public PatternBuilder(String inputFile) throws IOException
-	{
-		this(convertFileLines(inputFile));
-	}
+
 	
 	public PatternBuilder(BufferedReader inputFile) throws IOException
 	{
@@ -86,24 +82,30 @@ public class PatternBuilder {
 		return null;
 	}
 	
-	private static String[] convertFileLines(String inputFile) throws IOException
-	{
-		LinkedList<String> lines = new LinkedList<String>();
-		String[] behaviorPatternLines = StandardTools.getDataFileLines(inputFile);
-		for (String lineinput:behaviorPatternLines)
+	private static String[] getReaderLines(BufferedReader reader) throws IOException {
+		try
 		{
-			lineinput=lineinput.trim();
-			if (lineinput.length()>0&&lineinput.charAt(0)!=';')
-				lines.add(lineinput);
+			List<String> lines = new LinkedList<String>();
+			String line = null;
+			while ((line = reader.readLine()) != null)
+			{
+				lines.add(line.trim());
+			}
+			return lines.toArray(new String[0]);
 		}
-		
-		return lines.toArray(new String[0]);
+		finally
+		{
+			if (reader!=null)
+				reader.close();
+		}
+
+
 	}
 	
-	private static String[] convertFileLines(BufferedReader inputFile) throws IOException
+	private static String[] convertFileLines(BufferedReader inputReader) throws IOException
 	{
 		LinkedList<String> lines = new LinkedList<String>();
-		String[] behaviorPatternLines = StandardTools.getDataFileLines(inputFile);
+		String[] behaviorPatternLines = getReaderLines(inputReader);
 		for (String lineinput:behaviorPatternLines)
 		{
 			lineinput=lineinput.trim();

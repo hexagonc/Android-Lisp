@@ -66,8 +66,7 @@ public class StandardTools
 			return directoryName;
 	}
 	
-	public static String[] partitionFilePath(String fullPath)
-	{
+	public static String[] partitionFilePath(String fullPath) throws IOException {
 		String[] grammar = new String[]
 				{"separator = '/'",
 				"path_char = '@' | '#' | ' ' | '_' | '.' | '-'",
@@ -447,7 +446,7 @@ public class StandardTools
 		InputStreamReader reader = new InputStreamReader(istream);
 		return new BufferedReader(reader);
 	}
-	
+
 	public static BufferedReader[]  getReaderFromPackageResource(String[] resources)
 	{
 		BufferedReader[] array = new BufferedReader[resources.length];

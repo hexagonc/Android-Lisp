@@ -1,6 +1,7 @@
 package com.evolved.automata.desktop;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
+import com.evolved.automata.lisp.FileFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.IncompleteLispExpressionException;
 import com.evolved.automata.lisp.NLispTools;
@@ -14,13 +15,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLData;
+
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.LinkedList;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
+
 
 public class LispTester {
 
@@ -670,6 +671,7 @@ public class LispTester {
 			NLispTools.addDefaultFunctionsAddMacros(top);
 			ExtendedFunctions.addExtendedFunctions(top);
 			SpeechLispFunctions.addSpeechFunctions(top);
+			FileFunctions.addFunctions(top);
 			top.mapFunction("println",getPrintln(display));
 			top.mapFunction("set-data-value", setObjectDataValue(testStatement, insertStatement, updateSpecificStatement));
 			top.mapFunction("get-data-value", getObjectDataValue(selectStatement, updateSpecificAccessStatement));

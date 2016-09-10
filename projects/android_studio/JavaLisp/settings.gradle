@@ -1,1 +1,1 @@
-include ':AndroidLispGuiBuilder', ':AndroidTools', ':common-library', ':common-desktop', ':LispDesktopConsole', ':common-filesytem'
+include ':AndroidLispGuiBuilder', ':AndroidTools', ':common-library', ':common-desktop', ':common-filesystem', ':LispDesktopConsole'

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+    <PreferenceCategory
+        android:title="@string/pref_cat_title_filesystem">
+        <Preference android:key ="@string/pref_key_base_lisp_code_dropbox_file_path"
+        		android:title="@string/pref_title_base_lisp_code_dropbox_file_path"
+        		android:summary="@string/pref_desc_base_lisp_code_dropbox_file_path"/>
+        <Preference android:key ="@string/pref_key_base_local_lisp_code_file_path"
+        		android:title="@string/pref_title_base_local_lisp_code_file_path"
+        		android:summary="@string/pref_desc_base_local_lisp_code_file_path"/>
+        
+        
+    </PreferenceCategory>
+    
+
+</PreferenceScreen>

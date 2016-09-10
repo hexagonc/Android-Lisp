@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/AndroidLispGuiBuilder/AndroidLispGuiBuilder.iml" filepath="$PROJECT_DIR$/AndroidLispGuiBuilder/AndroidLispGuiBuilder.iml" />
+      <module fileurl="file://$PROJECT_DIR$/AndroidTools/AndroidTools.iml" filepath="$PROJECT_DIR$/AndroidTools/AndroidTools.iml" />
+      <module fileurl="file://$PROJECT_DIR$/JavaLisp.iml" filepath="$PROJECT_DIR$/JavaLisp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/LispDesktopConsole/LispDesktopConsole.iml" filepath="$PROJECT_DIR$/LispDesktopConsole/LispDesktopConsole.iml" />
+      <module fileurl="file://$PROJECT_DIR$/common-desktop/common-desktop.iml" filepath="$PROJECT_DIR$/common-desktop/common-desktop.iml" />
+      <module fileurl="file://$PROJECT_DIR$/common-filesystem/common-filesystem.iml" filepath="$PROJECT_DIR$/common-filesystem/common-filesystem.iml" />
+      <module fileurl="file://$PROJECT_DIR$/common-library/common-library.iml" filepath="$PROJECT_DIR$/common-library/common-library.iml" />
+    </modules>
+  </component>
+</project>

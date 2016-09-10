@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="code_template_select_list_item_text_color">#000</color>
+    <color name="code_template_select_list_view_border_color">#00F</color>
+    <color name="code_template_select_list_view_background_color">#FFF</color>
+</resources>

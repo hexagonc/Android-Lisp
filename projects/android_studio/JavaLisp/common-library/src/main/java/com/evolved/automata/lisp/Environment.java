@@ -1,7 +1,6 @@
 package com.evolved.automata.lisp;
 import java.util.*;
 
-import com.evolved.automata.filetools.StandardTools;
 
 public class Environment 
 {
@@ -93,7 +92,6 @@ public class Environment
 	}
 	
 	public synchronized static void log(String message){
-		//StandardTools.writeToFile("/Users/Evolved8/fuck.txt", message, false);
 		logs.add(message);
 	}
 	
@@ -104,7 +102,7 @@ public class Environment
 	
 	public synchronized Value mapValue(String name, Value v)
 	{
-		_valueMap.put(name,  v);
+		_valueMap.put(name, v);
 		return v;
 	}
 	
@@ -194,23 +192,23 @@ public class Environment
 			start = start._parentEnv;
 		return start;
 	}
-	
-	public Value loadFromFile(String filefullname)
+
+	public Value loadFromFileLines(String[] dataLines)
 	{
 		Value result = null;
 		try
 		{
-			String[] dataLines = StandardTools.getDataFileLines(filefullname);
+
 			StringBuilder command = new StringBuilder();
 			LinkedList<Value> parsedResult = null;
-			
+
 			for (String lineinput:dataLines)
 			{
 				if (lineinput.trim().length()==0 || lineinput.trim().startsWith(";"))
 					continue;
 				command.append(" ");
 				command.append(lineinput);
-				
+
 				try
 				{
 					parsedResult = Environment.parse(command.toString(), true);
@@ -235,7 +233,7 @@ public class Environment
 		}
 		return result;
 	}
-	
+
 	public Value evaluate(Value v, boolean resume) throws InstantiationException, IllegalAccessException
 	{
 		

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name = 'toolarea_divider_color'>#BAB7CE</color>
+    <color name = 'toolarea_text_color'>#000</color>
+    <color name = 'toolarea_background_color'>#FFFFFF</color>
+</resources>

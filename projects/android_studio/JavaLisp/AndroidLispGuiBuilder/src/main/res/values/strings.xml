@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">AndroidLispGUIBuilder</string>
+    <string name="hello_world">Hello world!</string>
+    
+    <string name="console_prompt">&gt;&gt;</string>
+
+    <string name="code_snippets_delimiter"># ._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-._-</string>
+    <string name="code_snippets_label_delimiter"># .`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--.`--</string>
+    <!-- Display Strings for Localization  -->
+    <string name="action_settings">Settings</string>
+    <string name="action_help">Help</string>
+    <string name="dropbox_authorization_dialog_title">Authorize this app</string>
+    
+    <!--  -->
+    <string name = "pref_cat_title_filesystem">File Preferences</string>
+    
+    <string name="pref_title_base_lisp_code_dropbox_file_path">Dropbox Lisp Code Path</string>
+    <string name="pref_desc_base_lisp_code_dropbox_file_path">This is the base path for finding your lisp code that is loaded from Dropbox.  This path must be a subfolder of /Apps/AndroidLispGUIBuilder.</string>
+    
+    <string name="pref_title_base_local_lisp_code_file_path">Local Storage Lisp Code Path</string>
+    <string name="pref_desc_base_local_lisp_code_file_path">This is the base path for storing Lisp code files.</string>
+    
+    <string name = "pref_key_workspace_serialized">pref_key_workspace_serialized</string>
+    
+    
+    <string name = 'local_storage_file_save_dialog_title'>Set name of file</string>
+    <string name = 'local_storage_file_load_dialog_title'>Select filename to load</string>
+    <string name = 'dropbox_save_file_dialog_title'>Set name of file</string>
+    <string name = 'dropbox_load_file_dialog_title'>Select filename to load</string>
+    <string name = "code_template_name_select_dialog_title">Set Template Name</string>
+    
+    <string name = 'file_chooser_file_select_text'>Select file</string>
+    <string name = 'file_chooser_folder_create_text'>Create folder</string>
+    <string name = 'file_chooser_cancel_text'>Cancel</string>
+    
+    <string name = 'code_template_layout_history_back_label'>&lt;</string>
+    <string name = 'code_template_layout_history_forward_label'>&gt;</string>
+    
+    <string name = "default_project_name">default</string>
+    <string name = "undefined_code_page_label">untitled</string>
+    
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding = '@dimen/simple_dialog_padding'
+    android:id = '@+id/lin_simple_text_input_container' >
+    <TextView
+        android:layout_width = 'match_parent'
+        android:layout_height = 'wrap_content'
+        android:id = '@+id/txt_simple_dialog_message'
+        android:textSize="@dimen/simple_dialog_message_text_size"
+        android:text = ""
+        android:layout_marginBottom="@dimen/simple_dialog_message_input_separation"/>
+    <EditText 
+        android:id = '@+id/edit_simple_dialog_input'
+        android:layout_width = 'match_parent'
+        android:layout_height = 'wrap_content'
+        android:layout_marginBottom="@dimen/simple_dialog_padding_input_button_separator"
+        />
+    <include layout = '@layout/button_container_swap'/>
+</LinearLayout>
