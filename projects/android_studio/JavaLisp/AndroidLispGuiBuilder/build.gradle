@@ -38,5 +38,5 @@ dependencies {
 	compile project(':AndroidTools')
 	compile fileTree(dir: 'libs', include: ['*.jar'])
 	compile "com.fasterxml.jackson.core:jackson-databind:2.6.0"
-
+	compile "de.greenrobot:eventbus:2.4.0"
 }

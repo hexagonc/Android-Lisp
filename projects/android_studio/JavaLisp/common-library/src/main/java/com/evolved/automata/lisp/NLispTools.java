@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Stack;
 import java.util.UUID;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.random.RandomDataGenerator;
 
 import com.evolved.automata.KeyValuePair;
@@ -3086,8 +3087,10 @@ public class NLispTools
 				String orig = evaluatedArgs[1].getString();
 				String replacement = evaluatedArgs[2].getString();
 				
-				
-				return makeValue(base.replaceAll(orig, replacement));
+
+
+
+				return makeValue(StringUtils.replace(base, orig, replacement));
 				
 			}
 			
@@ -3340,31 +3343,11 @@ public class NLispTools
 				}
 				else
 				{
-					LinkedList<Value> words = new LinkedList<Value>();
-					StringBuilder word = new StringBuilder(), temp;
-					char c;
-					for (int i=0;i<base.length();i++)
-					{
-						c = base.charAt(i);
-						temp = new StringBuilder();
-						for (int j = i;j< i + split.length() && j<base.length();j++)
-						{
-							temp.append(base.charAt(j));
-						}
-						
-						if (temp.toString().equals(split))
-						{
-							words.add(makeValue(word.toString()));
-							word = new StringBuilder();
-							i = i + split.length() - 1;
-						}
-						else
-							word.append(c);
-					}
-					
-					if (word.length()>0)
-						words.add(makeValue(word.toString()));
-					return makeValue(words.toArray(new Value[0]));
+					String[] parts = StringUtils.split(base,split);
+					Value[] out = new Value[parts.length];
+					for (int i=0;i<out.length;i++)
+						out[i] = makeValue(parts[i]);
+					return makeValue(out);
 				}
 				
 			}
