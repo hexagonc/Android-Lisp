@@ -17,7 +17,7 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
-
+import com.evolved.automata.android.guibuilder.R;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxStreamWriter;
 import com.dropbox.core.NoThrowOutputStream;

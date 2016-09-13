@@ -21,7 +21,7 @@ import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
 import com.evolved.automata.android.lisp.guibuilder.GuiBuilderConfiguration;
 import com.evolved.automata.android.lisp.guibuilder.MenuManager;
 import com.evolved.automata.android.lisp.guibuilder.ProjectManagementView;
-import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnCodeTemplateSelectedListener;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnFileSelectedListener;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.PathProtocol;

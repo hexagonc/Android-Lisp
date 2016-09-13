@@ -4,7 +4,7 @@ import com.evolved.automata.android.lisp.guibuilder.CodeManager;
 import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
 import com.evolved.automata.android.lisp.guibuilder.GuiBuilderConfiguration;
 import com.evolved.automata.android.lisp.guibuilder.MenuManager;
-import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.DropboxManager.OnFileUploadListener;
 
 import android.app.Fragment;

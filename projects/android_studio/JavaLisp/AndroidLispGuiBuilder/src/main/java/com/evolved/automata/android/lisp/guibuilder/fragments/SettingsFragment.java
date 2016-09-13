@@ -1,7 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder.fragments;
 
 
-import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.guibuilder.R;
 
 import android.os.Bundle;
 import android.preference.PreferenceFragment;

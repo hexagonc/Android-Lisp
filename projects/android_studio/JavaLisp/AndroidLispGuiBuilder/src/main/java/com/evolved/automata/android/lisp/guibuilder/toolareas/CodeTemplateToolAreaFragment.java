@@ -2,7 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder.toolareas;
 
 import com.evolved.automata.android.lisp.guibuilder.CodeManager;
 import com.evolved.automata.android.lisp.guibuilder.MenuManager;
-import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnCodeTemplateSelectedListener;
 
 import android.app.Fragment;

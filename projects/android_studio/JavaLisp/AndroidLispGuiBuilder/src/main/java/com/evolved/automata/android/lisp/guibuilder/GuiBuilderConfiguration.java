@@ -16,7 +16,7 @@ import com.evolved.automata.AITools;
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
-
+import com.evolved.automata.android.guibuilder.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;

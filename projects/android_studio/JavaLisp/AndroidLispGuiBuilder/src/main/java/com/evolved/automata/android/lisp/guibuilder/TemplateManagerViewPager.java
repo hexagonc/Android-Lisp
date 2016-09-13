@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import com.evolved.automata.KeyValuePair;
 
 
-
+import com.evolved.automata.android.guibuilder.R;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;

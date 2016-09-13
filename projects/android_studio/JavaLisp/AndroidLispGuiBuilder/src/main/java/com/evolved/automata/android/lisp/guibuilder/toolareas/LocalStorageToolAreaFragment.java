@@ -11,7 +11,7 @@ import com.evolved.automata.android.lisp.guibuilder.CodeManager;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.OnFileSelectedListener;
 import com.evolved.automata.android.lisp.guibuilder.CodeManager.PathProtocol;
 import com.evolved.automata.android.lisp.guibuilder.MenuManager;
-import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.guibuilder.R;
 
 import android.app.Fragment;
 import android.os.Bundle;

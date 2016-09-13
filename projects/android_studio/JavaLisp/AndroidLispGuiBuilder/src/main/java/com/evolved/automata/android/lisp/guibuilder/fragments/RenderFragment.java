@@ -2,7 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder.fragments;
 
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.lisp.guibuilder.MenuManager;
-import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.guibuilder.R;
 import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.lisp.Value;
 

@@ -1,7 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import com.evolved.automata.android.widgets.ShadowButton;
-
+import com.evolved.automata.android.guibuilder.R;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;

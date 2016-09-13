@@ -32,6 +32,7 @@ import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.android.guibuilder.R;
 
 public class MainActivity extends Activity implements TabListener, AndroidLispInterpreter.ResponseListener, GlobalInterface.UIControlListener 
 {

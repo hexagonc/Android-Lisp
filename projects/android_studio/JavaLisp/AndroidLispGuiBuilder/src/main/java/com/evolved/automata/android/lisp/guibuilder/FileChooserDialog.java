@@ -1,7 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import java.util.ArrayList;
-
+import com.evolved.automata.android.guibuilder.R;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
