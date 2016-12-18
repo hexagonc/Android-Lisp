@@ -420,9 +420,16 @@ public class LSTMNetwork {
 
     public double[] learnSequence(Vector[] trainingList, double maxSteps, double acceptableError)
     {
-        double[] errorList = new double[trainingList.length + 2];
-
         ArrayList<Pair<Vector, Vector>> trainingSpec = getSequenceTrainingSpec(trainingList, new Vector(trainingList[0].dimen()));
+
+        return learnInputOutputPairs(trainingSpec, maxSteps, acceptableError);
+
+    }
+
+
+    public double[] learnInputOutputPairs(ArrayList<Pair<Vector, Vector>> trainingSpec, double maxSteps, double acceptableError)
+    {
+        double[] errorList = new double[trainingSpec.size() + 2];
 
 
         int c, pc = 0;
@@ -444,12 +451,20 @@ public class LSTMNetwork {
         double error = 0, prev = 0;
         for (c = 0;c < maxSteps;c++)
         {
-            clearAllMemoryCells();
-            clearWeightHistory();
+
             error = -1;
-            for (int t = 0;t < trainingList.length;t++)
+            for (int t = 0;t < trainingSpec.size();t++)
             {
                 data = trainingSpec.get(t);
+
+                if (data == null) // temporary hack to allow multiple patterns
+                // null data value is a delimiter between separate patterns that
+                // require the lstm state be reset
+                {
+                    clearAllMemoryCells();
+                    clearWeightHistory();
+                    continue;
+                }
                 trainingInput = data.getLeft();
                 expectedOutput = data.getRight();
                 executeForwardPass(trainingInput);
@@ -491,75 +506,21 @@ public class LSTMNetwork {
         return errorList;
     }
 
-    public double[] learnPatternClass(Vector[] trainingSpec, int classId, int numClasses, double maxSteps, double acceptableError)
+
+    public double[] learnPatternClass(Vector[][] trainingSpec, int[] classIdList, int maxNumClasses, double maxSteps, double acceptableError)
     {
-        double[] errorList = new double[trainingSpec.length + 2];
+        ArrayList<Pair<Vector, Vector>> trainingList = new ArrayList<Pair<Vector, Vector>>();
+        ArrayList<Pair<Vector, Vector>> trainingPatternSequence = null;
 
-        int c, pc = 0;
-        Pair<Vector, Vector> data;
-        Vector trainingInput, expectedOutput;
-        double convergenceThreshold = convergenceThresholdFraction, effectiveThreshold, minEffectiveThresholdFraction = 0.2, worstError = maxPossibleError;
-
-        if (weightParameters.get(WeightUpdateParameters.CONVERGENCE_THRESHOLD) != null)
+        for (int i = 0;i<classIdList.length;i++)
         {
-            convergenceThreshold = weightParameters.get(WeightUpdateParameters.CONVERGENCE_THRESHOLD);
+            if (i > 0)
+                trainingList.add(null);
+            trainingPatternSequence  = getSequenceClassTrainingSpec(trainingSpec[i], classIdList[i], maxNumClasses);
+            trainingList.addAll(trainingPatternSequence);
         }
 
-
-        if (weightParameters.get(WeightUpdateParameters.MAX_POSSIBLE_ERROR) != null)
-        {
-            worstError = weightParameters.get(WeightUpdateParameters.MAX_POSSIBLE_ERROR);
-        }
-
-        ArrayList<Pair<Vector, Vector>> trainingList = getSequenceClassTrainingSpec(trainingSpec, classId, numClasses);
-        double error = 0, prev = 0;
-        for (c = 0;c < maxSteps;c++)
-        {
-            clearAllMemoryCells();
-            clearWeightHistory();
-            error = -1;
-            for (int t = 0;t < trainingList.size();t++)
-            {
-                data = trainingList.get(t);
-                trainingInput = data.getLeft();
-                expectedOutput = data.getRight();
-                executeForwardPass(trainingInput);
-
-                errorList[2 + t] = executeBackwardTrainingPass(expectedOutput);
-                error = Math.max(error, errorList[2 + t]);
-            }
-
-            if (error < acceptableError)
-            {
-                errorList[0] = error;
-                errorList[1] = c;
-                return errorList;
-            }
-
-
-            if (stretchThresholdP)
-                effectiveThreshold = Math.min(minEffectiveThresholdFraction * convergenceThreshold, convergenceThreshold * (error - acceptableError)/worstError);
-            else
-                effectiveThreshold = convergenceThreshold;
-
-            if (prev > 0 && Math.abs(prev - error)/prev < effectiveThreshold)
-            {
-                System.out.println("Rerolling all weights after failure at: [" + (c - pc) + "] " + error);
-                rerollAllWeights();
-                pc = c;
-                prev = 0;
-            }
-            else
-            {
-                comitAllWeightUpdates();
-                prev = error;
-            }
-
-        }
-
-        errorList[0] = error;
-        errorList[1] = maxSteps;
-        return errorList;
+        return learnInputOutputPairs(trainingList, maxSteps, acceptableError);
     }
 
     public LSTMNetwork setWeightRollStrategy(Link.RANDOMIZATION_SCHEME scheme)
