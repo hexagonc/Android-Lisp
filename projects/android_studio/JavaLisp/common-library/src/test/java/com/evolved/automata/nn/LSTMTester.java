@@ -15,6 +15,93 @@ public class LSTMTester {
 
 
 
+    @Test
+    public void testLSTMSerialization()
+    {
+        boolean success = false;
+        String failureMessage = "";
+        failureMessage = "Failed to create lstm";
+        try
+        {
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+
+            int memoryCellStateSize = 10;
+            String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "*:M-IG",  "I:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
+            String[] linkUpdateOrder= new String[]{"M-CO:O", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
+
+            LSTMNetwork.LSTMNetworkBuilder lstmBuilder =  LSTMNetwork.getBuilder();
+
+            lstmBuilder.setInputNodeCount(1).setOutputNodeCount(1).addMemoryCell("M", memoryCellStateSize);
+            lstmBuilder.addNodeConnections("I", new String[]{"M-CI", "M-IG", "M-OG"});
+            lstmBuilder.addNodeConnections("M-OG", new String[]{"M-CI", "M-IG"});
+            lstmBuilder.addNodeConnections("M-CO", new String[]{"O", "M-CI", "M-IG", "M-OG"});
+            lstmBuilder.addNodeConnections("M-IG", new String[]{"M-CI", "M-OG"});
+            lstmBuilder.addFeedForwardLinkOrder(feedforwardOrder);
+            lstmBuilder.addWeightUpdateOrder(linkUpdateOrder);
+
+
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.INITIAL_DELTA, 0.012);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MAX_DELTA, 50);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MAX, 1.2);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MIN, 0.5);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.0001);
+            lstmBuilder.setWeightUpdateType(updateType);
+
+
+            LSTMNetwork lstm = lstmBuilder.build();
+            failureMessage = "Failed to learn sequence";
+
+            double[] testInput = new double[]{0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0};
+
+            int maxSteps = 120000;
+            double errorThreshold = 0.10;
+            long start = System.currentTimeMillis();
+
+            Vector[] input = getVector(testInput);
+            double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
+            long end = System.currentTimeMillis() - start;
+            System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
+            failureMessage = "Failed to extrapolate sequence";
+
+
+            double[] seed = new double[]{0};
+            Vector[] seedV = getVector(seed);
+            Vector[] out = lstm.extrapolate(seedV, 10, false);
+
+            String extrapolatedValueString = Arrays.toString(out);
+            System.out.println("Extrapolated: " + extrapolatedValueString);
+            failureMessage = "Failed to serialize LSTM";
+
+            // Now create new lstm
+            String serializedNet = lstm.serializeLinkData();
+
+            assertTrue(failureMessage, serializedNet !=null && serializedNet.length()>0);
+            failureMessage = "Failed to create next lstm";
+
+            lstmBuilder.setLinkData(serializedNet);
+            LSTMNetwork lstmClone = lstmBuilder.build();
+
+            failureMessage = "Failed to extrapolate result from clone";
+
+            out = lstmClone.extrapolate(seedV, 10, false);
+
+            String extrapolatedCloneValueString = Arrays.toString(out);
+            System.out.println("Extrapolated clone: " + extrapolatedCloneValueString);
+            assertTrue(failureMessage, extrapolatedCloneValueString.equals(extrapolatedValueString));
+
+
+            success = true;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+
+        }
+        assertTrue(failureMessage, success);
+
+    }
+
 
     @Test
     public void testSingleDimensionalNonPeepholeSequenceLearning()

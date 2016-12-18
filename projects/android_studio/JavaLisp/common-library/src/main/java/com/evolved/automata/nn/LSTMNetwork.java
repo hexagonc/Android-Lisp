@@ -222,7 +222,8 @@ public class LSTMNetwork {
     double maxPossibleError = 0.5; // for a sum squared error output error function
     boolean stretchThresholdP = false;
     Link.RANDOMIZATION_SCHEME weightRerollScheme = Link.RANDOMIZATION_SCHEME.UNIFORM_RANGE;
-
+    private static String SERIALIZED_WEIGHT_RECORD_DELIMITER = "+";
+    private static String SERIALIZED_LINK_RECORD_DELIMITER = "|";
 
     final VectorMapper roundingMapper = new VectorMapper() {
         @Override
@@ -687,7 +688,7 @@ public class LSTMNetwork {
 
 
 
-    public void saveAllLinkWeights()
+    private void saveAllLinkWeights()
     {
 
         for (String key:linkMap.keySet())
@@ -721,14 +722,17 @@ public class LSTMNetwork {
         return linkData;
     }
 
+
+
     public String serializeLinkData()
     {
+        saveAllLinkWeights();
         StringBuilder serialized = new StringBuilder();
         for (String key:linkData.keySet())
         {
             if (serialized.length()>0)
-                serialized.append(":");
-            serialized.append(key).append("|").append(linkData.get(key).serialize());
+                serialized.append(SERIALIZED_WEIGHT_RECORD_DELIMITER);
+            serialized.append(key).append(SERIALIZED_LINK_RECORD_DELIMITER).append(linkData.get(key).serialize());
         }
 
         return serialized.toString();
@@ -736,10 +740,10 @@ public class LSTMNetwork {
 
     public void decodeSerializedLinks(String serializedLinks)
     {
-        String[] weights = StringUtils.split(serializedLinks, ":");
+        String[] weights = StringUtils.split(serializedLinks, SERIALIZED_WEIGHT_RECORD_DELIMITER);
         for (String weightSpec:weights)
         {
-            String[] linkSpec = StringUtils.split(weightSpec, "|");
+            String[] linkSpec = StringUtils.split(weightSpec, SERIALIZED_LINK_RECORD_DELIMITER);
             String linkKey = linkSpec[0];
             String weightData  = linkSpec[1];
             linkData.put(linkKey, WeightMatrix.deserialize(weightData));
