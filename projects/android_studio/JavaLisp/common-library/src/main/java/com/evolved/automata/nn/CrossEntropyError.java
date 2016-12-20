@@ -10,10 +10,15 @@ public class CrossEntropyError implements ErrorFunction {
         // dividing log(y) by t so that the minimum error is zero
         //
         double s = 0;
+        double minY = 0.001;
         for (int i = 0;i<t.dimen();i++)
         {
-            s += t.value(i)* Math.log(y.value(i)/t.value(i));
+            if (t.value(i) != 0)
+            {
+                s += t.value(i) * Math.log(Math.max(minY, y.value(i))/t.value(i));
+            }
         }
+
         return -s;
     }
 

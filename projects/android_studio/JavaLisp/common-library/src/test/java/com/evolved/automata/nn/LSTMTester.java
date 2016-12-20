@@ -486,7 +486,7 @@ public class LSTMTester {
             lstmBuilder.addNodeConnections("M-OG", new String[]{"M-CI", "M-IG", "M-FG"});
             lstmBuilder.addNodeConnections("M-CO", new String[]{"O", "M-CI", "M-IG", "M-OG", "M-FG"});
             lstmBuilder.addNodeConnections("M-IG", new String[]{"M-CI", "M-OG", "M-FG"});
-            lstmBuilder.addNodeConnections("M-P", new String[]{ "M-OG", "M-FG", "M-IG"});
+            lstmBuilder.addNodeConnections("M-P", new String[]{"M-OG", "M-FG", "M-IG"});
 
             lstmBuilder.addFeedForwardLinkOrder(feedforwardOrder);
             lstmBuilder.addWeightUpdateOrder(linkUpdateOrder);
@@ -784,6 +784,129 @@ public class LSTMTester {
             failureMessage = "Failed to learn patterns";
 
             double[] sampleSequence = oddSequence;
+
+            Vector[] identifiedPattern = new Vector[sampleSequence.length];
+            Vector[] samplePattern = new Vector[sampleSequence.length];
+
+            for (int j = 0;j < samplePattern.length;j++)
+            {
+                inputRaw = NNTools.stageDiscretize(sampleSequence[j], discretizationRange, discretizationSteps);
+                samplePattern[j] = getVector(inputRaw);
+            }
+
+            identifiedPattern = lstm.viewOutput(samplePattern, false);
+
+            System.out.println("Identified classes: " + Arrays.toString(identifiedPattern));
+            success = true;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+
+        }
+        assertTrue(failureMessage, success);
+
+    }
+
+
+    @Test
+    public void testMultiDimensionalNonPeepholeSequenceClassificationWithSoftmax()
+    {
+        boolean success = false;
+        String failureMessage = "";
+        failureMessage = "Failed to create lstm";
+        try
+        {
+            int discretizationRange = 100;
+            int discretizationSteps = 4;
+
+            double[] oddSequence =    new double[]{1,3,5,7,9, 11};
+            double[] evenSequence =   new double[]{2,4,6,8,10,12};
+            double[] reverseEven = new double[]{12,10,8,6,4,2};
+
+            double[][] sequenceSet = new double[][]{oddSequence, evenSequence, reverseEven};
+
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+
+            int memoryCellStateSize = 10;
+            String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "*:M-IG",  "I:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
+            String[] linkUpdateOrder= new String[]{"M-CO:O", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
+
+            LSTMNetwork.LSTMNetworkBuilder lstmBuilder =  LSTMNetwork.getBuilder();
+
+
+            lstmBuilder.setInputNodeCount(discretizationSteps*2).addMemoryCell("M", memoryCellStateSize);
+            OutputLayer olayer = new OutputLayer(sequenceSet.length, new SoftmaxActivation(), new CrossEntropyError());
+            lstmBuilder.setOutputLayer(olayer);
+            lstmBuilder.addNodeConnections("I", new String[]{"M-CI", "M-IG", "M-OG"});
+            lstmBuilder.addNodeConnections("M-OG", new String[]{"M-CI", "M-IG"});
+            lstmBuilder.addNodeConnections("M-CO", new String[]{"O", "M-CI", "M-IG", "M-OG"});
+            lstmBuilder.addNodeConnections("M-IG", new String[]{"M-CI", "M-OG"});
+            lstmBuilder.addFeedForwardLinkOrder(feedforwardOrder);
+            lstmBuilder.addWeightUpdateOrder(linkUpdateOrder);
+
+
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.INITIAL_DELTA, 0.012);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MAX_DELTA, 50);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MAX, 1.2);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MIN, 0.5);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.001);
+            lstmBuilder.setWeightUpdateType(updateType);
+
+
+            LSTMNetwork lstm = lstmBuilder.build();
+            failureMessage = "Failed to learn classes";
+
+            int maxSteps = 30000;
+            double errorThreshold = 0.45;
+
+            double[] errors = null;
+
+            long start, end;
+
+            int patternCount = sequenceSet.length;
+            int patternIndex;
+            double[] pattern;
+            ArrayList<Double> inputRaw;
+
+
+            Vector[][] trainingInput = new Vector[patternCount][];
+            Vector[]  patternInput = null;
+            int[] classIds = new int[patternCount];
+
+            for (int i = 0;i<classIds.length;i++)
+            {
+                classIds[i] = (i + 1);
+            }
+
+            for (patternIndex = 0;patternIndex< patternCount;patternIndex++)
+            {
+                pattern = sequenceSet[patternIndex];
+                patternInput = new Vector[pattern.length];
+
+
+                for (int j = 0;j < pattern.length;j++)
+                {
+                    inputRaw = NNTools.stageDiscretize(pattern[j], discretizationRange, discretizationSteps);
+                    patternInput[j] = getVector(inputRaw);
+                }
+                trainingInput[patternIndex] = patternInput;
+                classIds[patternIndex] = classIds[patternIndex];
+
+            }
+            lstm.setRoundOutput(false);
+
+            start = System.currentTimeMillis();
+            errors = lstm.learnPatternClass(trainingInput, classIds, patternCount, maxSteps, errorThreshold);
+            end = System.currentTimeMillis() - start;
+            System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
+
+
+
+            failureMessage = "Failed to learn patterns";
+
+            double[] sampleSequence = reverseEven;
 
             Vector[] identifiedPattern = new Vector[sampleSequence.length];
             Vector[] samplePattern = new Vector[sampleSequence.length];
