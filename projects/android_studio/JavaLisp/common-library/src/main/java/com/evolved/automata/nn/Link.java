@@ -215,8 +215,7 @@ public abstract class Link {
                 return lowerBound - (upperBound - lowerBound)*perturbationFraction/2 + width;
             }
         });
-        if (usedDefaultWeights)
-            System.out.println("Used default weights: " + dcount);
+
         return this;
 
     }

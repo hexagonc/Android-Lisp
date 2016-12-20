@@ -1,5 +1,8 @@
 package com.evolved.automata.nn;
 
+import com.evolved.automata.AITools;
+import com.evolved.automata.IndexedValueMapper;
+
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -14,6 +17,66 @@ import static org.junit.Assert.assertTrue;
 public class LSTMTester {
 
 
+    @Test
+    public void testLSTMStateSerialization()
+    {
+        LSTMNetwork lstm = NNTools.getStandardLSTM(1, 10, 1);
+
+        double[] testInput = new double[]{ 0, 1, 1, 0, 1,    1, 1, 0, 0, 1, 0, 0, 1, 0};
+        Vector[] inputVector = new Vector[testInput.length];
+        inputVector = AITools.mapValues( boxArray(testInput), new IndexedValueMapper<Double, Vector>() {
+            @Override
+            public Vector map(Double input, int index)
+            {
+                return new Vector(new double[]{input});
+            }
+
+            @Override
+            public Vector[] getEmptyOutput()
+            {
+                return new Vector[0];
+            }
+        });
+
+        int numSteps = 6000;
+        double[] out = lstm.learnSequence(inputVector, numSteps, 0.11);
+        System.out.println("Learned: " + Arrays.toString(out));
+
+        double[] seed = new double[]{0, 1, 1, 0, 1};
+        Vector[] ugly = new Vector[seed.length];
+        lstm.extrapolate(AITools.mapValues(boxArray(seed), new IndexedValueMapper<Double, Vector>() {
+            @Override
+            public Vector map(Double input, int index)
+            {
+                return new Vector(new double[]{input});
+            }
+
+            @Override
+            public Vector[] getEmptyOutput()
+            {
+                return new Vector[0];
+            }
+        }), 0, false);
+
+        String serializedState = lstm.serializeStateData();
+        String serializedWeights = lstm.serializeLinkData();
+        assertTrue("Failed to serialize state", serializedState != null && serializedState.length() > 0);
+
+        Vector[] continuation = lstm.extrapolate(new Vector[0], 10, true);
+
+        System.out.println("Original continuation after snapshot: " + Arrays.toString(continuation));
+
+        LSTMNetwork another = NNTools.getStandardLSTM(1, 10, 1, serializedWeights);
+        another.loadSerializedState(serializedState);
+        another.decodeSerializedLinks(serializedWeights);
+        another.loadLinkData();
+
+        Vector[] remaining = another.extrapolate(new Vector[0], 10, true);
+        assertTrue("Succeeded in restoring state", remaining!=null && remaining.length > 0);
+        System.out.println("Continued after state retention: " + Arrays.toString(remaining));
+
+        assertTrue("Original continuation failed to match continuation after snapshot", Arrays.equals(remaining, continuation));
+    }
 
     @Test
     public void testLSTMSerialization()
@@ -54,7 +117,7 @@ public class LSTMTester {
 
             double[] testInput = new double[]{0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0};
 
-            int maxSteps = 120000;
+            int maxSteps = 10000;
             double errorThreshold = 0.10;
             long start = System.currentTimeMillis();
 
@@ -112,8 +175,8 @@ public class LSTMTester {
         try
         {
             LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.DEFAULT;
-            // or LSTMNetwork.WeightUpdateType.DEFAULT
-            //  LSTMNetwork.WeightUpdateType.RPROP;
+
+
             int memoryCellStateSize = 10;
             String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "*:M-IG",  "I:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
             String[] linkUpdateOrder= new String[]{"M-CO:O", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
@@ -129,15 +192,10 @@ public class LSTMTester {
             lstmBuilder.addWeightUpdateOrder(linkUpdateOrder);
 
 
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.INITIAL_DELTA, 0.012);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MAX_DELTA, 50);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MAX, 1.2);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MIN, 0.5);
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.0001);
             lstmBuilder.setWeightUpdateType(updateType);
 
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 1.2);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 0.5);
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MOMENTUM, 0.25);
 
 
@@ -173,6 +231,7 @@ public class LSTMTester {
 
     }
 
+    // Ignoring this until I come up with a better way to perturb the weights
     @Ignore
     @Test
     public void testSingleDimensionalNonPeepholeSequenceLearningWithWeightPerturbation()
@@ -254,9 +313,8 @@ public class LSTMTester {
         failureMessage = "Failed to create lstm";
         try
         {
-            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.DEFAULT;
-            // or LSTMNetwork.WeightUpdateType.DEFAULT
-            //  LSTMNetwork.WeightUpdateType.RPROP;
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+
             int memoryCellStateSize = 10;
             String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "M-P:M-IG", "*:M-IG",  "I:M-OG", "M-P:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
             String[] linkUpdateOrder= new String[]{"M-CO:O", "M-P:M-OG", "M-P:M-IG", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
@@ -278,19 +336,15 @@ public class LSTMTester {
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MAX, 1.2);
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MIN, 0.5);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.001);
+            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.0001);
             lstmBuilder.setWeightUpdateType(updateType);
-
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 1.0);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MOMENTUM, 0.25);
-
 
             LSTMNetwork lstm = lstmBuilder.build();
             failureMessage = "Failed to learn sequence";
 
             double[] testInput = new double[]{0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0};
 
-            int maxSteps = 60000;
+            int maxSteps = 30000;
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
@@ -353,16 +407,12 @@ public class LSTMTester {
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.001);
             lstmBuilder.setWeightUpdateType(updateType);
 
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 0.5);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MOMENTUM, 0.25);
-
-
             LSTMNetwork lstm = lstmBuilder.build();
             failureMessage = "Failed to learn sequence";
 
             double[] testInput = new double[]{0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0};
 
-            int maxSteps = 60000;
+            int maxSteps = 30000;
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
@@ -400,8 +450,7 @@ public class LSTMTester {
         try
         {
             LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
-            // or LSTMNetwork.WeightUpdateType.DEFAULT
-            //  LSTMNetwork.WeightUpdateType.RPROP;
+
             int memoryCellStateSize = 10;
             String[] feedforwardOrder = new String[]{
                     "M-FG:M-OG",
@@ -451,8 +500,6 @@ public class LSTMTester {
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.001);
             lstmBuilder.setWeightUpdateType(updateType);
 
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 0.5);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MOMENTUM, 0.25);
 
 
             LSTMNetwork lstm = lstmBuilder.build();
@@ -460,7 +507,7 @@ public class LSTMTester {
 
             double[] testInput = new double[]{0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0};
 
-            int maxSteps = 60000;
+            int maxSteps = 30000;
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
@@ -498,8 +545,7 @@ public class LSTMTester {
 
             double[][] sequence = new double[][]{{0,0,0,1,1,1,0,1},{0,0,0,1,1,0,1,1},{0,0,0,1,1,0,0,0},{0,0,1,1,0,1,1,1},{0,0,0,1,1,0,1,1},{0,0,0,1,1,0,0,0},{0,0,0,1,1,0,1,1},{0,0,1,1,0,0,1,0},{0,0,1,1,1,0,1,1},{0,0,1,1,0,1,1,1},{0,0,1,1,0,0,0,1},{0,0,0,1,1,1,0,1}};
             LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
-            // or LSTMNetwork.WeightUpdateType.DEFAULT
-            //  LSTMNetwork.WeightUpdateType.RPROP;
+
             int memoryCellStateSize = 10;
             String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "*:M-IG",  "I:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
             String[] linkUpdateOrder= new String[]{"M-CO:O", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
@@ -524,15 +570,12 @@ public class LSTMTester {
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.001);
             lstmBuilder.setWeightUpdateType(updateType);
 
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 0.5);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MOMENTUM, 0.25);
-
 
             LSTMNetwork lstm = lstmBuilder.build();
             failureMessage = "Failed to learn sequence";
 
 
-            int maxSteps = 60000;
+            int maxSteps = 30000;
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
@@ -560,7 +603,7 @@ public class LSTMTester {
     }
 
     @Test
-    public void testSimilarMultiDimensionalNonPeepholeSequenceLearning()
+    public void testShiftedMultiDimensionalNonPeepholeSequenceLearning()
     {
         boolean success = false;
         String failureMessage = "";
@@ -570,8 +613,7 @@ public class LSTMTester {
 
             double[][] sequence = new double[][]{{0,0,0,1,1,1,0,1},{0,0,0,1,1,0,1,1},{0,0,0,1,1,0,0,0},{0,0,1,1,0,1,1,1},{0,0,0,1,1,0,1,1},{0,0,0,1,1,0,0,0},{0,0,0,1,1,0,1,1},{0,0,1,1,0,0,1,0},{0,0,1,1,1,0,1,1},{0,0,1,1,0,1,1,1},{0,0,1,1,0,0,0,1},{0,0,0,1,1,1,0,1}};
             LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
-            // or LSTMNetwork.WeightUpdateType.DEFAULT
-            //  LSTMNetwork.WeightUpdateType.RPROP;
+
             int memoryCellStateSize = 10;
             String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "*:M-IG",  "I:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
             String[] linkUpdateOrder= new String[]{"M-CO:O", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
@@ -596,15 +638,12 @@ public class LSTMTester {
             lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.001);
             lstmBuilder.setWeightUpdateType(updateType);
 
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.LEARNING_RATE, 0.5);
-            lstmBuilder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MOMENTUM, 0.25);
-
 
             LSTMNetwork lstm = lstmBuilder.build();
             failureMessage = "Failed to learn sequence";
 
 
-            int maxSteps = 60000;
+            int maxSteps = 30000;
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
@@ -652,7 +691,7 @@ public class LSTMTester {
 
 
     @Test
-    public void testSimilarMultiDimensionalNonPeepholeSequenceRecognition()
+    public void testMultiDimensionalNonPeepholeSequenceClassification()
     {
         boolean success = false;
         String failureMessage = "";
@@ -697,7 +736,7 @@ public class LSTMTester {
             LSTMNetwork lstm = lstmBuilder.build();
             failureMessage = "Failed to learn classes";
 
-            int maxSteps = 60000;
+            int maxSteps = 30000;
             double errorThreshold = 0.1;
 
             double[] errors = null;
@@ -801,6 +840,16 @@ public class LSTMTester {
         return out;
     }
 
+
+    Double[] boxArray(double[] d)
+    {
+        Double[] o = new Double[d.length];
+        for (int i = 0;i<o.length;i++)
+        {
+            o[i] = Double.valueOf(d[i]);
+        }
+        return o;
+    }
 
 
 
