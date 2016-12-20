@@ -1,5 +1,7 @@
 package com.evolved.automata.nn;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.Arrays;
 
 /**
@@ -176,6 +178,29 @@ public class Vector {
     {
         return Arrays.toString(v);
     }
+
+    public static final String SERIALIZED_VALUE_SEPARATOR = ",";
+    public String serialize()
+    {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0;i<v.length;i++)
+        {
+            if (i > 0)
+                stringBuilder.append(SERIALIZED_VALUE_SEPARATOR);
+            stringBuilder.append(v[i]);
+        }
+        return stringBuilder.toString();
+    }
+
+    public static Vector fromSerialized(String serialized)
+    {
+        String[] parts = StringUtils.split(serialized, SERIALIZED_VALUE_SEPARATOR);
+        double[] out = new double[parts.length];
+        for (int i=0;i<out.length;i++)
+            out[i] =  Double.parseDouble(parts[i]);
+        return new Vector(out);
+    }
+
 
     @Override
     public boolean equals(Object o)

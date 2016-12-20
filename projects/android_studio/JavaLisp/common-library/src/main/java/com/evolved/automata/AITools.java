@@ -1,4 +1,5 @@
 package com.evolved.automata;
+import java.lang.reflect.Array;
 import java.util.regex.*;
 import java.util.*;
 
@@ -9,8 +10,68 @@ import org.apache.commons.math3.random.RandomGenerator;
 
 
 public class AITools {
-	
-	
+
+
+
+	/**
+	 * Maps the values of an array.  Returns a new array.  Mapped values
+	 * can be different type of original input.
+
+     *
+	 * @param input
+	 * @param mapper
+	 * @param <I, O> the type of the input array and the output array
+	 * @return
+	 */
+	public static <I, O> O[] mapValues(I[] input, IndexedValueMapper<I, O> mapper)
+	{
+		O[] buffer = Arrays.copyOf(mapper.getEmptyOutput(), input.length);
+
+		for (int i =0;i<input.length;i++)
+		{
+			buffer[i] = mapper.map(input[i], i);
+		}
+
+		return buffer;
+	}
+
+
+
+    /**
+     * Maps the values of an array.  Returns a new array
+     * @param input
+     * @param mapper
+     * @param <T> the type of the array
+     * @return
+     */
+	public static <T> T[] map(T[] input, ArrayMapper<T> mapper)
+	{
+
+		T[] out = Arrays.copyOf(input, input.length);
+		for (int i =0;i<input.length;i++)
+		{
+			out[i] = mapper.map(input[i], i);
+		}
+		return out;
+	}
+
+    /**
+     * Destructively maps the values of an array
+     * @param input
+     * @param mapper
+     * @param <T>
+     * @return
+     */
+    public static <T> T[] mapD(T[] input, ArrayMapper<T> mapper)
+    {
+
+        for (int i =0;i<input.length;i++)
+        {
+            input[i] = mapper.map(input[i], i);
+        }
+        return input;
+    }
+
 	/**
 	 * Uniformly selects a random element of generic type V from a list of values
 	 * 
@@ -142,7 +203,7 @@ public class AITools {
 	 * and introduction an error and comparison scale as is done with
 	 * ChooseWeightedRandomPartition
 	 * 
-	 * @param itemList
+	 * @param stringDistribution
 	 * @param favor_high    favor_high
 	 */
 	public static  String ChooseWeightedRandomString(Hashtable<String, Integer> stringDistribution, boolean favor_high)
@@ -244,9 +305,7 @@ public class AITools {
 	 * This function creates a virtual rotor for the Enigma machine.  A rotor must perform both a 
 	 * forward as well as a reverse mapping between letters of an alphabet to encrypted or decrypted
 	 * letters.  This same function can also be used to create the plugboard
-	 * @param baseDictionary
-	 * @param charIndexMap
-	 * @param seed
+
 	 * @return
 	 */
 	static KeyValuePair<ArrayList<String>, ArrayList<String>> createReversibleMapping(RandomDataGenerator rdg, List<String> baseDictionary, HashMap<String, Integer> charIndexMap)
@@ -294,7 +353,7 @@ public class AITools {
 	 * The remaining rotors steps by one every full revolution of the previous
 	 * rotor
 	 * @param messageCharIndex
-	 * @param numRotors
+	 * @param numRotorsInUse
 	 * @param dictionarySize
 	 * @return
 	 */

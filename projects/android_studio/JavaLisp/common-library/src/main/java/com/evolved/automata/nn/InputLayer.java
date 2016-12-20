@@ -20,10 +20,6 @@ public class InputLayer extends NodeGroup {
         super(dimen, activationFunct);
     }
 
-    public InputLayer setActivation(Vector value)
-    {
-        activation = value;
-        return this;
-    }
+
 
 }

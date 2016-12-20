@@ -186,4 +186,10 @@ public class NodeGroup {
     {
         return "net_i: " + netInput.toString() + ", f(net_i): " + activation.toString();
     }
+
+    public NodeGroup setActivation(Vector value)
+    {
+        activation = value;
+        return this;
+    }
 }

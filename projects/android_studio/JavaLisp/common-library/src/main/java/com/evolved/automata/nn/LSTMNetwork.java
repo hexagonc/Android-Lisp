@@ -14,7 +14,7 @@ import java.util.Map;
 public class LSTMNetwork {
 
 
-
+    public static boolean DEBUG = true;
     public static final class LSTMNetworkBuilder {
 
         HashMap<String, NodeGroup> initialNodeMap = null;
@@ -219,11 +219,14 @@ public class LSTMNetwork {
     NodeGroup bias;
     public static final String LINK_NODE_SEPARATOR = ":";
     double convergenceThresholdFraction = 0.001;
-    double maxPossibleError = 0.5; // for a sum squared error output error function
-    boolean stretchThresholdP = false;
+    boolean allowRerollingWeights = true;
+
     Link.RANDOMIZATION_SCHEME weightRerollScheme = Link.RANDOMIZATION_SCHEME.UNIFORM_RANGE;
     private static String SERIALIZED_WEIGHT_RECORD_DELIMITER = "+";
     private static String SERIALIZED_LINK_RECORD_DELIMITER = "|";
+
+    private static String SERIALIZED_STATE_RECORD_DELIMITER = "+";
+    private static String SERIALIZED_STATE_NODE_DATA_DELIMITER = "|";
 
     final VectorMapper roundingMapper = new VectorMapper() {
         @Override
@@ -418,6 +421,11 @@ public class LSTMNetwork {
         roundOutput = enable;
     }
 
+    public void setAllowRerollingWeights(boolean enable)
+    {
+        allowRerollingWeights = enable;
+    }
+
     public double[] learnSequence(Vector[] trainingList, double maxSteps, double acceptableError)
     {
         ArrayList<Pair<Vector, Vector>> trainingSpec = getSequenceTrainingSpec(trainingList, new Vector(trainingList[0].dimen()));
@@ -435,8 +443,8 @@ public class LSTMNetwork {
         int c, pc = 0;
         Pair<Vector, Vector> data;
         Vector trainingInput, expectedOutput;
-        double convergenceThreshold = convergenceThresholdFraction, effectiveThreshold, minEffectiveThresholdFraction = 0.2, worstError = maxPossibleError;
-
+        double convergenceThreshold = convergenceThresholdFraction, effectiveThreshold, minEffectiveThresholdFraction = 0.2, worstError = 0;
+        boolean stretchThresholdP = false;
         if (weightParameters.get(WeightUpdateParameters.CONVERGENCE_THRESHOLD) != null)
         {
             convergenceThreshold = weightParameters.get(WeightUpdateParameters.CONVERGENCE_THRESHOLD);
@@ -445,13 +453,15 @@ public class LSTMNetwork {
 
         if (weightParameters.get(WeightUpdateParameters.MAX_POSSIBLE_ERROR) != null)
         {
+            stretchThresholdP = true;
             worstError = weightParameters.get(WeightUpdateParameters.MAX_POSSIBLE_ERROR);
         }
 
         double error = 0, prev = 0;
         for (c = 0;c < maxSteps;c++)
         {
-
+            clearAllMemoryCells();
+            clearWeightHistory();
             error = -1;
             for (int t = 0;t < trainingSpec.size();t++)
             {
@@ -486,9 +496,10 @@ public class LSTMNetwork {
             else
                 effectiveThreshold = convergenceThreshold;
 
-            if (prev > 0 && Math.abs(prev - error)/prev < effectiveThreshold)
+            if (allowRerollingWeights && prev > 0 && Math.abs(prev - error)/prev < effectiveThreshold)
             {
-                System.out.println("Rerolling all weights after failure at: [" + (c - pc) + "] " + error);
+                if (DEBUG)
+                    System.out.println("Rerolling all weights after failure at: [" + (c - pc) + "] " + error);
                 rerollAllWeights();
                 pc = c;
                 prev = 0;
@@ -501,6 +512,7 @@ public class LSTMNetwork {
 
         }
 
+        // TODO: Eventually replace this with LSTMLearningResult or something like it
         errorList[0] = error;
         errorList[1] = maxSteps;
         return errorList;
@@ -697,6 +709,47 @@ public class LSTMNetwork {
         }
 
         return serialized.toString();
+    }
+
+    public String serializeStateData()
+    {
+        StringBuilder sbuilder = new StringBuilder();
+        NodeGroup group;
+        for (String nodeKey:nodeMap.keySet())
+        {
+            group = nodeMap.get(nodeKey);
+            if (sbuilder.length()>0)
+            {
+                sbuilder.append(SERIALIZED_STATE_RECORD_DELIMITER);
+            }
+
+            sbuilder.append(nodeKey).append(SERIALIZED_STATE_NODE_DATA_DELIMITER).append(group.getActivation().serialize());
+
+        }
+
+        return sbuilder.toString();
+    }
+
+    public LSTMNetwork loadSerializedState(String state)
+    {
+        clearAllMemoryCells();
+        String[] serializedKeyValues = StringUtils.split(state, SERIALIZED_STATE_RECORD_DELIMITER);
+        String keyValue;
+        String[] pairs;
+
+        String nodeName, serializedActivationData;
+        NodeGroup ngroup;
+        for (int i = 0;i<serializedKeyValues.length;i++)
+        {
+            keyValue = serializedKeyValues[i];
+            pairs = StringUtils.split(keyValue, SERIALIZED_STATE_NODE_DATA_DELIMITER);
+            nodeName = pairs[0];
+            serializedActivationData = pairs[1];
+            ngroup = nodeMap.get(nodeName);
+            ngroup.setActivation(Vector.fromSerialized(serializedActivationData));
+
+        }
+        return this;
     }
 
     public void decodeSerializedLinks(String serializedLinks)
