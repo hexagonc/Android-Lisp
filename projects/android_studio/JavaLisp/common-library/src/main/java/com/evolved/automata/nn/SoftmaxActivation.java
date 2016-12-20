@@ -9,17 +9,24 @@ public class SoftmaxActivation implements ActivationFunction {
     {
         double sum = 0;
         double numerator = 0;
+
+        // TODO: think of a better way of calculating e^x/∑e^k . e^20 < a billion so so long
+        // as there aren't too many categories, there shouldn't be an issue with
+        // arithmetic overflow of sum
+        double maxPowerofe = 20;
         for (int k = 0; k < netInput.dimen();k++)
         {
             if (k == i)
             {
-                numerator = Math.exp(netInput.value(i));
+                numerator = Math.exp(Math.min(maxPowerofe, netInput.value(i)));
                 sum+=numerator;
             }
             else
-                sum+=Math.exp(netInput.value(i));
+                sum+=Math.exp(Math.min(maxPowerofe, netInput.value(k)));
         }
-        return numerator/sum;
+        double s = numerator/sum;
+
+        return s;
     }
 
     // TODO: define this properly
