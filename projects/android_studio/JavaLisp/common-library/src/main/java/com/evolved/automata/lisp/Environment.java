@@ -136,6 +136,14 @@ public class Environment
 		_functionMap.put(name,  f);
 		return f;
 	}
+
+	public synchronized FunctionTemplate removeFunction(String name)
+	{
+		FunctionTemplate  f = _functionMap.remove(name);
+
+		return f;
+	}
+
 	
 	public synchronized void mapMacro(String name, MacroTemplate f)
 	{
