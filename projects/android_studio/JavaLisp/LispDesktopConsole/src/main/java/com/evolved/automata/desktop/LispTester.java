@@ -7,6 +7,7 @@ import com.evolved.automata.lisp.IncompleteLispExpressionException;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 
 import java.io.BufferedReader;
@@ -671,6 +672,7 @@ public class LispTester {
 			NLispTools.addDefaultFunctionsAddMacros(top);
 			ExtendedFunctions.addExtendedFunctions(top);
 			SpeechLispFunctions.addSpeechFunctions(top);
+			NeuralNetLispInterface.addNeuralNetFunctions(top);
 			FileFunctions.addFunctions(top);
 			top.mapFunction("println",getPrintln(display));
 			top.mapFunction("set-data-value", setObjectDataValue(testStatement, insertStatement, updateSpecificStatement));

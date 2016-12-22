@@ -58,8 +58,8 @@ public class LSTMTester {
             }
         }), 0, false);
 
-        String serializedState = lstm.serializeStateData();
-        String serializedWeights = lstm.serializeLinkData();
+        String serializedState = lstm.serializeNetworkActivationState();
+        String serializedWeights = lstm.serializeLinkWeights();
         assertTrue("Failed to serialize state", serializedState != null && serializedState.length() > 0);
 
         Vector[] continuation = lstm.extrapolate(new Vector[0], 10, true);
@@ -67,9 +67,9 @@ public class LSTMTester {
         System.out.println("Original continuation after snapshot: " + Arrays.toString(continuation));
 
         LSTMNetwork another = NNTools.getStandardLSTM(1, 10, 1, serializedWeights);
-        another.loadSerializedState(serializedState);
-        another.decodeSerializedLinks(serializedWeights);
-        another.loadLinkData();
+        another.loadSerializedNetworkActivationState(serializedState);
+        another.decodeSerializedLinksToLinkBuffer(serializedWeights);
+        another.loadbufferedLinkWeights();
 
         Vector[] remaining = another.extrapolate(new Vector[0], 10, true);
         assertTrue("Succeeded in restoring state", remaining!=null && remaining.length > 0);
@@ -137,7 +137,7 @@ public class LSTMTester {
             failureMessage = "Failed to serialize LSTM";
 
             // Now create new lstm
-            String serializedNet = lstm.serializeLinkData();
+            String serializedNet = lstm.serializeLinkWeights();
 
             assertTrue(failureMessage, serializedNet !=null && serializedNet.length()>0);
             failureMessage = "Failed to create next lstm";
@@ -794,7 +794,7 @@ public class LSTMTester {
                 samplePattern[j] = getVector(inputRaw);
             }
 
-            identifiedPattern = lstm.viewOutput(samplePattern, false);
+            identifiedPattern = lstm.viewSequenceOutput(samplePattern, false);
 
             System.out.println("Identified classes: " + Arrays.toString(identifiedPattern));
             success = true;
@@ -917,7 +917,7 @@ public class LSTMTester {
                 samplePattern[j] = getVector(inputRaw);
             }
 
-            identifiedPattern = lstm.viewOutput(samplePattern,false );
+            identifiedPattern = lstm.viewSequenceOutput(samplePattern, false);
 
             System.out.println("Identified classes: " + Arrays.toString(identifiedPattern));
             success = true;

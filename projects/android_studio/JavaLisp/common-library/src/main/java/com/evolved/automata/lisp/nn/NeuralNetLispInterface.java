@@ -30,7 +30,54 @@ public class NeuralNetLispInterface {
         env.mapFunction("simple-lstm-save-node-state", simpleLSTMSaveNodeState());
         env.mapFunction("simple-lstm-load-state", simpleLSTMLoadNodeState());
 
+        env.mapFunction("simple-lstm-use-current-state-as-initial", setUseCurrentStateAsInitial());
+        env.mapFunction("simple-lstm-use-default-initial-state", useDefaultInitialActivation());
     }
+
+    public static SimpleFunctionTemplate setUseCurrentStateAsInitial()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) setUseCurrentStateAsInitial();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                lstm.setInitialNodeActivationAsCurrent();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate useDefaultInitialActivation()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) useDefaultInitialActivation();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                lstm.useDefaultInitialNodeActivation();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
 
     public static SimpleFunctionTemplate createSimpleLSTMNetwork()
     {
@@ -45,7 +92,7 @@ public class NeuralNetLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(3, true, false);
+                checkActualArguments(3, true, true);
                 int numInputNodes = (int)evaluatedArgs[0].getIntValue();
                 int numMemoryCellStateNodes = (int)evaluatedArgs[1].getIntValue();
                 int numOutputNodes = (int)evaluatedArgs[2].getIntValue();
@@ -85,7 +132,7 @@ public class NeuralNetLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(4, true, false);
+                checkActualArguments(4, true, true);
 
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
                 Value[] trainingSequence = evaluatedArgs[1].getList();
@@ -147,7 +194,7 @@ public class NeuralNetLispInterface {
 
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
 
-                return NLispTools.makeValue(lstm.serializeLinkData());
+                return NLispTools.makeValue(lstm.serializeLinkWeights());
             }
         };
     }
@@ -172,7 +219,7 @@ public class NeuralNetLispInterface {
 
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
 
-                return NLispTools.makeValue(lstm.serializeStateData());
+                return NLispTools.makeValue(lstm.serializeNetworkActivationState());
             }
         };
     }
@@ -195,12 +242,12 @@ public class NeuralNetLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, true, false);
+                checkActualArguments(2, true, true);
 
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
                 String weights = evaluatedArgs[1].getString();
-                lstm.decodeSerializedLinks(weights);
-                lstm.loadLinkData();
+                lstm.decodeSerializedLinksToLinkBuffer(weights);
+                lstm.loadbufferedLinkWeights();
 
                 return evaluatedArgs[0];
             }
@@ -224,11 +271,11 @@ public class NeuralNetLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, true, false);
+                checkActualArguments(2, true, true);
 
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
                 String states = evaluatedArgs[1].getString();
-                lstm.loadSerializedState(states);
+                lstm.loadSerializedNetworkActivationState(states);
 
                 return evaluatedArgs[0];
             }
@@ -248,7 +295,6 @@ public class NeuralNetLispInterface {
             // First argument is LSTM
             // Second argument is a seed input, list of binary lists
             // ( {0, 1}*, {0, 1}*, {0, 1}*, ...)
-            // There should be at least one value in here
 
             // Third argument is the number of steps to extrapolate
 
@@ -270,7 +316,7 @@ public class NeuralNetLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(3, true, false);
+                checkActualArguments(3, true, true);
 
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
                 Value[] seedInput = evaluatedArgs[1].getList();
@@ -291,8 +337,7 @@ public class NeuralNetLispInterface {
 
                 lstm.setRoundOutput(roundOutput);
 
-                Vector[] extrapolatedResult = new Vector[seedInput.length];
-                lstm.extrapolate(AITools.mapValues( seedInput, new VectorValueMapper<Value>() {
+                Vector[] extrapolatedResult = lstm.extrapolate(AITools.mapValues( seedInput, new VectorValueMapper<Value>() {
                     @Override
                     public Vector map(Value input, int index)
                     {

@@ -185,7 +185,7 @@ public class LSTMNetwork {
 
             if (linkWeightData != null)
             {
-                lstm.decodeSerializedLinks(linkWeightData);
+                lstm.decodeSerializedLinksToLinkBuffer(linkWeightData);
             }
 
             if (weightParameters == null || weightParameters.size() == 0)
@@ -214,13 +214,13 @@ public class LSTMNetwork {
     HashMap<String, NodeGroup> nodeMap;
     HashMap<String, Link> linkMap;
     HashMap<String, MemoryCell> memoryCells;
-    HashMap<String, WeightMatrix> linkData;
+    HashMap<String, WeightMatrix> bufferedLinkWeightMap;
     HashMap<String, Double> biasSpecMap;
     NodeGroup bias;
     public static final String LINK_NODE_SEPARATOR = ":";
     double convergenceThresholdFraction = 0.001;
     boolean allowRerollingWeights = true;
-
+    HashMap<String, Vector> initialNodeActivationMap = null;
     Link.RANDOMIZATION_SCHEME weightRerollScheme = Link.RANDOMIZATION_SCHEME.UNIFORM_RANGE;
     private static String SERIALIZED_WEIGHT_RECORD_DELIMITER = "+";
     private static String SERIALIZED_LINK_RECORD_DELIMITER = "|";
@@ -265,7 +265,7 @@ public class LSTMNetwork {
         linkMap = new HashMap<String, Link>();
         memoryCells = new HashMap<String, MemoryCell>();
         bias = new NodeGroup(1, new IdentityActivation(), new Vector(new double[]{1}));
-        linkData = new HashMap<String, WeightMatrix>();
+        bufferedLinkWeightMap = new HashMap<String, WeightMatrix>();
         biasSpecMap = new HashMap<String, Double> ();
     }
 
@@ -416,16 +416,41 @@ public class LSTMNetwork {
         return trainingSpec;
     }
 
+    /**
+     * Specify whether to round the activations of the output layer to 0 or 1.  This makes sense if the
+     * output activations represent binary options, but less so if they are probability distributions (such as
+     * if the output layer has a softmax activation function).  When true, the output layer activation will be
+     * rounded after the errors from the unrounded output has flowed back.
+     * @param enable
+     */
     public void setRoundOutput(boolean enable)
     {
         roundOutput = enable;
     }
 
+    /**
+     * Specify whether to reroll the weights of all links of the network if the network detects that it is
+     * failing to learn a pattern.  Set this to true when teaching the network the first pattern that will be
+     * stored.  Set this to false in order to learn new patterns while retaining the previously learned patterns
+     * @param enable
+     */
     public void setAllowRerollingWeights(boolean enable)
     {
         allowRerollingWeights = enable;
     }
 
+    /**
+     * Main method for learning a pattern sequence.  This is a helper method for when there are the same
+     * number of output nodes as input nodes and the structure of the network and purpose is to predict the
+     * next input given a previous sequence of inputs.
+     *
+     * The trainList is learned from the context of either a newly initialized LSTM network or the
+     * activations in initialNodeActivationMap
+     * @param trainingList a sequence of training output activations.
+     * @param maxSteps
+     * @param acceptableError the maximum acceptable training error for all components of the training sequence
+     * @return
+     */
     public double[] learnSequence(Vector[] trainingList, double maxSteps, double acceptableError)
     {
         ArrayList<Pair<Vector, Vector>> trainingSpec = getSequenceTrainingSpec(trainingList, new Vector(trainingList[0].dimen()));
@@ -435,6 +460,15 @@ public class LSTMNetwork {
     }
 
 
+    /**
+     * General method for teaching the LSTM to learn a sequence of input-output pairs.  The sequence of
+     * input-output pairs are learned from the context of either a newly created LSTM or the activations
+     * defined in initialNodeActivationMap
+     * @param trainingSpec a sequence of training output activations.
+     * @param maxSteps
+     * @param acceptableError the maximum acceptable training error for all components of the training sequence
+     * @return
+     */
     public double[] learnInputOutputPairs(ArrayList<Pair<Vector, Vector>> trainingSpec, double maxSteps, double acceptableError)
     {
         double[] errorList = new double[trainingSpec.size() + 2];
@@ -460,7 +494,7 @@ public class LSTMNetwork {
         double error = 0, prev = 0;
         for (c = 0;c < maxSteps;c++)
         {
-            clearAllMemoryCells();
+            initializeNodeState();
             clearWeightHistory();
             error = -1;
             for (int t = 0;t < trainingSpec.size();t++)
@@ -471,7 +505,7 @@ public class LSTMNetwork {
                 // null data value is a delimiter between separate patterns that
                 // require the lstm state be reset
                 {
-                    clearAllMemoryCells();
+                    initializeNodeState();
                     clearWeightHistory();
                     continue;
                 }
@@ -496,6 +530,7 @@ public class LSTMNetwork {
             else
                 effectiveThreshold = convergenceThreshold;
 
+
             if (allowRerollingWeights && prev > 0 && Math.abs(prev - error)/prev < effectiveThreshold)
             {
                 if (DEBUG)
@@ -506,6 +541,7 @@ public class LSTMNetwork {
             }
             else
             {
+
                 comitAllWeightUpdates();
                 prev = error;
             }
@@ -519,6 +555,20 @@ public class LSTMNetwork {
     }
 
 
+    /**
+     * Learn to associate sequences of inputs with categories.  This method will associate the input sequences
+     * in trainingSpec to categories that are defined in a one-hot vector.  This implies that the number of nodes
+     * in the output layer needs to be equal to the maximum number of possible categories
+     * @param trainingSpec array of sequences of input patterns
+     * @param classIdList the category to be assigned to each sequence in trainingSpec.  Category numbers start with
+     *                    1 (as opposed to 0) and the maximum category in this list must be less than the number of
+     *                    possible categories, maxNumClasses
+     * @param maxNumClasses Maximum possible category for any pattern.  This should be equal to the number of nodes
+     *                      in the output layer
+     * @param maxSteps Maximum number of learning steps
+     * @param acceptableError the maximum acceptable training error for all components of the training sequence
+     * @return
+     */
     public double[] learnPatternClass(Vector[][] trainingSpec, int[] classIdList, int maxNumClasses, double maxSteps, double acceptableError)
     {
         ArrayList<Pair<Vector, Vector>> trainingList = new ArrayList<Pair<Vector, Vector>>();
@@ -535,36 +585,21 @@ public class LSTMNetwork {
         return learnInputOutputPairs(trainingList, maxSteps, acceptableError);
     }
 
-    public LSTMNetwork setWeightRollStrategy(Link.RANDOMIZATION_SCHEME scheme)
-    {
-        weightRerollScheme = scheme;
-        return this;
-    }
 
-    public void rerollAllWeights()
-    {
-        Link l;
-        for (String name: weightUpdateLinkOrder)
-        {
-            l = linkMap.get(name);
-            switch (weightRerollScheme)
-            {
-                case UNIFORM_RANGE:
-                    l.initializeWeights(true);
-                    break;
-                case PERTRUBATION:
-                    l.perturbWeights();
-                    break;
-            }
-
-        }
-    }
-
+    /**
+     * Generates the sequence of outputs for a corresponding input sequence.
+     * @param initialSequence - this is an initial driving sequence, can be empty
+     * @param extrapSteps - the number of steps to extrapolate
+     * @param retainPreviousState - a flag indicating whether to initialize the activation of all
+     *                            nodes of the network before extrapolating or to extrapolate from
+     *                            the current state of the network
+     * @return
+     */
     public Vector[] extrapolate(Vector[] initialSequence, int extrapSteps, boolean retainPreviousState)
     {
         if (!retainPreviousState)
         {
-            clearAllMemoryCells();
+            initializeNodeState();
             clearWeightHistory();
         }
 
@@ -603,18 +638,26 @@ public class LSTMNetwork {
 
     }
 
-    public Vector[] viewOutput(Vector[] initialSequence, boolean retainPreviousState)
+    /**
+     * Given a sequence of input vectors, this method returns the corresponding sequence of outputs.
+     * @param drivingSequence
+     * @param retainPreviousState - flag indicating whether to reinitialize the activation of all nodes
+     *                            (which will be the activations defined in initialNodeActivationMap if not
+     *                            null) before driving the network with drivingSequence
+     * @return
+     */
+    public Vector[] viewSequenceOutput(Vector[] drivingSequence, boolean retainPreviousState)
     {
         if (!retainPreviousState)
         {
-            clearAllMemoryCells();
+            initializeNodeState();
             clearWeightHistory();
         }
 
-        Vector[] extrapolated = new Vector[initialSequence.length];
+        Vector[] extrapolated = new Vector[drivingSequence.length];
         Vector output;
         int k = 0;
-        for (Vector driving: initialSequence)
+        for (Vector driving: drivingSequence)
         {
             executeForwardPass(driving);
             output = getOutputValues();
@@ -633,85 +676,140 @@ public class LSTMNetwork {
     }
 
 
-    private static String getCommitLink(String spec)
-    {
-        String[] parts = StringUtils.split(spec, LINK_NODE_SEPARATOR);
-        if (parts[0].equals("*"))
-            return parts[1];
-        else
-            return null;
-    }
 
-    public void clearAllMemoryCells()
-    {
-        for (Map.Entry<String, MemoryCell> entry: memoryCells.entrySet())
-        {
-            entry.getValue().reset();
-        }
-    }
-
-    public void clearWeightHistory()
-    {
-        for (String key:linkMap.keySet())
-        {
-            linkMap.get(key).resetWeightHistory();
-
-        }
-    }
-
-
-
-    private void saveAllLinkWeights()
-    {
-
-        for (String key:linkMap.keySet())
-        {
-            WeightMatrix old = linkMap.get(key).getWeights();
-            WeightMatrix newWeights = new WeightMatrix(old.rows(), old.cols());
-            newWeights.addD(old);
-            linkData.put(key, newWeights);
-        }
-
-    }
 
     public Vector getOutputValues()
     {
         return nodeMap.get("O").getActivation();
     }
 
-    public void loadLinkData()
+
+    /**
+     * Get the buffer of link weights
+     * @return
+     */
+    public HashMap<String, WeightMatrix> getBufferedLinkWeightMap()
     {
-        for (String key:linkMap.keySet())
+        return bufferedLinkWeightMap;
+    }
+
+    /**
+     * Use this to extract the network activation state, mostly so that you can reuse it in the future
+     * with setDefaultActivationOfNodes
+     * @return
+     */
+    public HashMap<String, Vector> getNetworkActivationSnapshot()
+    {
+        HashMap<String, Vector> stateMap = new HashMap<String, Vector>();
+        Vector copy;
+        for (String nodename: nodeMap.keySet())
         {
-            WeightMatrix old = linkData.get(key);
+            copy = nodeMap.get(nodename).getActivation().multiply(1);
+            stateMap.put(nodename, copy);
+        }
+        return stateMap;
+    }
+
+    /**
+     * This overrides the initial node activation for all nodes of the network. When learning a new sequence pattern, such as
+     * during learnSequence, this defines the activations that the network will be reset to at the beginning of the
+     * pattern sequence
+     * @param activationMap
+     * @return
+     */
+    public LSTMNetwork setInitialNodeActivation(HashMap<String, Vector> activationMap)
+    {
+        initialNodeActivationMap = activationMap;
+        return this;
+    }
+
+    /**
+     * Instructs the network to use the default node initial activations when learning a sequence.
+     * This removes the default activations that were set in the call to setDefaultActivationOfNodes
+     * @return
+     */
+    public LSTMNetwork useDefaultInitialNodeActivation()
+    {
+        initialNodeActivationMap = null;
+        return this;
+    }
+
+    /**
+     * Sets the initialization activation of the network to the current activation.
+
+     * @return
+     */
+    public LSTMNetwork setInitialNodeActivationAsCurrent()
+    {
+        HashMap<String, Vector> activationMap = new HashMap<String, Vector>();
+        for (String nodeKey:nodeMap.keySet())
+        {
+            activationMap.put(nodeKey,
+                    nodeMap.get(nodeKey).getActivation().multiply(1));
+        }
+        initialNodeActivationMap = activationMap;
+        return this;
+    }
+
+
+    /**
+     * Gets a string serialization of this network.  This can be used as an input to decodeSerializedLinksToLinkBuffer and,
+     * together with
+     * @return
+     */
+    public String serializeLinkWeights()
+    {
+        saveAllLinkWeights();
+        StringBuilder serialized = new StringBuilder();
+        for (String key: bufferedLinkWeightMap.keySet())
+        {
+            if (serialized.length()>0)
+                serialized.append(SERIALIZED_WEIGHT_RECORD_DELIMITER);
+            serialized.append(key).append(SERIALIZED_LINK_RECORD_DELIMITER).append(bufferedLinkWeightMap.get(key).serialize());
+        }
+
+        return serialized.toString();
+    }
+
+    /**
+     * Deserialization is currently a two step process.  First, use this method to decode a string serialization of
+     * the weights of the links to bufferedLinkWeightMap, then use loadbufferedLinkWeights to update the
+     * weights of each link in linkMap to the values defined in that buffer
+     * @param serializedLinks
+     */
+    public void decodeSerializedLinksToLinkBuffer(String serializedLinks)
+    {
+        String[] weights = StringUtils.split(serializedLinks, SERIALIZED_WEIGHT_RECORD_DELIMITER);
+        for (String weightSpec:weights)
+        {
+            String[] linkSpec = StringUtils.split(weightSpec, SERIALIZED_LINK_RECORD_DELIMITER);
+            String linkKey = linkSpec[0];
+            String weightData  = linkSpec[1];
+            bufferedLinkWeightMap.put(linkKey, WeightMatrix.deserialize(weightData));
+        }
+    }
+
+    /**
+     * Sets the weights of all Links in accordance to the current Link weight buffer
+     */
+    public void loadbufferedLinkWeights()
+    {
+        for (String key: bufferedLinkWeightMap.keySet())
+        {
+            WeightMatrix old = bufferedLinkWeightMap.get(key);
             WeightMatrix newWeights = new WeightMatrix(old.rows(), old.cols());
             newWeights.addD(old);
             linkMap.get(key).setWeights(newWeights);
         }
     }
 
-    public HashMap<String, WeightMatrix> getLinkData()
-    {
-        return linkData;
-    }
 
-
-
-    public String serializeLinkData()
-    {
-        saveAllLinkWeights();
-        StringBuilder serialized = new StringBuilder();
-        for (String key:linkData.keySet())
-        {
-            if (serialized.length()>0)
-                serialized.append(SERIALIZED_WEIGHT_RECORD_DELIMITER);
-            serialized.append(key).append(SERIALIZED_LINK_RECORD_DELIMITER).append(linkData.get(key).serialize());
-        }
-
-        return serialized.toString();
-    }
-
-    public String serializeStateData()
+    /**
+     * Get a string with the serialization node activation for all nodes is this network.  You can reconstruct the
+     * network node state from this serialized form using the companion method, loadSerializedNetworkActivationState
+     * @return
+     */
+    public String serializeNetworkActivationState()
     {
         StringBuilder sbuilder = new StringBuilder();
         NodeGroup group;
@@ -730,7 +828,13 @@ public class LSTMNetwork {
         return sbuilder.toString();
     }
 
-    public LSTMNetwork loadSerializedState(String state)
+    /**
+     * Sets the activation of all nodes in accordance to the a serialization string, probably having
+     * been generated from a call to serializeNetworkActivationState
+     * @param state
+     * @return
+     */
+    public LSTMNetwork loadSerializedNetworkActivationState(String state)
     {
         clearAllMemoryCells();
         String[] serializedKeyValues = StringUtils.split(state, SERIALIZED_STATE_RECORD_DELIMITER);
@@ -752,32 +856,18 @@ public class LSTMNetwork {
         return this;
     }
 
-    public void decodeSerializedLinks(String serializedLinks)
-    {
-        String[] weights = StringUtils.split(serializedLinks, SERIALIZED_WEIGHT_RECORD_DELIMITER);
-        for (String weightSpec:weights)
-        {
-            String[] linkSpec = StringUtils.split(weightSpec, SERIALIZED_LINK_RECORD_DELIMITER);
-            String linkKey = linkSpec[0];
-            String weightData  = linkSpec[1];
-            linkData.put(linkKey, WeightMatrix.deserialize(weightData));
-        }
-    }
-
-
-
-    public static String getNodeLinkKey(String sourceName, String targetName)
-    {
-        return sourceName + LINK_NODE_SEPARATOR + targetName;
-
-    }
-
+    /**
+     * Gets the weights linking node soourceName to targetName
+     * @param sourceName
+     * @param targetName
+     * @return
+     */
     public WeightMatrix getWeights(String sourceName, String targetName)
     {
         String linkKey = getNodeLinkKey(sourceName, targetName);
-        if (linkData.containsKey(linkKey))
+        if (bufferedLinkWeightMap.containsKey(linkKey))
         {
-            return linkData.get(linkKey);
+            return bufferedLinkWeightMap.get(linkKey);
         }
         WeightMatrix matrix = null;
         int targetDimen = nodeMap.get(targetName).getDimen();
@@ -808,5 +898,103 @@ public class LSTMNetwork {
 
     }
 
+    /**
+     * Not using this since Link.RANDOMIZATION_SCHEME.PERTRUBATION doesn't work quite right yet
+     * @param scheme
+     * @return
+     */
+    LSTMNetwork setWeightRollStrategy(Link.RANDOMIZATION_SCHEME  scheme)
+    {
+
+        weightRerollScheme = scheme;
+        return this;
+    }
+
+
+
+    private static String getCommitLink(String spec)
+    {
+        String[] parts = StringUtils.split(spec, LINK_NODE_SEPARATOR);
+        if (parts[0].equals("*"))
+            return parts[1];
+        else
+            return null;
+    }
+
+    void clearAllMemoryCells()
+    {
+        for (Map.Entry<String, MemoryCell> entry: memoryCells.entrySet())
+        {
+            entry.getValue().reset();
+        }
+    }
+
+    void clearWeightHistory()
+    {
+        for (String key:linkMap.keySet())
+        {
+            linkMap.get(key).resetWeightHistory();
+
+        }
+    }
+
+    private void saveAllLinkWeights()
+    {
+
+        for (String key:linkMap.keySet())
+        {
+            WeightMatrix old = linkMap.get(key).getWeights();
+            WeightMatrix newWeights = new WeightMatrix(old.rows(), old.cols());
+            newWeights.addD(old);
+            bufferedLinkWeightMap.put(key, newWeights);
+        }
+
+    }
+
+    private LSTMNetwork initializeNodeState()
+    {
+        clearAllMemoryCells();
+        if (initialNodeActivationMap != null)
+        {
+            for (String nodeName: initialNodeActivationMap.keySet())
+            {
+                NodeGroup group = nodeMap.get(nodeName);
+                group.setActivation(initialNodeActivationMap.get(nodeName));
+            }
+        }
+        return this;
+    }
+
+
+
+
+
+
+    public static String getNodeLinkKey(String sourceName, String targetName)
+    {
+        return sourceName + LINK_NODE_SEPARATOR + targetName;
+
+    }
+
+
+
+    public void rerollAllWeights()
+    {
+        Link l;
+        for (String name: weightUpdateLinkOrder)
+        {
+            l = linkMap.get(name);
+            switch (weightRerollScheme)
+            {
+                case UNIFORM_RANGE:
+                    l.initializeWeights(true);
+                    break;
+                case PERTRUBATION:
+                    l.perturbWeights();
+                    break;
+            }
+
+        }
+    }
 
 }
