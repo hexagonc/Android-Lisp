@@ -26,6 +26,7 @@ import com.evolved.automata.lisp.LispInterpreter;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 
 public class GlobalInterface implements LispInterpreter.LispResponseListener, AndroidLispInterpreter.ResponseListener, SpeechListener
@@ -123,6 +124,7 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		ExtendedFunctions.addExtendedFunctions(env);
 		NXTLispFunctions.addFunctions(env, NXTBluetoothManager.getInstance());
 		SpeechLispFunctions.addSpeechFunctions(env);
+		NeuralNetLispInterface.addNeuralNetFunctions(env);
 		
 		env.mapFunction("evaluate-background", evaluate_background());
 		env.mapFunction("evaluate-foreground", evaluate_foreground());

@@ -398,7 +398,9 @@ public class GuiBuilderConfiguration
 		String dropboxAppKey = getStringResource(R.string.enc_dropbox_app_key);
 		if (dropboxAppKey.length()>0)
 		{
-			return encryptDecrypt(dropboxAppKey);
+			String n = encryptDecrypt(dropboxAppKey);
+			Log.e( "<><><><><><><> ", "Encrypted app key: " + n);
+			return n;
 		}
 			
 		else
@@ -408,7 +410,11 @@ public class GuiBuilderConfiguration
 	private String getDropboxAppToken()
 	{
 		if (hasDropboxAuthorizationP())
-			return encryptDecrypt(currentAccessToken);
+		{
+			String n = encryptDecrypt(currentAccessToken);
+			Log.e( "<><><><><><><> ", "Encrypted token: " + n);
+			return n;
+		}
 		else
 			return null;
 	}

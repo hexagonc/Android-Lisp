@@ -41,6 +41,9 @@ import com.evolved.automata.android.lisp.guibuilder.workspace.Project;
 import com.evolved.automata.android.lisp.guibuilder.workspace.Workspace;
 import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.android.widgets.ShadowButton;
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 
 import android.app.ActionBar;
@@ -182,7 +185,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         String prior = AndroidTools.getStringPreferenceSetting(PRIOR_COMMAND_KEY, null);
         if (prior != null)
             _editText.setText(prior);
-        
+        addFunctions();
         MenuManager.get().setCodeEditorMenuMode();
     }
 
@@ -207,6 +210,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     public void onStop() {
         String command = _editText.getText().toString();
         AndroidTools.setStringPreferenceSetting(PRIOR_COMMAND_KEY, command);
+        removeFunctions();
         super.onStop();
     }
 
@@ -1202,5 +1206,88 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 		// TODO Auto-generated method stub
 		
 	}
-	
+
+
+    public void addFunctions()
+    {
+        addLispFunction("append-data-to-cursor", appendDataToCursor());
+        addLispFunction("append-result-to-cursor", appendResultToCursor());
+    }
+
+    public void removeFunctions()
+    {
+        removeLispFunction("append-data-to-cursor");
+        removeLispFunction("append-result-to-cursor");
+    }
+
+    private void insertTextOnMainThread(final String text)
+    {
+        Runnable r = new Runnable()
+        {
+            public void run()
+            {
+                insertCodeAtEditCursor(text);
+            }
+        };
+        _editText.post(r);
+    }
+
+    public SimpleFunctionTemplate appendDataToCursor()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) appendDataToCursor();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                if (evaluatedArgs.length>0)
+                {
+                    if (evaluatedArgs.length > 1)
+                    {
+                        insertTextOnMainThread(evaluatedArgs[0].serializedForm() + "\n");
+                    }
+                    else
+                        insertTextOnMainThread(evaluatedArgs[0].serializedForm());
+
+                }
+                return Environment.getNull();
+            }
+        };
+    }
+
+
+
+    public SimpleFunctionTemplate appendResultToCursor()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) appendResultToCursor();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                if (evaluatedArgs.length>0)
+                {
+                    if (evaluatedArgs.length > 1)
+                        insertTextOnMainThread(evaluatedArgs[0].toString() + "\n");
+                    else
+                        insertTextOnMainThread(evaluatedArgs[0].toString());
+                }
+                return Environment.getNull();
+            }
+        };
+    }
+
+
 }

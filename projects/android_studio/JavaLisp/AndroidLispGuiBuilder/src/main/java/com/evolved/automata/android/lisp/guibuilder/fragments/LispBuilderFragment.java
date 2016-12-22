@@ -5,6 +5,7 @@ import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter.ResponseListener;
 import com.evolved.automata.android.lisp.guibuilder.GlobalInterface;
 import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.LispInterpreter;
 import com.evolved.automata.lisp.Value;
 
@@ -37,7 +38,16 @@ public abstract class LispBuilderFragment extends Fragment implements LispInterp
 	{
 		
 	}
-	
+
+	public void addLispFunction(String name, FunctionTemplate template)
+	{
+		_data.getEnvironment().mapFunction(name, template);
+	}
+
+	public void removeLispFunction(String name)
+	{
+		_data.getEnvironment().removeFunction(name);
+	}
 	
 	public abstract void onEnvironmentReset();
 	
