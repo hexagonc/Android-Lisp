@@ -29,7 +29,7 @@ public class LSTMLearningResult {
         LSTMLearningResult r = new LSTMLearningResult();
         r.maxStepError = combinedResults[0];
         r.numIterations = (int)combinedResults[1];
-        r.stepErrors = Arrays.copyOfRange(combinedResults, 2, combinedResults.length-1);
+        r.stepErrors = Arrays.copyOfRange(combinedResults, 2, combinedResults.length);
         return r;
     }
 

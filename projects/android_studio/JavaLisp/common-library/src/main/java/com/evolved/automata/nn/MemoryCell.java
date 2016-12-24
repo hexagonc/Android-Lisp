@@ -26,7 +26,21 @@ public class MemoryCell {
         outputGate = new OutputGateLayer(this);
         state = new Vector(stateSize);
 
-        peepHole = new NodeGroup(stateSize, new IdentityActivation(), state);
+        peepHole = new NodeGroup(stateSize, new IdentityActivation(), state)
+        {
+            @Override
+            public NodeGroup setActivation(Vector value)
+            {
+                state = value;
+                return this;
+            }
+
+            @Override
+            public Vector getActivation()
+            {
+                return state;
+            }
+        };
     }
 
     public void reset()
@@ -61,10 +75,6 @@ public class MemoryCell {
         return s;
     }
 
-    public NodeGroup getPeepHole()
-    {
-        return peepHole;
-    }
 
     public boolean isUsingPeepHoles()
     {
@@ -132,6 +142,12 @@ public class MemoryCell {
     {
         return forgetGate;
     }
+
+    public NodeGroup getPeepHole()
+    {
+        return peepHole;
+    }
+
 
     public Vector getCellState()
     {

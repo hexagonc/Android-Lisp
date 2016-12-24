@@ -227,6 +227,7 @@ public class LSTMNetwork {
 
     private static String SERIALIZED_STATE_RECORD_DELIMITER = "+";
     private static String SERIALIZED_STATE_NODE_DATA_DELIMITER = "|";
+    private boolean useZeroSuffixForSequenceLearningP = false;
 
     final VectorMapper roundingMapper = new VectorMapper() {
         @Override
@@ -329,7 +330,7 @@ public class LSTMNetwork {
 
         }
 
-
+        clearAllMemoryCells();
 
     }
 
@@ -396,6 +397,21 @@ public class LSTMNetwork {
         return trainingSpec;
     }
 
+    ArrayList<Pair<Vector, Vector>> getSequenceTrainingSpec(Vector[] trainingList)
+    {
+        ArrayList<Pair<Vector, Vector>> trainingSpec = new ArrayList<Pair<Vector, Vector>>();
+
+        Vector v = null;
+        int i;
+        for (i = 1;i<trainingList.length;i++)
+        {
+            v = trainingList[i];
+            trainingSpec.add(Pair.of(trainingList[i - 1], v));
+        }
+
+        return trainingSpec;
+    }
+
     ArrayList<Pair<Vector, Vector>> getSequenceClassTrainingSpec(Vector[] trainingList, int classId, int numClasses)
     {
         ArrayList<Pair<Vector, Vector>> trainingSpec = new ArrayList<Pair<Vector, Vector>>();
@@ -453,7 +469,11 @@ public class LSTMNetwork {
      */
     public double[] learnSequence(Vector[] trainingList, double maxSteps, double acceptableError)
     {
-        ArrayList<Pair<Vector, Vector>> trainingSpec = getSequenceTrainingSpec(trainingList, new Vector(trainingList[0].dimen()));
+        ArrayList<Pair<Vector, Vector>> trainingSpec = null;
+        if (useZeroSuffixForSequenceLearningP)
+            trainingSpec = getSequenceTrainingSpec(trainingList, new Vector(trainingList[0].dimen()));
+        else
+            trainingSpec = getSequenceTrainingSpec(trainingList);
 
         return learnInputOutputPairs(trainingSpec, maxSteps, acceptableError);
 

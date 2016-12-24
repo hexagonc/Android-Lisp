@@ -219,6 +219,97 @@ public class NNTools {
         return lstmBuilder.build();
     }
 
+    /**
+     * Returns a standard LSTM network suitable for most experimental and playful purposes.
+     * This network contains a simple memory cell.  There will be nearly complete connectivity
+     * between the gates.  The output error function is least squares.  The node activation
+     * function is sigmoid for all but the input layer and cell output which uses the hypertangent
+     * activation function.  None of peepholes, forget gates, or bias nodes are included in this
+     * network.  This is a very basic starter network that supports sequence prediction and
+     * classification.  This LSTM will use the standard gradient descent weight update method
+     *
+     * This version takes the string serialized weights to initialize the network with as an argument
+     * @param numInputNodes
+     * @param numMemoryCellStates
+     * @param numOutputNodes
+     * @param storedWeights
+     * @return
+     */
+    public static LSTMNetwork getStandardGDLSTM(int numInputNodes, int numMemoryCellStates, int numOutputNodes, String storedWeights)
+    {
+        LSTMNetwork.LSTMNetworkBuilder lstmBuilder = LSTMNetwork.getBuilder();
+        lstmBuilder.setInputNodeCount(numInputNodes).setOutputNodeCount(numOutputNodes).addMemoryCell("M", numMemoryCellStates);
+        if (storedWeights !=null && storedWeights.length()>0)
+        {
+            lstmBuilder.setLinkWeightSerializedData(storedWeights);
+        }
+        addStandardNodeConnections(
+                addStandardGradientDescentWeightUpdatePolicies(
+                        addStandardSimpleLSTMWeightUpdateOrder(
+                                addStandardSimpleLSTMFeedforwardOrder(lstmBuilder))));
+
+
+        return lstmBuilder.build();
+    }
+
+    /**
+     * Returns a standard LSTM network suitable for classification.
+     * This network contains a simple memory cell.  There will be nearly complete connectivity
+     * between the gates.  The output error function is cross entropy.  The output activation
+     * function is softmax.  None of peepholes, forget gates, or bias nodes are included in this
+     * network.
+
+     * @param numInputNodes
+     * @param numMemoryCellStates
+     * @param numOutputNodes The output layer uses the softmax activation function and the
+     *                       cross entropy error function.  The number of output nodes is
+     *                       interpreted as the number of categories.  Training outputs
+     *                       are expected to be one-hot category vectors.
+     * @return
+     */
+    public static LSTMNetwork getStandardClassificationLSTM(int numInputNodes, int numMemoryCellStates, int numOutputNodes)
+    {
+        return getStandardLSTM(numInputNodes, numMemoryCellStates, numOutputNodes, null);
+    }
+
+
+    /**
+     * Returns a standard LSTM network suitable for classification.
+     * This network contains a simple memory cell.  There will be nearly complete connectivity
+     * between the gates.  The output error function is cross entropy.  The output activation
+     * function is softmax.  None of peepholes, forget gates, or bias nodes are included in this
+     * network.
+     *
+     * This version takes the string serialized weights to initialize the network with as an argument
+     * @param numInputNodes
+     * @param numMemoryCellStates
+     * @param numOutputNodes The output layer uses the softmax activation function and the
+     *                       cross entropy error function.  The number of output nodes is
+     *                       interpreted as the number of categories.  Training outputs
+     *                       are expected to be one-hot category vectors.
+     * @param storedWeights
+     * @return
+     */
+    public static LSTMNetwork getStandardClassificationLSTM(int numInputNodes, int numMemoryCellStates, int numOutputNodes, String storedWeights)
+    {
+        LSTMNetwork.LSTMNetworkBuilder lstmBuilder = LSTMNetwork.getBuilder();
+        lstmBuilder.setInputNodeCount(numInputNodes).addMemoryCell("M", numMemoryCellStates);
+
+        OutputLayer output = new OutputLayer(numOutputNodes, new SoftmaxActivation(), new CrossEntropyError());
+        lstmBuilder.setOutputLayer(output);
+        if (storedWeights !=null && storedWeights.length()>0)
+        {
+            lstmBuilder.setLinkWeightSerializedData(storedWeights);
+        }
+        addStandardNodeConnections(
+                addStandardRPROPWeightUpdatePolicies(
+                        addStandardSimpleLSTMWeightUpdateOrder(
+                                addStandardSimpleLSTMFeedforwardOrder(lstmBuilder))));
+
+
+        return lstmBuilder.build();
+    }
+
 
     public static ArrayList<Double> stageDiscretize(double value, double range, int bits )
     {

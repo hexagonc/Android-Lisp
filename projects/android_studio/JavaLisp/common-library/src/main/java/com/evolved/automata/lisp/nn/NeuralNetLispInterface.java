@@ -22,10 +22,16 @@ public class NeuralNetLispInterface {
     public static void addNeuralNetFunctions(Environment env)
     {
         env.mapFunction("create-simple-lstm-network", createSimpleLSTMNetwork());
+        env.mapFunction("create-simple-classification-lstm-network", createSimpleClassificationLSTMNetwork());
+
         env.mapFunction("simple-lstm-learn-sequence", simpleLSTMLearnSequence());
+        env.mapFunction("simple-lstm-learn-sequence-classes", simpleLSTMLearnSequenceClasses());
+
         env.mapFunction("simple-lstm-serialize-weights", simpleLSTMSerializeWeights());
         env.mapFunction("simple-lstm-load-serialized-weights", simpleLSTMLoadSerializedWeights());
         env.mapFunction("simple-lstm-extrapolate-sequence", simpleLSTMExtrapolateSequence());
+        env.mapFunction("simple-lstm-view-sequence-output", simpleLSTMViewSequenceOutput());
+
 
         env.mapFunction("simple-lstm-save-node-state", simpleLSTMSaveNodeState());
         env.mapFunction("simple-lstm-load-state", simpleLSTMLoadNodeState());
@@ -96,6 +102,47 @@ public class NeuralNetLispInterface {
                 int numInputNodes = (int)evaluatedArgs[0].getIntValue();
                 int numMemoryCellStateNodes = (int)evaluatedArgs[1].getIntValue();
                 int numOutputNodes = (int)evaluatedArgs[2].getIntValue();
+                boolean useGradientDescent = false;
+
+
+                String serializedWeights = null;
+                if (evaluatedArgs.length>3 && !evaluatedArgs[3].isNull())
+                {
+                    serializedWeights = evaluatedArgs[3].getString();
+                }
+
+                if (evaluatedArgs.length > 4)
+                    useGradientDescent = !evaluatedArgs[3].isNull();
+
+                LSTMNetwork lstm =null ;
+
+                if (!useGradientDescent)
+                    lstm = NNTools.getStandardLSTM(numInputNodes, numMemoryCellStateNodes, numOutputNodes, serializedWeights);
+                else
+                    lstm = NNTools.getStandardGDLSTM(numInputNodes, numMemoryCellStateNodes, numOutputNodes, serializedWeights);
+
+                return ExtendedFunctions.makeValue(lstm);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate createSimpleClassificationLSTMNetwork()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) createSimpleClassificationLSTMNetwork();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, true, true);
+                int numInputNodes = (int)evaluatedArgs[0].getIntValue();
+                int numMemoryCellStateNodes = (int)evaluatedArgs[1].getIntValue();
+                int numOutputNodes = (int)evaluatedArgs[2].getIntValue();
 
                 String serializedWeights = null;
                 if (evaluatedArgs.length>3)
@@ -103,12 +150,13 @@ public class NeuralNetLispInterface {
                     serializedWeights = evaluatedArgs[3].getString();
                 }
 
-                LSTMNetwork lstm = NNTools.getStandardLSTM(numInputNodes, numMemoryCellStateNodes, numOutputNodes, serializedWeights);
-
+                LSTMNetwork lstm = NNTools.getStandardClassificationLSTM(numInputNodes, numMemoryCellStateNodes, numOutputNodes, serializedWeights);
+                lstm.setRoundOutput(false);
                 return ExtendedFunctions.makeValue(lstm);
             }
         };
     }
+
 
     public static SimpleFunctionTemplate simpleLSTMLearnSequence()
     {
@@ -163,6 +211,86 @@ public class NeuralNetLispInterface {
                         return new Vector[0];
                     }
                 }),maxSteps, maxAcceptableError );
+
+                Value[] lispResult = new Value[3];
+                LSTMLearningResult learningResult = LSTMLearningResult.make(result);
+                lispResult[0] = NLispTools.makeValue(learningResult.maxStepError);
+                lispResult[1] = NLispTools.makeValue(learningResult.numIterations);
+                lispResult[2] = NLispTools.makeValue(learningResult.stepErrors);
+                return NLispTools.makeValue(lispResult);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMLearnSequenceClasses()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMLearnSequenceClasses();
+            }
+
+            // First argument is LSTM
+            // Second argument is a list of training input of vector category pairs.
+            //  ( ( [vector_i] [category_i]) ( [vector_i+1] [category_i+1]) ... )
+
+            // Third argument is the max number of possible classes
+            // Forth argument is max number of steps
+            // Fifth arugment is the maximum acceptable error across all
+            // training inputs that will cause the iteration to exit early
+
+            // Optional Sixed argument allows weights to be randomized if the
+            // lstm gets into a local minimum above the acceptable error
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(5, true, true);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                Value[] trainingSequences = evaluatedArgs[1].getList();
+
+                Vector[][] vectorInputs = new Vector[trainingSequences.length][];
+                int[] categories = new int[trainingSequences.length];
+                Value[] trainingPair;
+                Value vectorList, trainingClass;
+                for (int i=0;i<trainingSequences.length;i++)
+                {
+                    trainingPair = trainingSequences[i].getList();
+                    vectorList = trainingPair[0];
+                    trainingClass = trainingPair[1];
+
+                    vectorInputs[i] = AITools.mapValues(vectorList.getList(), new VectorValueMapper<Value>() {
+                        @Override
+                        public Vector map(Value input, int index)
+                        {
+                            return listToVector(input);
+                        }
+                    });
+                    categories[i] = (int)trainingClass.getIntValue();
+                }
+
+
+                int numClasses = (int)evaluatedArgs[2].getIntValue();
+
+
+                double maxSteps = evaluatedArgs[3].getFloatValue();
+                double maxAcceptableError = evaluatedArgs[4].getFloatValue();
+
+                boolean allowWeightRandomization = true;
+
+                if (evaluatedArgs.length > 5)
+                {
+                    allowWeightRandomization = !evaluatedArgs[5].isNull();
+                }
+
+                lstm.setAllowRerollingWeights(allowWeightRandomization);
+
+
+
+                double[] result = lstm.learnPatternClass(vectorInputs, categories, numClasses, maxSteps, maxAcceptableError);
 
                 Value[] lispResult = new Value[3];
                 LSTMLearningResult learningResult = LSTMLearningResult.make(result);
@@ -356,6 +484,61 @@ public class NeuralNetLispInterface {
             }
         };
     }
+
+    public static SimpleFunctionTemplate simpleLSTMViewSequenceOutput()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMViewSequenceOutput();
+            }
+
+            // First argument is LSTM
+            // Second argument is the sequence of input vectors
+            // ( {0, 1}*, {0, 1}*, {0, 1}*, ...)
+
+            // Third argument is used to determine if you want to drive the input
+            // from the context of the network's current state or whether to initialize
+            // the network first.
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                Value[] seedInput = evaluatedArgs[1].getList();
+
+                boolean continuePriorState = false;
+
+
+                if (evaluatedArgs.length > 2)
+                {
+                    continuePriorState = !evaluatedArgs[2].isNull();
+                }
+
+                Vector[] extrapolatedResult = lstm.viewSequenceOutput(AITools.mapValues( seedInput, new VectorValueMapper<Value>() {
+                    @Override
+                    public Vector map(Value input, int index)
+                    {
+                        return listToVector(input);
+                    }
+                }), continuePriorState);
+
+                Value[] lispResult = AITools.mapValues(extrapolatedResult, new LispValueMapper<Vector>() {
+                    @Override
+                    public Value map(Vector input, int index)
+                    {
+                        return NLispTools.makeValue(input.raw());
+                    }
+                });
+                return NLispTools.makeValue(lispResult);
+            }
+        };
+    }
+
 
     private static Vector listToVector(Value value)
     {
