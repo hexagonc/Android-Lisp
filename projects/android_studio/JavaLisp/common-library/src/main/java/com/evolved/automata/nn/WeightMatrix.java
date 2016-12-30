@@ -295,6 +295,8 @@ public class WeightMatrix {
     @Override
     public boolean equals(Object o)
     {
+        if (o == null)
+            return false;
         if (o.getClass().equals(this.getClass()))
         {
             WeightMatrix other = (WeightMatrix)o;
