@@ -5,15 +5,22 @@ import com.evolved.automata.IndexedValueMapper;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.Lambda;
 import com.evolved.automata.lisp.LispValueMapper;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.nn.LSTMLearningResult;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.NNTools;
+import com.evolved.automata.nn.SLSTMSet;
+import com.evolved.automata.nn.SequenceLSTM;
 import com.evolved.automata.nn.Vector;
 import com.evolved.automata.nn.VectorValueMapper;
+import com.evolved.automata.nn.WeightMatrix;
+
+import java.util.HashMap;
 
 /**
  * Created by Evolved8 on 12/19/16.
@@ -23,22 +30,375 @@ public class NeuralNetLispInterface {
     {
         env.mapFunction("create-simple-lstm-network", createSimpleLSTMNetwork());
         env.mapFunction("create-simple-classification-lstm-network", createSimpleClassificationLSTMNetwork());
+        env.mapFunction("create-simple-sequence-lstm", createSimpleSequenceLSTMNetwork());
 
         env.mapFunction("simple-lstm-learn-sequence", simpleLSTMLearnSequence());
         env.mapFunction("simple-lstm-learn-sequence-classes", simpleLSTMLearnSequenceClasses());
 
         env.mapFunction("simple-lstm-serialize-weights", simpleLSTMSerializeWeights());
+        env.mapFunction("simple-lstm-get-raw-weights", simpleLSTMGetRawWeights());
+
         env.mapFunction("simple-lstm-load-serialized-weights", simpleLSTMLoadSerializedWeights());
+        env.mapFunction("simple-lstm-set-raw-weights", simpleLSTMSetRawWeights());
+
         env.mapFunction("simple-lstm-extrapolate-sequence", simpleLSTMExtrapolateSequence());
         env.mapFunction("simple-lstm-view-sequence-output", simpleLSTMViewSequenceOutput());
 
 
-        env.mapFunction("simple-lstm-save-node-state", simpleLSTMSaveNodeState());
-        env.mapFunction("simple-lstm-load-state", simpleLSTMLoadNodeState());
+        env.mapFunction("simple-lstm-serialize-node-state", simpleLSTMSerializeNodeState());
+        env.mapFunction("simple-lstm-get-node-state", simpleLSTMGetNodeState());
+        env.mapFunction("simple-lstm-set-node-state", simpleLSTMSetNodeState());
+        env.mapFunction("simple-lstm-load-serialized-node-state", simpleLSTMLoadSerializedNodeState());
 
         env.mapFunction("simple-lstm-use-current-state-as-initial", setUseCurrentStateAsInitial());
         env.mapFunction("simple-lstm-use-default-initial-state", useDefaultInitialActivation());
+
+
+        env.mapFunction("create-slstm-set", simpleLSTMCreateSet());
+        env.mapFunction("slstm-set-observe", simpleLSTMSetObserve());
+        env.mapFunction("slstm-set-get-size", simpleLSTMSetGetNumSLSTMs());
+        env.mapFunction("slstm-set-set-observation-update-policy", simpleLSTMSetObservationRecognitionPolicy());
+        env.mapFunction("slstm-set-get-current-completions", simpleLSTMSetGetCompletion());
+        env.mapFunction("slstm-set-get-predictions-of-next-observation", simpleLSTMSetGetLastPredictions());
+
+        env.mapFunction("slstm-set-commit-changes", simpleLSTMSetCommitNewSLSTMs());
+        env.mapFunction("slstm-set-rollback-changes", simpleLSTMRollbackSLSTMSet());
+        env.mapFunction("slstm-set-get-aggregate-prediction", simpleLSTMSetGetAggregateState());
+        env.mapFunction("slstm-set-define-aggregator", simpleLSTMSetDefinePredictionAggregator());
+        env.mapFunction("slstm-set-define-prediction-tester", simpleLSTMSetDefinePredictionTester());
+
+
+        env.mapFunction("slstm-set-add-hierarchical-set", simpleLSTMSetAddHierarchicalSet());
+        env.mapFunction("slstm-set-propagate-all-observations", simpleLSTMSetPropagateAllObservationsToHigher());
+        env.mapFunction("slstm-set-remove-all-items", simpleLSTMSetRemoveAllItems());
+        env.mapFunction("slstm-set-get-items", simpleLSTMSetGetItems());
+        env.mapFunction("slstm-set-set-items", simpleLSTMSetSetItems());
+
+        env.mapFunction("simple-slstm-add", simpleSLSTMAdd());
+        env.mapFunction("simple-slstm-get-all-items", simpleSLSTMGetAllItems());
+        env.mapFunction("simple-slstm-get-size", simpleSLSTMGetSize());
+        env.mapFunction("simple-slstm-remove-first", simpleSLSTMRemoveFirst());
+        env.mapFunction("simple-slstm-remove-last", simpleSLSTMRemoveLast());
+        env.mapFunction("simple-slstm-remove-all", simpleSLSTMRemoveAll());
+
     }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetObservationRecognitionPolicy()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetObservationRecognitionPolicy();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is a string enum parameter indicating whether to allow continuous updating of all
+            // lstms with each observation, regardless of whether that lstm predicted the last observation.
+            // Possible values for second parameter are:
+            // AT_PATTERN_BOUNDARY
+            //      This is the default policy.  A pattern recognition is  continous,
+            //      starting from the first vector of one of the SLSTMs contained in the
+            //      set.  This policy is the fastest to execute and has the most consistent
+            //      behavior since information that propagates to higher layers (if present)
+            //      will be less noisy.  However, there might be some meaningful patterns that are
+            //      not recognized with this policy since it cannot recognize patterns that start
+            //      from mid-sequence but still complete.
+            // IN_PATTERN_INTERIOR_WHEN_POSSIBLE
+            //      Same as AT_PATTERN_BOUNDARY except that if there is at least one SLSTM that
+            //      is being successfully matched from its starting point boundary then other
+            //      SLSTMs are allowed to match from their interior.  This is useful if you are
+            //      primarily interested in the SLSTMs that fully match from the start but want
+            //      to allow the possibility of some SLSTMs matching from their interior as a way
+            //      to provide contextual information to the higher layers
+            // CONTIUOUS
+            //      Continuously match all SLSTMs in the set against the next observation, regardless
+            //      of there history.  This is the slowest policy but allows patterns to be matched
+            //      mid-sequence or from the beginning of the sequence.
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                lstmSet.setPatternRecognitionPolicy(SLSTMSet.PatternRecognitionPolicy.valueOf(evaluatedArgs[1].getString()));
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetGetLastPredictions()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetGetLastPredictions();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                Vector[] predictionsOfLastObservation = lstmSet.getLastPredictedOutput();
+
+                if (predictionsOfLastObservation != null)
+                    return NLispTools.makeValue(AITools.mapValues(predictionsOfLastObservation, new LispValueMapper<Vector>() {
+                        @Override
+                        public Value map(Vector input, int index)
+                        {
+                            return NLispTools.makeValue(input.raw());
+                        }
+                    }));
+                else
+                    return Environment.getNull();
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetPropagateAllObservationsToHigher()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetPropagateAllObservationsToHigher();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                lstmSet.setPropagateAllObservationsToHigherLevel(!evaluatedArgs[1].isNull());
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetRemoveAllItems()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetRemoveAllItems();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                lstmSet.clearAllSLSTMs();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleSLSTMRemoveAll()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMRemoveAll();
+            }
+
+            // First value is the SLSTM
+            // Returns the original SLSTM
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                lstm.clear();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleSLSTMRemoveLast()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMRemoveLast();
+            }
+
+            // First value is the SLSTM
+            // Returns the original SLSTM (not the value removed)
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                lstm.removeLast();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleSLSTMRemoveFirst()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMRemoveFirst();
+            }
+
+            // First value is the SLSTM
+            // Returns the previous first element
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                Vector oldFirst = lstm.removeFirst();
+                if (oldFirst != null)
+                {
+                    return NLispTools.makeValue(oldFirst.raw());
+                }
+                else
+                    return Environment.getNull();
+            }
+        };
+    }
+
+
+
+
+    public static SimpleFunctionTemplate simpleSLSTMGetAllItems()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMGetAllItems();
+            }
+
+            // First value is the SLSTM
+            // Returns the Vectors in the SLSTM as a list
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                Vector[] out = lstm.getCurrentSequence();
+
+
+
+                return NLispTools.makeValue(AITools.mapValues(out, new LispValueMapper<Vector>() {
+
+                    @Override
+                    public Value map(Vector input, int index)
+                    {
+                        return NLispTools.makeValue(input.raw());
+                    }
+                })  );
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleSLSTMGetSize()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMGetSize();
+            }
+
+            // First value is the SLSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                return NLispTools.makeValue(lstm.getSequenceLength());
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleSLSTMAdd()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMAdd();
+            }
+
+            // First value is the SLSTM
+            // second value is a list representing the vector to add
+            // Third argument is the max number of steps to iterate
+            // Fourth arugment is the maximum acceptable error across all
+            // training inputs that will cause the iteration to exit early
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(4, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                Value valueToAdd = evaluatedArgs[1];
+                int maxSteps = (int)evaluatedArgs[2].getIntValue();
+                double maxAcceptableError = evaluatedArgs[3].getFloatValue();
+
+
+
+
+                double[] result = lstm.add(listToVector(valueToAdd), maxSteps, maxAcceptableError);
+
+                Value[] lispResult = new Value[3];
+                LSTMLearningResult learningResult = LSTMLearningResult.make(result);
+                lispResult[0] = NLispTools.makeValue(learningResult.maxStepError);
+                lispResult[1] = NLispTools.makeValue(learningResult.numIterations);
+                lispResult[2] = NLispTools.makeValue(learningResult.stepErrors);
+                return NLispTools.makeValue(lispResult);
+            }
+        };
+    }
+
 
     public static SimpleFunctionTemplate setUseCurrentStateAsInitial()
     {
@@ -157,6 +517,41 @@ public class NeuralNetLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate createSimpleSequenceLSTMNetwork()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) createSimpleSequenceLSTMNetwork();
+            }
+
+            // First argument is the number of input nodes
+            // Second argument is the number of nodes in the memory cell state
+            // Optional third argument is the set of serialized weights to initialize the
+            // weights with
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+                int numInputNodes = (int)evaluatedArgs[0].getIntValue();
+                int numMemoryCellStateNodes = (int)evaluatedArgs[1].getIntValue();
+
+                String serializedWeights = null;
+                if (evaluatedArgs.length>2 && !evaluatedArgs[2].isNull())
+                {
+                    serializedWeights = evaluatedArgs[2].getString();
+                }
+
+                SequenceLSTM slstm = NNTools.getStandardSequenceLSTM(numInputNodes, numMemoryCellStateNodes, serializedWeights);
+
+                return ExtendedFunctions.makeValue(slstm);
+            }
+        };
+    }
+
+
 
     public static SimpleFunctionTemplate simpleLSTMLearnSequence()
     {
@@ -210,7 +605,7 @@ public class NeuralNetLispInterface {
                     {
                         return new Vector[0];
                     }
-                }),maxSteps, maxAcceptableError );
+                }), maxSteps, maxAcceptableError);
 
                 Value[] lispResult = new Value[3];
                 LSTMLearningResult learningResult = LSTMLearningResult.make(result);
@@ -327,14 +722,46 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSaveNodeState()
+    public static SimpleFunctionTemplate simpleLSTMGetRawWeights()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSaveNodeState();
+                return (T) simpleLSTMGetRawWeights();
+            }
+
+            // First argument is LSTM
+            // Returns a string hashtable of the weights, suitable for use in simple-lstm-set-raw-weights
+            //
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+
+                HashMap<String, WeightMatrix> rawWeights = lstm.getLinkWeightMap(true);
+                HashMap<String, Value> out = new HashMap<String, Value>();
+                for (String key: rawWeights.keySet())
+                {
+                    out.put(key, NLispTools.makeValue(rawWeights.get(key).getWeights()));
+                }
+                return new StringHashtableValue(out);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSerializeNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSerializeNodeState();
             }
 
             // First argument is LSTM
@@ -348,6 +775,40 @@ public class NeuralNetLispInterface {
                 LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
 
                 return NLispTools.makeValue(lstm.serializeNetworkActivationState());
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMGetNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMGetNodeState();
+            }
+
+            // First argument is LSTM
+            // Returns a string hashtable of the network node activations, suitable for use in
+            // simple-lstm-set-node-state
+            // or
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                HashMap<String, Vector> activationMap = lstm.getNetworkActivationSnapshot();
+
+                HashMap<String, Value> out = new HashMap<String, Value>();
+
+                for (String key: activationMap.keySet())
+                {
+                    out.put(key, NLispTools.makeValue(activationMap.get(key).raw()));
+                }
+
+                return new StringHashtableValue(out);
             }
         };
     }
@@ -382,14 +843,50 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMLoadNodeState()
+    public static SimpleFunctionTemplate simpleLSTMSetRawWeights()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMLoadNodeState();
+                return (T) simpleLSTMSetRawWeights();
+            }
+
+            // First argument is LSTM
+            // Second argument is a string hashtable representing the raw weights, such as that returned
+            // by simple-lstm-get-raw-weights
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                HashMap<String, Value> weightMap = evaluatedArgs[1].getStringHashtable();
+                HashMap<String, WeightMatrix> input = new HashMap<String, WeightMatrix>();
+
+                for (String key: weightMap.keySet())
+                {
+                    input.put(key, listToWeightMatrix(weightMap.get(key)));
+                }
+
+                lstm.setBufferedLinkWeightMap(input);
+                lstm.loadbufferedLinkWeights();
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMLoadSerializedNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMLoadSerializedNodeState();
             }
 
             // First argument is LSTM
@@ -409,6 +906,41 @@ public class NeuralNetLispInterface {
             }
         };
     }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetNodeState();
+            }
+
+            // First argument is LSTM
+            // Second argument is a string hashtable representing the node activations, such as that
+            // returned by simple-lstm-get-node-state
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                HashMap<String, Vector> newActivationMap = new HashMap<String, Vector>();
+
+                HashMap<String, Value> activationMap = evaluatedArgs[1].getStringHashtable();
+
+                for (String key: activationMap.keySet())
+                {
+                    newActivationMap.put(key, listToVector(activationMap.get(key)));
+                }
+                lstm.setNetworkActivation(newActivationMap);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
 
     public static SimpleFunctionTemplate simpleLSTMExtrapolateSequence()
     {
@@ -540,19 +1072,497 @@ public class NeuralNetLispInterface {
     }
 
 
-    private static Vector listToVector(Value value)
+    // SLSTMSet
+
+    public static SimpleFunctionTemplate simpleLSTMCreateSet()
     {
-        Value[] list = value.getList();
-        int L = list.length;
-        double[] components = new double[L];
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMCreateSet();
+            }
 
-        for (int i = 0;i<L;i++)
-        {
-            components[i] = list[i].getFloatValue();
-        }
+            // First argument is the number of input nodes
+            // Second argument is the number of nodes in the memory cell of each
+            // sequential lstm
+            // Third is the number of slstms that define the state of the set, this
+            // should be a moderately large number
 
-        return new Vector(components);
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, true, true);
+
+                int numInputNodes = (int)evaluatedArgs[0].getIntValue();
+                int numMemoryStates = (int)evaluatedArgs[1].getIntValue();
+                int numSetStates = (int)evaluatedArgs[2].getIntValue();
+
+
+                SLSTMSet lstmSet = new SLSTMSet(numInputNodes, numMemoryStates, numSetStates);
+
+
+                return ExtendedFunctions.makeValue(lstmSet);
+            }
+        };
     }
 
+
+    public static SimpleFunctionTemplate simpleLSTMSetObserve()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetObserve();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is the vector of a new observation.  Should have as many dimensions
+            // as the number of input nodes defined in the SLSTMSet
+            // Third argument is a boolean parameter indicating if the SLSTMSet should create new
+            // patterns
+
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+
+                Value newInput = evaluatedArgs[1];
+                Value createNew = evaluatedArgs[2];
+
+
+                Vector slstmState = lstmSet.observe(listToVector(newInput), !createNew.isNull());
+
+                if (slstmState != null)
+                    return NLispTools.makeValue(slstmState.raw());
+                else
+                {
+                    return Environment.getNull();
+                }
+
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetGetNumSLSTMs()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetGetNumSLSTMs();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(lstmSet.getNumPatterns());
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetGetCompletion()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetGetNumSLSTMs();
+            }
+
+            // First argument is the SLSTMSet
+            // Returns a list of the set buffer with the fraction of completion from the last observation
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                Vector completion = lstmSet.getLastPatternCompletion();
+                if (completion != null)
+                    return NLispTools.makeValue(completion.raw());
+                else
+                    return Environment.getNull();
+
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetCommitNewSLSTMs()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetCommitNewSLSTMs();
+            }
+
+            // First argument is the SLSTMSet
+            // Optional Second argument is a boolean parameter indicating whether
+            // to save temp slstm if possible, defaults to true
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                boolean savePatternTempBuffer = true;
+
+                if (evaluatedArgs.length > 1)
+                {
+                    savePatternTempBuffer = !evaluatedArgs[1].isNull();
+                }
+                lstmSet.markIndexState(savePatternTempBuffer);
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMRollbackSLSTMSet()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMRollbackSLSTMSet();
+            }
+
+            // First argument is the SLSTMSet
+            // Optional second argument is a boolean parameter indicating whether to clear
+            // the temp slstm.  Considered true if second argument is missing
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, false);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+
+                boolean clearTemp = true;
+                if (evaluatedArgs.length > 1)
+                    clearTemp = !evaluatedArgs[1].isNull();
+
+                lstmSet.restoreState(clearTemp);
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetGetAggregateState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetGetAggregateState();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                Vector aggregateState = lstmSet.getAggregatePrediction();
+
+                if (aggregateState != null)
+                    return NLispTools.makeValue(aggregateState.raw());
+                else
+                    return Environment.getNull();
+
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetSetItems()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetSetItems();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                Value[] items = evaluatedArgs[1].getList();
+
+                SequenceLSTM[] members = new SequenceLSTM[items.length];
+
+                for (int i = 0;i < members.length;i++)
+                {
+                    members[i]= (SequenceLSTM)items[i].getObjectValue();
+                }
+                lstmSet.setMembers(members);
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetGetItems()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetGetItems();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequenceLSTM[] members = lstmSet.getMembers();
+                return NLispTools.makeValue(AITools.mapValues(members, new LispValueMapper<SequenceLSTM>() {
+                    @Override
+                    public Value map(SequenceLSTM input, int index)
+                    {
+                        return ExtendedFunctions.makeValue(input);
+                    }
+                }));
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetDefinePredictionAggregator()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetDefinePredictionAggregator();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is an lambda function that takes 2 arguments, the first being the list of predictions made by
+            // the set.  The second lambda argument will be the aggregate prediction from the higher order SLSTMSet if present
+            // t
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                Lambda lambdaValue = (Lambda)evaluatedArgs[1].getLambda();
+
+                lstmSet.setPredictionAggregator(lambdaToOutputAggregator(lambdaValue, env));
+
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetDefinePredictionTester()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetDefinePredictionTester();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is an lambda function that takes 2 arguments, the first being a vector of the actual input
+            // the set.  The second lambda argument will be a Vector of the predicted input
+            // t
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                Lambda lambdaValue = (Lambda)evaluatedArgs[1].getLambda();
+
+                lstmSet.setStatePredictionTester(lambdaToStatePredictionTester(lambdaValue, env));
+
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate simpleLSTMSetAddHierarchicalSet()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetAddHierarchicalSet();
+            }
+
+            // First argument is the SLSTMSet
+            // Optional Second argument is the hierarchical SLSTMSet.  If not present, a default SLSTMSet will be created and returned
+            // Optional argument is an lambda function that takes 2 arguments, the first being the list of predictions made by
+            // the set.  The second lambda argument will be the aggregate prediction from the higher order SLSTMSet if present
+            // Return value is the newly created SLSTMSet
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+
+                if (evaluatedArgs.length > 1)
+                {
+                    SLSTMSet higherLstmSet = (SLSTMSet)evaluatedArgs[1].getObjectValue();
+                    Lambda lambdaValue = null;
+
+                    if (evaluatedArgs.length > 2)
+                    {
+                        lambdaValue = (Lambda)evaluatedArgs[1].getLambda();
+                        return ExtendedFunctions.makeValue(lstmSet.addHierarchicalLayer(lambdaToOutputAggregator(lambdaValue, env), higherLstmSet));
+
+                    }
+                    else
+                        return ExtendedFunctions.makeValue(lstmSet.addHierarchicalLayer(higherLstmSet));
+                }
+                else
+                    return ExtendedFunctions.makeValue(lstmSet.addHierarchicalLayer());
+
+            }
+        };
+    }
+
+
+
+
+
+    public static WeightMatrix listToWeightMatrix(Value nestedLists)
+    {
+        double[][] out = NLispTools.listToDoubleArray(nestedLists);
+        return new WeightMatrix(out);
+    }
+
+
+
+    public static Vector listToVector(Value value)
+    {
+
+        return new Vector(NLispTools.getDoubleArrayFromValue(value));
+    }
+
+    private static SLSTMSet.OutputAggregator lambdaToOutputAggregator(final Lambda lambda, final Environment outer)
+    {
+        return new SLSTMSet.OutputAggregator()
+        {
+
+            @Override
+            public Vector aggregateResult(Vector[] lastPrediction, Vector hierarchicalAggregateResult)
+            {
+                Value[] setPredictions = AITools.mapValues(lastPrediction, new LispValueMapper<Vector>() {
+                    @Override
+                    public Value map(Vector input, int index)
+                    {
+                        if (input != null)
+                            return NLispTools.makeValue(input.raw());
+                        else
+                            return Environment.getNull();
+                    }
+                });
+
+                Value higherLevelAggregateResult = Environment.getNull();
+
+                if (hierarchicalAggregateResult != null)
+                    higherLevelAggregateResult = NLispTools.makeValue(hierarchicalAggregateResult.raw());
+
+                Value[] args = new Value[]{NLispTools.makeValue(setPredictions), higherLevelAggregateResult};
+                lambda.setActualParameters(args);
+
+                try
+                {
+                    Value out = lambda.evaluate(outer, false);
+                    if (!out.isNull())
+                        return listToVector(out);
+                    else
+                        return null;
+                } catch (Exception e)
+                {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
+
+            }
+        };
+    }
+
+
+    private static SLSTMSet.StatePredictionTester lambdaToStatePredictionTester(final Lambda lambda, final Environment outer)
+    {
+        return new SLSTMSet.StatePredictionTester()
+        {
+
+            public boolean areMatched(Vector actualState, Vector predictedState)
+            {
+
+                if (actualState == null || predictedState == null)
+                    return false;
+
+                Value actualValue = NLispTools.makeValue(actualState.raw()), predictedStateValue = NLispTools.makeValue(predictedState.raw());
+
+                Value[] args = new Value[]{actualValue, predictedStateValue};
+
+                lambda.setActualParameters(args);
+                try
+                {
+                    Value out = lambda.evaluate(outer, false);
+                    return !out.isNull();
+                } catch (Exception e)
+                {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+    }
 
 }

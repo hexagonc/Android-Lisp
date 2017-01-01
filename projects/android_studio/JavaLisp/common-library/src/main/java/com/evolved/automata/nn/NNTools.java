@@ -253,6 +253,39 @@ public class NNTools {
     }
 
     /**
+     * Returns a standard LSTM network suitable for most experimental and playful purposes.
+     * This network contains a simple memory cell.  There will be nearly complete connectivity
+     * between the gates.  The output error function is least squares.  The node activation
+     * function is sigmoid for all but the input layer and cell output which uses the hypertangent
+     * activation function.  None of peepholes, forget gates, or bias nodes are included in this
+     * network.  This is a very basic starter network that supports sequence prediction and
+     * classification.  This LSTM will use the standard gradient descent weight update method
+     *
+     * This version takes the string serialized weights to initialize the network with as an argument
+     * @param numInputNodes
+     * @param numMemoryCellStates
+     * @param storedWeights
+     * @return
+     */
+    public static SequenceLSTM getStandardSequenceLSTM(int numInputNodes, int numMemoryCellStates, String storedWeights)
+    {
+        SequenceLSTM.LSTMNetworkBuilder lstmBuilder = SequenceLSTM.getSequenceBuilder();
+        lstmBuilder.setInputNodeCount(numInputNodes).addMemoryCell("M", numMemoryCellStates);
+        if (storedWeights !=null && storedWeights.length()>0)
+        {
+            lstmBuilder.setLinkWeightSerializedData(storedWeights);
+        }
+        addStandardNodeConnections(
+                addStandardRPROPWeightUpdatePolicies(
+                        addStandardSimpleLSTMWeightUpdateOrder(
+                                addStandardSimpleLSTMFeedforwardOrder(lstmBuilder))));
+
+
+        return (SequenceLSTM)lstmBuilder.build();
+    }
+
+
+    /**
      * Returns a standard LSTM network suitable for classification.
      * This network contains a simple memory cell.  There will be nearly complete connectivity
      * between the gates.  The output error function is cross entropy.  The output activation
@@ -351,6 +384,26 @@ public class NNTools {
 
     }
 
+    public static double  averagedStageContinuize(double range, double[] discretized)
+    {
+        ArrayList<Double> in = new ArrayList<Double>();
+        for (double d:discretized)
+        {
+            in.add(d);
+        }
+        return getAverage(stageContinuize(0, range, in));
+    }
+
+    public static Pair<Double, Double>  stageContinuize(double range, double[] discretized)
+    {
+        ArrayList<Double> in = new ArrayList<Double>();
+        for (double d:discretized)
+        {
+            in.add(d);
+        }
+        return stageContinuize(0, range, in);
+    }
+
 
     public static Pair<Double, Double>  stageContinuize(double range, ArrayList<Double> discretized)
     {
@@ -431,5 +484,40 @@ public class NNTools {
     }
 
 
+    static Vector[]  getVector(double[] data)
+    {
+        Vector[] out = new Vector[data.length];
+        for (int i = 0;i < data.length; i++)
+        {
+            out[i] = new Vector(new double[]{data[i]});
+        }
+        return out;
+    }
 
+    static Vector getVector(ArrayList<Double> data)
+    {
+        double[] out = new double[data.size()];
+        for (int i = 0;i < data.size(); i++)
+        {
+            out[i] = data.get(i);
+        }
+        return new Vector(out);
+    }
+
+
+    static Vector[] getVector(double[][] data)
+    {
+        Vector[] out = new Vector[data.length];
+        for (int i = 0;i < data.length; i++)
+        {
+            out[i] = new Vector(data[i]);
+        }
+        return out;
+    }
+
+
+    static double getAverage(Pair<Double, Double> p)
+    {
+        return p.getLeft()/2 + p.getRight()/2;
+    }
 }

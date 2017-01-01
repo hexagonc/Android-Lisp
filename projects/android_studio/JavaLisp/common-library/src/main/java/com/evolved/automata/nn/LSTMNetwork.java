@@ -15,7 +15,7 @@ public class LSTMNetwork {
 
 
     public static boolean DEBUG = true;
-    public static final class LSTMNetworkBuilder {
+    public static class LSTMNetworkBuilder {
 
         HashMap<String, NodeGroup> initialNodeMap = null;
         OutputLayer outputLayer;
@@ -260,7 +260,7 @@ public class LSTMNetwork {
         MAX_POSSIBLE_ERROR
     }
 
-    private LSTMNetwork()
+    protected LSTMNetwork()
     {
         nodeMap = new HashMap<String, NodeGroup>();
         linkMap = new HashMap<String, Link>();
@@ -270,7 +270,7 @@ public class LSTMNetwork {
         biasSpecMap = new HashMap<String, Double> ();
     }
 
-    private void initialize()
+    protected void initialize()
     {
         nodeMap.put("I", inputLayer);
         nodeMap.put("O", outputLayer);
@@ -703,19 +703,32 @@ public class LSTMNetwork {
         return nodeMap.get("O").getActivation();
     }
 
+    // TODO: Think carefully if want to keep distinction between buffered link weights and active weights, the current distinction seems error-prone
+    /**
+     * Get the buffer of link weights.  Since
+     * @return
+     */
+    public HashMap<String, WeightMatrix> getLinkWeightMap(boolean saveToBufferFirstP)
+    {
+        if (saveToBufferFirstP)
+            saveAllLinkWeights();
+        return bufferedLinkWeightMap;
+    }
 
     /**
      * Get the buffer of link weights
      * @return
      */
-    public HashMap<String, WeightMatrix> getBufferedLinkWeightMap()
+    public LSTMNetwork setBufferedLinkWeightMap(HashMap<String, WeightMatrix> map)
     {
-        return bufferedLinkWeightMap;
+        bufferedLinkWeightMap = map;
+        return this;
     }
+
 
     /**
      * Use this to extract the network activation state, mostly so that you can reuse it in the future
-     * with setDefaultActivationOfNodes
+     * with setInitialNodeActivation or setNetworkActivation
      * @return
      */
     public HashMap<String, Vector> getNetworkActivationSnapshot()
@@ -729,6 +742,32 @@ public class LSTMNetwork {
         }
         return stateMap;
     }
+
+    /**
+     * Set the current network activation state.  This method is usually used to rollback the state
+     * of the LSTMNetwork to some prior state, usually in conjunction with setBufferedLinkWeightMap
+     * @param activationMap this should usually be the value returned by getNetworkActivationSnapshot
+     * @return
+     */
+    public LSTMNetwork setNetworkActivation(HashMap<String, Vector> activationMap)
+    {
+        HashMap<String, Vector> stateMap = new HashMap<String, Vector>();
+
+        for (String nodename: activationMap.keySet())
+        {
+            final Vector newActivation = activationMap.get(nodename);
+            nodeMap.get(nodename).getActivation().mapD(new VectorMapper() {
+                @Override
+                public double map(double v, int i)
+                {
+                    return newActivation.value(i);
+                }
+            }) ;
+
+        }
+        return this;
+    }
+
 
     /**
      * This overrides the initial node activation for all nodes of the network. When learning a new sequence pattern, such as
@@ -745,7 +784,7 @@ public class LSTMNetwork {
 
     /**
      * Instructs the network to use the default node initial activations when learning a sequence.
-     * This removes the default activations that were set in the call to setDefaultActivationOfNodes
+     * This removes the default activations that were set in the call to setInitialNodeActivation
      * @return
      */
     public LSTMNetwork useDefaultInitialNodeActivation()

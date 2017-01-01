@@ -36,6 +36,7 @@ import com.evolved.automata.parser.math.Expression;
 import com.evolved.automata.parser.math.ExpressionFactory;
 import com.evolved.automata.parser.math.WordNumberExpressionPreProcessor;
 
+
 public class ExtendedFunctions 
 {
 	public static Value _number_grammar;
@@ -142,28 +143,50 @@ public class ExtendedFunctions
 			/**
 			 * First argument is a hashtable mapping a string or integer to a non-negative numeric weight
 			 * or a key-value pair mapping any object to a numeric
-			 
+			   Optional second argument is a boolean flag indicating whether to return null if
+			   all weights are zero.  Otherwise all samples will be equally likely
 			   Returns a random key in proportion to its weight
 			 */
 			@Override
 			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(1, false, true);
+				checkActualArguments(1, true, true);
 				
-				
+				int numItems = 0, i = 0;
 				double totalWeight= 0;
 				double sample;
 				double weight;
-				
+				boolean returnNullOnAllZeroWeightP = false;
+				Value uniformSample = Environment.getNull();
+				int uniformSampleIndex = 0;
+				if (evaluatedArgs.length > 1)
+				{
+					returnNullOnAllZeroWeightP = !evaluatedArgs[1].isNull();
+				}
 				
 				
 				if (evaluatedArgs[0].isStringHashtable())
 				{
-					String lastString = null;;
+					String lastString = null;
 					HashMap<String, Value> map = evaluatedArgs[0].getStringHashtable();
+					numItems = map.size();
+					uniformSampleIndex = (int)(Math.random()*numItems);
+					i = 0;
 					for (Map.Entry<String, Value> entry:map.entrySet())
 					{
+						if (i == uniformSampleIndex)
+							uniformSample = NLispTools.makeValue(entry.getKey());
 						totalWeight+=entry.getValue().getFloatValue();
+						i++;
 					}
+
+					if (totalWeight == 0)
+					{
+						if (returnNullOnAllZeroWeightP)
+							return Environment.getNull();
+						else
+							return uniformSample;
+					}
+
 					sample = totalWeight*Math.random();
 					totalWeight = 0;
 					
@@ -176,11 +199,18 @@ public class ExtendedFunctions
 						totalWeight+=weight;
 					}
 					return NLispTools.makeValue((String)lastString);
-				}else if (evaluatedArgs[1].isList())
+				}else if (evaluatedArgs[0].isList())
 				{
 					Value lastValue = Environment.getNull();
+					numItems = evaluatedArgs[0].getList().length;
+					uniformSampleIndex = (int)(Math.random()*numItems);
+					i = 0;
+
 					for (Value pair:evaluatedArgs[0].getList())
 					{
+						if (i == uniformSampleIndex)
+							uniformSample = pair.getList()[0];
+
 						if (pair.isList()&&pair.getList().length == 2)
 						{
 							totalWeight+=pair.getList()[1].getFloatValue();
@@ -188,8 +218,17 @@ public class ExtendedFunctions
 						}
 						else 
 							throw new RuntimeException("Second argument to sample-distribution must be a hashtable or a key-value list");
+						i++;
 					}
-					
+
+					if (totalWeight == 0)
+					{
+						if (returnNullOnAllZeroWeightP)
+							return Environment.getNull();
+						else
+							return uniformSample;
+					}
+
 					sample = totalWeight*Math.random();
 					totalWeight = 0;
 					
@@ -209,14 +248,29 @@ public class ExtendedFunctions
 					}
 					return lastValue;
 					
-				} else if (evaluatedArgs[1].isIntHashtable())
+				} else if (evaluatedArgs[0].isIntHashtable())
 				{
 					long lastKey = 0;
 					HashMap<Long, Value> map = evaluatedArgs[0].getIntHashtable();
+					numItems = map.size();
+					uniformSampleIndex = (int)(Math.random()*numItems);
+					i = 0;
 					for (Map.Entry<Long, Value> entry:map.entrySet())
 					{
+						if (i == uniformSampleIndex)
+							uniformSample = NLispTools.makeValue(entry.getKey());
 						totalWeight+=entry.getValue().getFloatValue();
+						i++;
 					}
+
+					if (totalWeight == 0)
+					{
+						if (returnNullOnAllZeroWeightP)
+							return Environment.getNull();
+						else
+							return uniformSample;
+					}
+
 					sample = totalWeight*Math.random();
 					totalWeight = 0;
 					
@@ -1554,6 +1608,16 @@ public class ExtendedFunctions
 		for (int i=0;i<v.length;i++)
 			v[i] = makeValue(obj[i]);
 		return NLispTools.makeValue(v);
+	}
+
+	public static Value makeValue(Object[][] nested)
+	{
+		Value[] base = new Value[nested.length];
+		for (int i = 0; i < nested.length;i++)
+		{
+			base[i] = makeValue(nested[i]);
+		}
+		return NLispTools.makeValue(base);
 	}
 	
 	private static Value convertMatcherList(LinkedList<TerminalMatcher> terms, boolean getRaw)

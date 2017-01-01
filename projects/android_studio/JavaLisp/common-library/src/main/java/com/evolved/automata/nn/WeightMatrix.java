@@ -230,6 +230,55 @@ public class WeightMatrix {
         return false;
     }
 
+    public double[][] getWeights()
+    {
+        return weights;
+    }
+
+    public WeightMatrix setWeights(double[][] newWeights, boolean makeCopyP)
+    {
+        if (!compatibleDimensions(weights, newWeights))
+            throw new IllegalArgumentException("Can only set weights from arrays of equal dimension");
+
+        if (makeCopyP && compatibleDimensions(weights, newWeights))
+        {
+            for (int i = 0;i < rows(); i++)
+            {
+                for (int j = 0; j < cols();j++)
+                {
+                    weights[i][j] = newWeights[i][j];
+                }
+            }
+        }
+        else
+        {
+            weights = newWeights;
+
+        }
+        return this;
+    }
+
+    public static boolean compatibleDimensions(double[][] lvalue, double[][] rvalue)
+    {
+        if (lvalue == null && rvalue == null)
+            return true;
+
+        if (lvalue == null || rvalue == null)
+            return false;
+
+        if (lvalue.length == rvalue.length)
+        {
+            for (int i = 0;i< lvalue.length;i++)
+            {
+                if (lvalue[i].length != rvalue[i].length)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
 
     public String serialize()
     {

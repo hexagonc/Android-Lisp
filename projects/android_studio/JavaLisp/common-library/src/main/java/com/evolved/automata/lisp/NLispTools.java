@@ -4720,7 +4720,42 @@ public class NLispTools
 		}
 		throw new RuntimeException("Incorrect Value type");
 	}
-	
+
+	public static double[] getDoubleArrayFromValue(Value value)
+	{
+		if (value.isList())
+		{
+			Value[] list = value.getList();
+			int L = list.length;
+			double[] components = new double[L];
+
+			for (int i = 0;i<L;i++)
+			{
+				components[i] = list[i].getFloatValue();
+			}
+
+			return components;
+		}
+		throw new RuntimeException("Incorrect Value type");
+
+	}
+
+	public static double[][] listToDoubleArray(Value nestedLists)
+	{
+		Value[] rowData = nestedLists.getList();
+
+
+		double[][] out = new double[rowData.length][];
+
+		for (int i = 0;i < rowData.length;i++)
+		{
+			out[i] = NLispTools.getDoubleArrayFromValue(rowData[i]);
+		}
+		return out;
+	}
+
+
+
 	public static Value makeValue(int v)
 	{
 		return new IntegerValue(v);
@@ -4738,7 +4773,16 @@ public class NLispTools
 			va[i] = NLispTools.makeValue(v[i]);
 		return NLispTools.makeValue(va);
 	}
-	
+
+	public static Value makeValue(double[][] nested)
+	{
+		Value[] base = new Value[nested.length];
+		for (int i = 0; i < nested.length;i++)
+		{
+			base[i] = NLispTools.makeValue(nested[i]);
+		}
+		return NLispTools.makeValue(base);
+	}
 	
 	public static Value makeValue(Value[] args)
 	{
