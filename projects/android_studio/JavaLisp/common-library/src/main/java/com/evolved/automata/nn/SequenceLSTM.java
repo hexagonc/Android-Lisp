@@ -126,6 +126,17 @@ public class SequenceLSTM extends LSTMNetwork {
 
     }
 
+    /**
+     * Use caution!!!
+     * ONLY use this after restoring previous weights
+     */
+    public void undoRemoveLast()
+    {
+
+        sequenceLength++;
+
+    }
+
     public Vector removeFirst()
     {
         Vector old = initialInputActivation;

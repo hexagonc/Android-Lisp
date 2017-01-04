@@ -1,6 +1,7 @@
 package com.evolved.automata.nn;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * Created by Evolved8 on 12/26/16.
@@ -29,6 +30,10 @@ public class SLSTMSet {
     }
 
 
+    public enum TempSLSTMFlushPolicy
+    {
+        ON_DEMAND, IMMEDIATELY, NEVER
+    }
     Vector previousObservationOutput = null;
     Vector previousInput = null;
     Vector[] predictedOutput = null;
@@ -38,6 +43,9 @@ public class SLSTMSet {
     int[] patternLength;
 
     boolean onlyPropateCompletionsToHigherLevel = true;
+    TempSLSTMFlushPolicy flushPolicy = TempSLSTMFlushPolicy.IMMEDIATELY;
+
+
 
     int _ABSOLUTE_MAX_LSTM = 1000;
     int minIndex = 0;
@@ -61,6 +69,8 @@ public class SLSTMSet {
     InputPropertyDetector rollbackInputDetector;
 
     SequenceLSTM temp;
+
+    LinkedList<SequenceLSTM> tempBuffer;
     String savedWeights;
     String savedStates;
 
@@ -82,6 +92,7 @@ public class SLSTMSet {
         matchHistory = new double[_ABSOLUTE_MAX_LSTM];
         failureCount = new int[_ABSOLUTE_MAX_LSTM];
         patternLength = new int[_ABSOLUTE_MAX_LSTM];
+        tempBuffer = new LinkedList<SequenceLSTM>();
 
         higherOrderPatterns = null;
         predictionMatcher = new StatePredictionTester()
@@ -157,6 +168,18 @@ public class SLSTMSet {
         return this;
     }
 
+    public SLSTMSet setMaxLearningError(double error)
+    {
+        this.maxError = error;
+        return this;
+    }
+
+    public SLSTMSet setMaxLearningSteps(int steps)
+    {
+        this.maxSteps = steps;
+        return this;
+    }
+
     public int getNumPatterns()
     {
         if (minIndex <= lstmTempIndex)
@@ -184,7 +207,10 @@ public class SLSTMSet {
         lstmTempIndex = markedlstmTempIndex;
 
         if (clearTemp)
+        {
             temp = null;
+            tempBuffer.clear();
+        }
 
         if (higherOrderPatterns != null)
             higherOrderPatterns.restoreState(clearTemp);
@@ -305,7 +331,7 @@ public class SLSTMSet {
             {
                 i = relativeToAbsoluteIndex(k);
 
-                if (predictedOutput[k] != null && predictionMatcher.areMatched(newInput, predictedOutput[k]))
+                if (predictedOutput!=null && predictedOutput[k] != null && predictionMatcher.areMatched(newInput, predictedOutput[k]))
                 {
                     matchHistory[i]++;
                     failureCount[i] = 0;
@@ -379,11 +405,25 @@ public class SLSTMSet {
 
                 if (score == 0)
                 {
-                    patternLength[lstmTempIndex] = temp.getSequenceLength();
-                    group[lstmTempIndex] = temp;
-                    lstmTempIndex++;
-                    temp = NNTools.getStandardSequenceLSTM(inputNodeCount, stateNodeCount, null);
-                    temp.add(newInput, maxSteps, maxError);
+
+                    switch (flushPolicy)
+                    {
+                        case IMMEDIATELY:
+                            patternLength[lstmTempIndex] = temp.getSequenceLength();
+                            group[lstmTempIndex] = temp;
+                            lstmTempIndex++;
+                            tempBuffer.clear();
+                            temp = NNTools.getStandardSequenceLSTM(inputNodeCount, stateNodeCount, null);
+                            temp.add(newInput, maxSteps, maxError);
+                            break;
+                        case ON_DEMAND:
+                            tempBuffer.add(temp);
+                            temp = NNTools.getStandardSequenceLSTM(inputNodeCount, stateNodeCount, null);
+                            temp.add(newInput, maxSteps, maxError);
+                            break;
+
+                    }
+
                 }
                 else
                 {
@@ -414,6 +454,28 @@ public class SLSTMSet {
             higherOrderPatterns.observe(previousObservationOutput, addIfNoPresent);
 
         return previousObservationOutput;
+    }
+
+    public void flushTempBuffer(boolean withoutAddingP)
+    {
+        if (!withoutAddingP)
+        {
+            for (SequenceLSTM slstm : tempBuffer)
+            {
+                addSLSTM(slstm);
+            }
+        }
+        tempBuffer.clear();
+    }
+
+    public SLSTMSet setTempBufferFlushPolicy(TempSLSTMFlushPolicy policy)
+    {
+        flushPolicy = policy;
+        if (policy == TempSLSTMFlushPolicy.IMMEDIATELY && tempBuffer.size()> 0)
+        {
+            flushTempBuffer(false);
+        }
+        return this;
     }
 
     public void setDefaltCommitInputDetector()
@@ -548,6 +610,8 @@ public class SLSTMSet {
                 double weight;
                 for (int k = 1;k < lastPrediction.length;k++)
                 {
+                    if (lastPrediction[k] == null)
+                        continue;
                     weight = 1;
                     if (hasHigherResult)
                         weight = hierarchicalAggregateResult.value(k);

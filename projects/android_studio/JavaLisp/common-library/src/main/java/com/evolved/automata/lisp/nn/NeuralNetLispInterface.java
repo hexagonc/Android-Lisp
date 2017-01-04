@@ -61,6 +61,11 @@ public class NeuralNetLispInterface {
         env.mapFunction("slstm-set-get-current-completions", simpleLSTMSetGetCompletion());
         env.mapFunction("slstm-set-get-predictions-of-next-observation", simpleLSTMSetGetLastPredictions());
 
+        env.mapFunction("slstm-set-set-max-error-per-input", simpleLSTMSetSetMaxErrorPerInputVector());
+        env.mapFunction("slstm-set-set-max-steps-per-input", simpleLSTMSetSetMaxLearningStepsPerInputVector());
+
+        env.mapFunction("slstm-set-set-flush-policy", simpleLSTMSetSetFlushPolicy());
+        env.mapFunction("slstm-set-flush-temp-buffer", simpleLSTMSetFlushTempBuffer());
         env.mapFunction("slstm-set-commit-changes", simpleLSTMSetCommitNewSLSTMs());
         env.mapFunction("slstm-set-rollback-changes", simpleLSTMRollbackSLSTMSet());
         env.mapFunction("slstm-set-get-aggregate-prediction", simpleLSTMSetGetAggregateState());
@@ -79,9 +84,65 @@ public class NeuralNetLispInterface {
         env.mapFunction("simple-slstm-get-size", simpleSLSTMGetSize());
         env.mapFunction("simple-slstm-remove-first", simpleSLSTMRemoveFirst());
         env.mapFunction("simple-slstm-remove-last", simpleSLSTMRemoveLast());
+        env.mapFunction("simple-slstm-undo-remove-last", simpleSLSTMUndoRemoveLast());
         env.mapFunction("simple-slstm-remove-all", simpleSLSTMRemoveAll());
 
     }
+
+    public static SimpleFunctionTemplate simpleLSTMSetSetMaxErrorPerInputVector()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetSetMaxErrorPerInputVector();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is a numeric error float
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                double maxError = evaluatedArgs[1].getFloatValue();
+                lstmSet.setMaxLearningError(maxError);
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetSetMaxLearningStepsPerInputVector()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetSetMaxLearningStepsPerInputVector();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is the max number of steps
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                int maxSteps = (int)evaluatedArgs[1].getIntValue();
+                lstmSet.setMaxLearningSteps(maxSteps);
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
 
 
     public static SimpleFunctionTemplate simpleLSTMSetObservationRecognitionPolicy()
@@ -262,6 +323,30 @@ public class NeuralNetLispInterface {
 
                 SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
                 lstm.removeLast();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleSLSTMUndoRemoveLast()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleSLSTMUndoRemoveLast();
+            }
+
+            // First value is the SLSTM
+            // Returns the original SLSTM (not the value removed)
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequenceLSTM lstm = (SequenceLSTM)evaluatedArgs[0].getObjectValue();
+                lstm.undoRemoveLast();
                 return evaluatedArgs[0];
             }
         };
@@ -1233,6 +1318,78 @@ public class NeuralNetLispInterface {
                     savePatternTempBuffer = !evaluatedArgs[1].isNull();
                 }
                 lstmSet.markIndexState(savePatternTempBuffer);
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetSetFlushPolicy()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetSetFlushPolicy();
+            }
+
+            // First argument is the SLSTMSet
+            // Second argument is a string enum indicating when the set actually
+            // Possible values are:
+            // ON_DEMAND
+            //      Only flushes the temp buffer when (simple-slstm-set-flush-temp-buffer) is called.
+            //      Until this happens, the SLSTMSet will not learn new items automatically.
+            //      This can create duplicates
+            // IMMEDIATELY
+            //      SLSTMSet learns new patterns automatically and incorporates them into the
+            //      as it goes
+            // NEVER
+            //      This means that the buffer is not used at all.  This is the same as ON_DEMAND
+            //      except that the buffer is never filled
+            // incorporates new patterns
+            //
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                String policyString = evaluatedArgs[1].getString();
+                lstmSet.setTempBufferFlushPolicy(SLSTMSet.TempSLSTMFlushPolicy.valueOf(policyString));
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate simpleLSTMSetFlushTempBuffer()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) simpleLSTMSetFlushTempBuffer();
+            }
+
+            // First argument is the SLSTMSet
+            // Optional second argument is a boolean parameter indicating whether to flush
+            // the buffer without adding them to the set.  This just clears the buffer
+            //
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                boolean flushWithoutAdditionP = false;
+
+                if (evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull())
+                {
+                    flushWithoutAdditionP = true;
+                }
+                lstmSet.flushTempBuffer(flushWithoutAdditionP);
                 return evaluatedArgs[0];
 
             }
