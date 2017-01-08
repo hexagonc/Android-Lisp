@@ -72,6 +72,27 @@ public class AITools {
         return input;
     }
 
+    public static int[] getRandomSubset(int setSize, int subSetSize)
+    {
+        int[] samples = new int[subSetSize];
+
+        int i;
+        int[] indexSpace = new int[setSize];
+        for (int j = 0; j< setSize;j++)
+        {
+            indexSpace[j] = j;
+        }
+        int sampleIndex, t;
+        for (i=0;i<subSetSize;i++)
+        {
+            sampleIndex = (int) ((setSize - i)*Math.random()) + i;
+            samples[i] = indexSpace[sampleIndex];
+            t = indexSpace[sampleIndex];
+            indexSpace[sampleIndex] = indexSpace[i];
+            indexSpace[i] = t;
+        }
+        return samples;
+    }
 	/**
 	 * Uniformly selects a random element of generic type V from a list of values
 	 * 
