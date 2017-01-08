@@ -2,18 +2,118 @@ package com.evolved.automata.nn;
 
 import com.evolved.automata.AITools;
 import com.evolved.automata.ArrayMapper;
+import com.evolved.automata.IndexedValueMapper;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 /**
  * Created by Evolved8 on 12/16/16.
  */
 public class NNTools {
     private static final String[] toArraySampleValue = new String[0];
+
+    /**
+     * Returns the feedforward order when updating the links of a simple LSTM network with
+     * one memory cell, peepholes and a forget gate.  This link order assumes
+     * nearly complete connectivity of the gates.  I.e., all gates receive recurrent connections
+     * to other gates as as well as from previous output.  Bias nodes can be prefixed to this list
+     * @param memoryCellName
+     * @return
+     */
+    public static String[] getStandardSingleCellFeedforwardOrderWithPeepholesAndForgetGates(String memoryCellName)
+    {
+        String[] feedforwardOrder = new String[]{
+                "M-FG:M-OG",
+                "M-FG:M-IG",
+                "I:M-FG",
+                "M-OG:M-FG",
+                "M-CO:M-FG",
+                "M-P:M-FG",
+                "M-IG:M-FG",
+                "*:M-FG",
+                "M-CO:M-IG",
+                "M-CO:M-OG",
+                "M-OG:M-IG",
+                "M-CO:M-CI",
+                "M-OG:M-CI",
+                "M-IG:M-OG",
+                "M-IG:M-CI",
+                "M-P:M-IG",
+                "I:M-CI",
+                "*:M-CI",
+                "I:M-IG",
+                "*:M-IG",
+                "M-P:M-OG",
+                "I:M-OG",
+                "*:M-OG", "M-CO:O", "*:O"};
+        if ("M".equals(memoryCellName))
+            return feedforwardOrder;
+
+        String[] updated = new String[feedforwardOrder.length];
+
+        String replacementString = memoryCellName + "-";
+        for (int i = 0;i<feedforwardOrder.length;i++)
+        {
+            updated[i] = StringUtils.replace(feedforwardOrder[i], "M-", replacementString);
+        }
+        return updated;
+    }
+
+    /**
+     * Returns the feedforward order when updating the links of a simple LSTM network with
+     * one memory cell, peepholes and an inactive forget gate.  This link order assumes
+     * nearly complete connectivity of the gates.  I.e., all gates receive recurrent connections
+     * to other gates as as well as from previous output.  Bias nodes can be prefixed to this list
+     * @param memoryCellName
+     * @return
+     */
+    public static String[] getStandardSingleCellFeedforwardOrderWithForgetGates(String memoryCellName)
+    {
+        String[] feedforwardOrder = new String[]{ "M-FG:M-OG", "M-FG:M-IG", "I:M-FG", "M-OG:M-FG", "M-CO:M-FG",  "M-IG:M-FG",  "*:M-FG", "M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "*:M-IG",  "I:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
+
+        if ("M".equals(memoryCellName))
+            return feedforwardOrder;
+
+        String[] updated = new String[feedforwardOrder.length];
+
+        String replacementString = memoryCellName + "-";
+        for (int i = 0;i<feedforwardOrder.length;i++)
+        {
+            updated[i] = StringUtils.replace(feedforwardOrder[i], "M-", replacementString);
+        }
+        return updated;
+    }
+
+    /**
+     * Returns the feedforward order when updating the links of a simple LSTM network with
+     * one memory cell, peepholes and an inactive forget gate.  This link order assumes
+     * nearly complete connectivity of the gates.  I.e., all gates receive recurrent connections
+     * to other gates as as well as from previous output.  Bias nodes can be prefixed to this list
+     * @param memoryCellName
+     * @return
+     */
+    public static String[] getStandardSingleCellFeedforwardOrderWithPeepholes(String memoryCellName)
+    {
+        String[] feedforwardOrder = new String[]{"M-CO:M-IG", "M-CO:M-OG", "M-OG:M-IG", "M-CO:M-CI", "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-CI", "*:M-CI", "I:M-IG", "M-P:M-IG", "*:M-IG",  "I:M-OG", "M-P:M-OG",  "*:M-OG", "M-CO:O", "*:O"};
+        if ("M".equals(memoryCellName))
+            return feedforwardOrder;
+
+        String[] updated = new String[feedforwardOrder.length];
+
+        String replacementString = memoryCellName + "-";
+        for (int i = 0;i<feedforwardOrder.length;i++)
+        {
+            updated[i] = StringUtils.replace(feedforwardOrder[i], "M-", replacementString);
+        }
+        return updated;
+    }
+
 
     /**
      * Returns the feedforward order when updating the links of a simple LSTM network with
@@ -68,6 +168,79 @@ public class NNTools {
         return updated;
     }
 
+    /**
+     * Returns the order to update the weights of links assuming a single memory cell,
+     * peepholes and no (or disabled) forget gates.  Assumes nearly complete connectivity of the
+     * hidden layer, i.e., all gates receive recurrent connections
+     * to other gates as as well as from previous output.
+     * @param memoryCellName
+     * @return
+     */
+    public static String[] getStandardSingleCellWeightUpdateOrderWithPeepholes(String memoryCellName)
+    {
+        String[] linkUpdateOrder= new String[]{"M-CO:O", "M-P:M-OG", "M-P:M-IG", "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
+        if ("M".equals(memoryCellName))
+            return linkUpdateOrder;
+
+        String[] updated = new String[linkUpdateOrder.length];
+
+        String replacementString = memoryCellName + "-";
+        for (int i = 0;i<linkUpdateOrder.length;i++)
+        {
+            updated[i] = StringUtils.replace(linkUpdateOrder[i], "M-", replacementString);
+        }
+        return updated;
+    }
+
+    /**
+     * Returns the order to update the weights of links assuming a single memory cell,
+     * peepholes and forget gates.  Assumes nearly complete connectivity of the
+     * hidden layer, i.e., all gates receive recurrent connections
+     * to other gates as as well as from previous output.
+     * @param memoryCellName
+     * @return
+     */
+    public static String[] getStandardSingleCellWeightUpdateOrderWithPeepholesAndForgetGates(String memoryCellName)
+    {
+        String[] linkUpdateOrder= new String[]{"M-CO:O", "M-OG:M-FG", "M-IG:M-FG", "M-CO:M-FG", "M-FG:M-OG", "M-FG:M-IG", "I:M-FG",  "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "M-P:M-FG", "M-P:M-IG", "M-P:M-OG", "I:M-IG", "I:M-OG", "I:M-CI"};
+        if ("M".equals(memoryCellName))
+            return linkUpdateOrder;
+
+        String[] updated = new String[linkUpdateOrder.length];
+
+        String replacementString = memoryCellName + "-";
+        for (int i = 0;i<linkUpdateOrder.length;i++)
+        {
+            updated[i] = StringUtils.replace(linkUpdateOrder[i], "M-", replacementString);
+        }
+        return updated;
+    }
+
+    /**
+     * Returns the order to update the weights of links assuming a single memory cell,
+     * and forget gates.  Assumes nearly complete connectivity of the
+     * hidden layer, i.e., all gates receive recurrent connections
+     * to other gates as as well as from previous output.
+     * @param memoryCellName
+     * @return
+     */
+    public static String[] getStandardSingleCellWeightUpdateOrderWithForgetGates(String memoryCellName)
+    {
+        String[] linkUpdateOrder= new String[]{"M-CO:O", "M-OG:M-FG", "M-IG:M-FG", "M-CO:M-FG", "M-FG:M-OG", "M-FG:M-IG", "I:M-FG",  "M-CO:M-IG", "M-CO:M-OG", "M-CO:M-CI", "M-OG:M-IG",  "M-OG:M-CI", "M-IG:M-OG", "M-IG:M-CI", "I:M-IG", "I:M-OG", "I:M-CI"};
+        if ("M".equals(memoryCellName))
+            return linkUpdateOrder;
+
+        String[] updated = new String[linkUpdateOrder.length];
+
+        String replacementString = memoryCellName + "-";
+        for (int i = 0;i<linkUpdateOrder.length;i++)
+        {
+            updated[i] = StringUtils.replace(linkUpdateOrder[i], "M-", replacementString);
+        }
+        return updated;
+    }
+
+
     public static LSTMNetwork.LSTMNetworkBuilder addStandardSimpleLSTMWeightUpdateOrder(LSTMNetwork.LSTMNetworkBuilder builder)
     {
         return builder.addWeightUpdateOrder(getStandardSingleCellWeightUpdateOrder("M"));
@@ -118,6 +291,188 @@ public class NNTools {
         return out;
 
     }
+
+
+    public static HashMap<String, ArrayList<String>> getStandardLinkConnectivityMapWithPeepholes(String memoryCellName)
+    {
+        final String replacementString = memoryCellName + "-";
+        HashMap<String, ArrayList<String>> out = new HashMap<String, ArrayList<String>>();
+        ArrayList<String> component;
+        // Add input node connections
+
+        out.put("I", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-IG", "M-OG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from output gate
+        out.put("M-OG", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-IG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from input gate
+        out.put("M-IG", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-OG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from cell output gate
+        out.put("M-CO", arrayListToArray(AITools.mapD(new String[]{"O", "M-CI", "M-IG", "M-OG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from Peepholes
+        out.put("M-P", arrayListToArray(AITools.mapD(new String[]{"M-IG", "M-OG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+
+        return out;
+
+    }
+
+    public static HashMap<String, ArrayList<String>> getStandardLinkConnectivityMapWithPeepholesAndForgetGates(String memoryCellName)
+    {
+        final String replacementString = memoryCellName + "-";
+        HashMap<String, ArrayList<String>> out = new HashMap<String, ArrayList<String>>();
+        ArrayList<String> component;
+        // Add input node connections
+
+        out.put("I", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-IG", "M-OG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from output gate
+        out.put("M-FG", arrayListToArray(AITools.mapD(new String[]{"M-OG", "M-IG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+
+        // add connections from output gate
+        out.put("M-OG", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-IG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from input gate
+        out.put("M-IG", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-OG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from cell output gate
+        out.put("M-CO", arrayListToArray(AITools.mapD(new String[]{"O", "M-CI", "M-IG", "M-OG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from Peepholes
+        out.put("M-P", arrayListToArray(AITools.mapD(new String[]{"M-OG", "M-FG", "M-IG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+
+        return out;
+
+    }
+
+    public static HashMap<String, ArrayList<String>> getStandardLinkConnectivityMapWithForgetGates(String memoryCellName)
+    {
+        final String replacementString = memoryCellName + "-";
+        HashMap<String, ArrayList<String>> out = new HashMap<String, ArrayList<String>>();
+        ArrayList<String> component;
+        // Add input node connections
+
+        out.put("I", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-IG", "M-OG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from output gate
+        out.put("M-FG", arrayListToArray(AITools.mapD(new String[]{"M-OG", "M-IG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+
+        // add connections from output gate
+        out.put("M-OG", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-IG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from input gate
+        out.put("M-IG", arrayListToArray(AITools.mapD(new String[]{"M-CI", "M-OG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+        // add connections from cell output gate
+        out.put("M-CO", arrayListToArray(AITools.mapD(new String[]{"O", "M-CI", "M-IG", "M-OG", "M-FG"}, new ArrayMapper<String>() {
+            @Override
+            public String map(String input, int index)
+            {
+                return StringUtils.replace(input, "M-", replacementString);
+            }
+        })));
+
+
+
+        return out;
+
+    }
+
 
     /**
      * Configures an LSTMNetworkBuilder with a given node connectivity graph, represented
@@ -284,6 +639,38 @@ public class NNTools {
         return (SequenceLSTM)lstmBuilder.build();
     }
 
+
+    /**
+     * Returns a standard LSTM network suitable for most experimental and playful purposes.
+     * This network contains a simple memory cell.  There will be nearly complete connectivity
+     * between the gates.  The output error function is least squares.  The node activation
+     * function is sigmoid for all but the input layer and cell output which uses the hypertangent
+     * activation function.  None of peepholes, forget gates, or bias nodes are included in this
+     * network.  This is a very basic starter network that supports sequence prediction and
+     * classification.  This LSTM will use the standard gradient descent weight update method
+     *
+     * This version takes the string serialized weights to initialize the network with as an argument
+     * @param numInputNodes
+     * @param numMemoryCellStates
+     * @param storedWeights
+     * @return
+     */
+    public static SequenceLSTM.LSTMNetworkBuilder getStandardSequenceLSTMBuilder(int numInputNodes, int numMemoryCellStates, String storedWeights)
+    {
+        SequenceLSTM.LSTMNetworkBuilder lstmBuilder = SequenceLSTM.getSequenceBuilder();
+        lstmBuilder.setInputNodeCount(numInputNodes).addMemoryCell("M", numMemoryCellStates);
+        if (storedWeights !=null && storedWeights.length()>0)
+        {
+            lstmBuilder.setLinkWeightSerializedData(storedWeights);
+        }
+        addStandardNodeConnections(
+                addStandardRPROPWeightUpdatePolicies(
+                        addStandardSimpleLSTMWeightUpdateOrder(
+                                addStandardSimpleLSTMFeedforwardOrder(lstmBuilder))));
+
+
+        return lstmBuilder;
+    }
 
     /**
      * Returns a standard LSTM network suitable for classification.
@@ -515,6 +902,248 @@ public class NNTools {
         return out;
     }
 
+    public static Vector padEnd(final Vector input, int padding, final int value)
+    {
+        Vector actualValue = new Vector(input.dimen() + padding);
+        final int width = input.dimen();
+        actualValue.mapD(new VectorMapper() {
+            @Override
+            public double map(double v, int i)
+            {
+                if (i < width)
+                    return input.value(i);
+                else
+                    return value;
+            }
+        });
+        return actualValue;
+
+
+    }
+
+
+    public static Vector padStart(final Vector input, final int padding, final int value)
+    {
+        Vector actualValue = new Vector(input.dimen() + padding);
+        actualValue.mapD(new VectorMapper() {
+            @Override
+            public double map(double v, int i)
+            {
+                if (i < padding)
+                    return value;
+                else
+                    return input.value(i - padding);
+            }
+        });
+        return actualValue;
+
+
+    }
+
+    public static Vector[] padStart(Vector[] input, final int padding, final int value)
+    {
+        return AITools.mapValues(input, new IndexedValueMapper<Vector, Vector>()
+        {
+
+            @Override
+            public Vector map(final Vector input, int index)
+            {
+                Vector actualValue = new Vector(input.dimen() + padding);
+                actualValue.mapD(new VectorMapper() {
+                    @Override
+                    public double map(double v, int i)
+                    {
+                        if (i < padding)
+                            return value;
+                        else
+                            return input.value(i - padding);
+                    }
+                });
+                return actualValue;
+            }
+
+            @Override
+            public Vector[] getEmptyOutput()
+            {
+                return new Vector[0];
+            }
+        });
+
+
+    }
+
+    /**
+     * Non-destructive
+     * @param v
+     * @param startAmount
+     * @return
+     */
+    public static Vector getTrimmedVector(Vector v, int startAmount)
+    {
+        return new Vector(Arrays.copyOfRange(v.raw(), startAmount, v.dimen()));
+    }
+
+    /**
+     * Convert to little-endian
+     * @param integer
+     * @param numBits
+     * @return
+     */
+    public static Vector intToVectorLE(int integer, int numBits)
+    {
+        Vector out = new Vector(numBits);
+        for (int i = 0;i<numBits;i++)
+        {
+            if (integer % 2 == 0)
+            {
+                out.setValue(0, i);
+                integer = integer/2;
+            }
+            else
+            {
+                out.setValue(1, i);
+                integer = (integer - 1)/2;
+            }
+
+        }
+        return out;
+    }
+
+    public static Vector headVector(final Vector vec, final int dimen)
+    {
+        return (new Vector(dimen)).mapD(new VectorMapper() {
+            @Override
+            public double map(double v, int i)
+            {
+
+                return vec.value(i);
+            }
+        });
+    }
+
+    public static Vector tailVector(final Vector vec, final int start)
+    {
+        return (new Vector(vec.dimen() - start)).mapD(new VectorMapper() {
+            @Override
+            public double map(double v, int i)
+            {
+
+                return vec.value(i + start);
+            }
+        });
+    }
+
+    public static int binaryVectorToInteger(Vector vec)
+    {
+        int out = 0, l = vec.dimen();
+        for (int i=0;i<l;i++)
+        {
+            out+=vec.value(i)*Math.pow(2, i);
+        }
+        return out;
+    }
+
+    public static Vector joinVectors(final Vector firstSegment, final Vector secondSegment)
+    {
+        final int fLength = firstSegment.dimen();
+        final int sLength = secondSegment.dimen();
+
+        int tLength = fLength + sLength;
+        return new Vector(tLength).mapD(new VectorMapper() {
+            @Override
+            public double map(double v, int i)
+            {
+                if (i >= fLength)
+                    return secondSegment.value(i - fLength);
+                else
+                    return firstSegment.value(i);
+            }
+        });
+    }
+
+    public static Vector addNoiseToVector(Vector v, int numBitsToggle)
+    {
+        Vector out = new Vector(v.raw());
+        double[] raw = out.raw();
+        int l = raw.length;
+        int flipIndex = 0;
+        int[] bitList = AITools.getRandomSubset(l, numBitsToggle);
+
+
+        for (int i = 0; i < bitList.length;i++)
+        {
+            flipIndex = bitList[i];
+            out.setValue(((out.value(flipIndex) + 1) % 2), flipIndex );
+
+        }
+
+        return out;
+    }
+
+    public static Vector swapD(Vector v, int i, int j)
+    {
+        double t = v.value(i);
+        v.setValue(v.value(j), i);
+        v.setValue(t, j);
+        return v;
+    }
+
+    public static double getNumericValueOutput(Vector output, final int range)
+    {
+        return getAverage(NNTools.stageContinuize(range, output.raw()));
+
+    }
+
+
+    public static Double[] getNumericValueOutput(Vector[] output, final int range)
+    {
+        return AITools.mapValues(output, new IndexedValueMapper<Vector, Double>() {
+            @Override
+            public Double map(Vector input, int index)
+            {
+                ArrayList<Double> v = new ArrayList<Double>();
+                for (double d : input.raw())
+                {
+                    v.add(d);
+                }
+
+                Pair<Double, Double> out = NNTools.stageContinuize(range, v);
+                return (out.getLeft() + out.getRight()) / 2;
+            }
+
+            @Override
+            public Double[] getEmptyOutput()
+            {
+                return new Double[0];
+            }
+        });
+    }
+
+
+    public static Double[] getNumericSequenceOutput(SequenceLSTM lstm, final int range)
+    {
+        Vector[] output = lstm.getCurrentSequence();
+        return AITools.mapValues(output, new IndexedValueMapper<Vector, Double>() {
+            @Override
+            public Double map(Vector input, int index)
+            {
+                ArrayList<Double> v = new ArrayList<Double>();
+                for (double d : input.raw())
+                {
+                    v.add(d);
+                }
+
+                Pair<Double, Double> out = NNTools.stageContinuize(range, v);
+                return (out.getLeft() + out.getRight()) / 2;
+            }
+
+            @Override
+            public Double[] getEmptyOutput()
+            {
+                return new Double[0];
+            }
+        });
+    }
 
     static double getAverage(Pair<Double, Double> p)
     {
