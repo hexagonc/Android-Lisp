@@ -217,7 +217,7 @@ public class GuiBuilderApplication extends Application
 			
 			@Override
 			public Value evaluate(Environment env,Value[] evaluatedArgs) {
-				checkActualArguments(2, true, true);
+				checkActualArguments(1, true, true);
 			
 				String name = evaluatedArgs[0].getString();
 				String context = _DEFAULT_CONTEXT;
