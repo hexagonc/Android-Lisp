@@ -13,11 +13,14 @@ import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.nn.LSTMLearningResult;
 import com.evolved.automata.nn.LSTMNetwork;
+import com.evolved.automata.nn.LinkedLSTM;
 import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.SLSTMSet;
 import com.evolved.automata.nn.SequenceLSTM;
+import com.evolved.automata.nn.SequencePredictor;
 import com.evolved.automata.nn.Vector;
 import com.evolved.automata.nn.VectorValueMapper;
+import com.evolved.automata.nn.VectorViewer;
 import com.evolved.automata.nn.WeightMatrix;
 
 import java.util.HashMap;
@@ -54,27 +57,27 @@ public class NeuralNetLispInterface {
         env.mapFunction("simple-lstm-use-default-initial-state", useDefaultInitialActivation());
 
 
-        env.mapFunction("create-slstm-set", simpleLSTMCreateSet());
-        env.mapFunction("slstm-set-observe", simpleLSTMSetObserve());
-        env.mapFunction("slstm-set-get-size", simpleLSTMSetGetNumSLSTMs());
-        env.mapFunction("slstm-set-set-observation-update-policy", simpleLSTMSetObservationRecognitionPolicy());
-        env.mapFunction("slstm-set-get-current-completions", simpleLSTMSetGetCompletion());
-        env.mapFunction("slstm-set-get-predictions-of-next-observation", simpleLSTMSetGetLastPredictions());
+        env.mapFunction("create-linked-slstm", createLinkedLSTM());
+        env.mapFunction("create-slstm-set", createLSTMSet());
+
+        env.mapFunction("prediction-lstm-observe-predict", predictionLSTMObservePredict());
+        env.mapFunction("prediction-lstm-get-best-prediction", PredictionLSTMgetBestPrediction());
+        env.mapFunction("prediction-lstm-view-data", predictionLSTMViewData());
+        env.mapFunction("prediction-lstm-allow-mid-sequence-matching", setAllowInitialMidSequenceMatching());
+        env.mapFunction("prediction-lstm-get-serialized-data", predictionLSTMGetSerializedData());
+        env.mapFunction("prediction-lstm-load-serialized-data", predictionLSTMLoadData());
+        env.mapFunction("prediction-lstm-reset", predictionLSTMReset());
+        env.mapFunction("prediction-lstm-set-prediction-tester", predictionLSTMSetDefinePredictionTester());
+        env.mapFunction("linked-lstm-join", linkedLSTMJoin());
 
         env.mapFunction("slstm-set-set-max-error-per-input", simpleLSTMSetSetMaxErrorPerInputVector());
         env.mapFunction("slstm-set-set-max-steps-per-input", simpleLSTMSetSetMaxLearningStepsPerInputVector());
 
-        env.mapFunction("slstm-set-set-flush-policy", simpleLSTMSetSetFlushPolicy());
-        env.mapFunction("slstm-set-flush-temp-buffer", simpleLSTMSetFlushTempBuffer());
-        env.mapFunction("slstm-set-commit-changes", simpleLSTMSetCommitNewSLSTMs());
-        env.mapFunction("slstm-set-rollback-changes", simpleLSTMRollbackSLSTMSet());
-        env.mapFunction("slstm-set-get-aggregate-prediction", simpleLSTMSetGetAggregateState());
+
         env.mapFunction("slstm-set-define-aggregator", simpleLSTMSetDefinePredictionAggregator());
-        env.mapFunction("slstm-set-define-prediction-tester", simpleLSTMSetDefinePredictionTester());
 
 
-        env.mapFunction("slstm-set-add-hierarchical-set", simpleLSTMSetAddHierarchicalSet());
-        env.mapFunction("slstm-set-propagate-all-observations", simpleLSTMSetPropagateAllObservationsToHigher());
+
         env.mapFunction("slstm-set-remove-all-items", simpleLSTMSetRemoveAllItems());
         env.mapFunction("slstm-set-get-items", simpleLSTMSetGetItems());
         env.mapFunction("slstm-set-set-items", simpleLSTMSetSetItems());
@@ -145,62 +148,14 @@ public class NeuralNetLispInterface {
 
 
 
-    public static SimpleFunctionTemplate simpleLSTMSetObservationRecognitionPolicy()
+    public static SimpleFunctionTemplate predictionLSTMViewData()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetObservationRecognitionPolicy();
-            }
-
-            // First argument is the SLSTMSet
-            // Second argument is a string enum parameter indicating whether to allow continuous updating of all
-            // lstms with each observation, regardless of whether that lstm predicted the last observation.
-            // Possible values for second parameter are:
-            // AT_PATTERN_BOUNDARY
-            //      This is the default policy.  A pattern recognition is  continous,
-            //      starting from the first vector of one of the SLSTMs contained in the
-            //      set.  This policy is the fastest to execute and has the most consistent
-            //      behavior since information that propagates to higher layers (if present)
-            //      will be less noisy.  However, there might be some meaningful patterns that are
-            //      not recognized with this policy since it cannot recognize patterns that start
-            //      from mid-sequence but still complete.
-            // IN_PATTERN_INTERIOR_WHEN_POSSIBLE
-            //      Same as AT_PATTERN_BOUNDARY except that if there is at least one SLSTM that
-            //      is being successfully matched from its starting point boundary then other
-            //      SLSTMs are allowed to match from their interior.  This is useful if you are
-            //      primarily interested in the SLSTMs that fully match from the start but want
-            //      to allow the possibility of some SLSTMs matching from their interior as a way
-            //      to provide contextual information to the higher layers
-            // CONTIUOUS
-            //      Continuously match all SLSTMs in the set against the next observation, regardless
-            //      of there history.  This is the slowest policy but allows patterns to be matched
-            //      mid-sequence or from the beginning of the sequence.
-            @Override
-            public Value evaluate(Environment env, Value[] evaluatedArgs)
-            {
-                checkActualArguments(2, false, true);
-
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-                lstmSet.setPatternRecognitionPolicy(SLSTMSet.PatternRecognitionPolicy.valueOf(evaluatedArgs[1].getString()));
-
-                return evaluatedArgs[0];
-            }
-        };
-    }
-
-
-
-    public static SimpleFunctionTemplate simpleLSTMSetGetLastPredictions()
-    {
-        return new SimpleFunctionTemplate() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
-            {
-                return (T) simpleLSTMSetGetLastPredictions();
+                return (T) predictionLSTMViewData();
             }
 
             // First argument is the SLSTMSet
@@ -210,33 +165,50 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(1, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-                Vector[] predictionsOfLastObservation = lstmSet.getLastPredictedOutput();
+                SequencePredictor llstm = (SequencePredictor)evaluatedArgs[0].getObjectValue();
+                String data = llstm.getDataView();
 
-                if (predictionsOfLastObservation != null)
-                    return NLispTools.makeValue(AITools.mapValues(predictionsOfLastObservation, new LispValueMapper<Vector>() {
-                        @Override
-                        public Value map(Vector input, int index)
-                        {
-                            return NLispTools.makeValue(input.raw());
-                        }
-                    }));
-                else
-                    return Environment.getNull();
-
+                return NLispTools.makeValue(data);
             }
         };
     }
 
 
-    public static SimpleFunctionTemplate simpleLSTMSetPropagateAllObservationsToHigher()
+
+    public static SimpleFunctionTemplate predictionLSTMGetSerializedData()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetPropagateAllObservationsToHigher();
+                return (T) predictionLSTMGetSerializedData();
+            }
+
+            // First argument is the SLSTMSet
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SequencePredictor pslstm = (SequencePredictor)evaluatedArgs[0].getObjectValue();
+                String serialized = pslstm.serializedForm();
+                return NLispTools.makeValue(serialized);
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate predictionLSTMLoadData()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) predictionLSTMLoadData();
             }
 
             // First argument is the SLSTMSet
@@ -246,8 +218,9 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(2, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-                lstmSet.setPropagateAllObservationsToHigherLevel(!evaluatedArgs[1].isNull());
+                SequencePredictor pslstm = (SequencePredictor)evaluatedArgs[0].getObjectValue();
+                String data = evaluatedArgs[1].getString();
+                pslstm.loadData(data);
 
                 return evaluatedArgs[0];
             }
@@ -1159,73 +1132,237 @@ public class NeuralNetLispInterface {
 
     // SLSTMSet
 
-    public static SimpleFunctionTemplate simpleLSTMCreateSet()
+    public static SimpleFunctionTemplate createLinkedLSTM()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMCreateSet();
+                return (T) createLinkedLSTM();
             }
 
-            // First argument is the number of input nodes
-            // Second argument is the number of nodes in the memory cell of each
-            // sequential lstm
-            // Third is the number of slstms that define the state of the set, this
+            // Uses keyword parameters
+            // :SEGMENT-INPUT-OUTPUT-NODE-COUNT
+            // :SEGMENT-MEMORY-CELL-NODE-COUNT
+            // :BUFFER-SIZE
+            // :MAX-PER-ITEM-LEARNING-STEPS
+            // :MAX-ERROR-FRACTION
+            // :MAX-CONSECUTIVE-FAILURES
+            // :VECTOR-VIEWER-LAMBDA
+            // :ALLOW-CONTINUOUS-PREDICTION
+
             // should be a moderately large number
 
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(3, true, true);
+                Value inputNodeCount = keywordParameters.get(":SEGMENT-INPUT-OUTPUT-NODE-COUNT");
+                Value memoryCellNodeCount = keywordParameters.get(":SEGMENT-MEMORY-CELL-NODE-COUNT");
+                Value bufferSize = keywordParameters.get(":BUFFER-SIZE");
+                Value maxStepsValue = keywordParameters.get(":MAX-PER-ITEM-LEARNING-STEPS");
+                Value maxErrorValue = keywordParameters.get(":MAX-ERROR-FRACTION");
+                Value maxFailureCountValue = keywordParameters.get(":MAX-CONSECUTIVE-FAILURES");
+                Value viewerLambda = keywordParameters.get(":VECTOR-VIEWER-LAMBDA");
+                Value continuousPrediction = keywordParameters.get(":ALLOW-CONTINUOUS-PREDICTION");
 
-                int numInputNodes = (int)evaluatedArgs[0].getIntValue();
-                int numMemoryStates = (int)evaluatedArgs[1].getIntValue();
-                int numSetStates = (int)evaluatedArgs[2].getIntValue();
+                LinkedLSTM.Builder builder = LinkedLSTM.getLinkedLSTMBuider();
 
+                int maxSteps = 150;
+                if (maxStepsValue != null)
+                {
+                    maxSteps = (int) maxStepsValue.getIntValue();
+                }
 
-                SLSTMSet lstmSet = new SLSTMSet(numInputNodes, numMemoryStates, numSetStates);
+                double maxError = 0.1;
+                if (maxErrorValue != null)
+                {
+                    maxError = maxErrorValue.getFloatValue();
+                }
+                int failureCount = 2;
+                if (maxFailureCountValue != null)
+                {
+                    failureCount = (int) maxFailureCountValue.getIntValue();
+                }
 
+                boolean allowFailingSegmentsToPredictP = true;
 
-                return ExtendedFunctions.makeValue(lstmSet);
+                if (continuousPrediction!=null)
+                {
+                    allowFailingSegmentsToPredictP = !continuousPrediction.isNull();
+                }
+
+                builder.
+                        setNumMemoryCellNodes((int) memoryCellNodeCount.getIntValue()).
+                        setNumInputNodes((int) inputNodeCount.getIntValue()).
+                        setLSTMBufferSize((int) bufferSize.getIntValue()).
+                        setMaxLearningSteps(maxSteps).
+                        setMaxConsecutiveFailures(failureCount).
+                        setMaxError(maxError).
+                        setSimpleMaxPredictionAggregator();
+
+                if (viewerLambda != null)
+                {
+
+                    builder.setCustomVectorViewer(lambdaToVectorViewer((Lambda)viewerLambda.getLambda(), env));
+                }
+
+                if (allowFailingSegmentsToPredictP)
+                {
+                    builder.setAllowFailingLSTMsToPredict();
+                }
+                else
+                {
+                    builder.setPreventFailingLSTMsToPredict();
+                }
+                LinkedLSTM llstm = builder.build();
+
+                return ExtendedFunctions.makeValue(llstm);
             }
         };
     }
 
-
-    public static SimpleFunctionTemplate simpleLSTMSetObserve()
+    public static SimpleFunctionTemplate createLSTMSet()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetObserve();
+                return (T) createLSTMSet();
             }
 
-            // First argument is the SLSTMSet
+            // Uses keyword parameters
+            // :SEGMENT-INPUT-OUTPUT-NODE-COUNT
+            // :SEGMENT-MEMORY-CELL-NODE-COUNT
+            // :BUFFER-SIZE
+            // :MAX-PER-ITEM-LEARNING-STEPS
+            // :MAX-ERROR-FRACTION
+            // :MAX-CONSECUTIVE-FAILURES
+            // :VECTOR-VIEWER-LAMBDA
+            // :ALLOW-CONTINUOUS-PREDICTION
+
+            // should be a moderately large number
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                Value inputNodeCount = keywordParameters.get(":SEGMENT-INPUT-OUTPUT-NODE-COUNT");
+                Value memoryCellNodeCount = keywordParameters.get(":SEGMENT-MEMORY-CELL-NODE-COUNT");
+                Value bufferSize = keywordParameters.get(":BUFFER-SIZE");
+                Value maxStepsValue = keywordParameters.get(":MAX-PER-ITEM-LEARNING-STEPS");
+                Value maxErrorValue = keywordParameters.get(":MAX-ERROR-FRACTION");
+                Value maxFailureCountValue = keywordParameters.get(":MAX-CONSECUTIVE-FAILURES");
+                Value viewerLambda = keywordParameters.get(":VECTOR-VIEWER-LAMBDA");
+                Value continuousPrediction = keywordParameters.get(":ALLOW-CONTINUOUS-PREDICTION");
+
+                LinkedLSTM.Builder builder = LinkedLSTM.getLinkedLSTMBuider();
+
+                int maxSteps = 150;
+                if (maxStepsValue != null)
+                {
+                    maxSteps = (int) maxStepsValue.getIntValue();
+                }
+
+                double maxError = 0.1;
+                if (maxErrorValue != null)
+                {
+                    maxError = maxErrorValue.getFloatValue();
+                }
+                int failureCount = 2;
+                if (maxFailureCountValue != null)
+                {
+                    failureCount = (int) maxFailureCountValue.getIntValue();
+                }
+
+                boolean allowFailingSegmentsToPredictP = true;
+
+                if (continuousPrediction!=null)
+                {
+                    allowFailingSegmentsToPredictP = !continuousPrediction.isNull();
+                }
+
+                builder.
+                        setNumMemoryCellNodes((int) memoryCellNodeCount.getIntValue()).
+                        setNumInputNodes((int) inputNodeCount.getIntValue()).
+                        setLSTMBufferSize((int) bufferSize.getIntValue()).
+                        setMaxLearningSteps(maxSteps).
+                        setMaxConsecutiveFailures(failureCount).
+                        setMaxError(maxError).
+                        setSimpleMaxPredictionAggregator();
+
+                if (viewerLambda != null)
+                {
+
+                    builder.setCustomVectorViewer(lambdaToVectorViewer((Lambda)viewerLambda.getLambda(), env));
+                }
+
+                if (allowFailingSegmentsToPredictP)
+                {
+                    builder.setAllowFailingLSTMsToPredict();
+                }
+                else
+                {
+                    builder.setPreventFailingLSTMsToPredict();
+                }
+                LinkedLSTM llstm = builder.build();
+
+                return ExtendedFunctions.makeValue(llstm);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate predictionLSTMObservePredict()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) predictionLSTMObservePredict();
+            }
+
+            // First argument is the LinkedLSTM or LSTMSet
             // Second argument is the vector of a new observation.  Should have as many dimensions
             // as the number of input nodes defined in the SLSTMSet
-            // Third argument is a boolean parameter indicating if the SLSTMSet should create new
-            // patterns
+            // Third argument is a boolean parameter indicating if the system can laern
 
 
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(3, false, true);
+                checkActualArguments(1, true, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-
-                Value newInput = evaluatedArgs[1];
-                Value createNew = evaluatedArgs[2];
+                SequencePredictor predictor = (SequencePredictor)evaluatedArgs[0].getObjectValue();
 
 
-                Vector slstmState = lstmSet.observe(listToVector(newInput), !createNew.isNull());
+                Vector[] predictions = null;
+                if (evaluatedArgs.length  ==  3)
+                {
+                    Value newInput = evaluatedArgs[1];
+                    Value createNew = evaluatedArgs[2];
+                    predictions = predictor.observePredictNext(listToVector(newInput), !createNew.isNull());
+                }
+                else
+                {
+                    predictions = predictor.observePredictNext();
+                }
 
-                if (slstmState != null)
-                    return NLispTools.makeValue(slstmState.raw());
+                if (predictions != null)
+                    return NLispTools.makeValue( AITools.mapValues(predictions, new LispValueMapper<Vector>()
+                    {
+
+                                @Override
+                                public Value map(Vector input, int index)
+                                {
+                                    if (input != null)
+                                        return NLispTools.makeValue(input.raw());
+                                    else
+                                        return Environment.getNull();
+                                }
+                            }
+                    ));
                 else
                 {
                     return Environment.getNull();
@@ -1236,14 +1373,14 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSetGetNumSLSTMs()
+    public static SimpleFunctionTemplate PredictionLSTMgetBestPrediction()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetGetNumSLSTMs();
+                return (T) PredictionLSTMgetBestPrediction();
             }
 
             // First argument is the SLSTMSet
@@ -1253,38 +1390,49 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(1, false, false);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor predictor = (SequencePredictor)evaluatedArgs[0].getObjectValue();
+                Vector best = predictor.getBestPrediction();
+                if (best != null)
+                {
+                    return NLispTools.makeValue(best.raw());
+                }
+                else
+                {
+                    return Environment.getNull();
+                }
 
-                return NLispTools.makeValue(lstmSet.getNumPatterns());
+
 
             }
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSetGetCompletion()
+    public static SimpleFunctionTemplate setAllowInitialMidSequenceMatching()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetGetNumSLSTMs();
+                return (T) setAllowInitialMidSequenceMatching();
             }
 
-            // First argument is the SLSTMSet
-            // Returns a list of the set buffer with the fraction of completion from the last observation
+            // First argument is the SequencePredictor
+            // Second argument is a boolean parameter indicator whether
+            // to allow mid-sequence matching
+
 
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(1, false, false);
+                checkActualArguments(2, false, false);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-                Vector completion = lstmSet.getLastPatternCompletion();
-                if (completion != null)
-                    return NLispTools.makeValue(completion.raw());
-                else
-                    return Environment.getNull();
+                SequencePredictor llstm  = (SequencePredictor)evaluatedArgs[0].getObjectValue();
+                boolean allowMidSequence = !evaluatedArgs[1].isNull();
+
+                llstm.setAllowMidSequenceInitialPrediction(allowMidSequence);
+
+                return evaluatedArgs[0];
 
             }
         };
@@ -1324,39 +1472,25 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSetSetFlushPolicy()
+    public static SimpleFunctionTemplate predictionLSTMReset()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetSetFlushPolicy();
+                return (T) predictionLSTMReset();
             }
 
-            // First argument is the SLSTMSet
-            // Second argument is a string enum indicating when the set actually
-            // Possible values are:
-            // ON_DEMAND
-            //      Only flushes the temp buffer when (simple-slstm-set-flush-temp-buffer) is called.
-            //      Until this happens, the SLSTMSet will not learn new items automatically.
-            //      This can create duplicates
-            // IMMEDIATELY
-            //      SLSTMSet learns new patterns automatically and incorporates them into the
-            //      as it goes
-            // NEVER
-            //      This means that the buffer is not used at all.  This is the same as ON_DEMAND
-            //      except that the buffer is never filled
-            // incorporates new patterns
-            //
+            // First argument is the SequencePredictor
+
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, false, true);
+                checkActualArguments(1, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-                String policyString = evaluatedArgs[1].getString();
-                lstmSet.setTempBufferFlushPolicy(SLSTMSet.TempSLSTMFlushPolicy.valueOf(policyString));
+                SequencePredictor llstm = (SequencePredictor)evaluatedArgs[0].getObjectValue();
+                llstm.clearAllPredictions();
                 return evaluatedArgs[0];
 
             }
@@ -1555,29 +1689,40 @@ public class NeuralNetLispInterface {
     }
 
 
-    public static SimpleFunctionTemplate simpleLSTMSetDefinePredictionTester()
+    public static SimpleFunctionTemplate predictionLSTMSetDefinePredictionTester()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetDefinePredictionTester();
+                return (T) predictionLSTMSetDefinePredictionTester();
             }
 
-            // First argument is the SLSTMSet
-            // Second argument is an lambda function that takes 2 arguments, the first being a vector of the actual input
-            // the set.  The second lambda argument will be a Vector of the predicted input
-            // t
+            // First argument is the SequencePredictor
+            // Second argument is an lambda function that takes 3 arguments, the first being a vector of the actual input
+            // the set.  The second lambda argument will be a Vector of the predicted input, the third is the index of
+            // the segment doing the predicting
+            // Lambda function should reutrn a real number between 0 and 1 where 1 indicates maximum
+            // weight to assign to the
+            // Optional third argument is a double value defining the failure weight at and below which
+            // the SequencePredictor should reset the weight of a segment
+
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
                 checkActualArguments(2, true, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor predictor = (SequencePredictor)evaluatedArgs[0].getObjectValue();
                 Lambda lambdaValue = (Lambda)evaluatedArgs[1].getLambda();
 
-                lstmSet.setStatePredictionTester(lambdaToStatePredictionTester(lambdaValue, env));
+                double failureThreshold = 0;
+
+                if (evaluatedArgs.length > 2)
+                {
+                    failureThreshold = evaluatedArgs[2].getFloatValue();
+                }
+                predictor.setPredictionEvaluator(lambdaToStatePredictionTester(lambdaValue,failureThreshold, env));
 
 
                 return evaluatedArgs[0];
@@ -1587,45 +1732,29 @@ public class NeuralNetLispInterface {
     }
 
 
-    public static SimpleFunctionTemplate simpleLSTMSetAddHierarchicalSet()
+    public static SimpleFunctionTemplate linkedLSTMJoin()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetAddHierarchicalSet();
+                return (T) linkedLSTMJoin();
             }
 
-            // First argument is the SLSTMSet
-            // Optional Second argument is the hierarchical SLSTMSet.  If not present, a default SLSTMSet will be created and returned
-            // Optional argument is an lambda function that takes 2 arguments, the first being the list of predictions made by
-            // the set.  The second lambda argument will be the aggregate prediction from the higher order SLSTMSet if present
-            // Return value is the newly created SLSTMSet
+            // First argument is a LinkedLSTM
+            // Second argument is a LinkedLSTM
+            // Returns the first LinkedLSTM joined with the second
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(1, true, true);
+                checkActualArguments(2, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                LinkedLSTM head = (LinkedLSTM)evaluatedArgs[0].getObjectValue();
+                LinkedLSTM tail = (LinkedLSTM)evaluatedArgs[1].getObjectValue();
 
-                if (evaluatedArgs.length > 1)
-                {
-                    SLSTMSet higherLstmSet = (SLSTMSet)evaluatedArgs[1].getObjectValue();
-                    Lambda lambdaValue = null;
-
-                    if (evaluatedArgs.length > 2)
-                    {
-                        lambdaValue = (Lambda)evaluatedArgs[1].getLambda();
-                        return ExtendedFunctions.makeValue(lstmSet.addHierarchicalLayer(lambdaToOutputAggregator(lambdaValue, env), higherLstmSet));
-
-                    }
-                    else
-                        return ExtendedFunctions.makeValue(lstmSet.addHierarchicalLayer(higherLstmSet));
-                }
-                else
-                    return ExtendedFunctions.makeValue(lstmSet.addHierarchicalLayer());
-
+                head.join(tail);
+                return evaluatedArgs[0];
             }
         };
     }
@@ -1693,32 +1822,64 @@ public class NeuralNetLispInterface {
     }
 
 
-    private static SLSTMSet.StatePredictionTester lambdaToStatePredictionTester(final Lambda lambda, final Environment outer)
+    private static SequencePredictor.PredictionComparator lambdaToStatePredictionTester(final Lambda lambda, final double resetWeight, final Environment outer)
     {
-        return new SLSTMSet.StatePredictionTester()
+        return new SequencePredictor.PredictionComparator()
         {
 
-            public boolean areMatched(Vector actualState, Vector predictedState)
+            public double weighPrediction(Vector actualState, Vector predictedState, int index)
             {
 
                 if (actualState == null || predictedState == null)
-                    return false;
+                    return 0;
 
                 Value actualValue = NLispTools.makeValue(actualState.raw()), predictedStateValue = NLispTools.makeValue(predictedState.raw());
 
-                Value[] args = new Value[]{actualValue, predictedStateValue};
+                Value[] args = new Value[]{actualValue, predictedStateValue, NLispTools.makeValue(index)};
 
                 lambda.setActualParameters(args);
                 try
                 {
                     Value out = lambda.evaluate(outer, false);
-                    return !out.isNull();
+                    return out.getFloatValue();
                 } catch (Exception e)
                 {
                     e.printStackTrace();
                     throw new RuntimeException(e);
                 }
             }
+
+            @Override
+            public double getResetThresholdWeight()
+            {
+                return resetWeight;
+            }
+        };
+    }
+
+    private static VectorViewer lambdaToVectorViewer(final Lambda lambda, final Environment outer)
+    {
+        return new VectorViewer()
+        {
+
+            @Override
+            public String toString(Vector v)
+            {
+                Value listVector = NLispTools.makeValue(v.raw());
+                Value[] args = new Value[]{listVector};
+                lambda.setActualParameters(args);
+                try
+                {
+                    Value out = lambda.evaluate(outer, false);
+                    return out.toString();
+                } catch (Exception e)
+                {
+                    e.printStackTrace();
+                    throw new RuntimeException(e);
+                }
+            }
+
+
         };
     }
 

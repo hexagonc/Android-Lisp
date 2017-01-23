@@ -997,7 +997,7 @@ public class LSTMNetwork {
         }
     }
 
-    private void saveAllLinkWeights()
+    protected void saveAllLinkWeights()
     {
 
         for (String key:linkMap.keySet())
@@ -1010,7 +1010,7 @@ public class LSTMNetwork {
 
     }
 
-    private LSTMNetwork initializeNodeState()
+    protected LSTMNetwork initializeNodeState()
     {
         clearAllMemoryCells();
         if (initialNodeActivationMap != null)

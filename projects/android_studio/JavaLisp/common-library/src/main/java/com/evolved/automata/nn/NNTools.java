@@ -11,11 +11,128 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Evolved8 on 12/16/16.
  */
 public class NNTools {
+
+    public static final String LSTM_DATA_SEPARATOR = "(*)";
+    public static final String LSTM_WEIGHT_NODE_SEPARATOR = "(<>)";
+    public static final String _VDELIMITER = "~.~";
+    public static String toString(List<Vector> vlist)
+    {
+        return vArrayToString(vlist.toArray(new Vector[0]));
+    }
+
+    public static String vArrayToString(Vector[] vlist)
+    {
+        if (vlist == null)
+            return "";
+        StringBuilder s = new StringBuilder();
+        for (Vector v:vlist)
+        {
+            if (s.length() > 0)
+            {
+                s.append(_VDELIMITER);
+            }
+            if (v!=null)
+                s.append(v.serialize());
+        }
+        return s.toString();
+    }
+
+    public static Vector[] stringToVArray(String serialized)
+    {
+        if (serialized == null)
+            return null;
+
+        if (serialized.length() == 0)
+            return new Vector[0];
+        final String[] parts = StringUtils.splitByWholeSeparatorPreserveAllTokens(serialized, _VDELIMITER);
+        return AITools.mapValues(parts, new IndexedValueMapper<String, Vector>() {
+            @Override
+            public Vector map(String input, int index)
+            {
+                if (input == null || input.length() == 0)
+                    return null;
+                else
+                    return Vector.fromSerialized(input);
+            }
+
+            @Override
+            public Vector[] getEmptyOutput()
+            {
+                return new Vector[0];
+            }
+        });
+    }
+
+    public static SequenceLSTM[] deSerializeData(final SequenceLSTM.LSTMNetworkBuilder builder,    String data)
+    {
+
+        return AITools.mapValues(StringUtils.splitByWholeSeparatorPreserveAllTokens(data, LSTM_DATA_SEPARATOR), new IndexedValueMapper<String, SequenceLSTM>() {
+            @Override
+            public SequenceLSTM map(String input, int index)
+            {
+                if (input != null && input.length()>0)
+                {
+                    SequenceLSTM lstm = builder.build();
+                    String[] parts = StringUtils.splitByWholeSeparatorPreserveAllTokens(input, LSTM_WEIGHT_NODE_SEPARATOR);
+                    String weightData = parts[0];
+                    String activations  =parts[1];
+                    String size = parts[2];
+
+
+                    lstm.loadSerializedNetworkActivationState(activations);
+                    lstm.decodeSerializedLinksToLinkBuffer(weightData);
+                    lstm.loadbufferedLinkWeights();
+                    lstm.setSequenceLength(Integer.parseInt(size));
+                    return lstm;
+                }
+                else
+                    return null;
+            }
+
+            @Override
+            public SequenceLSTM[] getEmptyOutput()
+            {
+                return new SequenceLSTM[0];
+            }
+        });
+    }
+
+    public static String getSerializedSequenceData(SequenceLSTM[] slstms)
+    {
+        final StringBuilder s = new StringBuilder();
+
+        AITools.map(slstms, new ArrayMapper<SequenceLSTM>() {
+            @Override
+            public SequenceLSTM map(SequenceLSTM input, int index)
+            {
+                if (index > 0)
+                    s.append(LSTM_DATA_SEPARATOR);
+
+                if (input != null)
+                {
+                    s.append(input.serializeLinkWeights());
+                    s.append(LSTM_WEIGHT_NODE_SEPARATOR);
+                    s.append(input.serializeNetworkActivationState());
+                    s.append(LSTM_WEIGHT_NODE_SEPARATOR);
+                    s.append(input.getSequenceLength());
+                }
+
+
+                return null;
+            }
+        });
+
+        return s.toString();
+
+    }
+
+
     private static final String[] toArraySampleValue = new String[0];
 
     /**
@@ -891,6 +1008,14 @@ public class NNTools {
         return new Vector(out);
     }
 
+    public static int[] getVectorDataAsInt(Vector vector)
+    {
+        double[] v = vector.raw();
+        int[] o = new int[v.length];
+        for (int i = 0;i < v.length;i++)
+            o[i] = (int)v[i];
+        return o;
+    }
 
     static Vector[] getVector(double[][] data)
     {
@@ -984,12 +1109,12 @@ public class NNTools {
     }
 
     /**
-     * Convert to little-endian
+     * Convert to standard binary little-endian
      * @param integer
      * @param numBits
      * @return
      */
-    public static Vector intToVectorLE(int integer, int numBits)
+    public static Vector intToStandardBinaryVectorLE(int integer, int numBits)
     {
         Vector out = new Vector(numBits);
         for (int i = 0;i<numBits;i++)
@@ -1008,6 +1133,21 @@ public class NNTools {
         }
         return out;
     }
+
+    /**
+     * Produces a [2 * numStages] binary vector representation of num.  Num should be between
+     * 0 and range.  This allows us to approximate any positive integer by a binary vector of
+     * fixed number number of bits.
+     * @param num
+     * @param range - max value
+     * @param numStages
+     * @return
+     */
+    Vector discretizeInStages(int num, int range, int numStages)
+    {
+        return NNTools.getVector(NNTools.stageDiscretize(num, range, numStages));
+    }
+
 
     public static Vector headVector(final Vector vec, final int dimen)
     {
@@ -1094,13 +1234,20 @@ public class NNTools {
 
     }
 
-
     public static Double[] getNumericValueOutput(Vector[] output, final int range)
+    {
+        return getNumericValueOutput(output, range, null);
+    }
+
+
+    public static Double[] getNumericValueOutput(Vector[] output, final int range, final Double nullValue)
     {
         return AITools.mapValues(output, new IndexedValueMapper<Vector, Double>() {
             @Override
             public Double map(Vector input, int index)
             {
+                if (input == null)
+                    return nullValue;
                 ArrayList<Double> v = new ArrayList<Double>();
                 for (double d : input.raw())
                 {

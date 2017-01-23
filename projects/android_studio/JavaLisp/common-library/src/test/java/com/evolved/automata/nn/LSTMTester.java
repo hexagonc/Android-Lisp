@@ -3,6 +3,7 @@ package com.evolved.automata.nn;
 import com.evolved.automata.AITools;
 import com.evolved.automata.IndexedValueMapper;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -15,6 +16,7 @@ import static org.junit.Assert.assertTrue;
  * Created by Evolved8 on 12/10/16.
  */
 public class LSTMTester {
+
 
 
     @Test
@@ -121,7 +123,7 @@ public class LSTMTester {
             double errorThreshold = 0.10;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(testInput);
+            Vector[] input = NNTools.getVector(testInput);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -129,7 +131,7 @@ public class LSTMTester {
 
 
             double[] seed = new double[]{0};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             String extrapolatedValueString = Arrays.toString(out);
@@ -208,7 +210,7 @@ public class LSTMTester {
             double errorThreshold = 0.13;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(testInput);
+            Vector[] input = NNTools.getVector(testInput);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -216,7 +218,7 @@ public class LSTMTester {
 
 
             double[] seed = new double[]{0};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -281,7 +283,7 @@ public class LSTMTester {
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(testInput);
+            Vector[] input = NNTools.getVector(testInput);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -289,7 +291,7 @@ public class LSTMTester {
 
 
             double[] seed = new double[]{0};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -348,7 +350,7 @@ public class LSTMTester {
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(testInput);
+            Vector[] input = NNTools.getVector(testInput);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -356,7 +358,7 @@ public class LSTMTester {
 
 
             double[] seed = new double[]{0};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -416,7 +418,7 @@ public class LSTMTester {
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(testInput);
+            Vector[] input = NNTools.getVector(testInput);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -424,7 +426,7 @@ public class LSTMTester {
 
 
             double[] seed = new double[]{0};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -511,7 +513,7 @@ public class LSTMTester {
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(testInput);
+            Vector[] input = NNTools.getVector(testInput);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -519,7 +521,7 @@ public class LSTMTester {
 
 
             double[] seed = new double[]{0};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -579,7 +581,7 @@ public class LSTMTester {
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(sequence);
+            Vector[] input = NNTools.getVector(sequence);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -587,7 +589,7 @@ public class LSTMTester {
 
 
             double[][] seed = new double[][]{{0,0,0,1,1,1,0,1}};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -647,7 +649,7 @@ public class LSTMTester {
             double errorThreshold = 0.1;
             long start = System.currentTimeMillis();
 
-            Vector[] input = getVector(sequence);
+            Vector[] input = NNTools.getVector(sequence);
             double[] errors = lstm.learnSequence(input, maxSteps, errorThreshold);
             long end = System.currentTimeMillis() - start;
             System.out.println("Finished: (" + end + ") ms out: " + Arrays.toString(errors));
@@ -655,7 +657,7 @@ public class LSTMTester {
 
 
             double[][] seed = new double[][]{{0, 0, 0, 1, 0, 1, 0, 0}};
-            Vector[] seedV = getVector(seed);
+            Vector[] seedV = NNTools.getVector(seed);
             Vector[] out = lstm.extrapolate(seedV, 10, false);
 
             System.out.println("Extrapolated: " + Arrays.toString(out));
@@ -663,7 +665,7 @@ public class LSTMTester {
 
             //
             double[][] shiftedSequence = new double[][]{{0,0,1,1,0,1,1,1},{0,0,0,1,1,0,1,1},{0,0,0,1,1,0,0,0}};
-            seedV = getVector(shiftedSequence);
+            seedV = NNTools.getVector(shiftedSequence);
 
             int driveCount = 5;
 
@@ -767,7 +769,7 @@ public class LSTMTester {
                 for (int j = 0;j < pattern.length;j++)
                 {
                     inputRaw = NNTools.stageDiscretize(pattern[j], discretizationRange, discretizationSteps);
-                    patternInput[j] = getVector(inputRaw);
+                    patternInput[j] = NNTools.getVector(inputRaw);
                 }
                 trainingInput[patternIndex] = patternInput;
                 classIds[patternIndex] = classIds[patternIndex];
@@ -791,7 +793,7 @@ public class LSTMTester {
             for (int j = 0;j < samplePattern.length;j++)
             {
                 inputRaw = NNTools.stageDiscretize(sampleSequence[j], discretizationRange, discretizationSteps);
-                samplePattern[j] = getVector(inputRaw);
+                samplePattern[j] = NNTools.getVector(inputRaw);
             }
 
             identifiedPattern = lstm.viewSequenceOutput(samplePattern, false);
@@ -889,7 +891,7 @@ public class LSTMTester {
                 for (int j = 0;j < pattern.length;j++)
                 {
                     inputRaw = NNTools.stageDiscretize(pattern[j], discretizationRange, discretizationSteps);
-                    patternInput[j] = getVector(inputRaw);
+                    patternInput[j] = NNTools.getVector(inputRaw);
                 }
                 trainingInput[patternIndex] = patternInput;
                 classIds[patternIndex] = classIds[patternIndex];
@@ -914,7 +916,7 @@ public class LSTMTester {
             for (int j = 0;j < samplePattern.length;j++)
             {
                 inputRaw = NNTools.stageDiscretize(sampleSequence[j], discretizationRange, discretizationSteps);
-                samplePattern[j] = getVector(inputRaw);
+                samplePattern[j] = NNTools.getVector(inputRaw);
             }
 
             identifiedPattern = lstm.viewSequenceOutput(samplePattern, false);
@@ -932,36 +934,7 @@ public class LSTMTester {
     }
 
 
-    Vector[] getVector(double[] data)
-    {
-        Vector[] out = new Vector[data.length];
-        for (int i = 0;i < data.length; i++)
-        {
-            out[i] = new Vector(new double[]{data[i]});
-        }
-        return out;
-    }
 
-    Vector getVector(ArrayList<Double> data)
-    {
-        double[] out = new double[data.size()];
-        for (int i = 0;i < data.size(); i++)
-        {
-            out[i] = data.get(i);
-        }
-        return new Vector(out);
-    }
-
-
-    Vector[] getVector(double[][] data)
-    {
-        Vector[] out = new Vector[data.length];
-        for (int i = 0;i < data.length; i++)
-        {
-            out[i] = new Vector(data[i]);
-        }
-        return out;
-    }
 
 
     Double[] boxArray(double[] d)
@@ -970,6 +943,16 @@ public class LSTMTester {
         for (int i = 0;i<o.length;i++)
         {
             o[i] = Double.valueOf(d[i]);
+        }
+        return o;
+    }
+
+    Integer[] boxArray(int[] d)
+    {
+        Integer[] o = new Integer[d.length];
+        for (int i = 0;i<o.length;i++)
+        {
+            o[i] = Integer.valueOf(d[i]);
         }
         return o;
     }

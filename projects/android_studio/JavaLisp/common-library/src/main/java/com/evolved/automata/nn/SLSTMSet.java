@@ -6,6 +6,7 @@ import java.util.LinkedList;
 /**
  * Created by Evolved8 on 12/26/16.
  */
+@Deprecated
 public class SLSTMSet {
 
 
@@ -314,6 +315,8 @@ public class SLSTMSet {
 
         return recognitionPolicy;
     }
+
+
 
     public Vector observe(Vector newInput, boolean addIfNoPresent)
     {

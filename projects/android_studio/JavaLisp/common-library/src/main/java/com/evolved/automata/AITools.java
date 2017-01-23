@@ -13,6 +13,7 @@ public class AITools {
 
 
 
+
 	/**
 	 * Maps the values of an array.  Returns a new array.  Mapped values
 	 * can be different type of original input.

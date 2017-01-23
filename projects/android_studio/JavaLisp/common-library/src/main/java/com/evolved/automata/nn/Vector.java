@@ -14,6 +14,14 @@ public class Vector {
         v = value;
     }
 
+    public Vector(int[] value)
+    {
+        v = new double[value.length];
+        for (int i = 0;i < value.length;i++)
+            v[i] = value[i];
+
+    }
+
     public Vector(int dimen)
     {
         v = new double[dimen];
@@ -33,6 +41,8 @@ public class Vector {
     {
         return v;
     }
+
+
 
     public Vector setValue(double value, int i)
     {
