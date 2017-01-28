@@ -43,6 +43,7 @@ import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.android.widgets.ShadowButton;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 
@@ -118,6 +119,8 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     ProjectEventListener _projectEventListener;
     ToolAreaEventListener _toolAreaNotifier;
     GestureDetector _gestureDetector;
+    public static final String _LAST_RESULT_NAME = "@";
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         
@@ -298,12 +301,13 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         _dropboxToolAreaSelectRadio = (RadioButton)_cachedView.findViewById(R.id.rb_select_source_dropbox);
         _dropboxToolAreaSelectRadio.setChecked(type == ToolAreaType.DROPBOX);
         _dropboxToolAreaSelectRadio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            
+
             @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-            	if (first)
-            		return;
-                if (isChecked && getLastClickedToolAreaType()!=ToolAreaType.DROPBOX)
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
+            {
+                if (first)
+                    return;
+                if (isChecked && getLastClickedToolAreaType() != ToolAreaType.DROPBOX)
                 {
                     _codeTemplateToolAreaSourceSelectRadio.setChecked(false);
                     _localStorageToolAreaSourceSelectRadio.setChecked(false);
@@ -338,12 +342,13 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         _localStorageToolAreaSourceSelectRadio = (RadioButton)_cachedView.findViewById(R.id.rb_select_source_local_storage);
         _localStorageToolAreaSourceSelectRadio.setChecked(type == ToolAreaType.LOCAL_STORAGE);
         _localStorageToolAreaSourceSelectRadio.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            
+
             @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-            	if (first)
-            		return;
-                if (isChecked && getLastClickedToolAreaType()!=ToolAreaType.LOCAL_STORAGE)
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked)
+            {
+                if (first)
+                    return;
+                if (isChecked && getLastClickedToolAreaType() != ToolAreaType.LOCAL_STORAGE)
                 {
                     _dropboxToolAreaSelectRadio.setChecked(false);
                     _codeTemplateToolAreaSourceSelectRadio.setChecked(false);
@@ -437,35 +442,37 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         _historyForwardButton = (ShadowButton)_cachedView.findViewById(R.id.but_history_forward);
         
         _historyForwardButton.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				Project proj = CodeManager.get().getCurrentProject();
-				if (proj != null)
-				{
-					_retainScroll = false;
-					KeyValuePair<String, String> kv = proj.gotoNextPage();
-					updateCodeDisplay(kv);
-					updateHistoryButtonEnability(proj);
-				}
-			}
-		});
+
+            @Override
+            public void onClick(View v)
+            {
+                Project proj = CodeManager.get().getCurrentProject();
+                if (proj != null)
+                {
+                    _retainScroll = false;
+                    KeyValuePair<String, String> kv = proj.gotoNextPage();
+                    updateCodeDisplay(kv);
+                    updateHistoryButtonEnability(proj);
+                }
+            }
+        });
         
         _historyBackButton.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				Project proj = CodeManager.get().getCurrentProject();
-				if (proj != null)
-				{
-					_retainScroll = false;
-					KeyValuePair<String, String> kv = proj.gotoPrevPage();
-					updateCodeDisplay(kv);
-					updateHistoryButtonEnability(proj);
-				}
-				
-			}
-		});
+
+            @Override
+            public void onClick(View v)
+            {
+                Project proj = CodeManager.get().getCurrentProject();
+                if (proj != null)
+                {
+                    _retainScroll = false;
+                    KeyValuePair<String, String> kv = proj.gotoPrevPage();
+                    updateCodeDisplay(kv);
+                    updateHistoryButtonEnability(proj);
+                }
+
+            }
+        });
         
         Project proj = CodeManager.get().getCurrentProject();
 		if (proj != null)
@@ -554,11 +561,12 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             log(LogType.INFO, svalue);
             appendResult(svalue);
             updateHistoryWithResult();
+            mapVariableValue(_LAST_RESULT_NAME, v);
         }
         else
             appendResult("null");
     }
-    
+
     
     public void onResultWithoutHistory(Value v)
     {
@@ -805,6 +813,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 
 
 
+
     @Override
     public String getCurrentLispEditorCode() {
         // 
@@ -987,6 +996,13 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
 		}
 		
 	}
+
+    public void insertCodeAtTopOfEditor(String code) {
+
+        String oldText = _editText.getText().toString();
+
+        _editText.setText(code + "\n" + oldText);
+    }
  
 	
 	// separate
@@ -1212,12 +1228,23 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     {
         addLispFunction("append-data-to-cursor", appendDataToCursor());
         addLispFunction("append-result-to-cursor", appendResultToCursor());
+        addLispFunction("append-result-to-editor", appendResultToEditor());
+
+
+        addLispFunction("append-data-to-output-pane", appendDataToOutputPane());
+        addLispFunction("append-result-to-output-pane", appendResultToOutputPane());
+
+
     }
 
     public void removeFunctions()
     {
         removeLispFunction("append-data-to-cursor");
         removeLispFunction("append-result-to-cursor");
+        removeLispFunction("append-result-to-editor");
+
+        removeLispFunction("append-data-to-output-pane");
+        removeLispFunction("append-result-to-output-pane");
     }
 
     private void insertTextOnMainThread(final String text)
@@ -1231,6 +1258,32 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
         };
         _editText.post(r);
     }
+
+    private void insertTextToEditorOnMainThread(final String text)
+    {
+        Runnable r = new Runnable()
+        {
+            public void run()
+            {
+                insertCodeAtTopOfEditor(text);
+            }
+        };
+        _editText.post(r);
+    }
+
+    private void insertTextToOutputOnMainThread(final Value data)
+    {
+        Runnable r = new Runnable()
+        {
+            public void run()
+            {
+                onResult(data);
+            }
+        };
+        _editText.post(r);
+    }
+
+
 
     public SimpleFunctionTemplate appendDataToCursor()
     {
@@ -1276,7 +1329,7 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(1, false, false);
+                checkActualArguments(1, true, false);
                 if (evaluatedArgs.length>0)
                 {
                     if (evaluatedArgs.length > 1)
@@ -1284,6 +1337,67 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
                     else
                         insertTextOnMainThread(evaluatedArgs[0].toString());
                 }
+                return Environment.getNull();
+            }
+        };
+    }
+
+    public SimpleFunctionTemplate appendResultToEditor()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) appendResultToEditor();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                insertTextToEditorOnMainThread(evaluatedArgs[0].toString());
+                return Environment.getNull();
+            }
+        };
+    }
+
+
+    public SimpleFunctionTemplate appendResultToOutputPane()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) appendResultToOutputPane();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                insertTextToOutputOnMainThread(evaluatedArgs[0]);
+                return Environment.getNull();
+            }
+        };
+    }
+
+    public SimpleFunctionTemplate appendDataToOutputPane()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) appendDataToOutputPane();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                insertTextToOutputOnMainThread(NLispTools.makeValue(evaluatedArgs[0].serializedForm()));
                 return Environment.getNull();
             }
         };

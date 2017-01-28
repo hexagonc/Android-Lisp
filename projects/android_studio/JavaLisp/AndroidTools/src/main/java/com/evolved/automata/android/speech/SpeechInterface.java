@@ -306,7 +306,12 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		intent.putExtra(SPEECH_CONTROL_LISTENER_CONTROL_PARAMETER_KEY, SPEECH_CONTROL_LISTENER_INITIATE_LISTENING);
 		return intent;
 	}
-	
+
+	public boolean isRunning()
+	{
+		return _controller != null;
+	}
+
 	public void startup()
 	{
 		_controller = new SpeakController(_context.getApplicationContext());
@@ -318,6 +323,7 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 		{
 			_recognizer =  SpeechRecognizer.createSpeechRecognizer(_context.getApplicationContext());
 			_recognizer.setRecognitionListener(this);
+
 			_controlReceiver = new SpeechControlReceiver();
 			
 			_context.registerReceiver(_controlReceiver, new IntentFilter(SPEECH_CONTROL_LISTENER_ACTION));
@@ -328,7 +334,10 @@ public class SpeechInterface implements RecognitionListener, OnInitListener, OnU
 	public void shutdown()
 	{
 		if (_recognizer!=null)
+		{
+			_recognizer.cancel();
 			_recognizer.destroy();
+		}
 		if (_controller != null)
 		{
 			synchronized (_interfaceSynch)

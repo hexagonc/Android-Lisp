@@ -108,12 +108,28 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	
 	public void restartBackgroundLispListener()
 	{
-		_backgroundLispControlListener = _backgroundInterpreter.start(this, true);
+		if (!isBackgroundLispInterpreterRunning())
+		{
+			_backgroundLispControlListener = _backgroundInterpreter.start(this, true);
+		}
 	}
 	
 	public boolean isBackgroundLispInterpreterRunning()
 	{
 		return _backgroundInterpreter.isRunning();
+	}
+
+	public boolean isSpeechSystemRunning()
+	{
+		return _speechInterface.isRunning();
+	}
+
+	public void restartSpeechSystem()
+	{
+		if (!isSpeechSystemRunning())
+		{
+			_speechInterface.startup();
+		}
 	}
 	
 	public void resetEnvironment(Environment env) throws InstantiationException, IllegalAccessException
@@ -130,7 +146,10 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		env.mapFunction("evaluate-foreground", evaluate_foreground());
 		env.mapFunction("cancel-background-actions", clear_background_processes());
 		env.mapFunction("cancel-foreground-actions", clear_foreground_processes());
-		 
+		_env.mapValue(_ASR_STATUS_VAR_NAME, Environment.getNull());
+		_env.mapValue(_TTS_STATUS_VAR_NAME, Environment.getNull());
+
+
 		onInit((_ttsAvailableP)?android.speech.tts.TextToSpeech.SUCCESS:android.speech.tts.TextToSpeech.ERROR , _asrAvailableP);
 		
 		
@@ -157,8 +176,7 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 		_speechInterface = new SpeechInterface(_context, _SPEECH_LOG_LABEL, null,_expectedWords );
 		_speechControlInterface = _speechInterface.setSpeechListener(this);
 		_speechInterface.startup();
-		_env.mapValue(_ASR_STATUS_VAR_NAME, Environment.getNull());
-		_env.mapValue(_TTS_STATUS_VAR_NAME, Environment.getNull());
+
 		
 	}
 	
@@ -396,8 +414,15 @@ public class GlobalInterface implements LispInterpreter.LispResponseListener, An
 	
 	public void shutdownAll()
 	{
-		_backgroundInterpreter.stop(false, 0);
-		_speechInterface.shutdown();
+		stopBackgroundLispInterpreter();
+		
+		//shutdownSpeechInterface();
+	}
+
+	public void restartAll()
+	{
+		restartSpeechSystem();
+		restartBackgroundLispListener();
 	}
 	
 	// .oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.oOo.

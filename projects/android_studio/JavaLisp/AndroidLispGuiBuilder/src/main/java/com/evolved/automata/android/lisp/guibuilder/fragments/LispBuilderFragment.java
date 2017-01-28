@@ -7,6 +7,7 @@ import com.evolved.automata.android.lisp.guibuilder.GlobalInterface;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.LispInterpreter;
+import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 
 import android.app.Fragment;
@@ -38,6 +39,12 @@ public abstract class LispBuilderFragment extends Fragment implements LispInterp
 	{
 		
 	}
+
+	public void mapVariableValue(String name, Value value)
+	{
+		_data.getEnvironment().mapValue(name, value);
+	}
+
 
 	public void addLispFunction(String name, FunctionTemplate template)
 	{

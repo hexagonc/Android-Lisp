@@ -69,6 +69,7 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		try
 		{
 			setupGlobalData();
+
 		}
 		catch (Exception e)
 		{
@@ -175,7 +176,10 @@ public class MainActivity extends Activity implements TabListener, AndroidLispIn
 		_data = ((GuiBuilderApplication)getApplication()).getGlobalData();
 		if (!_data.isBackgroundLispInterpreterRunning())
 			_data.restartBackgroundLispListener();
-			
+		if (!_data.isSpeechSystemRunning())
+		{
+			_data.restartSpeechSystem();
+		}
 		ViewEvaluator.bindFunctions(_data.getEnvironment(), this, _data.getInterpreter());
 		_data.setForegroundLispResponseListener(this);
 		_data.setControlListener(this);
