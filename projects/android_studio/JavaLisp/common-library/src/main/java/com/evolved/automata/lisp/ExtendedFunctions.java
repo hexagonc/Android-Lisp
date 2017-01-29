@@ -123,6 +123,7 @@ public class ExtendedFunctions
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
 				checkActualArguments(1, true, true);
+				Lambda.resetRecursionLimit();
 				if (evaluatedArgs.length>1 && !evaluatedArgs[1].isNull() && evaluatedArgs[0].isLambda())
 				{
 					return NLispTools.makeValue(((LambdaValue)evaluatedArgs[0]).serializedForm(true));

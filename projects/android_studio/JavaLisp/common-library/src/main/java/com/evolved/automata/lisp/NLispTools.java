@@ -81,6 +81,7 @@ public class NLispTools
 		env.mapFunction("and", new AndFunctionTemplate());
 		env.mapFunction("or", new OrFunctionTemplate());
 		env.mapFunction("if", new IfFunctionTemplate());
+
 		
 		// Define if as a macro
 		//env.evaluate("(defmacro if (cond ant else) (list 'or (list 'and (list 'setq 'xx*xx cond) ant) (list 'and (list 'not 'xx*xx) else)))", true);
@@ -2781,7 +2782,9 @@ public class NLispTools
 		}
 		);
 		
-		
+
+		// Internal function for creating the object that serialized objects are all based on
+		env.evaluate("(defun _make-serialized-base-object_ () (funcall (lambda () this )))", true);
 		
 		// Define increment macro.  Increments a variable 
 		env.evaluate("(defmacro incr (x) `(setq ,x (+ 1 ,x)))", true);

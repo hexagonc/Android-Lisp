@@ -18,8 +18,8 @@ public class LambdaValue extends Value {
 	
 	@Override
 	public boolean equals(Value v) {
-		
-		return serializedForm().equals(v.serializedForm());
+		return v!=null && v.isLambda() &&  (_lambda == v.getLambda() ||
+				serializedForm(true).equals(((LambdaValue)v).serializedForm(true)));
 	}
 
 	@Override

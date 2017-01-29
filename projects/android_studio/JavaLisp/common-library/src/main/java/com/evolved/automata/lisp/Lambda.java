@@ -23,7 +23,13 @@ public class Lambda extends FunctionTemplate {
 	String _previousKeyArgumentName = null;
 	HashMap<String, Value> _argumentKeyMap = null;
 	Value[] _executed;
-	
+    // TOOD: Replace this recurseCount mechanism eventually
+    static int recurseCount = 0;
+
+
+    public static final int RECURSE_LIMIT = 10000;
+    static final String CYCLIC_REFERENCE_EXCEPTION_BASE_MESSAGE = "Recursive serialization limit exceeded.  Do you have cyclic object references in your local variables? \n";
+
 	
 	public Lambda(Environment innerEnv, String[] formalParameters, Value[] bodyArgs)
 	{
@@ -42,125 +48,91 @@ public class Lambda extends FunctionTemplate {
 	@Override
 	public String serialize()
 	{
-		StringBuilder sBuilder = null;
-		String local;
+
 		if (hasNameP())
 		{
-			sBuilder = new StringBuilder("(#' " + _name + ")");
+			return serializeAsNamedFunction();
 		}
 		else
 		{
-			String innerfunctions = getInnerFunctions();
-			local = getLocalVariableValues();
-			if (_bodyArguments.length == 1 && _bodyArguments[0].isIdentifier() && "this".equals(_bodyArguments[0].getString()))
+			if (isObject())
 			{
-				if (local.length()>0)
-				{
-					sBuilder = new StringBuilder("(with* (funcall (lambda ");
-					sBuilder.append(getParameterListString());
-					sBuilder.append("\n");
-					sBuilder.append(innerfunctions);
-					if (innerfunctions.length()>0)
-						sBuilder.append("\n");
-					sBuilder.append(getBodyListString(" "));
-					sBuilder.append(")) \n");
-					sBuilder.append("\n").append(local).append(")");
-				}
-				else
-				{
-					sBuilder = new StringBuilder("(funcall (lambda ");
-					sBuilder.append(getParameterListString());
-					sBuilder.append("\n");
-					sBuilder.append(innerfunctions);
-					if (innerfunctions.length()>0)
-						sBuilder.append("\n");
-					sBuilder.append(getBodyListString(" "));
-					sBuilder.append(")) \n");
-					
-				}
-				
+                return serializeAsObject();
 			}
 			else
 			{
-				if (local.length()>0)
-				{
-					sBuilder = new StringBuilder("(with* (lambda ");
-					sBuilder.append(getParameterListString());
-					sBuilder.append("\n");
-					sBuilder.append(innerfunctions);
-					if (innerfunctions.length()>0)
-						sBuilder.append("\n");
-					sBuilder.append(getBodyListString(" "));
-					sBuilder.append(") \n");
-					sBuilder.append("\n").append(local).append(")");
-				}
-				else
-				{
-					sBuilder = new StringBuilder("(lambda ");
-					sBuilder.append(getParameterListString());
-					sBuilder.append("\n");
-					sBuilder.append(innerfunctions);
-					if (innerfunctions.length()>0)
-						sBuilder.append("\n");
-					sBuilder.append(getBodyListString(" "));
-					sBuilder.append(") \n");
-				}
+                return serializeAsSimpleLambdaNoClosure();
 			}
-			
-			
+
 		}
-		
-		
-		return sBuilder.toString();
+
 	}
-	
+
+    String serializeAsSimpleLambdaNoClosure()
+    {
+        String innerfunctions = getInnerFunctions();
+        StringBuilder sBuilder = null;
+        sBuilder = new StringBuilder("(lambda ");
+        sBuilder.append(getParameterListString());
+        sBuilder.append("\n");
+        sBuilder.append(innerfunctions);
+        if (innerfunctions.length()>0)
+            sBuilder.append("\n");
+        sBuilder.append(getBodyListString(" "));
+        sBuilder.append(") \n");
+        return sBuilder.toString();
+    }
+
+    String serializeAsNamedFunction()
+    {
+        if (hasNameP())
+        {
+            return "(#' " + _name + ")";
+        }
+        else
+            return serialize();
+    }
+
+    /**
+     * Call this from the top level method that requests serialization
+     */
+    static void resetRecursionLimit()
+    {
+        recurseCount = 0;
+    }
+
 	public String serializeAsObject()
 	{
+        String innerfunctions = getInnerFunctions();
 		StringBuilder sBuilder = null;
 		String local;
-		if (hasNameP())
-		{
-			sBuilder = new StringBuilder("(#' " + _name + ")");
-		}
-		else
-		{
-			String innerfunctions = getInnerFunctions();
-			local = getLocalVariableValues(true);
-			if (local.length()>0)
-			{
-				sBuilder = new StringBuilder("(with* (funcall (lambda () this))");
-				
-				sBuilder.append("\n");
-				sBuilder.append(innerfunctions);
-				if (innerfunctions.length()>0)
-					sBuilder.append("\n");
-				
-				sBuilder.append("\n").append(local).append(")");
-			}
-			else
-			{
-				sBuilder = new StringBuilder("(funcall (lambda () ");
-				
-				sBuilder.append("\n");
-				sBuilder.append(innerfunctions);
-				if (innerfunctions.length()>0)
-					sBuilder.append("\n");
-				sBuilder.append("this");
-				sBuilder.append(")) \n");
-				
-			}
-			
-			
-		}
-		
-		
-		return sBuilder.toString();
+        if (isObject())
+        {
+            local = getLocalVariableValues();
+            sBuilder = new StringBuilder("(with* (_make-serialized-base-object_) ");
+            sBuilder.append("\n");
+            sBuilder.append(innerfunctions);
+            if (innerfunctions.length()>0)
+                sBuilder.append("\n");
+            sBuilder.append(local).append(")");
+            return sBuilder.toString();
+        }
+        else
+        {
+            return serialize();
+        }
+
 	}
+
+    private boolean isObject()
+    {
+        return _bodyArguments!=null && _bodyArguments.length == 1 && _bodyArguments[0].isIdentifier() && "this".equals(_bodyArguments[0].getString());
+    }
 	
 	@Override
 	public String toString()
 	{
-		
+
 		if (hasNameP())
 		{
 			return "(#' " + _name + ")";
@@ -169,8 +141,7 @@ public class Lambda extends FunctionTemplate {
 		{
 			String serialized = serialize();
 			try {
-				
-				
+
 				return "(# " + ExtendedFunctions.getSha1Sum(serialized) + ")";
 			} catch (UnsupportedEncodingException e) {
 				e.printStackTrace();
@@ -178,10 +149,7 @@ public class Lambda extends FunctionTemplate {
 			}
 			
 		}
-		
-		
-		
-		
+
 	}
 	
 	
@@ -211,12 +179,25 @@ public class Lambda extends FunctionTemplate {
 		
 		return sBuilder.toString();
 	}
-	
-	
-	private String getLocalVariableValues(){
+
+
+
+	private String getLocalVariableValues() {
 		if (_innerEnvironment._valueMap.size()== 0)
 			return "";
-		
+
+
+        // reset this recurseCount at the top level call (currently this is done in serialize function
+        // in ExtendedFunctions.  Ultimately, this mechanism needs to be improved and replaced
+        // by a Map<Lambda> argument that is passed to serialize.  This would require changing
+        // serialize in all Value classes, unfortunately
+        recurseCount++;
+        if (recurseCount > RECURSE_LIMIT)
+        {
+
+            throw new RuntimeException(CYCLIC_REFERENCE_EXCEPTION_BASE_MESSAGE);
+
+        }
 		StringBuilder binding = new StringBuilder("\n(multiple-bind ("), values = new StringBuilder("(list ");
 		Value check;
 		boolean first = true;
@@ -226,7 +207,7 @@ public class Lambda extends FunctionTemplate {
 			if (first) {
 				binding.append(name);
 				first =false;
-				check = _innerEnvironment.getVariableValue(name);
+				check = _innerEnvironment._valueMap.get(name);
 				if (check.isLambda() && check.getLambda() == this)
 					values.append("this");
 				else
@@ -235,8 +216,11 @@ public class Lambda extends FunctionTemplate {
 			else
 			{
 				binding.append(" ").append(name);
-				check = _innerEnvironment.getVariableValue(name);
-				if (check.isLambda() && check.getLambda() == this)
+				check = _innerEnvironment._valueMap.get(name);
+                boolean isLambda = check.isLambda();
+                FunctionTemplate lambda = check.getLambda();
+                Lambda me = this;
+				if (isLambda && me == lambda)
 					values.append(" ").append("this");
 				else
 					values.append(" ").append(check.serializedForm());
@@ -246,55 +230,8 @@ public class Lambda extends FunctionTemplate {
 		values.append("))");
 		return binding.append(values).toString();
 	}
-	
-	private String getLocalVariableValues(boolean serializeLambdasAsObjects){
-		// TODO: clean this up.  Shouldn't have too different functions
-		if (!serializeLambdasAsObjects)
-			return getLocalVariableValues();
-		if (_innerEnvironment._valueMap.size()== 0)
-			return "";
-		
-		StringBuilder binding = new StringBuilder("\n(multiple-bind ("), values = new StringBuilder("(list ");
-		Value check;
-		boolean first = true;
-		for (String name: _innerEnvironment._valueMap.keySet()){
-			if (name.equals("this"))
-				continue;
-			if (first) {
-				binding.append(name);
-				first =false;
-				check = _innerEnvironment.getVariableValue(name);
-				if (check.isLambda() && check.getLambda() == this)
-					values.append("this");
-				else
-					if (check.isLambda())
-					{
-						values.append(((LambdaValue)check).serializedForm(true));
-					}
-					else
-					{
-						values.append(check.serializedForm());
-					}
-			}
-			else
-			{
-				binding.append(" ").append(name);
-				check = _innerEnvironment.getVariableValue(name);
-				if (check.isLambda() && check.getLambda() == this)
-					values.append(" ").append("this");
-				else if (check.isLambda())
-				{
-					values.append(" ").append(((LambdaValue)check).serializedForm(true));
-				}else
-					values.append(" ").append(check.serializedForm());
-			}
-		}
-		binding.append(") ").toString();
-		values.append("))");
-		return binding.append(values).toString();
-	}
-	
-	
+
+
 	public String getBodyListString(String delimiter)
 	{
 		StringBuilder sBuilder = new StringBuilder();
