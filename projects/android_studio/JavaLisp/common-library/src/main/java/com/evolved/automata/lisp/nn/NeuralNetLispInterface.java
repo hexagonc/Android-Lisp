@@ -14,6 +14,7 @@ import com.evolved.automata.lisp.Value;
 import com.evolved.automata.nn.LSTMLearningResult;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.LinkedLSTM;
+import com.evolved.automata.nn.LinkedLSTMSet;
 import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.SLSTMSet;
 import com.evolved.automata.nn.SequenceLSTM;
@@ -58,7 +59,7 @@ public class NeuralNetLispInterface {
 
 
         env.mapFunction("create-linked-slstm", createLinkedLSTM());
-        env.mapFunction("create-slstm-set", createLSTMSet());
+        env.mapFunction("create-linked-set-lstm", createLinkedLSTMSet()); // creates
 
         env.mapFunction("prediction-lstm-observe-predict", predictionLSTMObservePredict());
         env.mapFunction("prediction-lstm-get-best-prediction", PredictionLSTMgetBestPrediction());
@@ -69,18 +70,14 @@ public class NeuralNetLispInterface {
         env.mapFunction("prediction-lstm-reset", predictionLSTMReset());
         env.mapFunction("prediction-lstm-set-prediction-tester", predictionLSTMSetDefinePredictionTester());
         env.mapFunction("linked-lstm-join", linkedLSTMJoin());
+        env.mapFunction("linked-lstm-set-merge", linkedLSTMSetMerge());
 
-        env.mapFunction("slstm-set-set-max-error-per-input", simpleLSTMSetSetMaxErrorPerInputVector());
-        env.mapFunction("slstm-set-set-max-steps-per-input", simpleLSTMSetSetMaxLearningStepsPerInputVector());
+        env.mapFunction("prediction-lstm-set-prediction-aggregator", PredictionLSTMSetBestPredictionAggregator());
+        env.mapFunction("prediction-lstm-get-items", PredictionLSTMGetItems());
+        env.mapFunction("prediction-lstm-set-max-error-per-input", PredictionLSTMMaxErrorPerInputVector());
+        env.mapFunction("prediction-lstm-set-max-steps-per-input", predictionLSTMSetMaxLearningStepsPerInputVector());
+        env.mapFunction("prediction-lstm-remove-all-items", PredictionLSTMRemoveAllItems());
 
-
-        env.mapFunction("slstm-set-define-aggregator", simpleLSTMSetDefinePredictionAggregator());
-
-
-
-        env.mapFunction("slstm-set-remove-all-items", simpleLSTMSetRemoveAllItems());
-        env.mapFunction("slstm-set-get-items", simpleLSTMSetGetItems());
-        env.mapFunction("slstm-set-set-items", simpleLSTMSetSetItems());
 
         env.mapFunction("simple-slstm-add", simpleSLSTMAdd());
         env.mapFunction("simple-slstm-get-all-items", simpleSLSTMGetAllItems());
@@ -92,17 +89,17 @@ public class NeuralNetLispInterface {
 
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSetSetMaxErrorPerInputVector()
+    public static SimpleFunctionTemplate PredictionLSTMMaxErrorPerInputVector()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetSetMaxErrorPerInputVector();
+                return (T) PredictionLSTMMaxErrorPerInputVector();
             }
 
-            // First argument is the SLSTMSet
+            // First argument is the PredictionLSTM
             // Second argument is a numeric error float
 
             @Override
@@ -110,7 +107,7 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(2, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor lstmSet = (SequencePredictor)evaluatedArgs[0].getObjectValue();
                 double maxError = evaluatedArgs[1].getFloatValue();
                 lstmSet.setMaxLearningError(maxError);
 
@@ -119,17 +116,17 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSetSetMaxLearningStepsPerInputVector()
+    public static SimpleFunctionTemplate predictionLSTMSetMaxLearningStepsPerInputVector()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetSetMaxLearningStepsPerInputVector();
+                return (T) predictionLSTMSetMaxLearningStepsPerInputVector();
             }
 
-            // First argument is the SLSTMSet
+            // First argument is the PredictionLSTM
             // Second argument is the max number of steps
 
             @Override
@@ -137,7 +134,7 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(2, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor lstmSet = (SequencePredictor)evaluatedArgs[0].getObjectValue();
                 int maxSteps = (int)evaluatedArgs[1].getIntValue();
                 lstmSet.setMaxLearningSteps(maxSteps);
 
@@ -228,14 +225,14 @@ public class NeuralNetLispInterface {
     }
 
 
-    public static SimpleFunctionTemplate simpleLSTMSetRemoveAllItems()
+    public static SimpleFunctionTemplate PredictionLSTMRemoveAllItems()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetRemoveAllItems();
+                return (T) PredictionLSTMRemoveAllItems();
             }
 
             // First argument is the SLSTMSet
@@ -245,7 +242,7 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(1, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor lstmSet = (SequencePredictor)evaluatedArgs[0].getObjectValue();
                 lstmSet.clearAllSLSTMs();
                 return evaluatedArgs[0];
             }
@@ -1222,14 +1219,14 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate createLSTMSet()
+    public static SimpleFunctionTemplate createLinkedLSTMSet()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) createLSTMSet();
+                return (T) createLinkedLSTMSet();
             }
 
             // Uses keyword parameters
@@ -1256,7 +1253,7 @@ public class NeuralNetLispInterface {
                 Value viewerLambda = keywordParameters.get(":VECTOR-VIEWER-LAMBDA");
                 Value continuousPrediction = keywordParameters.get(":ALLOW-CONTINUOUS-PREDICTION");
 
-                LinkedLSTM.Builder builder = LinkedLSTM.getLinkedLSTMBuider();
+                LinkedLSTMSet.Builder builder = LinkedLSTMSet.getBuider();
 
                 int maxSteps = 150;
                 if (maxStepsValue != null)
@@ -1305,7 +1302,7 @@ public class NeuralNetLispInterface {
                 {
                     builder.setPreventFailingLSTMsToPredict();
                 }
-                LinkedLSTM llstm = builder.build();
+                LinkedLSTMSet llstm = builder.build();
 
                 return ExtendedFunctions.makeValue(llstm);
             }
@@ -1593,58 +1590,24 @@ public class NeuralNetLispInterface {
     }
 
 
-    public static SimpleFunctionTemplate simpleLSTMSetSetItems()
+    public static SimpleFunctionTemplate PredictionLSTMGetItems()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetSetItems();
+                return (T) PredictionLSTMGetItems();
             }
 
-            // First argument is the SLSTMSet
-
-            @Override
-            public Value evaluate(Environment env, Value[] evaluatedArgs)
-            {
-                checkActualArguments(2, false, true);
-
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
-                Value[] items = evaluatedArgs[1].getList();
-
-                SequenceLSTM[] members = new SequenceLSTM[items.length];
-
-                for (int i = 0;i < members.length;i++)
-                {
-                    members[i]= (SequenceLSTM)items[i].getObjectValue();
-                }
-                lstmSet.setMembers(members);
-                return evaluatedArgs[0];
-
-            }
-        };
-    }
-
-
-    public static SimpleFunctionTemplate simpleLSTMSetGetItems()
-    {
-        return new SimpleFunctionTemplate() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
-            {
-                return (T) simpleLSTMSetGetItems();
-            }
-
-            // First argument is the SLSTMSet
+            // First argument is the SequencePredictor
 
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
                 checkActualArguments(1, false, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor lstmSet = (SequencePredictor)evaluatedArgs[0].getObjectValue();
                 SequenceLSTM[] members = lstmSet.getMembers();
                 return NLispTools.makeValue(AITools.mapValues(members, new LispValueMapper<SequenceLSTM>() {
                     @Override
@@ -1657,29 +1620,30 @@ public class NeuralNetLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate simpleLSTMSetDefinePredictionAggregator()
+    public static SimpleFunctionTemplate PredictionLSTMSetBestPredictionAggregator()
     {
         return new SimpleFunctionTemplate() {
             @SuppressWarnings("unchecked")
             @Override
             public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
             {
-                return (T) simpleLSTMSetDefinePredictionAggregator();
+                return (T) PredictionLSTMSetBestPredictionAggregator();
             }
 
             // First argument is the SLSTMSet
-            // Second argument is an lambda function that takes 2 arguments, the first being the list of predictions made by
-            // the set.  The second lambda argument will be the aggregate prediction from the higher order SLSTMSet if present
+            // Second argument is an lambda function that takes 3 arguments, the first being the list of predictions made by
+            // the set.  The second lambda argument will be the net match counts for each feature segment (Sequence LSTM)
+            // minus the failure counts.  The third lambda argument will be the list of the SequenceLSTMs
             // t
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
                 checkActualArguments(2, true, true);
 
-                SLSTMSet lstmSet = (SLSTMSet)evaluatedArgs[0].getObjectValue();
+                SequencePredictor plstm = (SequencePredictor)evaluatedArgs[0].getObjectValue();
                 Lambda lambdaValue = (Lambda)evaluatedArgs[1].getLambda();
 
-                lstmSet.setPredictionAggregator(lambdaToOutputAggregator(lambdaValue, env));
+                plstm.setCustomPredictionAggregator(lambdaToOutputAggregator(lambdaValue, env));
 
 
                 return evaluatedArgs[0];
@@ -1722,7 +1686,7 @@ public class NeuralNetLispInterface {
                 {
                     failureThreshold = evaluatedArgs[2].getFloatValue();
                 }
-                predictor.setPredictionEvaluator(lambdaToStatePredictionTester(lambdaValue,failureThreshold, env));
+                predictor.setPredictionEvaluator(lambdaToStatePredictionTester(lambdaValue, failureThreshold, env));
 
 
                 return evaluatedArgs[0];
@@ -1760,6 +1724,32 @@ public class NeuralNetLispInterface {
     }
 
 
+    public static SimpleFunctionTemplate linkedLSTMSetMerge()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) linkedLSTMSetMerge();
+            }
+
+            // First argument is a Linked LSTM Set
+            // Second argument is a LinkedLSTM
+            // Returns the Linked LSTM Set merged with the LinkedLSTM
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                LinkedLSTMSet head = (LinkedLSTMSet)evaluatedArgs[0].getObjectValue();
+                LinkedLSTM tail = (LinkedLSTM)evaluatedArgs[1].getObjectValue();
+
+                head.merge(tail);
+                return evaluatedArgs[0];
+            }
+        };
+    }
 
 
 
@@ -1777,13 +1767,13 @@ public class NeuralNetLispInterface {
         return new Vector(NLispTools.getDoubleArrayFromValue(value));
     }
 
-    private static SLSTMSet.OutputAggregator lambdaToOutputAggregator(final Lambda lambda, final Environment outer)
+    private static SequencePredictor.BestPredictionAggregator lambdaToOutputAggregator(final Lambda lambda, final Environment outer)
     {
-        return new SLSTMSet.OutputAggregator()
+        return new SequencePredictor.BestPredictionAggregator()
         {
 
             @Override
-            public Vector aggregateResult(Vector[] lastPrediction, Vector hierarchicalAggregateResult)
+            public Vector aggregateResult(Vector[] lastPrediction, int[] netMatchCounts, SequenceLSTM[] featureSegments)
             {
                 Value[] setPredictions = AITools.mapValues(lastPrediction, new LispValueMapper<Vector>() {
                     @Override
@@ -1796,12 +1786,25 @@ public class NeuralNetLispInterface {
                     }
                 });
 
-                Value higherLevelAggregateResult = Environment.getNull();
+                Value[] netMatchValues = new Value[netMatchCounts.length];
 
-                if (hierarchicalAggregateResult != null)
-                    higherLevelAggregateResult = NLispTools.makeValue(hierarchicalAggregateResult.raw());
+                for (int i =0;i<netMatchCounts.length;i++)
+                {
+                    netMatchValues[i] = NLispTools.makeValue(netMatchCounts[i]);
+                }
 
-                Value[] args = new Value[]{NLispTools.makeValue(setPredictions), higherLevelAggregateResult};
+                Value[] segmentValues = AITools.mapValues(featureSegments, new LispValueMapper<SequenceLSTM>() {
+                    @Override
+                    public Value map(SequenceLSTM input, int index)
+                    {
+                        if (input != null)
+                            return ExtendedFunctions.makeValue(input);
+                        else
+                            return Environment.getNull();
+                    }
+                });
+
+                Value[] args = new Value[]{NLispTools.makeValue(setPredictions), NLispTools.makeValue(netMatchValues), NLispTools.makeValue(segmentValues)};
                 lambda.setActualParameters(args);
 
                 try

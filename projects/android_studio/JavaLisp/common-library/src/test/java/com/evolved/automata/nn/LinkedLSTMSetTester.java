@@ -14,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by Evolved8 on 12/27/16.
  */
-public class SLSTMSetTester extends BaseLSTMTester {
+public class LinkedLSTMSetTester extends BaseLSTMTester {
 
     int numInputNodes = 6;
     int numMemoryNodes = 10;
@@ -240,6 +240,64 @@ public class SLSTMSetTester extends BaseLSTMTester {
         assertTrue(errorMessage, success);
 
     }
+
+    @Test
+    public void testSerializeDeserializeLongList()
+    {
+        errorMessage = "Failed to create SetLSTM without exceptions";
+        int inputBufferBits = 1;
+        boolean success = false;
+        try
+        {
+
+
+
+            LinkedLSTMSet.Builder builder = LinkedLSTMSet.getBuider();
+            LinkedLSTMSet llstm = builder.
+                    setNumMemoryCellNodes(10).
+                    setNumInputNodes(6).
+                    setLSTMBufferSize(20).
+                    setMaxLearningSteps(150).
+                    setMaxConsecutiveFailures(2).
+                    setCustomVectorViewer(getNumericVectorViewer(255)).
+                    setSimpleMaxPredictionAggregator().
+
+                    build();
+
+
+            for (int i = 0;i < testInput.length;i++)
+            {
+                llstm.observePredictNext(discretizeInStages(testInput[i]), true);
+            }
+
+            llstm.resetPredictions();
+            String rep = llstm.viewListStructure(true, true);
+            System.out.println("Input: " + Arrays.toString(testInput));
+            System.out.println("Saved form: " + rep);
+            System.out.println("Saved children: " + llstm.getChildFrequency());
+
+
+
+            String serializedForm = llstm.serializedForm();
+            LinkedLSTMSet copy = builder.build();
+            copy.loadData(serializedForm);
+            copy.resetPredictions();
+            rep = copy.viewListStructure(true, true);
+            System.out.println("Copied form: " + rep);
+            System.out.println("Saved children: " + copy.getChildFrequency());
+
+
+
+            success = true;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        assertTrue(errorMessage, success);
+
+    }
+
 
 
     @Test

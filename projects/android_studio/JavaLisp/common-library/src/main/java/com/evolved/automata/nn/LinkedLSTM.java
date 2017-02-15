@@ -20,10 +20,7 @@ import java.util.Set;
 public class LinkedLSTM implements SequencePredictor{
 
 
-    public interface OutputAggregator
-    {
-        Vector aggregateResult(Vector[] lastPrediction);
-    }
+
 
 
     public enum PredictionAggregateMethod
@@ -65,7 +62,7 @@ public class LinkedLSTM implements SequencePredictor{
 
     boolean allowIgnoreNextInput = false;
     PredictionAggregateMethod predictionAggregateMethod = null;
-    OutputAggregator predictionAggregator;
+    SequencePredictor.BestPredictionAggregator predictionAggregator;
 
     String LSTM_ELEMENT_DELIMITER = ",";
 
@@ -236,7 +233,7 @@ public class LinkedLSTM implements SequencePredictor{
         double initialMatchFraction = 0.25;
         int maxConsecutiveFailures = 2;
         PredictionAggregateMethod predictionAggregateMethod = null;
-        OutputAggregator predictionAggregator;
+        SequencePredictor.BestPredictionAggregator predictionAggregator;
         boolean allowFailingLSTMsToPredictP = false;
         boolean allowParentSupportOfChildSegmentP = true;
         VectorViewer dataViewer = null;
@@ -297,7 +294,7 @@ public class LinkedLSTM implements SequencePredictor{
             return this;
         }
 
-        public Builder setCustomPredictionAggregator(OutputAggregator predictionAggregator)
+        public Builder setCustomPredictionAggregator(SequencePredictor.BestPredictionAggregator predictionAggregator)
         {
             predictionAggregateMethod = PredictionAggregateMethod.CUSTOM;
             this.predictionAggregator = predictionAggregator;
@@ -416,11 +413,11 @@ public class LinkedLSTM implements SequencePredictor{
         return sbuilder;
     }
 
-    public OutputAggregator getStochasticMaxAggregator()
+    public SequencePredictor.BestPredictionAggregator getStochasticMaxAggregator()
     {
-        return new OutputAggregator() {
+        return new SequencePredictor.BestPredictionAggregator() {
             @Override
-            public Vector aggregateResult(Vector[] lastPrediction)
+            public Vector aggregateResult(Vector[] lastPrediction, int[] netMatchCounts, SequenceLSTM[] lstms)
             {
                 if (lastPrediction == null)
                     return null;
@@ -428,8 +425,8 @@ public class LinkedLSTM implements SequencePredictor{
                 List<WeightedValue<Vector>> predictionList = new LinkedList<WeightedValue<Vector>>();
                 for (int i = 0;i < MAX_LSTM;i++)
                 {
-                    if (matchCounts[i]>0)
-                        predictionList.add(new WeightedValue<Vector>(lastPrediction[i], matchCounts[i]));
+                    if (netMatchCounts[i]>0)
+                        predictionList.add(new WeightedValue<Vector>(lastPrediction[i], netMatchCounts[i]));
                 }
 
                 if (predictionList.size()>0)
@@ -439,15 +436,17 @@ public class LinkedLSTM implements SequencePredictor{
 
                 return null;
             }
+
+
         };
 
     }
 
-    public OutputAggregator getDeterministicMaxAggregator()
+    public SequencePredictor.BestPredictionAggregator getDeterministicMaxAggregator()
     {
-        return new OutputAggregator() {
+        return new SequencePredictor.BestPredictionAggregator() {
             @Override
-            public Vector aggregateResult(Vector[] lastPrediction)
+            public Vector aggregateResult(Vector[] lastPrediction, int[] netMatchCounts, SequenceLSTM[] lstms)
             {
                 if (lastPrediction == null)
                     return null;
@@ -455,23 +454,57 @@ public class LinkedLSTM implements SequencePredictor{
                 int maxCount = Integer.MIN_VALUE;
                 Vector maxVector = null;
                 int L = MAX_LSTM;
+
+
                 for (int i = 0;i < L;i++)
                 {
                     if (lastPrediction[i] == null)
                         continue;
-                    if (matchCounts[i]>0 && ((matchCounts[i] - failureCounts[i]) > maxCount))
+                    if (netMatchCounts[i]>0 && netMatchCounts[i] > maxCount)
                     {
 
-                        maxCount = matchCounts[i] - failureCounts[i];
-                        maxVector = lastPrediction[i];
+                        maxCount = netMatchCounts[i];
+
                     }
                 }
 
+                if (maxCount > 0)
+                {
+                    LinkedList<Vector> maxSet = new LinkedList<Vector>();
+                    for (int i = 0;i < L;i++)
+                    {
+                        if (lastPrediction[i] == null)
+                            continue;
+
+                        if (netMatchCounts[i] == maxCount)
+                        {
+                            maxSet.add(lastPrediction[i]);
+
+                        }
+                    }
+
+                    maxVector = maxSet.get( (int)(Math.random()* maxSet.size()));
+                }
 
                 return maxVector;
             }
+
+
         };
 
+    }
+
+    public SequencePredictor setCustomPredictionAggregator(SequencePredictor.BestPredictionAggregator predictionAggregator)
+    {
+        predictionAggregateMethod = PredictionAggregateMethod.CUSTOM;
+        this.predictionAggregator = predictionAggregator;
+        return this;
+    }
+
+    @Override
+    public SequenceLSTM[] getMembers()
+    {
+        return segments;
     }
 
     public LinkedLSTM ignoreNextInput()
@@ -968,8 +1001,11 @@ public class LinkedLSTM implements SequencePredictor{
             matchCounts[i] = 0;
             if (segments[i] != null)
                 segments[i].resetToStartOfSequence();
+            failureCounts[i] = 0;
         }
         currentPredictions = null;
+        maxPreviousMatchCount = 0;
+        parentSegmentId = null;
     }
 
     @Override
@@ -1016,6 +1052,42 @@ public class LinkedLSTM implements SequencePredictor{
     @Override
     public Vector getBestPrediction(Vector[] pool)
     {
-        return predictionAggregator.aggregateResult(pool);
+
+        return predictionAggregator.aggregateResult(pool, getNetMatchCount(), segments);
+    }
+
+    @Override
+    public void setMaxLearningError(double max)
+    {
+        maxError = max;
+
+    }
+
+    @Override
+    public void setMaxLearningSteps(int steps)
+    {
+        maxSteps = steps;
+    }
+
+    @Override
+    public void clearAllSLSTMs()
+    {
+        bufferManager.freeAllClaims();
+        resetPredictions();
+        previousRecycledSlot = null;
+        currentLSTM = null;
+        currentSegmentId = null;
+        parentSegmentId = null;
+    }
+
+
+    private int[] getNetMatchCount()
+    {
+        int[] out = new int[MAX_LSTM];
+        for (int i =0;i<MAX_LSTM;i++)
+        {
+            out[i] = matchCounts[i] - failureCounts[i];
+        }
+        return out;
     }
 }

@@ -5,6 +5,9 @@ package com.evolved.automata.nn;
  */
 public interface SequencePredictor {
 
+    public void clearAllSLSTMs();
+
+    public SequenceLSTM[] getMembers();
     public Vector[] observePredictNext(Vector input, boolean learnP);
 
     public Vector[] observePredictNext();
@@ -14,6 +17,10 @@ public interface SequencePredictor {
     public Vector getBestPrediction();
 
     public void clearAllPredictions();
+
+    public void setMaxLearningError(double max);
+
+    public void setMaxLearningSteps(int steps);
 
     public Vector[] getPreviousPrediction();
 
@@ -31,10 +38,17 @@ public interface SequencePredictor {
 
     public SequencePredictor setPredictionEvaluator(PredictionComparator comp);
 
+    public SequencePredictor setCustomPredictionAggregator(SequencePredictor.BestPredictionAggregator predictionAggregator);
+
     public interface PredictionComparator
     {
         double weighPrediction(Vector actual, Vector predicted, int predictorIndex);
         double getResetThresholdWeight();
+    }
+
+    public interface BestPredictionAggregator
+    {
+        Vector aggregateResult(Vector[] lastPrediction, int[] netMatchCounts, SequenceLSTM[] lstms);
     }
 
 }

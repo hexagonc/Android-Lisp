@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
 
 
@@ -28,6 +29,7 @@ public class LSTMNetwork {
         HashMap<WeightUpdateParameters, Double> weightParameters;
         String linkWeightData;
         HashMap<String, Double> biasSpecMap;
+
 
 
         public LSTMNetworkBuilder()
@@ -229,6 +231,11 @@ public class LSTMNetwork {
     private static String SERIALIZED_STATE_NODE_DATA_DELIMITER = "|";
     private boolean useZeroSuffixForSequenceLearningP = false;
 
+
+
+
+
+
     final VectorMapper roundingMapper = new VectorMapper() {
         @Override
         public double map(double v, int i)
@@ -270,6 +277,11 @@ public class LSTMNetwork {
         biasSpecMap = new HashMap<String, Double> ();
     }
 
+
+
+
+
+
     protected void initialize()
     {
         nodeMap.put("I", inputLayer);
@@ -292,12 +304,16 @@ public class LSTMNetwork {
             nodeMap.put(name + MemoryCell.NODE_GROUP_SEPARATOR + "P", cell.getPeepHole());
         }
 
+
         for (String sourceNodeName: connectivityMap.keySet())
         {
             ArrayList<String> targetNodeNames = connectivityMap.get(sourceNodeName);
+
             for (String targetNodeName:targetNodeNames)
             {
+
                 String linkKey = getNodeLinkKey(sourceNodeName, targetNodeName);
+
                 switch (updateType)
                 {
                     case DEFAULT:
@@ -333,6 +349,9 @@ public class LSTMNetwork {
         clearAllMemoryCells();
 
     }
+
+
+
 
     public static LSTMNetworkBuilder getBuilder()
     {

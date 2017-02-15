@@ -6,12 +6,12 @@ package com.evolved.automata.nn;
  * Created by Evolved8 on 12/8/16.
  */
 public class RPropLink extends Link {
-    double n_plus;
-    double n_minus;
+    final double n_plus;
+    final double n_minus;
 
-    double deltaMax;
-    double deltaMin;
-    double deltaInit;
+    final double deltaMax;
+    final double deltaMin;
+    final double deltaInit;
     WeightMatrix weightDeltaMatrix;
     WeightMatrix prevCalculatedGradient;
 

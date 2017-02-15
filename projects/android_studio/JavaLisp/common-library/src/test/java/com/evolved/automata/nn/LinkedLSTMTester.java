@@ -11,7 +11,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Created by Evolved8 on 1/8/17.
  */
-public class ListLSTMTester extends BaseLSTMTester {
+public class LinkedLSTMTester extends BaseLSTMTester {
 
 
     int numInputNodes = 6;

@@ -89,6 +89,15 @@ public class RingBufferManager implements BufferManager {
         return s.toString() + _ENTRY_DELIMITER + previousClaimId +_ENTRY_DELIMITER + maxClaims ;
     }
 
+    @Override
+    public void freeAllClaims()
+    {
+        for (int i = 0;i < maxClaims;i++)
+        {
+            free(i);
+        }
+    }
+
 
     public static RingBufferManager fromSerializedForm(String serialized)
     {

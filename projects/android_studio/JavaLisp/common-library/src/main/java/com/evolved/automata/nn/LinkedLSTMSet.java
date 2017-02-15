@@ -1,7 +1,10 @@
 package com.evolved.automata.nn;
 
 import com.evolved.automata.AITools;
+import com.evolved.automata.ArrayMapper;
 import com.evolved.automata.WeightedValue;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -13,12 +16,6 @@ import java.util.PriorityQueue;
  * Created by Evolved8 on 1/14/17.
  */
 public class LinkedLSTMSet implements SequencePredictor{
-
-    public interface OutputAggregator
-    {
-        Vector aggregateResult(Vector[] lastPrediction);
-    }
-
 
     public enum PredictionAggregateMethod
     {
@@ -59,7 +56,7 @@ public class LinkedLSTMSet implements SequencePredictor{
 
     boolean allowIgnoreNextInput = false;
     PredictionAggregateMethod predictionAggregateMethod = null;
-    OutputAggregator predictionAggregator;
+    SequencePredictor.BestPredictionAggregator predictionAggregator;
 
     String LSTM_ELEMENT_DELIMITER = ",";
     String LSTM_DELIMITER = ":";
@@ -68,6 +65,194 @@ public class LinkedLSTMSet implements SequencePredictor{
     int maxPreviousMatchCount= 0;
     Integer previousRecycledSlot = null;
     int[] previousFinishedSegments = null;
+
+    String DATA_SEPARATOR = "(+)";
+    String DATA_CHILD_MAP_DELIMITER = "[~]";
+    String DATA_CHILD_ENTRY_DELIMITER = ":+:";
+
+    double predictionAcceptThreshold = 0.5;
+    SequencePredictor.PredictionComparator predictionAssessor;
+
+    SequencePredictor.PredictionComparator getDefaultAssessor()
+    {
+        return new SequencePredictor.PredictionComparator(){
+
+            @Override
+            public double weighPrediction(Vector actual, Vector predicted, int predictorIndex)
+            {
+                if (actual.equals(predicted))
+                    return 1;
+                else
+                    return 0;
+
+            }
+
+            public double getResetThresholdWeight()
+            {
+                return predictionAcceptThreshold;
+            }
+        };
+    }
+
+    public SequencePredictor setPredictionEvaluator(SequencePredictor.PredictionComparator evaluator)
+    {
+        predictionAssessor = evaluator;
+        return this;
+    }
+
+    public String serializedForm()
+    {
+        StringBuilder s = new StringBuilder();
+        // Add the LSTM data
+
+        String segmentData = NNTools.getSerializedSequenceData(segments);
+        s.append(segmentData);
+
+        s.append(DATA_SEPARATOR);
+        // Add the BufferManager data
+
+        String bufferData = bufferManager.getSerializedForm();
+        s.append(bufferData);
+        // Add the current predictions
+
+        String predictions = NNTools.vArrayToString(currentPredictions);
+        s.append(DATA_SEPARATOR);
+        s.append(predictions);
+        // Add the current match counts
+
+        String serializedMatches = (new Vector(matchCounts)).serialize();
+        s.append(DATA_SEPARATOR);
+        s.append(serializedMatches);
+        // Serialized failure counts
+
+        String serializedFailures = (new Vector(failureCounts)).serialize();
+        s.append(DATA_SEPARATOR);
+        s.append(serializedFailures);
+        // Add the childmap data
+        s.append(DATA_SEPARATOR);
+        int j = 0;
+        ;
+        j = 0;
+        for (Integer parentKey: childMap.keySet())
+        {
+            if (j > 0)
+            {
+                s.append(DATA_CHILD_MAP_DELIMITER);
+
+            }
+            j++;
+
+            s.append(parentKey);
+            s.append(DATA_CHILD_ENTRY_DELIMITER);
+            HashMap<Integer, Integer> childFrequency = childMap.get(parentKey);
+            Vector[] vdata = new Vector[childFrequency.size()];
+            int i = 0;
+            for (Integer key:childFrequency.keySet())
+            {
+                vdata[i] = new Vector(new int[]{key.intValue(), childFrequency.get(key).intValue()});
+                i++;
+            }
+            String serializedChildMap = NNTools.vArrayToString(vdata);
+            s.append(serializedChildMap);
+        }
+
+
+        s.append(DATA_SEPARATOR);
+        if (currentSegmentId != null)
+            s.append(currentSegmentId);
+        s.append(DATA_SEPARATOR);
+        s.append(maxPreviousMatchCount);
+        s.append(DATA_SEPARATOR);
+        if (parentSegmentId != null)
+            s.append(parentSegmentId);
+        s.append(DATA_SEPARATOR);
+        if (previousRecycledSlot != null)
+            s.append(previousRecycledSlot);
+        s.append(DATA_SEPARATOR);
+        s.append( (new Vector(previousFinishedSegments)).serialize());
+
+        return s.toString();
+    }
+
+    public HashMap<Integer, HashMap<Integer, Integer>> getChildFrequency()
+    {
+        return childMap;
+    }
+
+    public void loadData(String serializedData)
+    {
+        String[] parts = StringUtils.splitByWholeSeparatorPreserveAllTokens(serializedData, DATA_SEPARATOR);
+        String segmentData = parts[0];
+        SequenceLSTM.LSTMNetworkBuilder builder = segmentBuilder();
+        segments = NNTools.deSerializeData(builder, segmentData);
+        String bufferData = parts[1];
+        bufferManager = RingBufferManager.fromSerializedForm(bufferData);
+        String predictions = parts[2];
+        currentPredictions = NNTools.stringToVArray(predictions);
+
+        String serializedMatches = parts[3];
+        matchCounts = NNTools.getVectorDataAsInt(Vector.fromSerialized(serializedMatches));
+        String serializedFailures = parts[4];
+        failureCounts = NNTools.getVectorDataAsInt(Vector.fromSerialized(serializedFailures));
+
+        String serializedChildMap = parts[5];
+        childMap.clear();
+        int i = 0, j = 0;
+
+        String[] serializedParentChildFrequency = StringUtils.splitByWholeSeparatorPreserveAllTokens(serializedChildMap, DATA_CHILD_MAP_DELIMITER);
+        for (i = 0; i < serializedParentChildFrequency.length;i++)
+        {
+            String[] parentChildPair = StringUtils.splitByWholeSeparatorPreserveAllTokens(serializedParentChildFrequency[i], DATA_CHILD_ENTRY_DELIMITER);
+            String parentKey = parentChildPair[0];
+            String serializedChildFrequency = parentChildPair[1];
+            Vector[] arrayData = NNTools.stringToVArray(serializedChildFrequency);
+            final HashMap<Integer, Integer> frequencyMap = new HashMap<Integer, Integer>();
+            childMap.put(Integer.parseInt(parentKey), frequencyMap);
+            AITools.map(arrayData, new ArrayMapper<Vector>() {
+                @Override
+                public Vector map(Vector input, int index)
+                {
+                    if (input != null)
+                    {
+                        int[] raw = NNTools.getVectorDataAsInt(input);
+                        frequencyMap.put(raw[0], raw[1]);
+                    }
+                    return null;
+                }
+            });
+        }
+
+
+
+        String currentLSTMIndex = parts[6];
+        if (currentLSTMIndex != null && currentLSTMIndex.length()>0)
+            currentSegmentId = Integer.parseInt(currentLSTMIndex);
+        else
+            currentSegmentId = null;
+
+        if (currentSegmentId != null)
+            currentLSTM = segments[currentSegmentId.intValue()];
+        else
+            currentLSTM = null;
+
+        String preMatchCounts = parts[7];
+        maxPreviousMatchCount = Integer.parseInt(preMatchCounts);
+        String parentId = parts[8];
+        if (parentId != null && parentId.length()>0)
+            parentSegmentId = Integer.parseInt(parentId);
+        else
+            parentSegmentId = null;
+        String previousRecycled = parts[9];
+        if (previousRecycled != null && previousRecycled.length()>0)
+            previousRecycledSlot = Integer.parseInt(previousRecycled);
+        else
+            previousRecycledSlot = null;
+
+        String serializedPreviousFinalized = parts[10];
+        previousFinishedSegments = NNTools.getVectorDataAsInt(Vector.fromSerialized(serializedPreviousFinalized));
+    }
+
+
 
     public static class Builder
     {
@@ -81,7 +266,7 @@ public class LinkedLSTMSet implements SequencePredictor{
         double initialMatchFraction = 0.25;
         int maxConsecutiveFailures = 2;
         PredictionAggregateMethod predictionAggregateMethod = null;
-        OutputAggregator predictionAggregator;
+        SequencePredictor.BestPredictionAggregator predictionAggregator;
         boolean allowFailingLSTMsToPredictP = false;
         boolean allowParentSupportOfChildSegmentP = true;
         VectorViewer dataViewer = null;
@@ -142,7 +327,7 @@ public class LinkedLSTMSet implements SequencePredictor{
             return this;
         }
 
-        public Builder setCustomPredictionAggregator(OutputAggregator predictionAggregator)
+        public Builder setCustomPredictionAggregator(SequencePredictor.BestPredictionAggregator predictionAggregator)
         {
             predictionAggregateMethod = PredictionAggregateMethod.CUSTOM;
             this.predictionAggregator = predictionAggregator;
@@ -245,11 +430,18 @@ public class LinkedLSTMSet implements SequencePredictor{
         matchCounts = new int[MAX_LSTM];
         segments = new SequenceLSTM[MAX_LSTM];
         failureCounts = new int[MAX_LSTM];
-        builder = NNTools.getStandardSequenceLSTMBuilder(inputNodeCount, stateNodeCount, null);
-        builder.setEndCapPolicy(SequenceLSTM.EndCapPolicy.BOTH_ENDS);
-        builder.setCapDisplayPolicy(SequenceLSTM.EndCapDisplayPolicy.HIDE);
-
+        builder = segmentBuilder();
+        predictionAssessor = getDefaultAssessor();
     }
+
+    SequenceLSTM.LSTMNetworkBuilder segmentBuilder()
+    {
+        SequenceLSTM.LSTMNetworkBuilder sbuilder = NNTools.getStandardSequenceLSTMBuilder(_inputNodeCount, _memoryCellCount, null);
+        sbuilder.setEndCapPolicy(SequenceLSTM.EndCapPolicy.BOTH_ENDS);
+        sbuilder.setCapDisplayPolicy(SequenceLSTM.EndCapDisplayPolicy.HIDE);
+        return sbuilder;
+    }
+
 
     private void incrementParentChildRelationShip(Integer parent, Integer child)
     {
@@ -392,11 +584,17 @@ public class LinkedLSTMSet implements SequencePredictor{
         }
     }
 
-    public OutputAggregator getStochasticMaxAggregator()
+    private boolean testPrediction(Vector actual, Vector predicted, int index)
     {
-        return new OutputAggregator() {
+        return predictionAssessor.weighPrediction(actual, predicted, index) > predictionAcceptThreshold;
+    }
+
+
+    public SequencePredictor.BestPredictionAggregator getStochasticMaxAggregator()
+    {
+        return new SequencePredictor.BestPredictionAggregator() {
             @Override
-            public Vector aggregateResult(Vector[] lastPrediction)
+            public Vector aggregateResult(Vector[] lastPrediction, int[] netMatchCounts, SequenceLSTM[] lstms)
             {
                 if (lastPrediction == null)
                     return null;
@@ -404,8 +602,8 @@ public class LinkedLSTMSet implements SequencePredictor{
                 List<WeightedValue<Vector>> predictionList = new LinkedList<WeightedValue<Vector>>();
                 for (int i = 0;i < MAX_LSTM;i++)
                 {
-                    if (matchCounts[i]>0)
-                        predictionList.add(new WeightedValue<Vector>(lastPrediction[i], matchCounts[i]));
+                    if (netMatchCounts[i]>0)
+                        predictionList.add(new WeightedValue<Vector>(lastPrediction[i], netMatchCounts[i]));
                 }
 
                 if (predictionList.size()>0)
@@ -415,15 +613,17 @@ public class LinkedLSTMSet implements SequencePredictor{
 
                 return null;
             }
+
+
         };
 
     }
 
-    public OutputAggregator getDeterministicMaxAggregator()
+    public SequencePredictor.BestPredictionAggregator getDeterministicMaxAggregator()
     {
-        return new OutputAggregator() {
+        return new SequencePredictor.BestPredictionAggregator() {
             @Override
-            public Vector aggregateResult(Vector[] lastPrediction)
+            public Vector aggregateResult(Vector[] lastPrediction, int[] netMatchCounts, SequenceLSTM[] lstms)
             {
                 if (lastPrediction == null)
                     return null;
@@ -431,28 +631,227 @@ public class LinkedLSTMSet implements SequencePredictor{
                 int maxCount = Integer.MIN_VALUE;
                 Vector maxVector = null;
                 int L = MAX_LSTM;
+
+
                 for (int i = 0;i < L;i++)
                 {
                     if (lastPrediction[i] == null)
                         continue;
-                    if (matchCounts[i]>0 && ((matchCounts[i] - failureCounts[i]) > maxCount))
+                    if (netMatchCounts[i]>0 && netMatchCounts[i] > maxCount)
                     {
 
-                        maxCount = matchCounts[i] - failureCounts[i];
-                        maxVector = lastPrediction[i];
+                        maxCount = netMatchCounts[i];
+
                     }
                 }
 
+                if (maxCount > 0)
+                {
+                    LinkedList<Vector> maxSet = new LinkedList<Vector>();
+                    for (int i = 0;i < L;i++)
+                    {
+                        if (lastPrediction[i] == null)
+                            continue;
+
+                        if (netMatchCounts[i] == maxCount)
+                        {
+                            maxSet.add(lastPrediction[i]);
+
+                        }
+                    }
+
+                    maxVector = maxSet.get( (int)(Math.random()* maxSet.size()));
+                }
 
                 return maxVector;
             }
+
+
         };
 
+    }
+
+    @Override
+    public SequencePredictor setCustomPredictionAggregator(SequencePredictor.BestPredictionAggregator predictionAggregator)
+    {
+        predictionAggregateMethod = PredictionAggregateMethod.CUSTOM;
+        this.predictionAggregator = predictionAggregator;
+        return this;
+    }
+
+    @Override
+    public SequenceLSTM[] getMembers()
+    {
+        return segments;
     }
 
     public LinkedLSTMSet ignoreNextInput()
     {
         allowIgnoreNextInput = true;
+        return this;
+    }
+
+    public boolean mergeableP(LinkedLSTMSet outer)
+    {
+        return outer!=null && _inputNodeCount == outer._inputNodeCount && _memoryCellCount == outer._memoryCellCount;
+    }
+
+
+    public boolean joinableP(LinkedLSTM outer)
+    {
+        return outer!=null && _inputNodeCount == outer._inputNodeCount && _memoryCellCount == outer._memoryCellCount;
+    }
+
+    public LinkedLSTMSet merge(LinkedLSTM outer)
+    {
+        if (!joinableP(outer))
+            throw new IllegalArgumentException("Can only join LinkedLSTM of similar structure");
+        SequenceLSTM[] newSegments = new SequenceLSTM[MAX_LSTM + outer.MAX_LSTM];
+        int[] newMatchCount = new int[MAX_LSTM + outer.MAX_LSTM];
+        int[] newFailureCount = new int[MAX_LSTM + outer.MAX_LSTM];
+        Vector[] newCurrentPredictions = null;
+
+        if (currentPredictions != null || outer.currentPredictions!=null)
+            newCurrentPredictions = new Vector[MAX_LSTM + outer.MAX_LSTM];
+
+        int[] newPreviousFinished = new int[MAX_LSTM + outer.MAX_LSTM];
+        RingBufferManager newManager = new RingBufferManager(MAX_LSTM + outer.MAX_LSTM);
+        int i = 0;
+        for (;i < bufferManager.getNumberOfClaimedSlots();i++)
+        {
+            newSegments[i] = segments[i];
+            newMatchCount[i] = matchCounts[i];
+            newFailureCount[i] = failureCounts[i];
+            if (currentPredictions != null)
+                newCurrentPredictions[i] = currentPredictions[i];
+            newPreviousFinished[i] = previousFinishedSegments[i];
+        }
+
+        newManager.addAllClaims(bufferManager.getAllClaims());
+        int baseOffset = 0;
+        for (int j = 0;j<outer.bufferManager.getNumberOfClaimedSlots();j++, i++)
+        {
+
+            newSegments[i] = outer.segments[j];
+            newMatchCount[i] = outer.matchCounts[j];
+            newFailureCount[i] = outer.failureCounts[j];
+            //newPreviousFinished[i] = outer.previousFinishedSegments[i];
+            if (outer.currentPredictions != null)
+                newCurrentPredictions[i] = outer.currentPredictions[j];
+
+
+            if (outer.currentSegmentId != null && outer.currentSegmentId.intValue() == j)
+            {
+                currentSegmentId = Integer.valueOf(i);
+                currentLSTM = outer.segments[j];
+            }
+
+            if (outer.parentSegmentId != null && outer.parentSegmentId.intValue() == j)
+            {
+                parentSegmentId = Integer.valueOf(i);
+            }
+
+            if (outer.previousRecycledSlot != null && outer.previousRecycledSlot.intValue() == j)
+            {
+                previousRecycledSlot = Integer.valueOf(i);
+            }
+
+            Integer oldChild = outer.childMap.get(Integer.valueOf(j));
+
+            if (oldChild != null)
+            {
+                HashMap<Integer, Integer> childFrequency = new HashMap<Integer, Integer>();
+                childMap.put(Integer.valueOf(i), childFrequency);
+                childFrequency.put(Integer.valueOf(oldChild + baseOffset), 1);
+            }
+
+        }
+        newManager.addAllClaims(outer.bufferManager.getAllClaims());
+
+        bufferManager = newManager;
+        segments = newSegments;
+        currentPredictions = newCurrentPredictions;
+        matchCounts = newMatchCount;
+        failureCounts = newFailureCount;
+        MAX_LSTM += outer.MAX_LSTM;
+        maxPreviousMatchCount = outer.maxPreviousMatchCount;
+        previousFinishedSegments = newPreviousFinished;
+        return this;
+    }
+
+    public LinkedLSTMSet merge(LinkedLSTMSet outer)
+    {
+        if (!mergeableP(outer))
+            throw new IllegalArgumentException("Can only join LinkedLSTMSet of similar structure");
+        SequenceLSTM[] newSegments = new SequenceLSTM[MAX_LSTM + outer.MAX_LSTM];
+        int[] newMatchCount = new int[MAX_LSTM + outer.MAX_LSTM];
+        int[] newFailureCount = new int[MAX_LSTM + outer.MAX_LSTM];
+        Vector[] newCurrentPredictions = null;
+
+        if (currentPredictions != null || outer.currentPredictions!=null)
+            newCurrentPredictions = new Vector[MAX_LSTM + outer.MAX_LSTM];
+
+        int[] newPreviousFinished = new int[MAX_LSTM + outer.MAX_LSTM];
+        RingBufferManager newManager = new RingBufferManager(MAX_LSTM + outer.MAX_LSTM);
+        int i = 0;
+        for (;i < bufferManager.getNumberOfClaimedSlots();i++)
+        {
+            newSegments[i] = segments[i];
+            newMatchCount[i] = matchCounts[i];
+            newFailureCount[i] = failureCounts[i];
+            if (currentPredictions != null)
+                newCurrentPredictions[i] = currentPredictions[i];
+            newPreviousFinished[i] = previousFinishedSegments[i];
+        }
+
+        newManager.addAllClaims(bufferManager.getAllClaims());
+        int baseOffset = 0;
+        for (int j = 0;j<outer.bufferManager.getNumberOfClaimedSlots();j++, i++)
+        {
+            newPreviousFinished[i] = previousFinishedSegments[j];
+            newSegments[i] = outer.segments[j];
+            newMatchCount[i] = outer.matchCounts[j];
+            newFailureCount[i] = outer.failureCounts[j];
+            //newPreviousFinished[i] = outer.previousFinishedSegments[i];
+            if (outer.currentPredictions != null)
+                newCurrentPredictions[i] = outer.currentPredictions[j];
+
+
+            if (outer.currentSegmentId != null && outer.currentSegmentId.intValue() == j)
+            {
+                currentSegmentId = Integer.valueOf(i);
+                currentLSTM = outer.segments[j];
+            }
+
+            if (outer.parentSegmentId != null && outer.parentSegmentId.intValue() == j)
+            {
+                parentSegmentId = Integer.valueOf(i);
+            }
+
+            if (outer.previousRecycledSlot != null && outer.previousRecycledSlot.intValue() == j)
+            {
+                previousRecycledSlot = Integer.valueOf(i);
+            }
+
+            HashMap<Integer, Integer> childFrequency = outer.childMap.get(Integer.valueOf(j));
+
+            if (childFrequency != null)
+            {
+                childMap.put(Integer.valueOf(i), childFrequency);
+
+            }
+
+        }
+        newManager.addAllClaims(outer.bufferManager.getAllClaims());
+
+        bufferManager = newManager;
+        segments = newSegments;
+        currentPredictions = newCurrentPredictions;
+        matchCounts = newMatchCount;
+        failureCounts = newFailureCount;
+        MAX_LSTM += outer.MAX_LSTM;
+        maxPreviousMatchCount = outer.maxPreviousMatchCount;
+        previousFinishedSegments = newPreviousFinished;
         return this;
     }
 
@@ -462,23 +861,6 @@ public class LinkedLSTMSet implements SequencePredictor{
         return viewListStructure(false, true);
     }
 
-    @Override
-    public String serializedForm()
-    {
-        return null;
-    }
-
-    @Override
-    public void loadData(String serializedData)
-    {
-
-    }
-
-    @Override
-    public SequencePredictor setPredictionEvaluator(PredictionComparator comp)
-    {
-        return null;
-    }
 
     public String viewListStructure(boolean columnP, boolean onlyDefinedP)
     {
@@ -532,6 +914,7 @@ public class LinkedLSTMSet implements SequencePredictor{
     }
 
 
+
     @Override
     public Vector[] observePredictNext(Vector input, boolean learnP)
     {
@@ -546,7 +929,8 @@ public class LinkedLSTMSet implements SequencePredictor{
             if (!wasPreviouslyMatching)
             {
 
-                updateCurrentSegment();
+                if (currentSegmentId == null)
+                    updateCurrentSegment();
 
                 if (currentSegmentId != null)
                 {
@@ -602,7 +986,7 @@ public class LinkedLSTMSet implements SequencePredictor{
             if (!noPriorPredictions && currentPredictions[i] != null)
             {
                 previousPredictions[i] = currentPredictions[i];
-                if (currentPredictions[i].equals(input))
+                if (testPrediction(input, currentPredictions[i], i))
                 {
                     currentPredictions[i] = slstm.viewSequenceOutput(new Vector[]{input}, true)[0];
                     matchCounts[i]++;
@@ -629,7 +1013,10 @@ public class LinkedLSTMSet implements SequencePredictor{
                         failureCounts[i] = 0;
                         currentPredictions[i] = null;
 
-
+                        if (forceMidSequencePredictionP)
+                        {
+                            slstm.viewSequenceOutput(new Vector[]{input}, true);
+                        }
                     }
                 }
 
@@ -644,9 +1031,10 @@ public class LinkedLSTMSet implements SequencePredictor{
                 if (currentPredictions == null)
                     currentPredictions = new Vector[MAX_LSTM];
                 matchCounts[i] = getPredictionResetMatchCount(i);
-                slstm.resetToStartOfSequence();
+                if (!forceMidSequencePredictionP)
+                    slstm.resetToStartOfSequence();
                 initialPrediction = slstm.getOutputValuesExternal();
-                if (initialPrediction.equals(input))
+                if (testPrediction(input, initialPrediction, i))
                 {
                     matchCounts[i] = matchCounts[i] + 1;
                     currentPredictions[i] = slstm.viewSequenceOutput(new Vector[]{input}, true)[0];
@@ -672,6 +1060,11 @@ public class LinkedLSTMSet implements SequencePredictor{
                     }
                     else
                     {
+                        if (forceMidSequencePredictionP)
+                        {
+                            slstm.viewSequenceOutput(new Vector[]{input}, true);
+                        }
+
                         currentPredictions[i] = null;
                         failureCounts[i] = 0;
                         matchCounts[i] = 0;
@@ -792,9 +1185,11 @@ public class LinkedLSTMSet implements SequencePredictor{
             matchCounts[i] = 0;
             if (segments[i] != null)
                 segments[i].resetToStartOfSequence();
+            failureCounts[i] = 0;
         }
         currentPredictions = null;
-
+        maxPreviousMatchCount = 0;
+        parentSegmentId = null;
     }
 
     @Override
@@ -833,6 +1228,19 @@ public class LinkedLSTMSet implements SequencePredictor{
     }
 
     @Override
+    public void setMaxLearningError(double max)
+    {
+        maxError = max;
+
+    }
+
+    @Override
+    public void setMaxLearningSteps(int steps)
+    {
+        maxSteps = steps;
+    }
+
+    @Override
     public Vector[] getPreviousPrediction()
     {
         return previousPredictions;
@@ -841,6 +1249,29 @@ public class LinkedLSTMSet implements SequencePredictor{
     @Override
     public Vector getBestPrediction(Vector[] pool)
     {
-        return predictionAggregator.aggregateResult(pool);
+        return predictionAggregator.aggregateResult(pool, getNetMatchCount(), segments);
     }
+
+    @Override
+    public void clearAllSLSTMs()
+    {
+        bufferManager.freeAllClaims();
+        resetPredictions();
+        previousRecycledSlot = null;
+        currentLSTM = null;
+        currentSegmentId = null;
+        parentSegmentId = null;
+        maxPreviousMatchCount = 0;
+    }
+
+    private int[] getNetMatchCount()
+    {
+        int[] out = new int[MAX_LSTM];
+        for (int i =0;i<MAX_LSTM;i++)
+        {
+            out[i] = matchCounts[i] - failureCounts[i];
+        }
+        return out;
+    }
+
 }
