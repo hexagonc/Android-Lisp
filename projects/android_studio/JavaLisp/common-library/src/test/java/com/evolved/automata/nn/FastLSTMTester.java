@@ -43,7 +43,7 @@ public class FastLSTMTester extends BaseLSTMTester {
     {
         FastLSTMNetwork.LSTMNetworkBuilder builder = FastLSTMNetwork.getFastBuilder();
 
-        builder.setInputNodeCount(inputNodeCode);
+        builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.MSE_ERROR_FUNCTION_ID, FastLSTMNetwork.SIGMOID_ACTIVATION_ID);
         builder.setOutputNodeCount(outputNodeCode);
         builder.addMemoryCell("M", numMemoryCellStates);
         HashMap<String, ArrayList<String>> connectivityMap = NNTools.getStandardLinkConnectivityMap("M");
@@ -78,8 +78,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             FastLSTMNetwork network = builder.build();
             float[] networkSpec = network._networkData;
-            int feedforward_link_count_idx = network.feedforward_link_count_idx;
-            int weight_update_link_count_idx = network.backprop_link_count_idx;
+
 
 
             double[] objOrientedInput = new double[inputNodeCode];
@@ -108,12 +107,12 @@ public class FastLSTMTester extends BaseLSTMTester {
             errorMessage = "Failure to initialize succinct network";
 
             FastLSTMNetwork.initializeNodeState(networkSpec);
-            FastLSTMNetwork.initializeAllWeights(networkSpec, weight_update_link_count_idx, 0.012F, -1, 1);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
 
             errorMessage = "Failure to execute succinct feedforward";
 
             start = System.currentTimeMillis();
-            FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, testSuccinctInput);
+            FastLSTMNetwork.forwardPass(networkSpec, testSuccinctInput);
             long nativeTime = System.currentTimeMillis() - start;
             float[] outputNative = FastLSTMNetwork.getOutputActivation(networkSpec);
             System.out.println("Legacy: " + Arrays.toString(output) + " after " + legacyTime + ", Succinct: " + Arrays.toString(outputNative) + " after " + nativeTime);
@@ -144,10 +143,6 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             FastLSTMNetwork network = builder.build();
             float[] networkSpec = network._networkData;
-            int feedforward_link_count_idx = network.feedforward_link_count_idx;
-            int weight_update_link_count_idx = network.backprop_link_count_idx;
-
-
 
             float[] initialInput = new float[inputNodeCode], output = new float[outputNodeCode], expected = new float[outputNodeCode];
             initialInput[0] = 1;
@@ -158,25 +153,25 @@ public class FastLSTMTester extends BaseLSTMTester {
 
 
 
-            FastLSTMNetwork.initializeAllWeights(networkSpec, weight_update_link_count_idx, 0.0012F, -3, 3);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
 
             errorMessage = "Failure to execute learning passes";
 
             start = System.currentTimeMillis();
 
-            FastLSTMNetwork.resetWeightHistory(networkSpec, weight_update_link_count_idx);
+            FastLSTMNetwork.resetWeightHistory(networkSpec);
             int numSteps = 100;
             float error = 0, firstError=0, minError = Float.MAX_VALUE;
             for (int i = 0;i < numSteps;i++)
             {
 
                 FastLSTMNetwork.initializeNodeState(networkSpec);
-                FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, initialInput);
-                error = FastLSTMNetwork.updateForwardPassErrors(networkSpec, weight_update_link_count_idx, expected);
+                FastLSTMNetwork.forwardPass(networkSpec, initialInput);
+                error = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expected);
                 System.out.println("i: " + i + ") Computed Error: [" + error + "], min Error: [" + minError+"]");
                 if (i == 0)
                     firstError = error;
-                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, weight_update_link_count_idx, 0.5F, 1.2F, 50, 0, LSTMNetwork.WeightUpdateType.RPROP);
+                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, LSTMNetwork.WeightUpdateType.RPROP);
                 minError = Math.min(minError, error);
             }
 
@@ -184,7 +179,7 @@ public class FastLSTMTester extends BaseLSTMTester {
             float[] outputNative = FastLSTMNetwork.getOutputActivation(networkSpec);
             System.out.println(" Takes (" + nativeTime + ") to map: " + Arrays.toString(initialInput) + "\n to : " + Arrays.toString(outputNative));
             errorMessage = "Failed to learn pattern";
-            Assert.assertTrue(errorMessage, minError < firstError);
+            Assert.assertTrue(errorMessage, minError < 0.1);
         }
         catch (Exception e)
         {
@@ -209,15 +204,12 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             FastLSTMNetwork network = builder.build();
             float[] networkSpec = network._networkData;
-            int feedforward_link_count_idx = network.feedforward_link_count_idx;
-            int weight_update_link_count_idx = network.backprop_link_count_idx;
-
 
             float[] sequence = {1,0,1,1,0,1,1,1,0,0,1,0,1};
 
             errorMessage = "Failed to get node state snapshot";
-            FastLSTMNetwork.initializeAllWeights(networkSpec, weight_update_link_count_idx, 0.012F, -1, 1);
-            FastLSTMNetwork.resetWeightHistory(networkSpec, weight_update_link_count_idx);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
+            FastLSTMNetwork.resetWeightHistory(networkSpec);
             FastLSTMNetwork.initializeNodeState(networkSpec);
 
             float[] nextInput;
@@ -229,15 +221,15 @@ public class FastLSTMTester extends BaseLSTMTester {
             for (int j = 0; j < sequence.length;j++)
             {
                 nextInput = new float[] {sequence[j]};
-                FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, nextInput);
+                FastLSTMNetwork.forwardPass(networkSpec, nextInput);
                 if (j == 0)
                     firstOutput = FastLSTMNetwork.getOutputActivation(networkSpec);
             }
 
-            FastLSTMNetwork.resetWeightHistory(networkSpec, weight_update_link_count_idx);
+            FastLSTMNetwork.resetWeightHistory(networkSpec);
             FastLSTMNetwork.initializeNodeState(networkSpec);
             nextInput = new float[] {sequence[0]};
-            FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, nextInput);
+            FastLSTMNetwork.forwardPass(networkSpec, nextInput);
             output = FastLSTMNetwork.getOutputActivation(networkSpec);
 
             //float[] newNodeState = FastLSTMNetwork.getNodeStateSnapshot(networkSpec, feedforward_link_count_idx);
@@ -269,8 +261,6 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             FastLSTMNetwork network = builder.build();
             float[] networkSpec = network._networkData;
-            int feedforward_link_count_idx = network.feedforward_link_count_idx;
-            int weight_update_link_count_idx = network.backprop_link_count_idx;
 
 
             int j;
@@ -283,7 +273,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             float errorTolerance;
 
-            FastLSTMNetwork.initializeAllWeights(networkSpec, weight_update_link_count_idx, 0.012F, -1, 1);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
 
             errorMessage = "Failure to execute learning passes";
 
@@ -295,7 +285,7 @@ public class FastLSTMTester extends BaseLSTMTester {
             for (int i = 0;i < numSteps;i++)
             {
 
-                FastLSTMNetwork.resetWeightHistory(networkSpec, weight_update_link_count_idx);
+                FastLSTMNetwork.resetWeightHistory(networkSpec);
                 FastLSTMNetwork.initializeNodeState(networkSpec);
                 maxError = Float.MIN_VALUE;
 
@@ -303,9 +293,9 @@ public class FastLSTMTester extends BaseLSTMTester {
                 {
                     nextInput = new float[] {sequence[j]};
                     expectedNext = new float[] {expectedOutput[j]};
-                    FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, nextInput);
+                    FastLSTMNetwork.forwardPass(networkSpec, nextInput);
                     predictedNextValue = FastLSTMNetwork.getOutputActivation(networkSpec);
-                    stepError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, weight_update_link_count_idx, expectedNext);
+                    stepError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedNext);
                     System.out.println("input: " + nextInput[0] + " predicted next input: " + predictedNextValue[0] + " expected next: " + expectedNext[0] + " Error: " + stepError);
 
                     stepErrors[j] = stepError;
@@ -313,7 +303,7 @@ public class FastLSTMTester extends BaseLSTMTester {
                 }
                 if (i == 0)
                     firstError = maxError;
-                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, weight_update_link_count_idx, 0.5F, 1.2F, 50, 0, LSTMNetwork.WeightUpdateType.DEFAULT);
+                FastLSTMNetwork.updateWeightsFromErrors(networkSpec,  LSTMNetwork.WeightUpdateType.DEFAULT);
                 System.out.println(".*.*.*.*.* Finished Round: " + i + " max step error: " + maxError);
             }
             errorMessage = "Failed to improve upon initial error";
@@ -323,7 +313,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             errorMessage = "Failed to extrapolate from seed = " + seedLength;
 
-            FastLSTMNetwork.resetWeightHistory(networkSpec, weight_update_link_count_idx);
+            FastLSTMNetwork.resetWeightHistory(networkSpec);
             FastLSTMNetwork.initializeNodeState(networkSpec);
             float[] extrapolated = new float[sequence.length - 1];
             for (j = 0; j < sequence.length - 1;j++)
@@ -336,7 +326,7 @@ public class FastLSTMTester extends BaseLSTMTester {
                 {
                     nextInput = FastLSTMNetwork.getOutputActivation(networkSpec);
                 }
-                FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, nextInput);
+                FastLSTMNetwork.forwardPass(networkSpec, nextInput);
                 extrapolated[j] = nextInput[0];
 
             }
@@ -351,6 +341,36 @@ public class FastLSTMTester extends BaseLSTMTester {
 
 
     @Test
+    public void testRandomNumberGenerator()
+    {
+        long seed = 789656;
+        //
+        FastLSTMNetwork.setSeed(seed);
+        int iterations = 1000;
+        System.out.println("Generating random numbers with seed: " + seed);
+
+
+        double prev = seed;
+        double average = 0;
+        for (int i = 0;i < iterations;i++)
+        {
+            double ran = FastLSTMNetwork.randomLCG();
+            System.out.println("Random number is: " + ran);
+            Assert.assertTrue("Numbers aren't random enough! Current value equals previous: " + ran, ran != prev);
+            prev = ran;
+            Assert.assertTrue("Random numbers out of range: " + ran, ran < 1 && ran >=0);
+            average = (average*i + ran)/(i + 1);
+        }
+
+        // TODO: make this test more rigorous
+
+        double expectedAverage = 0.5;
+        double error = 0.01;
+        Assert.assertTrue("Random numbers are probably not uniformly distributed from 0 to 1.  Average after " + iterations + " steps is: " + average, Math.abs(expectedAverage - average)<error);
+
+    }
+
+    @Test
     public void testLearningSequenceWithResets()
     {
         String errorMessage = "Failed to create FastLSTM";
@@ -358,16 +378,13 @@ public class FastLSTMTester extends BaseLSTMTester {
         int outputNodeCode = 1;
         int numMemoryCellStates = 7;
 
-
-
         try
         {
             FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
 
             FastLSTMNetwork network = builder.build();
             float[] networkSpec = network._networkData;
-            int feedforward_link_count_idx = network.feedforward_link_count_idx;
-            int weight_update_link_count_idx = network.backprop_link_count_idx;
+
 
             float[] minErrorSequence = null;
             int j;
@@ -380,7 +397,8 @@ public class FastLSTMTester extends BaseLSTMTester {
 
 
             double conv=0;
-            FastLSTMNetwork.initializeAllWeights(networkSpec, weight_update_link_count_idx, 0.012F, -1, 1);
+            FastLSTMNetwork.setSeed(10);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
 
             errorMessage = "Failure to execute learning passes";
 
@@ -389,48 +407,55 @@ public class FastLSTMTester extends BaseLSTMTester {
             int numSteps = 50000;
             float prevError = 0, firstError=0, maxError = Float.MIN_VALUE, stepError;
             float[] nextInput, expectedNext, predictedNextValue;
-            double errorThreshold = 0.05, resetThreshold = 0.0001;
+            double errorThreshold = 0.1, resetThreshold = 0.0001;
             float minMaxError = Float.MAX_VALUE;
             float[] predicted = new float[expectedOutput.length];
+
+            boolean firstAfterReset = true;
+            int batchIndex = 0;
+            boolean roundExtrapolated = true;
             for (int i = 0;i < numSteps;i++)
             {
 
-                FastLSTMNetwork.resetWeightHistory(networkSpec, weight_update_link_count_idx);
-                FastLSTMNetwork.initializeNodeState(networkSpec);
+                FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+
                 maxError = Float.MIN_VALUE;
 
                 for (j = 0; j < sequence.length - 1;j++)
                 {
                     nextInput = new float[] {sequence[j]};
                     expectedNext = new float[] {expectedOutput[j]};
-                    FastLSTMNetwork.forwardPass(networkSpec, feedforward_link_count_idx, nextInput);
+                    FastLSTMNetwork.forwardPass(networkSpec, nextInput);
                     predictedNextValue = FastLSTMNetwork.getOutputActivation(networkSpec);
-                    stepError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, weight_update_link_count_idx, expectedNext);
+                    stepError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedNext);
                     predicted[j] = predictedNextValue[0];
                     stepErrors[j] = stepError;
                     maxError = Math.max(maxError, stepError);
                 }
-                if (i == 0)
+                if (firstAfterReset)
                 {
-                    firstError = maxError;
+                    batchIndex = i;
+                    firstAfterReset = false;
                     prevError = maxError;
-                    conv = maxError;
+
                 }
                 else
                 {
-                    conv = Math.abs(maxError - prevError)/maxError;
-                    prevError = maxError;
-                    if (conv < resetThreshold)
-                    {
-                        System.out.println("Reseting weights: " + i);
-                        FastLSTMNetwork.initializeAllWeights(networkSpec, weight_update_link_count_idx, 0.012F, -1, 1);
-                    }
-                    else if (maxError < errorThreshold)
+                    if (maxError < errorThreshold)
                     {
                         minErrorSequence = Arrays.copyOf(networkSpec, networkSpec.length);
                         System.out.println("Found solution at: " + i + " out: " + Arrays.toString(predicted));
                         break;
                     }
+                    conv = Math.abs(maxError - prevError)/maxError;
+                    prevError = maxError;
+                    if (conv < resetThreshold)
+                    {
+                        System.out.println("Reseting weights after batch size: " + (i - batchIndex));
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        firstAfterReset = true;
+                    }
+
 
                 }
 
@@ -441,35 +466,55 @@ public class FastLSTMTester extends BaseLSTMTester {
                     System.out.println("Found new min error! " + minMaxError);
                 }
 
-                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, weight_update_link_count_idx, 0.5F, 1.2F, 50, 0, updateType);
-                System.out.println(".*.*.*.*.* Finished Round: " + i + " max step error: " + maxError + " conv error: " + conv);
+                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                //System.out.println(".*.*.*.*.* Finished Round: " + i + " max step error: " + maxError + " conv error: " + conv);
 
             }
-            errorMessage = "Failed to improve upon initial error";
-            Assert.assertTrue(errorMessage, maxError < firstError);
+            errorMessage = "Failed to learn pattern";
+            Assert.assertTrue(errorMessage, maxError <= errorThreshold);
 
             int seedLength = 1;
 
             errorMessage = "Failed to extrapolate from seed = " + seedLength;
 
-            FastLSTMNetwork.resetWeightHistory(minErrorSequence, weight_update_link_count_idx);
-            FastLSTMNetwork.initializeNodeState(minErrorSequence);
-            float[] extrapolated = new float[sequence.length - 1];
+            FastLSTMNetwork.resetNetworkToInitialState(minErrorSequence);
+
+            // extrapolation
+            float[] extrapolated = new float[sequence.length];
+            float[] prediction = null;
             for (j = 0; j < sequence.length - 1;j++)
             {
-                if (j < seedLength)
+
+
+                if (j < seedLength || prediction == null)
                 {
                     nextInput = new float[] {sequence[j]};
+                    extrapolated[j] = nextInput[0];
+                    FastLSTMNetwork.forwardPass(minErrorSequence, nextInput);
+                    prediction = FastLSTMNetwork.getOutputActivation(minErrorSequence);
                 }
                 else
                 {
-                    nextInput = FastLSTMNetwork.getOutputActivation(minErrorSequence);
+                    if (roundExtrapolated)
+                        nextInput = new float[]{(float)network.roundingMapper.map(prediction[0], 0)};
+                    else
+                        nextInput = prediction;
+                    extrapolated[j] = nextInput[0];
+                    FastLSTMNetwork.forwardPass(minErrorSequence, nextInput);
+                    prediction = FastLSTMNetwork.getOutputActivation(minErrorSequence);
                 }
-                FastLSTMNetwork.forwardPass(minErrorSequence, feedforward_link_count_idx, nextInput);
-                extrapolated[j] = nextInput[0];
 
             }
+            if (prediction != null)
+            {
+                if (roundExtrapolated)
+                    extrapolated[sequence.length - 1] = (float)network.roundingMapper.map(prediction[0], 0);
+                else
+                    extrapolated[sequence.length - 1] = prediction[0];
+            }
 
+
+            System.out.println("Expected output: " + Arrays.toString(sequence));
             System.out.println("best extrapolation: " + Arrays.toString(extrapolated));
         }
         catch (Exception e)
