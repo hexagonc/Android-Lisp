@@ -964,12 +964,12 @@ public class NNTools {
     }
 
 
-    private static String[] arrayListToArray(ArrayList<String> input)
+    static String[] arrayListToArray(ArrayList<String> input)
     {
         return input.toArray(toArraySampleValue);
     }
 
-    private static ArrayList<String> arrayListToArray(String[] input)
+    static ArrayList<String> arrayListToArray(String[] input)
     {
         ArrayList<String> out = new ArrayList<String>();
         for (String s:input)

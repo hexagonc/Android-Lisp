@@ -13,4 +13,5 @@ public interface BufferManager {
     int tryClaimBestSlot();
     int getNumberOfClaimedSlots();
     String getSerializedForm();
+    void freeAllClaims();
 }
