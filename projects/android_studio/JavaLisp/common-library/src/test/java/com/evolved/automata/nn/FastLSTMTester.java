@@ -1,11 +1,15 @@
 package com.evolved.automata.nn;
 
+import com.evolved.automata.nn.grammar.GrammarStateMachine;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import static org.junit.Assert.assertTrue;
 /**
@@ -15,6 +19,72 @@ import static org.junit.Assert.assertTrue;
 
 
 public class FastLSTMTester extends BaseLSTMTester {
+
+
+
+    @Test
+    public void testStochasticStateMachine()
+    {
+        int maxLength = 20;
+        String error = "Failed to create Reber grammar";
+        try
+        {
+            GrammarStateMachine reber = makeReberGrammar();
+            error = "Failed to construct grammar";
+            int numSamples = 10;
+            String n;
+            for (int i = 0;i<numSamples;i++)
+            {
+                StringBuilder sample = new StringBuilder();
+                int j = 0;
+
+                while ((n = reber.next())!= null && j < maxLength)
+                {
+                    j++;
+                    sample.append(n);
+
+                }
+                reber.reset();
+                System.out.println(sample.toString());
+            }
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(e.getMessage(), false);
+        }
+    }
+
+    @Test
+    public void testStochasticEmbeddedStateMachine()
+    {
+
+        String error = "Failed to create Embedded Reber grammar";
+        try
+        {
+            GrammarStateMachine embedded = makeEmbeddedReber();
+            error = "Failed to construct grammar";
+            int numSamples = 10;
+            String n;
+            for (int i = 0;i<numSamples;i++)
+            {
+                StringBuilder sample = new StringBuilder();
+
+                while ((n = embedded.next())!=null)
+                {
+                    sample.append(n);
+                }
+                embedded.reset();
+                System.out.println(sample.toString());
+            }
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(e.getMessage(), false);
+        }
+    }
+
+
+
     @Test
     public void testInitialization()
     {
@@ -127,6 +197,347 @@ public class FastLSTMTester extends BaseLSTMTester {
 
 
 
+    @Test
+    public void testConstructTestTrainingSets()
+    {
+        String error = "Failure to create test sets";
+        try
+        {
+            int totalTries = 100;
+            int stepTries = 20;
+            int traingSetSize = 256;
+            int testSetSize = 256;
+
+            FastLSTMNetwork.setSeed(20);
+
+            GrammarStateMachine machine = makeEmbeddedReber();
+            Pair<HashSet<String>, HashSet<String>> trainingPair = getTrainingTestGrammarSets(machine, traingSetSize, testSetSize, totalTries, stepTries);
+            Assert.assertTrue(error, trainingPair != null);
+
+            HashSet<String> trainingSet = trainingPair.getLeft();
+            HashSet<String> testSet = trainingPair.getRight();
+
+            error = "Failed to create requested training set size";
+
+            Assert.assertTrue(error, trainingSet!=null && trainingSet.size() == traingSetSize);
+
+            error = "Failed to create requested test set size";
+
+            Assert.assertTrue(error, testSet!=null && testSet.size() == testSetSize);
+
+            error = "Failed to create disjoint data sets";
+
+
+            for (String key:trainingSet)
+            {
+                Assert.assertTrue(error, !testSet.contains(key));
+            }
+
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(error + ": " + e.toString(), false);
+        }
+    }
+
+
+
+
+    @Test
+    public void testSoftmaxAndCrossEntropy()
+    {
+        String error = "Failure to create test Reber string";
+
+        try
+        {
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            // Construct grammar
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            FastLSTMNetwork.setSeed(20);
+            GrammarStateMachine machine = makeReberGrammar();
+            String[] alphabet = ReberGrammar.ALPHABET;
+            String testString = getGrammarString(machine);
+            // ______________________________________________
+
+            FastLSTMNetwork.setSeed(System.currentTimeMillis());
+
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            // Converting test string to vector form
+            float[][] dataInput =  getOneHotStringRep(testString, alphabet);
+            // ______________________________________________
+
+
+
+            System.out.println("Testing with: " + testString);
+            error = "Failed to create proper vector string rep";
+            Assert.assertTrue(error, testString.equals(getStringFromOneHotVectorRep(dataInput, alphabet)));
+
+            ArrayList<Pair<Vector, Vector>> trainingPairs = getSequenceTrainingPairs(dataInput);
+
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            //          Constructing Reber Grammar Character generation Neural network with Softmax and Cross Entropy
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            int inputNodeCode = 7;
+            int outputNodeCode = 7;
+            int numMemoryCellStates = 10;
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
+            FastLSTMNetwork network = builder.build();
+
+            FastLSTMNetwork.setSeed(173545135270257L);
+            float[] networkSpec = network._networkData;
+            
+            // ______________________________________________
+
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            //          Set error parameters
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            float maxAcceptableError = 0.1F, maxSegmentError, convergenceFraction, resetThresholdFraction = 0.0001F, prevError =0 , segmentError;
+            float minTrainingError = Float.MAX_VALUE;
+            float trainingPassError = 0;
+            int maxLearningPasses = 10000;
+            boolean afterWeightInitialization = true;
+            float[] bestNetworkSoFar = networkSpec;
+            int lastResetTrainingPassIndex = 0;
+            // ______________________________________________
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            //      Standard Training pass parameters
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            Pair<Vector, Vector> trainingPair;
+            float[] trainingInput, expectedOutput, actualOutput;
+            long prevGeneratingSeed = FastLSTMNetwork.currentSeed, currentGeneratingSeed = prevGeneratingSeed;
+
+            error = "Failed at learning";
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            // Starting learning process
+            // +++++++++++++++++++++++++++++++++++++++++++++
+
+            System.out.println("Generating network from seed: " + currentGeneratingSeed);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
+            for (int trainingPass = 0; trainingPass < maxLearningPasses; trainingPass++)
+            {
+                FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                maxSegmentError = Float.MIN_VALUE;
+                for (int i = 0;i < trainingPairs.size();i++)
+                {
+                    trainingPair = trainingPairs.get(i);
+                    trainingInput = NNTools.getVectorDataAsFloat(trainingPair.getLeft());
+                    expectedOutput = NNTools.getVectorDataAsFloat(trainingPair.getRight());
+
+                    FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                    actualOutput = FastLSTMNetwork.getOutputActivation(networkSpec);
+                    segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                    maxSegmentError = Math.max(maxSegmentError, segmentError);
+                }
+
+                trainingPassError = maxSegmentError;
+                if (trainingPassError <= maxAcceptableError)
+                {
+                    segmentError = trainingPassError;
+                    System.out.println("Learned pattern with seed: " + currentGeneratingSeed + " and error: " + segmentError);
+                    break;
+                }
+
+                if (trainingPassError < minTrainingError)
+                {
+
+                    System.out.println("" + trainingPass + ") Found new lowest error! " + trainingPassError + " using seed: " + currentGeneratingSeed);
+                    bestNetworkSoFar = Arrays.copyOf(networkSpec, networkSpec.length);
+
+                    minTrainingError = trainingPassError;
+                }
+
+                // Update the weights from the calculated errors
+                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                if (afterWeightInitialization)
+                {
+                    afterWeightInitialization = false;
+                }
+                else
+                {
+                    convergenceFraction = Math.abs(prevError - trainingPassError)/trainingPassError;
+                    if (convergenceFraction < resetThresholdFraction)
+                    {
+                        System.out.println("Resetting weights after " + (trainingPass - lastResetTrainingPassIndex) + " failing steps");
+
+                        currentGeneratingSeed = FastLSTMNetwork.currentSeed;
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        afterWeightInitialization = true;
+                    }
+                }
+                prevError = trainingPassError;
+            }
+
+            if (trainingPassError > maxAcceptableError)
+            {
+                networkSpec = bestNetworkSoFar;
+            }
+
+            System.out.println("Testing extrapolation");
+            // ++++++++++++++++++++++++++++++++++++
+            //  Extrapolation
+            // ++++++++++++++++++++++++++++++++++++
+
+
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+            int extrapLength = dataInput.length;
+            float[][] extrapolatedOutput = new float[extrapLength][];
+
+            // initialize the extrapolation input to the initial value from the original input
+            // from this point forward, the network must predict the remaining inputs and the extrapInput
+            // will be set to the network's own generated output
+            float[] extrapInput = dataInput[0];
+
+            for (int i = 0; i < extrapLength - 1;i++)
+            {
+                extrapolatedOutput[i] = extrapInput;
+                FastLSTMNetwork.forwardPass(networkSpec, extrapInput);
+                extrapInput = FastLSTMNetwork.getOutputActivation(networkSpec);
+            }
+            extrapolatedOutput[extrapLength - 1] = extrapInput;
+
+            // +++++++++++++++++++
+            // Test the Extrapolated output string
+            String outputStringForm = getStringFromOneHotVectorRep(extrapolatedOutput, alphabet);
+            Assert.assertTrue("Failed to learn pattern: '" + outputStringForm + "'!='" + testString + "'", outputStringForm.equals(testString));
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(error + ": " + e.toString(), false);
+        }
+    }
+
+    /*
+    @Test
+    public void testTeachingReberGrammar()
+    {
+
+        String error = "Failure to create test Reber sets";
+        try
+        {
+            int totalTries = 100;
+            int stepTries = 20;
+            int traingSetSize = 256;
+            int testSetSize = 256;
+
+            FastLSTMNetwork.setSeed(20);
+
+            //GrammarStateMachine machine = makeEmbeddedReber();
+            GrammarStateMachine machine = makeReberGrammar();
+            String[] alphabet = ReberGrammar.ALPHABET;
+
+            Pair<HashSet<String>, HashSet<String>> trainingPair = getTrainingTestGrammarSets(machine, traingSetSize, testSetSize, totalTries, stepTries);
+
+            Assert.assertTrue(error, trainingPair != null);
+            HashSet<String> trainingSet = trainingPair.getLeft();
+            HashSet<String> testSet = trainingPair.getRight();
+
+
+            int inputNodeCode = 7;
+            int outputNodeCode = 7;
+            int numMemoryCellStates = 20;
+
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
+            FastLSTMNetwork network = builder.build();
+
+            float[] networkData = network._networkData;
+
+            FastLSTMNetwork.setSeed(25);
+
+            // *************************************
+            // Training round
+            // *************************************
+
+            int maxTrainingIterations = 40000; // !
+            int traininStep = 0;
+
+            for (;traininStep < maxTrainingIterations; traininStep++)
+            {
+                for (String trainingExample: trainingSet)
+                {
+                    float[][] vectorTrainingForm = getOneHotStringRep(trainingExample, alphabet);
+                    FastLSTMNetwork.in
+                }
+
+
+            }
+
+
+
+
+
+
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(error + ": " + e.toString(), false);
+        }
+    }
+
+
+    @Test
+    public void testTeachingEmbeddedReberGrammar()
+    {
+
+        String error = "Failure to create test sets";
+        try
+        {
+            int totalTries = 100;
+            int stepTries = 20;
+            int traingSetSize = 256;
+            int testSetSize = 256;
+
+            FastLSTMNetwork.setSeed(20);
+
+            GrammarStateMachine machine = makeEmbeddedReber();
+            //GrammarStateMachine machine = makeReberGrammar();
+            Pair<HashSet<String>, HashSet<String>> trainingPair = getTrainingTestGrammarSets(machine, traingSetSize, testSetSize, totalTries, stepTries);
+
+
+            Assert.assertTrue(error, trainingPair != null);
+
+            error = "Failed to train network";
+            HashSet<String> trainingSet = trainingPair.getLeft();
+            HashSet<String> testSet = trainingPair.getRight();
+
+
+            int inputNodeCode = 7;
+            int outputNodeCode = 7;
+            int numMemoryCellStates = 20;
+
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
+            FastLSTMNetwork network = builder.build();
+
+            float[] networkData = network._networkData;
+
+            FastLSTMNetwork.setSeed(25);
+
+
+
+
+
+
+
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(error + ": " + e.toString(), false);
+        }
+    }
+
+*/
     @Test
     public void testWeightUpdates()
     {
@@ -370,6 +781,8 @@ public class FastLSTMTester extends BaseLSTMTester {
 
     }
 
+
+
     @Test
     public void testLearningSequenceWithResets()
     {
@@ -522,5 +935,9 @@ public class FastLSTMTester extends BaseLSTMTester {
             Assert.assertTrue(e + "\n" + errorMessage, false);
         }
     }
+
+
+
+
 
 }

@@ -1017,6 +1017,15 @@ public class NNTools {
         return o;
     }
 
+    public static float[] getVectorDataAsFloat(Vector vector)
+    {
+        double[] v = vector.raw();
+        float[] o = new float[v.length];
+        for (int i = 0;i < v.length;i++)
+            o[i] = (float)v[i];
+        return o;
+    }
+
     static Vector[] getVector(double[][] data)
     {
         Vector[] out = new Vector[data.length];

@@ -198,10 +198,11 @@ public class FastLSTMNetwork extends LSTMNetwork{
             }
             lstm.weightParameters = weightParameters;
             lstm.biasSpecMap = biasSpecMap;
-            lstm.initialize();
-            lstm.weightParameters = weightParameters;
             lstm.outputErrorFunctionId = outputErrorFunctionId;
             lstm.outputActivationFunctionId = outputActivationFunctionId;
+            lstm.initialize();
+            lstm.weightParameters = weightParameters;
+
             return lstm;
         }
 
@@ -324,7 +325,7 @@ public class FastLSTMNetwork extends LSTMNetwork{
                         error +=nodeError*errorMask;
 
                     }
-                    return error;
+                    return -1*error;
                 }
 
             }

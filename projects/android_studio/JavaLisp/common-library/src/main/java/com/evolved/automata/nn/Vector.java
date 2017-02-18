@@ -22,6 +22,14 @@ public class Vector {
 
     }
 
+    public Vector(float[] value)
+    {
+        v = new double[value.length];
+        for (int i = 0;i < value.length;i++)
+            v[i] = value[i];
+
+    }
+
     public Vector(int dimen)
     {
         v = new double[dimen];
