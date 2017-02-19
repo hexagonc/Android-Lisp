@@ -47,6 +47,12 @@ public class BaseLSTMTester {
             return CharacterNode.make(token);
         }
 
+        public static ReberGrammar from(int v)
+        {
+            return ReberGrammar.values()[v];
+        }
+
+
         int[] getTransitions()
         {
             int[] nextStates = new int[next.length];

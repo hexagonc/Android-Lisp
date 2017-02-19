@@ -325,6 +325,10 @@ public class FastLSTMNetwork extends LSTMNetwork{
                         error +=nodeError*errorMask;
 
                     }
+                    if (error != error)
+                    {
+                        throw new RuntimeException("Invalid data");
+                    }
                     return -1*error;
                 }
 
@@ -448,7 +452,19 @@ public class FastLSTMNetwork extends LSTMNetwork{
                 }
             }
 
-            return (float)(iValue/sum);
+
+
+            if (sum == 0)
+            { // this probably means numerical underflow somewhere.  Will have to treat all possibilities as the same
+                return 1/length;
+            }
+            float out = (float)(iValue/sum);
+            if (out != out)
+            {
+                throw new RuntimeException("NaN exception");
+            }
+
+            return out;
         }
     };
 

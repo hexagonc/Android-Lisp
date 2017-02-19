@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 
 import static org.junit.Assert.assertTrue;
 /**
@@ -290,7 +291,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             FastLSTMNetwork.setSeed(173545135270257L);
             float[] networkSpec = network._networkData;
-            
+
             // ______________________________________________
 
 
@@ -415,9 +416,265 @@ public class FastLSTMTester extends BaseLSTMTester {
         }
     }
 
-    /*
+
     @Test
     public void testTeachingReberGrammar()
+    {
+
+        String error = "Failure to create test Reber sets";
+        try
+        {
+            int totalTries = 100;
+            int stepTries = 20;
+            int traingSetSize = 50;
+            int testSetSize = 50;
+
+            FastLSTMNetwork.setSeed(2053116556161410L);
+
+
+            GrammarStateMachine machine = makeReberGrammar();
+            String[] alphabet = ReberGrammar.ALPHABET;
+
+            Pair<HashSet<String>, HashSet<String>> trainingPair = getTrainingTestGrammarSets(machine, traingSetSize, testSetSize, totalTries, stepTries);
+
+            Assert.assertTrue(error, trainingPair != null);
+            HashSet<String> trainingSet = trainingPair.getLeft();
+            HashSet<String> testSet = trainingPair.getRight();
+
+
+            int inputNodeCode = 7;
+            int outputNodeCode = 7;
+            int numMemoryCellStates = 17;
+
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
+            FastLSTMNetwork network = builder.build();
+
+            float[] networkSpec = network._networkData;
+
+            //FastLSTMNetwork.setSeed(25);
+            FastLSTMNetwork.setSeed(1487434922904L);
+
+            // *************************************
+            // Overall training parameters
+            // *************************************
+
+            int maxTrainingIterations = 20000; // !
+            int trainingStep = 0;
+            float maxAverageSequenceError = 1.0F;
+            float learningRate = 0.1F; // overriding default learning rate
+            FastLSTMNetwork.setLearningRate(networkSpec, learningRate);
+            LinkedList<Float> errorHistory = new LinkedList<Float>();
+            float progressFraction = 0.05F;
+            int progressIndicatorSteps = (int)(progressFraction*maxTrainingIterations);
+
+
+            float averageOverallSegmentError = 0, prevAverageOverallSegmentError = 0;
+            long totalCount = 0;
+            float convergenceFraction, resetThresholdFraction = 0.0001F, prevError = 0;
+            boolean afterWeightInitialization = true;
+            boolean sequencesLessThanErrorThresholdP = true;
+            int lastResetIndex = 0;
+            //LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.DEFAULT;
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+            float minOverallAverageError = Float.MAX_VALUE;
+            float[] bestShorttermNetwork = networkSpec;
+            long currentGeneratingSeed = FastLSTMNetwork.currentSeed;
+
+            // *************************************
+            // Sequence Parameters
+            // *************************************
+
+            float averageSegmentError = 0;
+            ArrayList<Pair<Vector, Vector>> inputOutputPairs;
+            float[][] vectorizedReberTrainingSequence;
+            Pair<Vector, Vector> inputOutputPair;
+
+            // *************************************
+            // Segment Parameters
+            // *************************************
+            float segmentError;
+            float[] expectedOutput, trainingInput;
+
+            // ______________________________________________
+
+
+
+            error = "Failed at learning";
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            // Starting learning process
+            // +++++++++++++++++++++++++++++++++++++++++++++
+
+            System.out.println("Generating network from seed: " + currentGeneratingSeed);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
+
+            for (trainingStep = 0; trainingStep < maxTrainingIterations; trainingStep++)
+            {
+                sequencesLessThanErrorThresholdP = true;
+                totalCount = 0;
+                averageOverallSegmentError = 0;
+
+                for (String trainingReberString:trainingSet)
+                {
+                    FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                    //System.out.println("Trying to learn: " + trainingReberString);
+                    vectorizedReberTrainingSequence = getOneHotStringRep(trainingReberString, alphabet);
+                    inputOutputPairs = getSequenceTrainingPairs(vectorizedReberTrainingSequence);
+
+                    averageSegmentError = 0;
+                    for (int i = 0;i < inputOutputPairs.size();i++)
+                    {
+                        inputOutputPair = inputOutputPairs.get(i);
+                        trainingInput = NNTools.getVectorDataAsFloat(inputOutputPair.getLeft());
+                        expectedOutput = NNTools.getVectorDataAsFloat(inputOutputPair.getRight());
+
+                        FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                        FastLSTMNetwork.getOutputActivation(networkSpec);
+                        segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                        averageSegmentError = (i * averageSegmentError + segmentError)/(i + 1);
+                        averageOverallSegmentError = (totalCount * averageOverallSegmentError + segmentError)/(totalCount + 1);
+                        totalCount++;
+                    }
+
+                    sequencesLessThanErrorThresholdP = sequencesLessThanErrorThresholdP && (averageSegmentError <= maxAverageSequenceError);
+                }
+
+                if (sequencesLessThanErrorThresholdP)
+                {
+                    System.out.println("Successfully learned training set!  Average segment error: " + averageOverallSegmentError + " and seed: " + currentGeneratingSeed);
+                    break;
+                }
+
+                if (averageOverallSegmentError < minOverallAverageError)
+                {
+                    minOverallAverageError = averageOverallSegmentError;
+                    System.out.println("Found new best overall error! " + minOverallAverageError + " using seed: " + currentGeneratingSeed);
+                    bestShorttermNetwork = Arrays.copyOf(networkSpec, networkSpec.length);
+                }
+
+                if (afterWeightInitialization)
+                {
+                    afterWeightInitialization = false;
+                    prevAverageOverallSegmentError = averageOverallSegmentError;
+                    FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                }
+                else
+                {
+                    convergenceFraction = Math.abs(averageOverallSegmentError - prevAverageOverallSegmentError)/averageOverallSegmentError;
+                    System.out.println(trainingStep + ") average total error: " + averageOverallSegmentError + " convergence: " + convergenceFraction);
+                    int resetInterval = (trainingStep - lastResetIndex);
+                    boolean insufficientProgress = (progressIndicatorSteps < resetInterval) && averageOverallSegmentError >= minOverallAverageError;
+                    if (insufficientProgress  || convergenceFraction < resetThresholdFraction || averageOverallSegmentError != averageOverallSegmentError)
+                    {
+                        if (insufficientProgress)
+                        {
+                            System.out.print("Insufficient progress after " + progressIndicatorSteps + " steps.  Current average error: " + averageOverallSegmentError + " best average error: " + minOverallAverageError);
+                        }
+                        System.out.println("Resetting weights after " + (trainingStep - lastResetIndex) + " failing steps. " + averageOverallSegmentError);
+                        lastResetIndex = trainingStep;
+                        currentGeneratingSeed = FastLSTMNetwork.currentSeed;
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        afterWeightInitialization = true;
+                        prevAverageOverallSegmentError = 0;
+                    }
+                    else
+                    {
+                        // Update the weights from the calculated errors
+                        FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                        prevAverageOverallSegmentError = averageOverallSegmentError;
+                    }
+                }
+
+            }
+
+            if (!sequencesLessThanErrorThresholdP)
+            {
+                networkSpec = bestShorttermNetwork;
+                System.out.println("Failed to learn training set but testing with best short-term network");
+            }
+
+            // ******************************************
+            // Testing
+            // See if LSTM can generate consistent
+            // ******************************************
+            float[][] vectorizedReberTestSequence;
+            float[] predictedNext;
+
+            float maxAcceptabledPredictionDiff = 0.05F;
+            float[] currentVectorizedCharacter, nextVectorizedCharacter;
+            float maxPredictedValue;
+            int actualNextCharIndex;
+            int predictedNextCharIndex;
+
+            int steps = 0, totalSteps = 0;
+            float averageDifference = 0, totalAverage = 0;
+            for (String testReberString:testSet)
+            {
+                steps = 0;
+                System.out.println("Testing against: " + testReberString);
+                FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                vectorizedReberTestSequence = getOneHotStringRep(testReberString, alphabet);
+
+                int extrapLength = vectorizedReberTestSequence.length;
+
+                for (int i = 0;i < extrapLength - 1;i++)
+                {
+                    System.out.println("History: " + testReberString.substring(0, i+1));
+                    currentVectorizedCharacter = vectorizedReberTestSequence[i];
+                    nextVectorizedCharacter = vectorizedReberTestSequence[i + 1];
+                    FastLSTMNetwork.forwardPass(networkSpec, currentVectorizedCharacter);
+                    predictedNext = FastLSTMNetwork.getOutputActivation(networkSpec);
+                    maxPredictedValue = Float.MIN_VALUE;
+                    actualNextCharIndex = 0;
+                    predictedNextCharIndex = 0;
+                    for (int j = 0;j<predictedNext.length;j++)
+                    {
+                        if (nextVectorizedCharacter[j] == 1)
+                            actualNextCharIndex = j;
+                        if (predictedNext[j] > maxPredictedValue)
+                        {
+                            maxPredictedValue = predictedNext[j];
+                            predictedNextCharIndex = j;
+                        }
+
+                    }
+
+                    float predictionDifference = Math.abs(maxPredictedValue - predictedNext[actualNextCharIndex]);
+
+                    averageDifference = (averageDifference*steps + predictionDifference)/(steps + 1);
+                    totalAverage = (totalAverage * totalSteps + totalAverage)/(totalSteps + 1);
+                    System.out.println("Prediction difference: " + predictionDifference + " distrib: " + Arrays.toString(predictedNext));
+                    //
+                    steps++;
+                    totalSteps++;
+                }
+
+
+                System.out.println("Finished trying to predict [" + testReberString + "] with average difference of: " + averageDifference);
+
+
+
+            }
+            Assert.assertTrue("Failed to generalize to test set, average prediction error: " + totalAverage + " max allowed: " + maxAcceptabledPredictionDiff, totalAverage < maxAcceptabledPredictionDiff);
+            System.out.println("Finished all patterns.  Total average difference: " + totalAverage);
+
+
+
+
+
+        }
+        catch (Exception e)
+        {
+            Assert.assertTrue(error + ": " + e.toString(), false);
+        }
+    }
+
+
+    @Test
+    public void testTeachingEmbeddedReberGrammar()
     {
 
         String error = "Failure to create test Reber sets";
@@ -428,10 +685,10 @@ public class FastLSTMTester extends BaseLSTMTester {
             int traingSetSize = 256;
             int testSetSize = 256;
 
-            FastLSTMNetwork.setSeed(20);
+            FastLSTMNetwork.setSeed(25);
 
-            //GrammarStateMachine machine = makeEmbeddedReber();
-            GrammarStateMachine machine = makeReberGrammar();
+
+            GrammarStateMachine machine = makeEmbeddedReber();
             String[] alphabet = ReberGrammar.ALPHABET;
 
             Pair<HashSet<String>, HashSet<String>> trainingPair = getTrainingTestGrammarSets(machine, traingSetSize, testSetSize, totalTries, stepTries);
@@ -450,28 +707,225 @@ public class FastLSTMTester extends BaseLSTMTester {
             builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
             FastLSTMNetwork network = builder.build();
 
-            float[] networkData = network._networkData;
+            float[] networkSpec = network._networkData;
 
-            FastLSTMNetwork.setSeed(25);
+
+            // good seeds
+            // 23578608053233
+            // -154733259603855
+            //FastLSTMNetwork.setSeed(L);
+            FastLSTMNetwork.setSeed(System.currentTimeMillis());
 
             // *************************************
-            // Training round
+            // Overall training parameters
             // *************************************
 
-            int maxTrainingIterations = 40000; // !
-            int traininStep = 0;
+            int maxTrainingIterations = 20000; // !
+            int trainingStep = 0;
+            float maxAverageSequenceError = 0.7F;
+            float learningRate = 0.1F; // overriding default learning rate
+            FastLSTMNetwork.setLearningRate(networkSpec, learningRate);
+            LinkedList<Float> errorHistory = new LinkedList<Float>();
+            float progressFraction = 0.05F;
+            int progressIndicatorSteps = (int)(progressFraction*maxTrainingIterations);
 
-            for (;traininStep < maxTrainingIterations; traininStep++)
+
+            float averageOverallSegmentError = 0, prevAverageOverallSegmentError = 0;
+            long totalCount = 0;
+            float convergenceFraction, resetThresholdFraction = 0.0001F, prevError = 0;
+            boolean afterWeightInitialization = true;
+            boolean sequencesLessThanErrorThresholdP = true;
+            int lastResetIndex = 0;
+            //LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.DEFAULT;
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+            float minOverallAverageError = Float.MAX_VALUE;
+            float[] bestShorttermNetwork = networkSpec;
+            long currentGeneratingSeed = FastLSTMNetwork.currentSeed;
+
+            // *************************************
+            // Sequence Parameters
+            // *************************************
+
+            float averageSegmentError = 0;
+            ArrayList<Pair<Vector, Vector>> inputOutputPairs;
+            float[][] vectorizedReberTrainingSequence;
+            Pair<Vector, Vector> inputOutputPair;
+
+            // *************************************
+            // Segment Parameters
+            // *************************************
+            float segmentError;
+            float[] expectedOutput, trainingInput;
+
+            // ______________________________________________
+
+
+
+            error = "Failed at learning";
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            // Starting learning process
+            // +++++++++++++++++++++++++++++++++++++++++++++
+
+            System.out.println("Generating network from seed: " + currentGeneratingSeed);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
+
+            for (trainingStep = 0; trainingStep < maxTrainingIterations; trainingStep++)
             {
-                for (String trainingExample: trainingSet)
+                sequencesLessThanErrorThresholdP = true;
+                totalCount = 0;
+                averageOverallSegmentError = 0;
+
+                for (String trainingReberString:trainingSet)
                 {
-                    float[][] vectorTrainingForm = getOneHotStringRep(trainingExample, alphabet);
-                    FastLSTMNetwork.in
+                    FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                    //System.out.println("Trying to learn: " + trainingReberString);
+                    vectorizedReberTrainingSequence = getOneHotStringRep(trainingReberString, alphabet);
+                    inputOutputPairs = getSequenceTrainingPairs(vectorizedReberTrainingSequence);
+
+                    averageSegmentError = 0;
+                    for (int i = 0;i < inputOutputPairs.size();i++)
+                    {
+                        inputOutputPair = inputOutputPairs.get(i);
+                        trainingInput = NNTools.getVectorDataAsFloat(inputOutputPair.getLeft());
+                        expectedOutput = NNTools.getVectorDataAsFloat(inputOutputPair.getRight());
+
+                        FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                        FastLSTMNetwork.getOutputActivation(networkSpec);
+                        segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                        averageSegmentError = (i * averageSegmentError + segmentError)/(i + 1);
+                        averageOverallSegmentError = (totalCount * averageOverallSegmentError + segmentError)/(totalCount + 1);
+                        totalCount++;
+                    }
+
+                    sequencesLessThanErrorThresholdP = sequencesLessThanErrorThresholdP && (averageSegmentError <= maxAverageSequenceError);
                 }
 
+                //if (averageOverallSegmentError < maxAverageSequenceError)
+                if (sequencesLessThanErrorThresholdP)
+                {
+                    System.out.println("Successfully learned training set!  Average segment error: " + averageOverallSegmentError + " and seed: " + currentGeneratingSeed);
+                    break;
+                }
+
+                if (averageOverallSegmentError < minOverallAverageError)
+                {
+                    minOverallAverageError = averageOverallSegmentError;
+                    System.out.println("Found new best overall error! " + minOverallAverageError + " using seed: " + currentGeneratingSeed);
+                    bestShorttermNetwork = Arrays.copyOf(networkSpec, networkSpec.length);
+                }
+
+                if (afterWeightInitialization)
+                {
+                    afterWeightInitialization = false;
+                    prevAverageOverallSegmentError = averageOverallSegmentError;
+                    FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                }
+                else
+                {
+                    convergenceFraction = Math.abs(averageOverallSegmentError - prevAverageOverallSegmentError)/averageOverallSegmentError;
+                    System.out.println(trainingStep + ") average total error: " + averageOverallSegmentError + " convergence: " + convergenceFraction);
+                    int resetInterval = (trainingStep - lastResetIndex);
+                    boolean insufficientProgress = (progressIndicatorSteps < resetInterval) && averageOverallSegmentError >= minOverallAverageError;
+                    if (insufficientProgress  || convergenceFraction < resetThresholdFraction || averageOverallSegmentError != averageOverallSegmentError)
+                    {
+                        if (insufficientProgress)
+                        {
+                            System.out.print("Insufficient progress after " + progressIndicatorSteps + " steps.  Current average error: " + averageOverallSegmentError + " best average error: " + minOverallAverageError);
+                        }
+                        System.out.println("Resetting weights after " + (trainingStep - lastResetIndex) + " failing steps. " + averageOverallSegmentError);
+                        lastResetIndex = trainingStep;
+                        currentGeneratingSeed = FastLSTMNetwork.currentSeed;
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        afterWeightInitialization = true;
+                        prevAverageOverallSegmentError = 0;
+                    }
+                    else
+                    {
+                        // Update the weights from the calculated errors
+                        FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                        prevAverageOverallSegmentError = averageOverallSegmentError;
+                    }
+                }
 
             }
 
+            if (!sequencesLessThanErrorThresholdP)
+            {
+                networkSpec = bestShorttermNetwork;
+                System.out.println("Failed to learn training set but testing with best short-term network");
+            }
+
+            // ******************************************
+            // Testing
+            // See if LSTM can generate consistent
+            // ******************************************
+            float[][] vectorizedReberTestSequence;
+            float[] predictedNext;
+
+            float maxAcceptabledPredictionDiff = 0.05F;
+            float[] currentVectorizedCharacter, nextVectorizedCharacter;
+            float maxPredictedValue;
+            int actualNextCharIndex;
+            int predictedNextCharIndex;
+
+            int steps = 0, totalSteps = 0;
+            float averageDifference = 0, totalAverage = 0;
+            for (String testReberString:testSet)
+            {
+                steps = 0;
+                System.out.println("Testing against: " + testReberString);
+                FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                vectorizedReberTestSequence = getOneHotStringRep(testReberString, alphabet);
+
+                int extrapLength = vectorizedReberTestSequence.length;
+
+                for (int i = 0;i < extrapLength - 1;i++)
+                {
+                    System.out.println("History: " + testReberString.substring(0, i+1));
+                    currentVectorizedCharacter = vectorizedReberTestSequence[i];
+                    nextVectorizedCharacter = vectorizedReberTestSequence[i + 1];
+                    FastLSTMNetwork.forwardPass(networkSpec, currentVectorizedCharacter);
+                    predictedNext = FastLSTMNetwork.getOutputActivation(networkSpec);
+                    maxPredictedValue = Float.MIN_VALUE;
+                    actualNextCharIndex = 0;
+                    predictedNextCharIndex = 0;
+                    for (int j = 0;j<predictedNext.length;j++)
+                    {
+                        if (nextVectorizedCharacter[j] == 1)
+                            actualNextCharIndex = j;
+                        if (predictedNext[j] > maxPredictedValue)
+                        {
+                            maxPredictedValue = predictedNext[j];
+                            predictedNextCharIndex = j;
+                        }
+
+                    }
+
+                    float predictionDifference = Math.abs(maxPredictedValue - predictedNext[actualNextCharIndex]);
+
+                    averageDifference = (averageDifference*steps + predictionDifference)/(steps + 1);
+                    totalAverage = (totalAverage * totalSteps + totalAverage)/(totalSteps + 1);
+                    System.out.println("Prediction difference: " + predictionDifference + " distrib: " + Arrays.toString(predictedNext));
+
+                    //  second to last character is dependent in the second character.
+                    // This must be predicted exactly in order to learning to be considered a success
+                    if (extrapLength - 3 == i)
+                    {
+
+                        Assert.assertTrue("Failed to learn essential feature of embedded Reber grammar.  Should have predicted: " + testReberString.substring(i+1, i+2) + " instead predicted: " + Arrays.toString(predictedNext) + " with error: " + predictionDifference, predictionDifference == 0);
+                    }
+                    steps++;
+                    totalSteps++;
+                }
+
+
+                System.out.println("Finished trying to predict [" + testReberString + "] with average difference of: " + averageDifference);
+
+            }
+            Assert.assertTrue("Failed to generalize to embedded Reber test set, average prediction error: " + totalAverage + " max allowed: " + maxAcceptabledPredictionDiff, totalAverage < maxAcceptabledPredictionDiff);
+            System.out.println("Finished all patterns.  Total average difference: " + totalAverage);
 
 
 
@@ -480,64 +934,12 @@ public class FastLSTMTester extends BaseLSTMTester {
         }
         catch (Exception e)
         {
+            e.printStackTrace();
             Assert.assertTrue(error + ": " + e.toString(), false);
         }
     }
 
 
-    @Test
-    public void testTeachingEmbeddedReberGrammar()
-    {
-
-        String error = "Failure to create test sets";
-        try
-        {
-            int totalTries = 100;
-            int stepTries = 20;
-            int traingSetSize = 256;
-            int testSetSize = 256;
-
-            FastLSTMNetwork.setSeed(20);
-
-            GrammarStateMachine machine = makeEmbeddedReber();
-            //GrammarStateMachine machine = makeReberGrammar();
-            Pair<HashSet<String>, HashSet<String>> trainingPair = getTrainingTestGrammarSets(machine, traingSetSize, testSetSize, totalTries, stepTries);
-
-
-            Assert.assertTrue(error, trainingPair != null);
-
-            error = "Failed to train network";
-            HashSet<String> trainingSet = trainingPair.getLeft();
-            HashSet<String> testSet = trainingPair.getRight();
-
-
-            int inputNodeCode = 7;
-            int outputNodeCode = 7;
-            int numMemoryCellStates = 20;
-
-
-            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
-            builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
-            FastLSTMNetwork network = builder.build();
-
-            float[] networkData = network._networkData;
-
-            FastLSTMNetwork.setSeed(25);
-
-
-
-
-
-
-
-        }
-        catch (Exception e)
-        {
-            Assert.assertTrue(error + ": " + e.toString(), false);
-        }
-    }
-
-*/
     @Test
     public void testWeightUpdates()
     {
