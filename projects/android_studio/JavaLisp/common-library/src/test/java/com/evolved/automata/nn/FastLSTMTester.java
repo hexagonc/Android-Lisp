@@ -940,6 +940,394 @@ public class FastLSTMTester extends BaseLSTMTester {
     }
 
 
+
+
+
+    @Test
+    public void testErrorMasks()
+    {
+
+        String errorMessage = "failed to create noisy input";
+        try
+        {
+            float[][] testInput = new float[][]{{1, 0}, {0, 1}, {1, 0} , {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}};
+
+            int inputWidth = testInput[0].length;
+            int noiseWidth = 4;
+            FastLSTMNetwork.setSeed(10);
+
+            float[] errorMask = createPrefixErrorMask(inputWidth, noiseWidth);
+            float[][] noisyComplexInput = addNoiseBits(testInput, 4, true, true);
+
+            int totalInputWidth = inputWidth + noiseWidth;
+            int inputNodeCode = totalInputWidth;
+            int outputNodeCode = totalInputWidth;
+            int numMemoryCellStates = 10;
+
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            FastLSTMNetwork network = builder.build();
+
+            float[] networkSpec = network._networkData;
+
+            errorMessage = "Failed to learn original pattern";
+
+            // *****************************************
+            // Standard Explicit learning strategy
+            // *****************************************
+            float maxAcceptableError = 0.1F, maxSegmentError, convergenceFraction, resetThresholdFraction = 0.0001F, prevError =0 , segmentError;
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+            float trainingPassError = 0;
+            int initialLearningPassCount = 0;
+            int simplifiedLearningPassCount = 0;
+            boolean afterWeightInitialization = true;
+            float[] complexTrainedNetwork = networkSpec;
+            int lastResetTrainingPassIndex = 0;
+            ArrayList<Pair<Vector, Vector>> trainingPairs = getSequenceTrainingPairs(noisyComplexInput);
+            // ______________________________________________
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            //      Standard Training pass parameters
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            Pair<Vector, Vector> trainingPair;
+            float[] trainingInput, expectedOutput, actualOutput;
+
+            errorMessage = "Failed to have easier time learning simplified pattern";
+
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            // Starting learning process
+            // +++++++++++++++++++++++++++++++++++++++++++++
+            FastLSTMNetwork.setSeed(System.currentTimeMillis());
+            float averageSimplifiedLearningSteps = 0;
+            int numStages = 100;
+            outer: for (int testStage = 0; testStage < numStages;testStage++)
+            {
+                switch (testStage + 1)
+                {
+                    case 1: // learn the complex pattern
+                    {
+                        System.out.println("Trying to learning initial, complex pattern");
+                        trainingPairs = getSequenceTrainingPairs(noisyComplexInput);
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        afterWeightInitialization = true;
+                        int maxInitialLearningPasses = 20000;
+                        for (initialLearningPassCount = 0; initialLearningPassCount < maxInitialLearningPasses; initialLearningPassCount++)
+                        {
+                            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                            maxSegmentError = Float.MIN_VALUE;
+                            for (int i = 0;i < trainingPairs.size();i++)
+                            {
+                                trainingPair = trainingPairs.get(i);
+                                trainingInput = NNTools.getVectorDataAsFloat(trainingPair.getLeft());
+                                expectedOutput = NNTools.getVectorDataAsFloat(trainingPair.getRight());
+
+                                FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                                FastLSTMNetwork.getOutputActivation(networkSpec);
+                                segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                                maxSegmentError = Math.max(maxSegmentError, segmentError);
+                            }
+
+                            trainingPassError = maxSegmentError;
+                            if (trainingPassError <= maxAcceptableError)
+                            {
+
+                                System.out.println("Learned noisy pattern after " + initialLearningPassCount + " steps and error: " + trainingPassError);
+                                complexTrainedNetwork = Arrays.copyOf(networkSpec, networkSpec.length);
+                                continue outer;
+                            }
+
+                            // Update the weights from the calculated errors
+                            FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                            if (afterWeightInitialization)
+                            {
+                                afterWeightInitialization = false;
+                            }
+                            else
+                            {
+                                convergenceFraction = Math.abs(prevError - trainingPassError)/trainingPassError;
+                                if (convergenceFraction < resetThresholdFraction)
+                                {
+                                    System.out.println(" ******** Resetting weights after " + (initialLearningPassCount - lastResetTrainingPassIndex) + " failing steps");
+                                    lastResetTrainingPassIndex = initialLearningPassCount;
+                                    FastLSTMNetwork.initializeAllWeights(networkSpec);
+                                    afterWeightInitialization = true;
+                                }
+                            }
+                            prevError = trainingPassError;
+                        }
+                        System.out.println("Failed to learn noisy pattern after " + initialLearningPassCount + " steps and error: " + trainingPassError);
+                    }
+                    break;
+                    default:
+                    {
+
+                        float[][] ignorableNoisyComplexInput;
+                        if (testStage == numStages - 1)
+                        {
+                            // For the last stage retrain the network on the initial input as the
+                            // complex testing stage, but ignoring noise bits
+                            ignorableNoisyComplexInput = noisyComplexInput;
+                            System.out.println("Trying to relearn original input while ignoring noise bits");
+                        }
+                        else
+                        {
+                            System.out.println("Trying to learning simplified pattern");
+                            ignorableNoisyComplexInput = addNoiseBits(testInput, 4, true, true);
+                        }
+                        trainingPairs = getSequenceTrainingPairs(ignorableNoisyComplexInput);
+                        FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
+                        FastLSTMNetwork.setSeed(System.currentTimeMillis());
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        afterWeightInitialization = true;
+                        int maxMaskedLearningPasses = 1000;
+                        for (simplifiedLearningPassCount = 0; simplifiedLearningPassCount < maxMaskedLearningPasses; simplifiedLearningPassCount++)
+                        {
+                            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                            maxSegmentError = Float.MIN_VALUE;
+                            for (int i = 0;i < trainingPairs.size();i++)
+                            {
+                                trainingPair = trainingPairs.get(i);
+                                trainingInput = NNTools.getVectorDataAsFloat(trainingPair.getLeft());
+                                expectedOutput = NNTools.getVectorDataAsFloat(trainingPair.getRight());
+
+                                FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                                FastLSTMNetwork.getOutputActivation(networkSpec);
+                                segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                                maxSegmentError = Math.max(maxSegmentError, segmentError);
+                            }
+
+                            trainingPassError = maxSegmentError;
+                            if (trainingPassError <= maxAcceptableError)
+                            {
+
+                                System.out.println("Learned simplified pattern after " + simplifiedLearningPassCount + " steps and error: " + trainingPassError);
+
+                                averageSimplifiedLearningSteps = (averageSimplifiedLearningSteps * (testStage - 1) + simplifiedLearningPassCount)/ testStage;
+
+                                if (testStage == numStages - 1)
+                                {
+                                    Assert.assertTrue("Failed to learn complex input in fewer than original steps even while ignoring noise bits", simplifiedLearningPassCount < initialLearningPassCount);
+                                }
+                                continue outer;
+                            }
+
+                            // Update the weights from the calculated errors
+                            FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                            if (afterWeightInitialization)
+                            {
+                                afterWeightInitialization = false;
+                            }
+                            else
+                            {
+                                convergenceFraction = Math.abs(prevError - trainingPassError)/trainingPassError;
+                                if (convergenceFraction < resetThresholdFraction)
+                                {
+                                    System.out.println("<><><><><><><><> Resetting weights after " + (simplifiedLearningPassCount - lastResetTrainingPassIndex) + " failing steps");
+                                    lastResetTrainingPassIndex = simplifiedLearningPassCount;
+                                    FastLSTMNetwork.initializeAllWeights(networkSpec);
+                                    afterWeightInitialization = true;
+                                }
+                            }
+                            prevError = trainingPassError;
+                        }
+                        errorMessage = "Failed to learn simplified pattern";
+                        Assert.assertTrue(errorMessage, false);
+
+
+                    }
+                    break;
+                }
+            }
+
+            errorMessage = "Simplified pattern fails to make learning easier.";
+            System.out.println("Learned simplified pattern after an average of " + averageSimplifiedLearningSteps + " steps vs " + initialLearningPassCount + " steps for the initial complex pattern");
+            Assert.assertTrue(errorMessage, averageSimplifiedLearningSteps < initialLearningPassCount);
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+            // Extrapolation
+
+            int extrapLength = noisyComplexInput.length;
+
+            float[] extrapInput = noisyComplexInput[0];
+            errorMessage = "Failed to learn to generalize from simplified pattern";
+            System.out.println("Extrapolating from: " + Arrays.toString(extrapInput));
+            boolean driveOutput = true;
+            boolean roundOutput = false;
+            for (int i = 0; i < extrapLength - 1;i++)
+            {
+                if (roundOutput)
+                {
+                    extrapInput = roundToInt(extrapInput);
+                }
+                FastLSTMNetwork.forwardPass(networkSpec, extrapInput);
+                extrapInput = FastLSTMNetwork.getOutputActivation(networkSpec);
+                System.out.println("Predicted: " + Arrays.toString(extrapInput));
+                FastLSTMNetwork.OutputErrorFunction outError = FastLSTMNetwork.ERROR_FUNCTION_MAP[(int)networkSpec[FastLSTMNetwork.OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
+                double error = outError.error(networkSpec, noisyComplexInput[i + 1]);
+                if (driveOutput)
+                    extrapInput = noisyComplexInput[i + 1];
+
+
+                Assert.assertTrue(errorMessage, maxAcceptableError>= error);
+            }
+
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testIgnoreCompression()
+    {
+
+        String errorMessage = "failed to create noisy input";
+        try
+        {
+            float[][] testInput = new float[][]{{1, 0}, {0, 1}, {1, 0} , {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}};
+
+            int inputWidth = testInput[0].length;
+            int noiseWidth = 4;
+            FastLSTMNetwork.setSeed(10);
+
+            float[] errorMask = createPrefixErrorMask(inputWidth, noiseWidth);
+            float[][] noisyComplexInput = addNoiseBits(testInput, 4, true, true);
+
+            int totalInputWidth = inputWidth + noiseWidth;
+            int inputNodeCode = totalInputWidth;
+            int outputNodeCode = totalInputWidth;
+            int numMemoryCellStates = 10;
+
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            FastLSTMNetwork network = builder.build();
+
+            float[] networkSpec = network._networkData;
+
+            errorMessage = "Failed to learn original pattern";
+
+            // *****************************************
+            // Standard Explicit learning strategy
+            // *****************************************
+            long seed = System.currentTimeMillis();
+
+            int numLearningSteps = 300;
+            float maxAcceptableError = 0.1F;
+
+            final int FINDING_MINIMUM_INITIAL_COMPRESSION = 0;
+            final int FINDING_MINIMUM_SIMPLIFIED_NETWORK= 1;
+            final int END_STATE = 2;
+            int testStage = 0;
+            int currentNumMemoryCells = numMemoryCellStates;
+            int smallestNoisyMemoryCells =currentNumMemoryCells, smallestSimplifiedMemoryCells = currentNumMemoryCells ;
+            float[] smallestSimplifiedData = null, smallestNoisyData;
+            Pair<Float, Integer> result = null;
+
+            outer: while (testStage != END_STATE)
+            {
+                switch (testStage)
+                {
+                    case FINDING_MINIMUM_INITIAL_COMPRESSION: // learn the complex pattern
+                    {
+                        seed = System.currentTimeMillis();
+                        System.out.println("Learning complex pattern with initial seed: "+ seed);
+                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
+                        if (result.getRight() < numLearningSteps)
+                        {
+                            System.out.println("Memorized noisy pattern in " + result.getRight() + " steps and error: " + result.getLeft());
+                            smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
+                            smallestNoisyMemoryCells = currentNumMemoryCells;
+                            currentNumMemoryCells--;
+                            builder = getStandardBuilder(inputNodeCode, outputNodeCode, currentNumMemoryCells);
+                            networkSpec = builder.build()._networkData;
+
+                        }
+                        else
+                        {
+                            System.out.println("Found the solution");
+                            testStage = FINDING_MINIMUM_SIMPLIFIED_NETWORK;
+                            currentNumMemoryCells = numMemoryCellStates;
+                            builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+                            networkSpec = builder.build()._networkData;
+                            FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
+                        }
+                    }
+                    break;
+                    case FINDING_MINIMUM_SIMPLIFIED_NETWORK:
+                    {
+                        seed = System.currentTimeMillis();
+                        System.out.println("Learning simplified pattern with initial seed: "+ seed);
+                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
+                        if (result.getRight() < numLearningSteps)
+                        {
+                            System.out.println("Memorized simplified pattern in " + result.getRight() + " steps and error: " + result.getLeft());
+                            smallestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
+                            smallestSimplifiedMemoryCells = currentNumMemoryCells;
+                            currentNumMemoryCells--;
+                            builder = getStandardBuilder(inputNodeCode, outputNodeCode, currentNumMemoryCells);
+                            networkSpec = builder.build()._networkData;
+                            FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
+
+                        }
+                        else
+                        {
+                            System.out.println("Memorized simplified pattern in a minimum of : " + smallestSimplifiedMemoryCells + " memory cells");
+                            Assert.assertTrue("Simplifying network failed to allow compression", smallestSimplifiedMemoryCells < smallestNoisyMemoryCells);
+                            testStage = END_STATE;
+                        }
+
+                    }
+                    break;
+                    case END_STATE:
+
+                }
+            }
+
+            int extrapLength = noisyComplexInput.length;
+            networkSpec = smallestSimplifiedData;
+            float[] extrapInput = noisyComplexInput[0];
+            errorMessage = "Compressing simplified pattern doesn't recreate pattern";
+            System.out.println("Extrapolating from: " + Arrays.toString(extrapInput));
+            boolean driveOutput = true;
+            boolean roundOutput = false;
+            for (int i = 0; i < extrapLength - 1;i++)
+            {
+                if (roundOutput)
+                {
+                    extrapInput = roundToInt(extrapInput);
+                }
+                FastLSTMNetwork.forwardPass(networkSpec, extrapInput);
+                extrapInput = FastLSTMNetwork.getOutputActivation(networkSpec);
+                System.out.println("Predicted: " + Arrays.toString(extrapInput));
+                FastLSTMNetwork.OutputErrorFunction outError = FastLSTMNetwork.ERROR_FUNCTION_MAP[(int)networkSpec[FastLSTMNetwork.OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
+                double error = outError.error(networkSpec, noisyComplexInput[i + 1]);
+                if (driveOutput)
+                    extrapInput = noisyComplexInput[i + 1];
+
+
+                Assert.assertTrue(errorMessage, maxAcceptableError>= error);
+            }
+
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+
+
+
     @Test
     public void testWeightUpdates()
     {
@@ -1338,8 +1726,128 @@ public class FastLSTMTester extends BaseLSTMTester {
         }
     }
 
+    static float[] createPrefixErrorMask(int allowedPrefixBits, int ignoredSuffixBits)
+    {
+        float[] o = new float[allowedPrefixBits + ignoredSuffixBits];
+        for (int i=0; i < o.length;i++)
+        {
+            if (i < allowedPrefixBits)
+            {
+                o[i] = 1;
+            }
+            else
+                o[i] = 0;
+        }
+        return o;
+    }
 
 
+    float[] addNoiseBits(float[] base, int noiseWidth, boolean noiseSuffixP, boolean roundNoiseP)
+    {
+        int oldWidth = base.length;
+        int newWidth = oldWidth + noiseWidth;
+        float[] vec = new float[newWidth];
+        for (int j = 0;j < newWidth;j++)
+        {
+            if (noiseSuffixP)
+            {
+                if (j < oldWidth)
+                {
+                    vec[j] = base[j];
+                }
+                else
+                {
+                    if (roundNoiseP)
+                        vec[j] = NNTools.roundToInt (FastLSTMNetwork.randomLCG());
+                    else
+                        vec[j] = (float) FastLSTMNetwork.randomLCG();
+                }
+            }
+            else
+            {
+                if (j >= noiseWidth)
+                {
+                    vec[j] = base[j - noiseWidth];
+                }
+                else
+                {
+                    if (roundNoiseP)
+                        vec[j] = NNTools.roundToInt (FastLSTMNetwork.randomLCG());
+                    else
+                        vec[j] = (float) FastLSTMNetwork.randomLCG();
+                }
+            }
+        }
+        return vec;
+    }
 
+    float[][] addNoiseBits(float[][] base, int noiseWidth, boolean noiseSuffixP, boolean roundNoiseP)
+    {
+        float[][] out = new float[base.length][];
+        for (int i = 0;i < out.length;i++)
+        {
+            out[i] = addNoiseBits(base[i], noiseWidth, noiseSuffixP, roundNoiseP);
+        }
+        return out;
+    }
+
+
+    Pair<Float, Integer> teachSequence(float[] networkSpec, float[][] inputSequence, float maxAcceptableError, int maxSteps, long seed)
+    {
+        int steps = 0;
+        LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+        ArrayList<Pair<Vector, Vector>> trainingPairs = getSequenceTrainingPairs(inputSequence);
+        Pair<Vector, Vector> trainingPair;
+        float[] trainingInput, expectedOutput;
+
+        FastLSTMNetwork.initializeAllWeights(networkSpec);
+        boolean afterWeightInitialization = true;
+        float maxSegmentError = 0, segmentError, convergenceFraction = 0, resetThresholdFraction = 0.0001F, prevError = 0;
+        for (steps = 0; steps < maxSteps; steps++)
+        {
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+            maxSegmentError = Float.MIN_VALUE;
+            for (int i = 0;i < trainingPairs.size();i++)
+            {
+                trainingPair = trainingPairs.get(i);
+                trainingInput = NNTools.getVectorDataAsFloat(trainingPair.getLeft());
+                expectedOutput = NNTools.getVectorDataAsFloat(trainingPair.getRight());
+
+                FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                FastLSTMNetwork.getOutputActivation(networkSpec);
+                segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                maxSegmentError = Math.max(maxSegmentError, segmentError);
+            }
+
+
+            if (maxSegmentError <= maxAcceptableError)
+            {
+
+                 return Pair.of(Float.valueOf(maxSegmentError), steps);
+            }
+
+            // Update the weights from the calculated errors
+            FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+            if (afterWeightInitialization)
+            {
+                afterWeightInitialization = false;
+            }
+            else
+            {
+                convergenceFraction = Math.abs(prevError - maxSegmentError)/maxSegmentError;
+                if (convergenceFraction < resetThresholdFraction)
+                {
+
+
+                    FastLSTMNetwork.initializeAllWeights(networkSpec);
+                    afterWeightInitialization = true;
+                }
+            }
+            prevError = maxSegmentError;
+        }
+        return Pair.of(Float.valueOf(maxSegmentError), steps);
+
+    }
 
 }

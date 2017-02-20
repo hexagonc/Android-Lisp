@@ -13,6 +13,25 @@ import java.util.LinkedList;
 
 public class FastLSTMNetwork extends LSTMNetwork{
 
+    public static class TrainingSpec
+    {
+        float[] input;
+        float[] expectedOutput;
+        float[] errorMask;
+
+
+    }
+
+    public static TrainingSpec trainingSpec(float[] input, float[] expectedOutput, float[] errorMask)
+    {
+        TrainingSpec spec = new TrainingSpec();
+        spec.errorMask = errorMask;
+        spec.input = input;
+        spec.expectedOutput = expectedOutput;
+        return spec;
+    }
+
+
     public static class LSTMNetworkBuilder {
 
         HashMap<String, NodeGroup> initialNodeMap = null;
@@ -260,6 +279,7 @@ public class FastLSTMNetwork extends LSTMNetwork{
             double mse = 0, error;
             double output_activation, expected_activation;
             float mask;
+            float weightSum = 0;
             for (int i = 0;i < width;i++)
             {
                 output_activation = networkData[output_layer_activation_idx + i];
@@ -267,8 +287,9 @@ public class FastLSTMNetwork extends LSTMNetwork{
                 error = (expected_activation - output_activation);
                 mask = getVectorValue(networkData, errorMaskIndex, i);
                 mse += error*error*mask;
+                weightSum+=mask;
             }
-            return mse/width;
+            return mse/weightSum;
         }
 
         @Override
@@ -1796,7 +1817,13 @@ public class FastLSTMNetwork extends LSTMNetwork{
     // o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o
     //              Primary Public Helper Utility functions
     // o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o
-
+    public static void setOutputErrorMask(float[] rawData, float[] mask)
+    {
+        for (int i = 0;i < mask.length;i++)
+        {
+            rawData[getOutputLayerMaskIndex(rawData) + i] = mask[i];
+        }
+    }
 
     public static float[] getNodeStateSnapshot(float[] networkSpec)
     {
@@ -2205,6 +2232,44 @@ public class FastLSTMNetwork extends LSTMNetwork{
     }
 
 
+    // ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~
+    //                  Java Interface
+    // ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~
+
+    public float learnMap(TrainingSpec spec, float[] inputMatchingMask)
+    {
+        float[] input = spec.input;
+        float[] expectedOutput = spec.expectedOutput;
+        float[] mask = spec.errorMask;
+
+        if (mask != null)
+        {
+            setOutputErrorMask (_networkData, mask);
+
+        }
+        else
+        {
+            for (int i = 0;i < mask.length;i++)
+            {
+                _networkData[getOutputLayerMaskIndex(_networkData) + i] = 1;
+            }
+        }
+
+        forwardPass(_networkData, input);
+        if (inputMatchingMask != null)
+        {
+            for (int i = 0;i < inputMatchingMask.length;i++)
+            {
+                if (inputMatchingMask[i] == 1)
+                {
+                    expectedOutput[i] = _networkData[getOutputLayerMaskIndex(_networkData) + i];
+                }
+
+            }
+        }
+
+        return updateForwardPassErrors(_networkData, expectedOutput);
+    }
 
 
 

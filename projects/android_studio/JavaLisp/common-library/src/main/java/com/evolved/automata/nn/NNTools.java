@@ -1017,6 +1017,22 @@ public class NNTools {
         return o;
     }
 
+    public static int  roundToInt(float v)
+    {
+        if (v < 0.5)
+            return 0;
+        else
+            return 1;
+    }
+
+    public static int  roundToInt(double v)
+    {
+        if (v < 0.5)
+            return 0;
+        else
+            return 1;
+    }
+
     public static float[] getVectorDataAsFloat(Vector vector)
     {
         double[] v = vector.raw();

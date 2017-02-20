@@ -252,13 +252,15 @@ public class BaseLSTMTester {
             return 1;
     }
 
-    int roundToInt(float v)
+    float[] roundToInt(float[] v)
     {
-        if (v < 0.5)
-            return 0;
-        else
-            return 1;
+        float[] o = new float[v.length];
+        for (int i = 0;i < v.length;i++)
+            o[i] = NNTools.roundToInt(v[i]);
+        return o;
     }
+
+
 
     ArrayList<Pair<Vector, Vector>> getSequenceTrainingPairs(float[][] sequenceInput)
     {
