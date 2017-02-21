@@ -1255,16 +1255,39 @@ public class FastLSTMNetwork extends LSTMNetwork{
         currentSeed =  seed;
     }
 
+    static public boolean useEmbeddedRNG = true;
 
     // Poor man's random number generator.  Hacked together to facilitate comparing Java vs c implementation
     // maybe switch to Mersenne Twister? https://en.wikipedia.org/wiki/Mersenne_Twister
     public static double randomLCG()
     {
-        long nextSeed = ((LCG_A*currentSeed + LCG_C) % LCG_M);
-        setSeed(nextSeed);
-        long ranLong = nextSeed >> 17;
-        // have to add 0.5 since nextSeed can overflow to negative numbers and randLong will be between -2^31 to 2^31 - 1
-        return  0.5 + 1.0*ranLong/LCG_DIVIDER;
+        if (useEmbeddedRNG)
+        {
+            long nextSeed = ((LCG_A*currentSeed + LCG_C) % LCG_M);
+            setSeed(nextSeed);
+            long ranLong = nextSeed >> 17;
+            // have to add 0.5 since nextSeed can overflow to negative numbers and randLong will be between -2^31 to 2^31 - 1
+            return  0.5 + 1.0*ranLong/LCG_DIVIDER;
+        }
+        else
+            return Math.random();
+
+    }
+
+
+    public static double randomGaussian()
+    {
+        float fac, rsq, v1, v2;
+
+        do
+        {
+            v1 = (float)(2*randomLCG() - 1);
+            v2 = (float)(2*randomLCG() - 1);
+            rsq = v1*v1 + v2*v2;
+
+        }while (rsq >=1 || rsq == 0);
+        fac = (float)Math.sqrt(-2*Math.log(rsq)/rsq);
+        return v2*fac;
     }
 
 
@@ -1411,12 +1434,13 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
                 int output_link_weight_idx = getLinkWeightIndex(output_layer_width, layer_width, output_link_data_idx);
                 float error = 0;
+                int output_layer_mask_id = getOutputLayerMaskIndex(networkSpec);
                 for (int j = 0; j < layer_width;j++)
                 {
                     error = 0;
                     for (int k = 0; k < output_layer_width;k++)
                     {
-                        error += getMatrixValue(layer_width, networkSpec, output_link_weight_idx, k, j)*networkSpec[output_layer_error_responsibility_idx + k];
+                        error += networkSpec[output_layer_mask_id + k]*getMatrixValue(layer_width, networkSpec, output_link_weight_idx, k, j)*networkSpec[output_layer_error_responsibility_idx + k];
                     }
                     networkSpec[layer_error_responsibility_idx + j] = error;
                 }
@@ -1825,6 +1849,15 @@ public class FastLSTMNetwork extends LSTMNetwork{
         }
     }
 
+    public static void clearOutputErrorMask(float[] rawData)
+    {
+        int width = getLayerWidth(rawData, OUTPUT_LAYER_ID);
+        for (int i = 0;i < width;i++)
+        {
+            rawData[getOutputLayerMaskIndex(rawData) + i] = 1;
+        }
+    }
+
     public static float[] getNodeStateSnapshot(float[] networkSpec)
     {
         int feedforware_link_count_index = getForwardPassLinkIndex(networkSpec);
@@ -2010,6 +2043,51 @@ public class FastLSTMNetwork extends LSTMNetwork{
             }
         }
     }
+
+    /**
+     * Call this after setting the initial input activation
+     * @param networkSpec
+
+     */
+    public static void forwardPass(float[] networkSpec, float[] inputActivation, boolean applyErrorMaskToInput)
+    {
+        int feedforward_link_count_idx = getForwardPassLinkIndex(networkSpec);
+
+        if (applyErrorMaskToInput)
+        {
+            int maskIndex = getOutputLayerMaskIndex(networkSpec);
+            for (int i = 0; i < inputActivation.length;i++)
+            {
+                float mask = networkSpec[maskIndex + i];
+                inputActivation[i]*=mask;
+            }
+        }
+        setInputActivation(networkSpec, inputActivation);
+
+        int linkIdIdx = 0;
+        int linkId;
+
+        int numFeedforwardLinks = (int)networkSpec[feedforward_link_count_idx];
+        int feedforward_order_link_idx = feedforward_link_count_idx + 1;
+        for (linkIdIdx = 0; linkIdIdx < numFeedforwardLinks; linkIdIdx++ )
+        {
+            linkId = (int)networkSpec[feedforward_order_link_idx + linkIdIdx];
+            if (linkId > 0)
+            // techically, 0 is a valid linkId but since linkId of 0 is a recurrent link from the input layer to itself,
+            // you would never call feedforward on it
+            {
+
+                feedforward(networkSpec, linkId);
+            }
+            else
+            {
+                // In this case, -linkId is the target layer id whose node state should be finalized (move partial
+                // net input to the net input and calculate the overall node activation
+                pushNetInput(networkSpec, (-1 * linkId));
+            }
+        }
+    }
+
 
     // + reviewed +
     public static float[] getOutputActivation(float[] networkSpec)

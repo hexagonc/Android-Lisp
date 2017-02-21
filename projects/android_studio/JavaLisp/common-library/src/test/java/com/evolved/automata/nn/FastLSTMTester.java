@@ -1228,7 +1228,7 @@ public class FastLSTMTester extends BaseLSTMTester {
             int smallestNoisyMemoryCells =currentNumMemoryCells, smallestSimplifiedMemoryCells = currentNumMemoryCells ;
             float[] smallestSimplifiedData = null, smallestNoisyData;
             Pair<Float, Integer> result = null;
-
+            FastLSTMNetwork.useEmbeddedRNG = false;
             outer: while (testStage != END_STATE)
             {
                 switch (testStage)
@@ -1332,14 +1332,16 @@ public class FastLSTMTester extends BaseLSTMTester {
         String errorMessage = "failed to create noisy input";
         try
         {
+            FastLSTMNetwork.useEmbeddedRNG = false;
             float[][] testInput = new float[][]{{1, 0}, {0, 1}, {1, 0} , {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}};
 
             int inputWidth = testInput[0].length;
             int noiseWidth = 4;
-            FastLSTMNetwork.setSeed(10);
+            FastLSTMNetwork.setSeed(System.currentTimeMillis());
 
             float[] errorMask = createPrefixErrorMask(inputWidth, noiseWidth);
-            float[][] noisyComplexInput = addNoiseBits(testInput, 4, true, true);
+            float[] noiseMask = NNTools.toggleBits(errorMask);
+            float[][] noisyComplexInput = null;
 
             int totalInputWidth = inputWidth + noiseWidth;
             int inputNodeCode = totalInputWidth;
@@ -1368,162 +1370,185 @@ public class FastLSTMTester extends BaseLSTMTester {
 
             final int END_STATE = 3;
             int testStage = 0;
-            int numExtrapolations = 100;
-            int extrapCount = 0;
+            int numExtrapolations = 1000;
+            float extrapCount = 0;
             boolean firstSimplified=true, firstNoisy = true;
             int currentNumMemoryCells = numMemoryCellStates;
             int smallestNoisyMemoryCells =currentNumMemoryCells, smallestSimplifiedMemoryCells = currentNumMemoryCells ;
             float[] smallestSimplifiedData = null, smallestNoisyData=null, largestSimplifiedData=null, largestNoisyData = null;
             Pair<Float, Integer> result = null;
             String[] dataList = new String[]{"Original Noisy Network", "Compacted Noisy Network", "Original Simplified Network", "Compacted and simplified network"};
-            float[] totalAverageError = new float[dataList.length];
+
             float[][] testNetworks = null;
 
-            outer: while (testStage != END_STATE)
+            float[] totalAverageError = new float[dataList.length];
+            float[] averageNetworkSize = new float[4];
+            float[] averageNumMemoryCells = new float[4];
+
+
+            for (extrapCount = 0; extrapCount < numExtrapolations;extrapCount++)
             {
-                switch (testStage)
+                firstNoisy = true;
+                firstSimplified = true;
+                noisyComplexInput = addNoiseBits(testInput, 4, true, true);
+                testStage = FINDING_MINIMUM_INITIAL_COMPRESSION;
+                currentNumMemoryCells = numMemoryCellStates;
+                builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+                networkSpec = builder.build()._networkData;
+
+                while (testStage != END_STATE)
                 {
-                    case FINDING_MINIMUM_INITIAL_COMPRESSION: // learn the complex pattern
+                    switch (testStage)
                     {
-                        seed = System.currentTimeMillis();
-                        System.out.println("Learning complex pattern with initial seed: "+ seed);
-                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
-                        if (result.getRight() < numLearningSteps)
+
+                        case FINDING_MINIMUM_INITIAL_COMPRESSION: // learn the complex pattern
                         {
-                            if (firstNoisy)
+                            seed = System.currentTimeMillis();
+                            System.out.println("Learning complex pattern with num memory cells: " + currentNumMemoryCells);
+                            result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
+                            if (result.getRight() < numLearningSteps)
                             {
-                                firstNoisy = false;
-                                largestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
-                                System.out.println("Saving large noisy LSTM with " + numMemoryCellStates + " memory cells");
-                            }
-                            System.out.println("Memorized noisy pattern in " + result.getRight() + " steps and error: " + result.getLeft());
-                            smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
-                            smallestNoisyMemoryCells = currentNumMemoryCells;
-                            currentNumMemoryCells--;
-                            builder = getStandardBuilder(inputNodeCode, outputNodeCode, currentNumMemoryCells);
-                            networkSpec = builder.build()._networkData;
+                                if (firstNoisy)
+                                {
+                                    firstNoisy = false;
+                                    largestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                    int width = FastLSTMNetwork.getLayerWidth(largestNoisyData, FastLSTMNetwork.PEEPHOLE_LAYER_ID);
+                                    System.out.println("Saving large noisy LSTM " + largestNoisyData + "with " + numMemoryCellStates + " memory cells");
 
-                        }
-                        else
-                        {
-                            System.out.println("Saved smaller noisy LSTM with " + smallestNoisyMemoryCells + " memory cells");
-                            testStage = FINDING_MINIMUM_SIMPLIFIED_NETWORK;
-                            currentNumMemoryCells = numMemoryCellStates;
-                            builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
-                            networkSpec = builder.build()._networkData;
-                            FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
-                        }
-                    }
-                    break;
-                    case FINDING_MINIMUM_SIMPLIFIED_NETWORK:
-                    {
-                        seed = System.currentTimeMillis();
-                        System.out.println("Learning simplified pattern with initial seed: "+ seed);
-                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
-                        if (result.getRight() < numLearningSteps)
-                        {
-                            if (firstSimplified)
+                                }
+                                System.out.println("Memorized noisy pattern in " + result.getRight() + " steps and error: " + result.getLeft());
+                                smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                smallestNoisyMemoryCells = currentNumMemoryCells;
+                                currentNumMemoryCells--;
+                                builder = getStandardBuilder(inputNodeCode, outputNodeCode, currentNumMemoryCells);
+                                networkSpec = builder.build()._networkData;
+
+                            } else
                             {
-                                firstSimplified = false;
-                                largestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
-                                System.out.println("Saving large simplified LSTM with " + numMemoryCellStates + " memory cells");
+                                if (result.getRight() < numLearningSteps)
+                                    smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                System.out.println("Saved smaller noisy LSTM with " + smallestNoisyMemoryCells + " memory cells");
+                                testStage = FINDING_MINIMUM_SIMPLIFIED_NETWORK;
+                                currentNumMemoryCells = numMemoryCellStates;
+                                builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+                                networkSpec = builder.build()._networkData;
+                                FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
                             }
-                            System.out.println("Memorized simplified pattern in " + result.getRight() + " steps and error: " + result.getLeft());
-                            smallestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
-                            smallestSimplifiedMemoryCells = currentNumMemoryCells;
-                            currentNumMemoryCells--;
-                            builder = getStandardBuilder(inputNodeCode, outputNodeCode, currentNumMemoryCells);
-                            networkSpec = builder.build()._networkData;
-                            FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
-
                         }
-                        else
+                        break;
+                        case FINDING_MINIMUM_SIMPLIFIED_NETWORK:
                         {
-                            System.out.println("Saved small simplified LSTM with " + smallestSimplifiedMemoryCells + " memory cells");
-                            //System.out.println("Memorized simplified pattern in a minimum of : " + smallestSimplifiedMemoryCells + " memory cells");
-                            Assert.assertTrue("Simplifying network failed to allow compression", smallestSimplifiedMemoryCells < smallestNoisyMemoryCells);
-                            testStage = EXTRAPOLATING;
 
-                        }
-
-                    }
-                    break;
-                    case EXTRAPOLATING:
-                    {
-                        if (extrapCount > numExtrapolations)
-                        {
-                            testStage = END_STATE;
-                            System.out.println("Average overall errors: ");
-                            for (int i = 0; i < dataList.length;i++)
+                            System.out.println("Learning simplified pattern with num memory cells: " + currentNumMemoryCells);
+                            result = teachNoisySequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, noiseMask);
+                            if (result.getRight() < numLearningSteps)
                             {
-                                System.out.println(dataList[i] + "(" + testNetworks[i].length + ") - " + totalAverageError[i]);
+                                if (firstSimplified)
+                                {
+                                    firstSimplified = false;
+                                    largestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                    System.out.println("Saving large simplified LSTM with " + numMemoryCellStates + " memory cells");
+                                }
+                                System.out.println("Memorized simplified pattern in " + result.getRight() + " steps and error: " + result.getLeft());
+                                smallestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                smallestSimplifiedMemoryCells = currentNumMemoryCells;
+                                currentNumMemoryCells--;
+                                builder = getStandardBuilder(inputNodeCode, outputNodeCode, currentNumMemoryCells);
+                                networkSpec = builder.build()._networkData;
+                                FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
+
+                            } else
+                            {
+                                if (result.getRight() < numLearningSteps)
+                                    smallestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                System.out.println("Saved small simplified LSTM with " + smallestSimplifiedMemoryCells + " memory cells");
+                                //System.out.println("Memorized simplified pattern in a minimum of : " + smallestSimplifiedMemoryCells + " memory cells");
+                                //Assert.assertTrue("Simplifying network failed to allow compression", smallestSimplifiedMemoryCells < smallestNoisyMemoryCells);
+                                testStage = EXTRAPOLATING;
+
                             }
-                            break;
+
                         }
-                        else if (extrapCount == 0)
+                        break;
+                        case EXTRAPOLATING:
                         {
                             testNetworks = new float[][]{largestNoisyData, smallestNoisyData, largestSimplifiedData, smallestSimplifiedData};
-                        }
 
-                        float[][] noisyTestInput = addNoiseBits(testInput, 4, true, true);
-                        int extrapLength = noisyTestInput.length;
-                        networkSpec = smallestSimplifiedData;
-                        float[] extrapInput = noisyTestInput[0];
-                        System.out.println("*********************************");
-                        System.out.println(extrapCount + ") Test noisy input: ");
-                        for (int i = 0; i < extrapLength;i++)
-                        {
-
-                            System.out.println(Arrays.toString(noisyTestInput[i]));
-                        }
-                        System.out.println();
-                        System.out.println("*********************************");
-                        boolean roundOutput = false;
-
-
-
-                        float[] averageError = new float[testNetworks.length];
-                        String label;
-                        String[] errorList = new String[testNetworks.length];
-
-                        for (int i = 0; i < extrapLength - 1;i++)
-                        {
-                            if (roundOutput)
+                            System.out.println(Arrays.toString(testNetworks));
+                            for (int i = 0;i < testNetworks.length;i++)
                             {
-                                extrapInput = roundToInt(extrapInput);
+                                FastLSTMNetwork.resetNetworkToInitialState(testNetworks[i]);
                             }
-                            System.out.println("Current test noisy input: " + Arrays.toString(noisyTestInput[i])+ " expected output: " + Arrays.toString(noisyTestInput[i + 1]));
-                            int networkIndex = 0;
-                            for (;networkIndex < testNetworks.length;networkIndex++)
+                            float[][] noisyTestInput = addNoiseBits(testInput, 4, true, true);
+                            int extrapLength = noisyTestInput.length;
+                            networkSpec = smallestSimplifiedData;
+                            float[] extrapInput = noisyTestInput[0];
+                            System.out.println("*********************************");
+                            System.out.println(extrapCount + ") Test noisy input: ");
+                            for (int i = 0; i < extrapLength; i++)
                             {
-                                FastLSTMNetwork.forwardPass(testNetworks[networkIndex], extrapInput);
-                                extrapInput = FastLSTMNetwork.getOutputActivation(networkSpec);
-                                FastLSTMNetwork.OutputErrorFunction outError = FastLSTMNetwork.ERROR_FUNCTION_MAP[(int)networkSpec[FastLSTMNetwork.OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
-                                double error = outError.error(testNetworks[networkIndex], noisyTestInput[i + 1]);
-                                averageError[networkIndex] = (float)((averageError[networkIndex] * i + error)/(i + 1));
-                                errorList[networkIndex] = dataList[networkIndex] + " error:  " + error;
+
+                                System.out.println(Arrays.toString(noisyTestInput[i]));
                             }
+                            System.out.println();
+                            System.out.println("*********************************");
 
-                            System.out.println(Arrays.toString(errorList));
+                            float[] averageError = new float[testNetworks.length];
+                            String label;
+                            String[] errorList = new String[testNetworks.length];
 
-                            extrapInput = noisyTestInput[i + 1];
-                            //Assert.assertTrue(errorMessage, maxAcceptableError>= error);
+                            for (int i = 0; i < extrapLength - 1; i++)
+                            {
+
+                                System.out.println("Current test noisy input: " + Arrays.toString(noisyTestInput[i]) + " expected output: " + Arrays.toString(noisyTestInput[i + 1]));
+                                int networkIndex = 0;
+                                for (; networkIndex < testNetworks.length; networkIndex++)
+                                {
+                                    FastLSTMNetwork.forwardPass(testNetworks[networkIndex], noisyTestInput[i]);
+                                    extrapInput = FastLSTMNetwork.getOutputActivation(testNetworks[networkIndex]);
+                                    FastLSTMNetwork.OutputErrorFunction outError = FastLSTMNetwork.ERROR_FUNCTION_MAP[(int) testNetworks[networkIndex][FastLSTMNetwork.OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
+                                    double error = outError.error(testNetworks[networkIndex], noisyTestInput[i + 1]);
+                                    averageError[networkIndex] = (float) ((averageError[networkIndex] * i + error) / (i + 1));
+                                    errorList[networkIndex] = dataList[networkIndex] + " predicted: " + Arrays.toString(extrapInput) +  " with error:  " + error;
+
+                                }
+
+                                System.out.println(Arrays.toString(errorList));
+
+
+                                //Assert.assertTrue(errorMessage, maxAcceptableError>= error);
+                            }
+                            for (int i = 0; i < testNetworks.length; i++)
+                            {
+
+                                totalAverageError[i] = totalAverageError[i] * extrapCount/(extrapCount + 1)  + averageError[i] / (extrapCount + 1);
+                                averageNetworkSize[i] = averageNetworkSize[i] * extrapCount/(extrapCount + 1) + (1.0F*testNetworks[i].length)/(extrapCount + 1) ;
+                                float memory = FastLSTMNetwork.getLayerWidth(testNetworks[i], FastLSTMNetwork.PEEPHOLE_LAYER_ID);
+                                if (i == 0)
+                                {
+                                    System.out.println("<> " + memory + " " + testNetworks[i]);
+                                }
+                                averageNumMemoryCells[i] = averageNumMemoryCells[i] * extrapCount/(extrapCount + 1) + memory / (extrapCount + 1);
+                            }
+                            System.out.println(extrapCount + ": " + Arrays.toString(averageNumMemoryCells));
+                            testStage = END_STATE;
                         }
-                        for (int i = 0;i < testNetworks.length;i++)
-                        {
-                            totalAverageError[i] = (totalAverageError[i] * extrapCount + averageError[i])/(extrapCount + 1);
-                        }
-                        extrapCount++;
+                        break;
+                        case END_STATE:
+
+                            break;
 
                     }
-                    break;
-                    case END_STATE:
-
                 }
             }
 
-
-
+            System.out.println("Average overall errors: ");
+            for (int i = 0; i < dataList.length;i++)
+            {
+                int networkSize = (int)averageNetworkSize[i];
+                float memoryCellsToTenths = ((int)(averageNumMemoryCells[i] * 10))/10F;
+                System.out.println(dataList[i] + "(" + networkSize + ", " + memoryCellsToTenths+ ") - " + totalAverageError[i]);
+            }
 
 
         }
@@ -1780,6 +1805,36 @@ public class FastLSTMTester extends BaseLSTMTester {
 
     }
 
+    @Test
+    public void testGaussianRandomNumberGenerator()
+    {
+        long seed = System.currentTimeMillis();
+        //
+        FastLSTMNetwork.setSeed(seed);
+        int iterations = 10000;
+        System.out.println("Generating random numbers with seed: " + seed);
+
+
+        double prev = seed;
+        double average = 0;
+        for (int i = 0;i < iterations;i++)
+        {
+            double ran = FastLSTMNetwork.randomGaussian();
+            System.out.println("Random number is: " + ran);
+            Assert.assertTrue("Numbers aren't random enough! Current value equals previous: " + ran, ran != prev);
+            prev = ran;
+            //Assert.assertTrue("Random numbers out of range: " + ran, ran > -1 && ran < 1);
+            average = (average*i + ran)/(i + 1);
+        }
+
+        // TODO: make this test more rigorous
+
+        double expectedAverage = 0;
+        double error = 0.05;
+        Assert.assertTrue("Random numbers are probably not uniformly distributed from 0 to 1.  Average after " + iterations + " steps is: " + average, Math.abs(expectedAverage - average)<error);
+
+    }
+
 
 
     @Test
@@ -1953,6 +2008,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
     float[] addNoiseBits(float[] base, int noiseWidth, boolean noiseSuffixP, boolean roundNoiseP)
     {
+
         int oldWidth = base.length;
         int newWidth = oldWidth + noiseWidth;
         float[] vec = new float[newWidth];
@@ -2022,7 +2078,7 @@ public class FastLSTMTester extends BaseLSTMTester {
                 trainingInput = NNTools.getVectorDataAsFloat(trainingPair.getLeft());
                 expectedOutput = NNTools.getVectorDataAsFloat(trainingPair.getRight());
 
-                FastLSTMNetwork.forwardPass(networkSpec, trainingInput);
+                FastLSTMNetwork.forwardPass(networkSpec, trainingInput, true);
                 FastLSTMNetwork.getOutputActivation(networkSpec);
                 segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
 
@@ -2058,5 +2114,76 @@ public class FastLSTMTester extends BaseLSTMTester {
         return Pair.of(Float.valueOf(maxSegmentError), steps);
 
     }
+
+
+    Pair<Float, Integer> teachNoisySequence(float[] networkSpec, float[][] inputSequence, float maxAcceptableError, int maxSteps, float[] inputNoiseMask)
+    {
+        int steps = 0;
+        LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+        ArrayList<Pair<Vector, Vector>> trainingPairs = getSequenceTrainingPairs(inputSequence);
+        Pair<Vector, Vector> trainingPair;
+        float[] trainingInput, expectedOutput;
+
+        FastLSTMNetwork.initializeAllWeights(networkSpec);
+        boolean afterWeightInitialization = true;
+        float maxSegmentError = 0, segmentError, convergenceFraction = 0, resetThresholdFraction = 0.0001F, prevError = 0;
+        for (steps = 0; steps < maxSteps; steps++)
+        {
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+            maxSegmentError = Float.MIN_VALUE;
+            for (int i = 0;i < trainingPairs.size();i++)
+            {
+                trainingPair = trainingPairs.get(i);
+                trainingInput = NNTools.getVectorDataAsFloat(trainingPair.getLeft());
+                if (inputNoiseMask != null)
+                {
+                    for (int k = 0;k<inputNoiseMask.length;k++)
+                    {
+                        if (inputNoiseMask[k] == 1)
+                        {
+                            trainingInput[k] = roundToInt(FastLSTMNetwork.randomLCG());
+                        }
+                    }
+                }
+                expectedOutput = NNTools.getVectorDataAsFloat(trainingPair.getRight());
+
+                FastLSTMNetwork.forwardPass(networkSpec, trainingInput, true);
+                FastLSTMNetwork.getOutputActivation(networkSpec);
+                segmentError = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutput);
+
+                maxSegmentError = Math.max(maxSegmentError, segmentError);
+            }
+
+
+            if (maxSegmentError <= maxAcceptableError)
+            {
+
+                return Pair.of(Float.valueOf(maxSegmentError), steps);
+            }
+
+            // Update the weights from the calculated errors
+            FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+            if (afterWeightInitialization)
+            {
+                afterWeightInitialization = false;
+            }
+            else
+            {
+                convergenceFraction = Math.abs(prevError - maxSegmentError)/maxSegmentError;
+                if (convergenceFraction < resetThresholdFraction)
+                {
+
+
+                    FastLSTMNetwork.initializeAllWeights(networkSpec);
+                    afterWeightInitialization = true;
+                }
+            }
+            prevError = maxSegmentError;
+        }
+        return Pair.of(Float.valueOf(maxSegmentError), steps);
+
+    }
+
+
 
 }

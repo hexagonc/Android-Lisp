@@ -1245,6 +1245,8 @@ public class NNTools {
         return out;
     }
 
+
+
     public static Vector swapD(Vector v, int i, int j)
     {
         double t = v.value(i);
@@ -1315,6 +1317,16 @@ public class NNTools {
                 return new Double[0];
             }
         });
+    }
+
+    public static float[] toggleBits(float[] data)
+    {
+        float[] toggled = new float[data.length];
+        for (int i = 0;i<toggled.length;i++)
+        {
+            toggled[i] = 1 - data[i];
+        }
+        return toggled;
     }
 
     static double getAverage(Pair<Double, Double> p)
