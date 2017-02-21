@@ -5,6 +5,7 @@ import com.evolved.automata.ArrayMapper;
 import com.evolved.automata.nn.grammar.CharacterNode;
 import com.evolved.automata.nn.grammar.GrammarNode;
 import com.evolved.automata.nn.grammar.GrammarStateMachine;
+import com.evolved.automata.nn.grammar.MatchStatus;
 import com.sun.org.apache.regexp.internal.RE;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -52,6 +53,10 @@ public class BaseLSTMTester {
             return ReberGrammar.values()[v];
         }
 
+        public String getToken()
+        {
+            return token;
+        }
 
         int[] getTransitions()
         {
@@ -73,6 +78,73 @@ public class BaseLSTMTester {
         }
     }
 
+    public static class ReberGrammarMatcher
+    {
+
+        HashSet<Integer> currentStates;
+        boolean runningP = false;
+        int initialStateId = ReberGrammar.B.ordinal();
+        int finalStateId = ReberGrammar.E.ordinal();
+
+        public ReberGrammarMatcher()
+        {
+            //stateList = new boolean[];
+            initialize();
+        }
+
+        public void reset()
+        {
+            runningP = true;
+            currentStates.clear();
+            currentStates.add(initialStateId);
+        }
+
+        private void initialize()
+        {
+            currentStates = new HashSet<Integer>();
+        }
+
+        public MatchStatus match(String token)
+        {
+
+            if (runningP)
+            {
+                HashSet<Integer> nextStates = new HashSet<Integer>();
+                for (Integer state:currentStates)
+                {
+
+                    ReberGrammar grammar = ReberGrammar.from(state.intValue());
+
+                    if (grammar.getToken().equals(token))
+                    {
+                        if (state.intValue() == finalStateId)
+                        {
+                            runningP = false;
+                            return MatchStatus.FINISHED;
+                        }
+
+                        for (int nextStateId:grammar.getTransitions())
+                        {
+                            nextStates.add(nextStateId);
+                        }
+                    }
+                }
+                currentStates = nextStates;
+
+                if (nextStates.size() == 0)
+                {
+                    runningP = false;
+                    return MatchStatus.FAILURE;
+                }
+                else
+                {
+                    return MatchStatus.SUCCESS;
+                }
+            }
+            return MatchStatus.FINISHED;
+        }
+    }
+
     public GrammarStateMachine makeReberGrammar()
     {
         int i = 0;
@@ -89,6 +161,9 @@ public class BaseLSTMTester {
 
         return GrammarStateMachine.make(ReberGrammar.B.ordinal(), nodes, transitions);
     }
+
+
+
 
     public GrammarStateMachine makeEmbeddedReber()
     {

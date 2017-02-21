@@ -1290,6 +1290,70 @@ public class FastLSTMNetwork extends LSTMNetwork{
         return v2*fac;
     }
 
+    public static int probabilisticSample(float[] weights, float weightSum, boolean failureOnAllZeroP)
+    {
+        float cutPoint = (float)randomLCG()*weightSum;
+
+        for (int i = 0; i < weights.length;i++)
+        {
+            if (weights[i] > cutPoint)
+                return i;
+            else
+            {
+                cutPoint -= weights[i];
+
+            }
+        }
+        if (failureOnAllZeroP)
+            return -1;
+        else
+            return (int)(randomLCG()*weights.length);
+    }
+
+
+    /**
+     * Negative values will be treated as having 0 weight
+     * @param networkSpec
+     * @param vectorOffset
+     * @param length
+     * @param minValue
+     * @param failureOnAllZeroP
+     * @return
+     */
+    public static int sampleVectorIndexProportionally(float[] networkSpec, int vectorOffset, int length, float minValue, boolean failureOnAllZeroP)
+    {
+        float weightSum = 0;
+        for (int i = 0; i < length;i++)
+        {
+            if (networkSpec[vectorOffset + i] >= minValue)
+                weightSum+=networkSpec[vectorOffset + i];
+
+        }
+
+        float cutPoint = (float)randomLCG()*weightSum;
+
+        for (int i=0;i < length;i++)
+        {
+            if (networkSpec[vectorOffset + i] < minValue)
+                continue;
+            if (networkSpec[vectorOffset + i] > cutPoint)
+            {
+                return i;
+            }
+            else
+            {
+                cutPoint-=networkSpec[vectorOffset + i];
+            }
+        }
+
+
+        if (failureOnAllZeroP)
+            return -1;
+        else
+            return (int)(randomLCG()*length);
+    }
+
+
 
     // + reviewed +
     /**
@@ -1806,6 +1870,9 @@ public class FastLSTMNetwork extends LSTMNetwork{
         matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, prev_calculated_gradient_idx, 0);
         matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, weight_delta_idx, initialDelta);
     }
+
+
+
 
     /**
      * Reset the network node state such as when you are learning a pattern sequence from the

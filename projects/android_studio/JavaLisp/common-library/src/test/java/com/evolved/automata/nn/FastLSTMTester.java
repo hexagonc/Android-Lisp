@@ -1,6 +1,8 @@
 package com.evolved.automata.nn;
 
 import com.evolved.automata.nn.grammar.GrammarStateMachine;
+import com.evolved.automata.nn.grammar.MatchStatus;
+import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
@@ -416,6 +418,222 @@ public class FastLSTMTester extends BaseLSTMTester {
         }
     }
 
+
+
+
+    @Test
+    public void testProbabilisticSampling()
+    {
+
+
+        float[] classes = new float[]{12, 23, 56, 7};
+        float[] adjustedClasses = new float[]{12, 23, 56, 7};
+        int numTrials = 10000;
+        float currentWeightSum = 0, adjustedWeightSum;
+        float minWeightFraction = 0.1F;
+        int numClasses = classes.length;
+        boolean failureOnAllZeroP = true;
+
+        float[] expectedFraction = new float[classes.length];
+        for (int k = 0;k < numClasses;k++)
+        {
+            currentWeightSum +=classes[k];
+        }
+
+        adjustedWeightSum = currentWeightSum;
+        for (int k = 0;k < numClasses;k++)
+        {
+
+            if (classes[k]/currentWeightSum < minWeightFraction)
+            {
+                adjustedClasses[k] = 0;
+                adjustedWeightSum-=classes[k];
+            }
+        }
+
+
+        for (int k = 0;k < numClasses;k++)
+        {
+            if (adjustedWeightSum == 0)
+            {
+                if (failureOnAllZeroP)
+                    expectedFraction[k] = 0;
+                else
+                    expectedFraction[k] = 1F/numClasses;
+            }
+            else
+                expectedFraction[k] = classes[k]/adjustedWeightSum;
+        }
+
+        float[] sampleCounts = new float[numClasses];
+
+        for (int i = 0; i < numTrials;i++)
+        {
+            int sample = FastLSTMNetwork.probabilisticSample(adjustedClasses,adjustedWeightSum, failureOnAllZeroP);
+
+            sampleCounts[sample]++;
+
+        }
+
+        System.out.println("Generated sample counts, " + Arrays.toString(sampleCounts));
+        float error = 0.01F;
+
+        for (int k = 0;k < numClasses;k++)
+        {
+            float sampleProportion = sampleCounts[k]/numTrials;
+            float expectedProportion = expectedFraction[k];
+
+            if (expectedProportion < minWeightFraction)
+                Assert.assertTrue("Failed to exclude classes with insufficient weight.  Sample count is " + sampleCounts[k] + " but expected proportion, " + expectedProportion + " < min weight fraction " + minWeightFraction, sampleCounts[k] == 0);
+            else
+            {
+                Assert.assertTrue("Found wrong fraction of class: " + k + ".  Should be about " + expectedProportion + " but is " + sampleProportion, Math.abs(sampleProportion - expectedProportion) <= error);
+            }
+        }
+    }
+
+    @Test
+    public void testProbabilisticVectorSampling()
+    {
+
+        float[] vector = new float[]{12, 23, 56, 7};
+
+        int numTrials = 10000;
+        float currentWeightSum = 0;
+        float minValue = 9F;
+        int numClasses = vector.length;
+        boolean failureOnAllZeroP = true;
+
+        float[] expectedFraction = new float[vector.length];
+        for (int k = 0;k < numClasses;k++)
+        {
+            if (vector[k] >= minValue)
+                currentWeightSum +=vector[k];
+        }
+
+        for (int k = 0;k < numClasses;k++)
+        {
+            if (vector[k] >= minValue)
+                expectedFraction[k] = vector[k]/currentWeightSum;
+            else
+                expectedFraction[k] = 0;
+        }
+
+        float[] sampleCounts = new float[numClasses];
+
+        for (int i = 0; i < numTrials;i++)
+        {
+            int sample = FastLSTMNetwork.sampleVectorIndexProportionally(vector, 0, vector.length, minValue, failureOnAllZeroP);
+
+            sampleCounts[sample]++;
+
+        }
+
+        System.out.println("Generated sample counts, " + Arrays.toString(sampleCounts));
+        float error = 0.01F;
+
+        for (int k = 0;k < numClasses;k++)
+        {
+            float sampleProportion = sampleCounts[k]/numTrials;
+            float expectedProportion = expectedFraction[k];
+
+            Assert.assertTrue("Found wrong fraction of class: " + k + ".  Should be about " + expectedProportion + " but is " + sampleProportion, Math.abs(sampleProportion - expectedProportion) <= error);
+        }
+    }
+
+
+
+    @Test
+    public void testReberGrammarMatching()
+    {
+        try
+        {
+            GrammarStateMachine machine = makeReberGrammar();
+
+            int count = 0, numSamples = 100;
+
+            ReberGrammarMatcher reberMatcher = new ReberGrammarMatcher();
+
+            StringBuilder builder = null;
+            String nextChar;
+            MatchStatus status, expectedStatus;
+            boolean success = false;
+
+            for (count = 0; count < numSamples;count++)
+            {
+                reberMatcher.reset();
+                machine.reset();
+                builder = new StringBuilder();
+                while ((nextChar = machine.next())!=null)
+                {
+                    builder.append(nextChar);
+                    status = reberMatcher.match(nextChar);
+
+                    success = nextChar.equals("E") && MatchStatus.FINISHED == status || MatchStatus.SUCCESS == status;
+                    Assert.assertTrue("Failed to match next character of grammar", success);
+                }
+
+                System.out.println("Successfully matched " + builder);
+            }
+
+            boolean validGrammar = false, cont = true;
+            float invalidGrammarProbability = 0.25F;
+            String token;
+            for (count = 0; count < numSamples;count++)
+            {
+                reberMatcher.reset();
+                builder = new StringBuilder();
+
+                ReberGrammar currentValue = ReberGrammar.B, lastValue = ReberGrammar.E;
+                cont = true;
+                while (cont)
+                {
+                    validGrammar = FastLSTMNetwork.randomLCG() > invalidGrammarProbability;
+
+                    if (validGrammar)
+                    {
+                        if (currentValue != lastValue)
+                            expectedStatus = MatchStatus.SUCCESS;
+                        else
+                        {
+                            expectedStatus = MatchStatus.FINISHED;
+                            cont = false;
+                        }
+                        token = currentValue.getToken();
+
+                    }
+                    else
+                    {
+                        cont = false;
+                        expectedStatus = MatchStatus.FAILURE;
+                        token = "*"; // invalid grammar element
+
+                    }
+                    builder.append(token);
+                    status = reberMatcher.match(token);
+                    Assert.assertTrue("Failed to match '" + token + " to expected status.  Expected " +  expectedStatus.name() + " found: " + status.name() , status == expectedStatus);
+
+                    if (cont)
+                    {
+                        int[] transitions = currentValue.getTransitions();
+                        int index = transitions[(int)(transitions.length*FastLSTMNetwork.randomLCG())];
+                        currentValue = ReberGrammar.from(index);
+                    }
+                    System.out.println("Successfully matched or failed to match " + builder.toString());
+                }
+
+            }
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue("Failed due exception", false);
+        }
+
+
+    }
 
     @Test
     public void testTeachingReberGrammar()
@@ -1237,7 +1455,7 @@ public class FastLSTMTester extends BaseLSTMTester {
                     {
                         seed = System.currentTimeMillis();
                         System.out.println("Learning complex pattern with initial seed: "+ seed);
-                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
+                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps);
                         if (result.getRight() < numLearningSteps)
                         {
                             System.out.println("Memorized noisy pattern in " + result.getRight() + " steps and error: " + result.getLeft());
@@ -1263,7 +1481,7 @@ public class FastLSTMTester extends BaseLSTMTester {
                     {
                         seed = System.currentTimeMillis();
                         System.out.println("Learning simplified pattern with initial seed: "+ seed);
-                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
+                        result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps);
                         if (result.getRight() < numLearningSteps)
                         {
                             System.out.println("Memorized simplified pattern in " + result.getRight() + " steps and error: " + result.getLeft());
@@ -1290,7 +1508,9 @@ public class FastLSTMTester extends BaseLSTMTester {
             }
 
             int extrapLength = noisyComplexInput.length;
+
             networkSpec = smallestSimplifiedData;
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
             float[] extrapInput = noisyComplexInput[0];
             errorMessage = "Compressing simplified pattern doesn't recreate pattern";
             System.out.println("Extrapolating from: " + Arrays.toString(extrapInput));
@@ -1405,7 +1625,16 @@ public class FastLSTMTester extends BaseLSTMTester {
                         {
                             seed = System.currentTimeMillis();
                             System.out.println("Learning complex pattern with num memory cells: " + currentNumMemoryCells);
-                            result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, seed);
+                            if (currentNumMemoryCells < 1)
+                            {
+                                smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                System.out.println("Saved smaller noisy LSTM with " + smallestNoisyMemoryCells + " memory cells");
+                                testStage = FINDING_MINIMUM_SIMPLIFIED_NETWORK;
+
+                                currentNumMemoryCells = numMemoryCellStates;
+                                break;
+                            }
+                            result = teachNoisySequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, noiseMask);
                             if (result.getRight() < numLearningSteps)
                             {
                                 if (firstNoisy)
@@ -1425,11 +1654,12 @@ public class FastLSTMTester extends BaseLSTMTester {
 
                             } else
                             {
-                                if (result.getRight() < numLearningSteps)
-                                    smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                smallestNoisyData = Arrays.copyOf(networkSpec, networkSpec.length);
                                 System.out.println("Saved smaller noisy LSTM with " + smallestNoisyMemoryCells + " memory cells");
                                 testStage = FINDING_MINIMUM_SIMPLIFIED_NETWORK;
+
                                 currentNumMemoryCells = numMemoryCellStates;
+
                                 builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
                                 networkSpec = builder.build()._networkData;
                                 FastLSTMNetwork.setOutputErrorMask(networkSpec, errorMask);
@@ -1440,7 +1670,10 @@ public class FastLSTMTester extends BaseLSTMTester {
                         {
 
                             System.out.println("Learning simplified pattern with num memory cells: " + currentNumMemoryCells);
-                            result = teachNoisySequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, noiseMask);
+                            //result = teachNoisySequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps, noiseMask);
+                            result = teachSequence(networkSpec, noisyComplexInput, maxAcceptableError, numLearningSteps);
+
+
                             if (result.getRight() < numLearningSteps)
                             {
                                 if (firstSimplified)
@@ -1459,8 +1692,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
                             } else
                             {
-                                if (result.getRight() < numLearningSteps)
-                                    smallestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
+                                smallestSimplifiedData = Arrays.copyOf(networkSpec, networkSpec.length);
                                 System.out.println("Saved small simplified LSTM with " + smallestSimplifiedMemoryCells + " memory cells");
                                 //System.out.println("Memorized simplified pattern in a minimum of : " + smallestSimplifiedMemoryCells + " memory cells");
                                 //Assert.assertTrue("Simplifying network failed to allow compression", smallestSimplifiedMemoryCells < smallestNoisyMemoryCells);
@@ -2057,7 +2289,7 @@ public class FastLSTMTester extends BaseLSTMTester {
     }
 
 
-    Pair<Float, Integer> teachSequence(float[] networkSpec, float[][] inputSequence, float maxAcceptableError, int maxSteps, long seed)
+    Pair<Float, Integer> teachSequence(float[] networkSpec, float[][] inputSequence, float maxAcceptableError, int maxSteps)
     {
         int steps = 0;
         LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
