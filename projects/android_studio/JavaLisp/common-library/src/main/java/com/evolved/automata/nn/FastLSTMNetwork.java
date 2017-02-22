@@ -15,19 +15,22 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
     public static class TrainingSpec
     {
-        float[] input;
-        float[] expectedOutput;
-        float[] errorMask;
-
+        public float[] input;
+        public float[] expectedOutput;
+        public float[] errorMask;
+        public boolean skipMinAcceptabledErrorCheckP;
+        public boolean resetNetworkStateP;
 
     }
 
-    public static TrainingSpec trainingSpec(float[] input, float[] expectedOutput, float[] errorMask)
+    public static TrainingSpec trainingSpec(float[] input, float[] expectedOutput, float[] errorMask, boolean skipMinErrorCheck, boolean resetNetworkStateP)
     {
         TrainingSpec spec = new TrainingSpec();
         spec.errorMask = errorMask;
         spec.input = input;
         spec.expectedOutput = expectedOutput;
+        spec.skipMinAcceptabledErrorCheckP = skipMinErrorCheck;
+        spec.resetNetworkStateP = resetNetworkStateP;
         return spec;
     }
 
@@ -2377,8 +2380,13 @@ public class FastLSTMNetwork extends LSTMNetwork{
     }
 
 
+
+
     // ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~
     //                  Java Interface
+    // All static methods above this can be ported to c/c++
+    // Everything below this can be ported to c++ or some other object-oriented
+    // language
     // ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~
 
     public float learnMap(TrainingSpec spec, float[] inputMatchingMask)
@@ -2394,9 +2402,10 @@ public class FastLSTMNetwork extends LSTMNetwork{
         }
         else
         {
+            //clearOutputErrorMask(_networkData);
             for (int i = 0;i < mask.length;i++)
             {
-                _networkData[getOutputLayerMaskIndex(_networkData) + i] = 1;
+                _networkData[getOutputLayerMaskIndex(_networkData) + i] = mask[i];
             }
         }
 
@@ -2414,6 +2423,42 @@ public class FastLSTMNetwork extends LSTMNetwork{
         }
 
         return updateForwardPassErrors(_networkData, expectedOutput);
+    }
+
+    public static float learnMap(float[] networkSpec, TrainingSpec spec, float[] inputMatchingMask)
+    {
+        float[] input = spec.input;
+        float[] expectedOutput = spec.expectedOutput;
+        float[] mask = spec.errorMask;
+        if (spec.resetNetworkStateP)
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+
+        if (mask != null)
+        {
+            setOutputErrorMask (networkSpec, mask);
+
+        }
+        else
+        {
+
+            // TODO: Decide if we want to explicitly clear this or leave it as it was
+            //clearOutputErrorMask(networkSpec);
+        }
+
+        forwardPass(networkSpec, input);
+        if (inputMatchingMask != null)
+        {
+            for (int i = 0;i < inputMatchingMask.length;i++)
+            {
+                if (inputMatchingMask[i] == 1)
+                {
+                    expectedOutput[i] = networkSpec[getOutputLayerMaskIndex(networkSpec) + i];
+                }
+
+            }
+        }
+
+        return updateForwardPassErrors(networkSpec, expectedOutput);
     }
 
 

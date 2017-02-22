@@ -2,7 +2,7 @@ package com.evolved.automata.nn;
 
 import com.evolved.automata.nn.grammar.GrammarStateMachine;
 import com.evolved.automata.nn.grammar.MatchStatus;
-import com.sun.org.apache.xerces.internal.impl.xpath.regex.Match;
+
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;

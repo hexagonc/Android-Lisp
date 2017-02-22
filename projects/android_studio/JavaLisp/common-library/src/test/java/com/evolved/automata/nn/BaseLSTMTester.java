@@ -319,6 +319,19 @@ public class BaseLSTMTester {
         return sbuilder.toString();
     }
 
+    String getStringFromOneHotVector(float[] vectorChar, String[] alphabet)
+    {
+
+        for (int i = 0;i < vectorChar.length;i++)
+        {
+            if (roundToInt(vectorChar[i]) == 1)
+            {
+                return alphabet[i];
+            }
+        }
+        return null;
+    }
+
     int roundToInt(double v)
     {
         if (v < 0.5)
