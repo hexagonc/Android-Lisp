@@ -898,6 +898,16 @@ public class NNTools {
         return getAverage(stageContinuize(0, range, in));
     }
 
+    public static float  averagedStageContinuize(float range, float[] discretized)
+    {
+        ArrayList<Double> in = new ArrayList<Double>();
+        for (float d:discretized)
+        {
+            in.add(Double.valueOf(d));
+        }
+        return (float)getAverage(stageContinuize(0, range, in));
+    }
+
     public static Pair<Double, Double>  stageContinuize(double range, double[] discretized)
     {
         ArrayList<Double> in = new ArrayList<Double>();
@@ -906,6 +916,17 @@ public class NNTools {
             in.add(d);
         }
         return stageContinuize(0, range, in);
+    }
+
+    public static float stageContinuize(float range, float[] discretized)
+    {
+        ArrayList<Double> in = new ArrayList<Double>();
+        for (double d:discretized)
+        {
+            in.add(d);
+        }
+        Pair<Double, Double> r = stageContinuize(0, range, in);
+        return (float)(r.getLeft() + r.getRight())/2;
     }
 
 
@@ -964,7 +985,7 @@ public class NNTools {
     }
 
 
-    static String[] arrayListToArray(ArrayList<String> input)
+    public static String[] arrayListToArray(ArrayList<String> input)
     {
         return input.toArray(toArraySampleValue);
     }
@@ -1031,6 +1052,39 @@ public class NNTools {
             return 0;
         else
             return 1;
+    }
+
+    public static float[] roundToInt(float[] v)
+    {
+        float[] o = new float[v.length];
+        for (int i = 0;i < v.length;i++)
+            o[i] = NNTools.roundToInt(v[i]);
+        return o;
+    }
+
+    public static double getMinThreshold(double absoluteThreshold, double thresholdFraction, double total)
+    {
+        return  (Math.min(total, Math.max(absoluteThreshold, total*thresholdFraction)));
+    }
+
+    public static float[] wrapVector(float[] vector)
+    {
+        float[] out = new float[vector.length + 2];
+        for (int i = 0;i < vector.length;i++)
+        {
+            out[i+1] =vector[i];
+        }
+        return out;
+    }
+
+    public static float[] unwrapVector(float[] wrappedVector)
+    {
+        float[] base = new float[wrappedVector.length-2];
+        for (int i = 1;i <= base.length;i++)
+        {
+            base[i-1] = wrappedVector[i];
+        }
+        return base;
     }
 
     public static float[] getVectorDataAsFloat(Vector vector)
@@ -1332,5 +1386,25 @@ public class NNTools {
     static double getAverage(Pair<Double, Double> p)
     {
         return p.getLeft()/2 + p.getRight()/2;
+    }
+
+
+    public static float[] flattenArray(float[][] list)
+    {
+        int total = 0;
+        for (int i = 0;i < list.length;i++)
+        {
+            total +=list[i].length;
+        }
+        float[] out = new float[total];
+        int j = 0;
+        for (int i = 0;i < list.length;i++)
+        {
+            for (int k = 0; k < list[i].length; k++, j++)
+            {
+                out[j] = list[i][k];
+            }
+        }
+        return out;
     }
 }

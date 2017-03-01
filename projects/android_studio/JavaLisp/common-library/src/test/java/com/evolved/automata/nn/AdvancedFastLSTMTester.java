@@ -7,6 +7,8 @@ import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.Vector;
 import com.evolved.automata.nn.grammar.GrammarStateMachine;
 import com.evolved.automata.nn.grammar.MatchStatus;
+import com.evolved.automata.nn.representations.ModelBuilder;
+import com.evolved.automata.nn.representations.Tools;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
@@ -24,6 +26,195 @@ import static org.junit.Assert.assertTrue;
  */
 
 public class AdvancedFastLSTMTester extends BaseLSTMTester {
+    static final int MATCH_COUNT = 0;
+    static final int FAILURE_COUNT = 1;
+    static final int LENGTH = 2;
+    static final int WEIGHT = 3;
+    static final int ID = 4;
+
+    @Test
+    public void testAddNoise()
+    {
+        try
+        {
+            float[] baseInput = {0.2F, 0.5F, 0.25F, 1, 0.75F, 0.5F, 0.5F, 0.1F};
+
+
+            System.out.println("Base input is: " + Arrays.toString(baseInput));
+            float[] noisy;
+            boolean gaussian;
+            float width;
+            for (int i = 0;i < 20;i++)
+            {
+                gaussian = FastLSTMNetwork.randomLCG() < 0.5;
+                width = (float) FastLSTMNetwork.randomLCG();
+                noisy = FastLSTMNetwork.addNoise(baseInput, width, gaussian);
+                System.out.print("Added ");
+                if (gaussian)
+                    System.out.print("gaussian");
+                else
+                    System.out.print("uniform");
+                System.out.println(" noise yielding: " + Arrays.toString(noisy));
+                System.out.println("Rounded: " + Arrays.toString(NNTools.roundToInt(noisy)));
+            }
+
+
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();;
+            Assert.assertTrue("failure", false);
+        }
+    }
+
+
+
+    public void testConvertTrainingSpec()
+    {
+        try
+        {
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+
+        }
+    }
+
+
+
+    @Test
+    public void testPatternExtrude()
+    {
+
+        String errorMessage = null;
+        try
+        {
+
+
+            int[][] testPatterns = new int[][]{
+                    {128, 10, 20, 30, 40, 50, 250},
+                    {128, 10, 20, 30, 20, 10, 250},
+                    {128, 100, 10, 30, 250}
+            };
+
+            int bitWidth = 3;
+            int range = 256;
+            float[][][] testInput = getDiscretizedSequence(testPatterns, bitWidth, range);
+
+            float[] stopValue = stageDiscretize(250, range, bitWidth);
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+            //              Building the Network
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+
+            int inputNodeCode = 2*bitWidth;
+            int outputNodeCode = 2*bitWidth;
+            int numMemoryCellStates = 17;
+
+
+            FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputNodeCode, outputNodeCode, numMemoryCellStates);
+            FastLSTMNetwork network = builder.build();
+
+            long seed = System.currentTimeMillis();
+            FastLSTMNetwork.setSeed(seed);
+            System.out.println("Using seed: " + seed);
+            float[] networkSpec = network._networkData;
+
+            float resetThresholdFraction = 0.0001F, maxAverageSequenceError = 0.1F, error = 0;
+            int maxSteps = 300;
+            int maxLearningStages = 1;
+            LSTMNetwork.WeightUpdateType updateType = LSTMNetwork.WeightUpdateType.RPROP;
+            boolean success = false;
+            errorMessage = "Failed to save all training patterns in the LSTM";
+
+            int stage = 0, numStages = 30;
+
+            System.out.println("Attempting to Learn patterns: ");
+            for (int k = 0;k < testInput.length;k++)
+            {
+                for (int j = 0;j < testInput[k].length;j++)
+                {
+                    if (j > 0)
+                        System.out.print(", ");
+                    System.out.print(NNTools.stageContinuize(range, testInput[k][j]));
+                }
+                System.out.println();
+            }
+
+
+            for (stage = 0;stage < numStages; stage++)
+            {
+                System.out.println("Trying to learn all patterns. . .");
+                long start = System.currentTimeMillis();
+                FastLSTMNetwork.initializeAllWeights(networkSpec);
+                error = learnMultiSequence(networkSpec, testInput, maxAverageSequenceError, maxSteps,resetThresholdFraction, true, updateType, false);
+                double stop = (System.currentTimeMillis() - start)/1000.0;
+                if (error <= maxAverageSequenceError)
+                {
+                    System.out.println("Learned the pattern after " + stop + " seconds");
+                    break;
+                }
+                else
+                {
+                    System.out.println("Failed to learn pattern after " + stop + " seconds");
+                }
+            }
+
+            double value;
+            float noiseWidth = 0.5F;
+            float[] noisyInput;
+            boolean roundNoiseP = true;
+            StringBuilder sbuilder = new StringBuilder();
+            if (error <= maxAverageSequenceError)
+            {
+                float[] initialValue = testInput[0][0];
+
+
+                float[] currentInput = initialValue;
+                for (int i = 0; i < 20;i++)
+                {
+                    sbuilder = new StringBuilder();
+                    FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                    currentInput = initialValue;
+                    boolean second = false;
+                    do {
+                        value = NNTools.stageContinuize(range, currentInput);
+                        System.out.println("Original value is: " + Arrays.toString(currentInput) + " representing " + value);
+                        if (second)
+                        {
+
+                            noisyInput = FastLSTMNetwork.addNoise(currentInput, noiseWidth, false);
+                            if (roundNoiseP)
+                                currentInput = NNTools.roundToInt(noisyInput);
+                            else
+                                currentInput = noisyInput;
+                            value = NNTools.stageContinuize(range, currentInput);
+                            System.out.println("Noisy input is: "+  Arrays.toString(currentInput) + " representing " + value);
+                        }
+                        second = true;
+                        sbuilder.append(value);
+                        FastLSTMNetwork.forwardPass(networkSpec, currentInput);
+                        float[] out = FastLSTMNetwork.getOutputActivation(networkSpec);
+                        currentInput = out;
+                    }while (!Arrays.equals(currentInput, stopValue));
+                    System.out.println("Extrapolated " + sbuilder);
+
+
+                }
+            }
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();;
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
 
 
     // TODO: finish this after testing incremental storage
@@ -331,10 +522,403 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
 
 
 
+    @Test
+    public void testHierarchicalRepresentation()
+    {
+        String errorMessage = "Failed to create base training level";
+        try
+        {
+            int[] baseInput = new int[]{10, 20, 24, 30, 20, 250, 100, 50, 45, 40, 35, 30, 30, 30, 25, 20, 15, 230, 200, 180, 160, 150, +145, 5, 10, 15, 20, 100, 110, 120, 130, 130, 130, 120, 110, 100, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 40, +40, 40, 35, 30, 20, 15, 15, +15, 10, 90, 95, 90, 95, 90, 95, 90, 75, 65, 75, 65, 75, 65, 75, 65};
+
+            float[] nextInput;
+
+            int bitWidth = 3;
+            int range = 256;
+
+
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+            //              Build the TrainingLevel
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+
+
+
+            int inputNodeCode = 2*bitWidth;
+            int capacity = 15;
+            int featureTrainingSteps = 100;
+            float[] input;
+            //long seed = System.currentTimeMillis();
+            long seed = 1488293344623L;
+            FastLSTMNetwork.setSeed(seed);
+            System.out.println("Using seed: " + seed);
+
+            ModelBuilder base = new ModelBuilder(inputNodeCode, capacity, featureTrainingSteps);
+            base.setLSTMViewer(getNumericLSTMNetworkViewer(range, base.getFeatureInitialState(), base.getFeatureFinalState()));
+            boolean success = false;
+            errorMessage = "Failed to learn features";
+
+            if (Tools.DEBUG)
+                System.out.println("Generating hierarchical model of " + Arrays.toString(baseInput));
+
+            for (int i = 0; i < baseInput.length;i++)
+            {
+                System.out.println("" + i + ") Trying to learn: " + baseInput[i]);
+                input = stageDiscretize(baseInput[i], range, bitWidth);
+                base.observePredict(input, null);
+            }
+            base.finalize(true);
+
+            String features = base.viewAllPredictors();
+            errorMessage = "Failed to construct predictors";
+            Assert.assertTrue(errorMessage, features.length() > 10);
+            System.out.println("Partitioned into initial features: " + features);
+
+
+
+            errorMessage = "Failed to match patterns, building hierarchical representations";
+
+            System.out.println("+++++ Reprocessing initial features into hierarchical model ++++++");
+            float[] firstValue = null;
+            ModelBuilder.PREDICTOR_MATCH_STATE[] modelState = null, prevModel = null;
+            for (int i = 0; i < baseInput.length;i++)
+            {
+                System.out.println("**********************");
+                System.out.println( "("+ i + ") Reprocessing: " + baseInput[i]);
+                input = stageDiscretize(baseInput[i], range, bitWidth);
+                if (i == 0)
+                    firstValue = input;
+                modelState = base.observePredict(input, null);
+                features = base.viewAllPredictors();
+                if (base.previousStateWasNewP())
+                    System.out.println("\n" + i + ") Features to be passed to higher level: \n" + features);
+                System.out.println("<><><><><><><><><><><><><><><>\n");
+            }
+
+            System.out.println("\n**********************");
+            System.out.println("Final model state: \n" + features);
+
+
+            // TODO: add code to detect non-overlapping features
+
+            // --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+--
+            //                  Extrapolation
+            // --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+--
+            /*
+            base.finalize(true);
+
+            String newfeatures = base.viewAllPredictors();
+            Assert.assertTrue("Should not have created new features ", newfeatures.equals(features));
+            System.out.println("Learned updated patterns: " + newfeatures);
+            base.setExtrapMode(true, true);
+            input = firstValue;
+            int[] prediction = null;
+            int selectedPredictorIndex;
+            double logicalFeature;
+            int lastSelectedIndex = -1;
+            StringBuilder outputBuilder = new StringBuilder("{");
+            float[] weights = new float[capacity];
+            boolean hasLastSelectedP = false;
+            int extrapCount = 0;
+            while ((prediction = base.observePredict(input, null))!=null)
+            {
+                logicalFeature = NNTools.averagedStageContinuize(range, input);
+                System.out.print("Extrapolating from: " + logicalFeature);
+                outputBuilder.append(logicalFeature + " ");
+                hasLastSelectedP = false;
+                weights = new float[capacity];
+                for (int i = 0; i < prediction.length;i++)
+                {
+                    weights[prediction[i]] = base.getPredictorWeight(prediction[i]);
+                    if (prediction[i] == lastSelectedIndex)
+                    {
+                        hasLastSelectedP =  true;
+                    }
+                }
+
+                if (!hasLastSelectedP)
+                {
+                    lastSelectedIndex = FastLSTMNetwork.sampleVectorIndexProportionally(weights, 0, weights.length, 0, false);
+                }
+
+                input = base.getPrediction(lastSelectedIndex);
+                logicalFeature = NNTools.averagedStageContinuize(range, input);
+                System.out.println("to " + logicalFeature);
+                extrapCount++;
+            }
+            outputBuilder.append("}");
+
+            System.out.println("Reconstructed: " + outputBuilder);
+            */
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+
+    @Test
+    public void testBaseHierarchicalRepresentation()
+    {
+        String errorMessage = "Failed to create base training level";
+        try
+        {
+            int[] baseInput = new int[]{10, 20, 24, 30, 20, 250, 100, 50, 45, 40, 35, 30, 30, 30, 25, 20, 15, 230, 200, 180, 160, 150, +145, 5, 10, 15, 20, 100, 110, 120, 130, 130, 130, 120, 110, 100, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 40, +40, 40, 35, 30, 20, 15, 15, +15, 10, 90, 95, 90, 95, 90, 95, 90, 75, 65, 75, 65, 75, 65, 75, 65};
+
+            float[] nextInput;
+
+            int bitWidth = 3;
+            int range = 256;
+
+
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+            //              Build the TrainingLevel
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+
+
+
+            int inputNodeCode = 2*bitWidth;
+            int capacity = 15;
+            int featureTrainingSteps = 100;
+
+            //long seed = System.currentTimeMillis();
+            long seed = 1488293344623L;
+            FastLSTMNetwork.setSeed(seed);
+            System.out.println("Using seed: " + seed);
+
+            ModelBuilder base = new ModelBuilder(inputNodeCode, capacity, featureTrainingSteps);
+            base.setLSTMViewer(getNumericLSTMNetworkViewer(range, base.getFeatureInitialState(), base.getFeatureFinalState()));
+            boolean success = false;
+            errorMessage = "Failed to learn features";
+
+            for (int i = 0; i < baseInput.length;i++)
+            {
+                System.out.println("" + i + ") Trying to learn: " + baseInput[i]);
+                float[] input = stageDiscretize(baseInput[i], range, bitWidth);
+                base.observePredict(input, null);
+            }
+            base.finalize(true);
+
+            String features = base.viewAllPredictors();
+            errorMessage = "Failed to construct predictors";
+            Assert.assertTrue(errorMessage, features.length() > 10);
+            System.out.println("Learned patterns: " + features);
+
+            // TODO: add code to detect non-overlapping features
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    ModelBuilder.FastLSTMNetworkViewer getNumericLSTMNetworkViewer(final int range, final float[] initialValue, final float[] finalValue)
+    {
+        return new ModelBuilder.FastLSTMNetworkViewer() {
+            @Override
+            public String toString(float[] networkSpec)
+            {
+                float[] copy =  Arrays.copyOf(networkSpec, networkSpec.length);
+                FastLSTMNetwork.resetNetworkToInitialState(copy);
+                FastLSTMNetwork.forwardPass(copy, initialValue);
+                float[] output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+                StringBuilder builder = new StringBuilder("{");
+                boolean second = false;
+                while (!Arrays.equals(output, finalValue))
+                {
+                    if (second)
+                        builder.append(", ");
+                    second = true;
+                    builder.append(NNTools.averagedStageContinuize(range, NNTools.unwrapVector(output)));
+                    FastLSTMNetwork.forwardPass(copy, output);
+                    output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+                }
+                return builder.append("}").toString();
+            }
+        };
+    }
 
     // ------------------------------------------------
     //          Helper Functions
     // ------------------------------------------------
+
+
+
+
+    /**
+     *
+     * @param networkSpec
+     * @param startInput
+     * @param stopInput
+     * @return
+     */
+    static double createCapptedLSTM(float[] networkSpec, float[] startInput, float[] stopInput)
+    {
+        LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec = new LinkedList<FastLSTMNetwork.TrainingSpec>();
+
+        trainingSpec.add(FastLSTMNetwork.trainingSpec(startInput, stopInput, null, false, false));
+
+        float maxAcceptabledError = 0.1F;
+        FastLSTMNetwork.initializeAllWeights(networkSpec);
+        float error = learnTrainingSpec(networkSpec, trainingSpec, maxAcceptabledError, 20, 0.001F, true, LSTMNetwork.WeightUpdateType.RPROP);
+        FastLSTMNetwork.setCustomData(networkSpec, 0, MATCH_COUNT);
+        FastLSTMNetwork.setCustomData(networkSpec, 0, FAILURE_COUNT);
+        FastLSTMNetwork.setCustomData(networkSpec, 0, WEIGHT);
+        return error;
+    }
+
+
+    /**
+     *
+     * @param cappedNetworkSpec
+     * @param startInput
+     * @param stopInput
+     * @param newInput
+     * @param maxAcceptabledError
+     * @param maxSteps
+     * @param convergenceThreshold
+     * @param allowWeightResetsP
+     * @param updateType
+     * @return
+     */
+    static double appendVectorToSequence(float[] cappedNetworkSpec, float[] startInput, float[] stopInput, float[] newInput, float maxAcceptabledError, int maxSteps, float convergenceThreshold, boolean allowWeightResetsP, FastLSTMNetwork.WeightUpdateType updateType)
+    {
+        float[] output;
+        float[] copy = Arrays.copyOf(cappedNetworkSpec, cappedNetworkSpec.length);
+
+        LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec = new LinkedList<FastLSTMNetwork.TrainingSpec>();
+
+        FastLSTMNetwork.TrainingSpec spec;
+        int dataId = (int)AdvancedFastLSTMTester.getId(copy);
+        float[] input = startInput;
+        FastLSTMNetwork.resetNetworkToInitialState(copy);
+        FastLSTMNetwork.forwardPass(copy, input);
+        output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+        int priorLength = getCappedLSTMLength(cappedNetworkSpec);
+
+        int dataWidth = startInput.length;
+
+        while (!Arrays.equals(output, stopInput))
+        {
+            spec = FastLSTMNetwork.trainingSpec(input, output, null, false, false);
+            trainingSpec.add(spec);
+            input = output;
+            FastLSTMNetwork.forwardPass(copy, input);
+            output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+        }
+        spec = FastLSTMNetwork.trainingSpec(input, newInput, null, false, false);
+        trainingSpec.add(spec);
+        spec = FastLSTMNetwork.trainingSpec(newInput, stopInput, null, false, false);
+        trainingSpec.add(spec);
+        FastLSTMNetwork.initializeAllWeights(copy);
+
+        float error = learnTrainingSpec(copy, trainingSpec, maxAcceptabledError, maxSteps, convergenceThreshold, allowWeightResetsP, updateType);
+
+        if (error == 0)
+        {
+            for (int i = 0; i < cappedNetworkSpec.length;i++)
+            {
+                cappedNetworkSpec[i] = copy[i];
+            }
+
+            incrementLength(cappedNetworkSpec);
+        }
+
+        return error;
+    }
+
+    static void resetCappedLSTM(float[] networkSpec, float[] initialState)
+    {
+        resetCappedLSTM(networkSpec, initialState, false);
+
+    }
+
+    static void resetCappedLSTM(float[] networkSpec, float[] initialState, boolean onlyMetaDataP)
+    {
+
+        if (!onlyMetaDataP)
+        {
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+            FastLSTMNetwork.forwardPass(networkSpec, initialState);
+        }
+        FastLSTMNetwork.setCustomData(networkSpec, 0, MATCH_COUNT);
+        FastLSTMNetwork.setCustomData(networkSpec, 0, FAILURE_COUNT);
+        FastLSTMNetwork.setCustomData(networkSpec, 0, WEIGHT);
+
+    }
+
+
+    static boolean isAtFinalState(float[] networkSpec, float[] finalState)
+    {
+        float[] out = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(networkSpec));
+        return Arrays.equals(out, finalState);
+    }
+
+    static void incrementLength(float[] networkSpec)
+    {
+        setCappedLSTMLength(networkSpec, 1 + getCappedLSTMLength(networkSpec));
+    }
+
+    static void setCappedLSTMLength(float[] networkSpec, int i)
+    {
+        FastLSTMNetwork.setCustomData(networkSpec, i, LENGTH);
+    }
+
+
+    static int getCappedLSTMLength(float[] networkSpec)
+    {
+        return (int)FastLSTMNetwork.getCustomData(networkSpec, LENGTH, -1);
+    }
+
+
+    static void setCappedLSTMWeight(float[] networkSpec, float weight)
+    {
+        FastLSTMNetwork.setCustomData(networkSpec, weight, WEIGHT);
+    }
+
+
+    static float getCappedLSTMWeight(float[] networkSpec)
+    {
+        return FastLSTMNetwork.getCustomData(networkSpec, WEIGHT, -1);
+    }
+
+
+    static int getMatchCount(float[] networkSpec)
+    {
+        return (int)FastLSTMNetwork.getCustomData(networkSpec, MATCH_COUNT, -1);
+    }
+
+    static void incrementMatchCount(float[] networkSpec)
+    {
+        int prior = (int)FastLSTMNetwork.getCustomData(networkSpec, MATCH_COUNT, -1);
+        FastLSTMNetwork.setCustomData(networkSpec, prior + 1, MATCH_COUNT);
+
+    }
+
+    static void incrementFailureCount(float[] networkSpec)
+    {
+        int prior = (int)FastLSTMNetwork.getCustomData(networkSpec, FAILURE_COUNT, -1);
+        FastLSTMNetwork.setCustomData(networkSpec, prior + 1, FAILURE_COUNT);
+    }
+
+    static int getFailureCount(float[] networkSpec)
+    {
+        return (int)FastLSTMNetwork.getCustomData(networkSpec, FAILURE_COUNT, -1);
+    }
+
+    static void setId(float[] networkSpec, float id)
+    {
+        FastLSTMNetwork.setCustomData(networkSpec, id, ID);
+    }
+
+    static float getId(float[] networkSpec)
+    {
+        return FastLSTMNetwork.getCustomData(networkSpec, ID, -1) ;
+    }
 
     /**
      *
@@ -361,6 +945,48 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
     }
 
 
+
+    float learnMultiSequence(float[] networkSpec, float[][][] inputSequence, float maxAcceptabledError, int maxSteps, float convergenceThreshold, boolean allowWeightResetsP, FastLSTMNetwork.WeightUpdateType updateType, boolean rollbackFailureP)
+    {
+        float[] testNetwork = Arrays.copyOf(networkSpec, networkSpec.length);
+
+        LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec = new LinkedList<FastLSTMNetwork.TrainingSpec>();
+
+        FastLSTMNetwork.TrainingSpec spec;
+        boolean recognizeInputP = false;
+        float error;
+
+        for (int j = 0; j < inputSequence.length;j++)
+        {
+            FastLSTMNetwork.resetNetworkToInitialState(testNetwork);
+            for (int i = 0; i < inputSequence.length - 1;i++)
+            {
+                FastLSTMNetwork.forwardPass(testNetwork, inputSequence[j][i]);
+                error = FastLSTMNetwork.getOutputError(testNetwork, inputSequence[j][i + 1]);
+
+                if (error <= maxAcceptabledError)
+                {
+                    spec = FastLSTMNetwork.trainingSpec(inputSequence[j][i], inputSequence[j][i + 1], null, false, i == 0);
+                    recognizeInputP =  true;
+                }
+                else
+                {
+                    // passing recognizeInputP to skipMinErrorCheck so that the network isn't expected to be able to
+                    // predict the transition from inputSequence[i] to inputSequence[i + 1] because the transition
+                    // is non-deterministic
+                    spec = FastLSTMNetwork.trainingSpec(inputSequence[j][i], inputSequence[j][i + 1], null, recognizeInputP, i == 0);
+                    recognizeInputP = false;
+                }
+
+                trainingSpec.add(spec);
+            }
+        }
+
+
+        return learnTrainingSpec(networkSpec, trainingSpec, maxAcceptabledError, maxSteps, convergenceThreshold, allowWeightResetsP, updateType);
+
+    }
+
     /**
      *
      * @param networkSpec
@@ -372,7 +998,7 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
      *
      *         if rollbackFailureP is false and there is a failure then the return value is the maxError as a positive number
      */
-    double addSimpleSequence(float[] networkSpec, float[][] inputSequence, float maxAcceptabledError, int maxSteps, float convergenceThreshold, boolean allowWeightResetsP, FastLSTMNetwork.WeightUpdateType updateType, boolean rollbackFailureP)
+    float addSimpleSequence(float[] networkSpec, float[][] inputSequence, float maxAcceptabledError, int maxSteps, float convergenceThreshold, boolean allowWeightResetsP, FastLSTMNetwork.WeightUpdateType updateType, boolean rollbackFailureP)
     {
         LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec = new LinkedList<FastLSTMNetwork.TrainingSpec>();
         float[] testNetwork = Arrays.copyOf(networkSpec, networkSpec.length);
@@ -425,39 +1051,92 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
 
     }
 
-    float learnTrainingSpec(float[] networkSpec, LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec, float maxAcceptabledError, int maxSteps, float convergenceThreshold, boolean allowWeightResetsP, FastLSTMNetwork.WeightUpdateType updateType)
-    {
-        float maxError = Float.MIN_VALUE, error=0, prevError = 0;
-        boolean afterWeightInitialization = true;
 
-        for (int i = 0; i < maxSteps; i++)
+    static boolean maskedRoundedVerifyResult(float[] value, float[] expectedValue, float[] errorMask)
+    {
+        for (int i = 0;i < value.length;i++)
+        {
+            if (((errorMask != null && errorMask[i] == 1) || errorMask == null) && NNTools.roundToInt(expectedValue[i]) != NNTools.roundToInt(value[i]))
+                return false;
+        }
+        return true;
+    }
+
+
+    static boolean verifyTrainingResult(float[][] trainingResults, LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec)
+    {
+
+        int i = 0, j;
+        float[] expected;
+        for (FastLSTMNetwork.TrainingSpec spec: trainingSpec)
+        {
+            expected = spec.expectedOutput;
+            for (j = 1;j < trainingResults[i].length;j++)
+            {
+                if (expected[j-1] != NNTools.roundToInt(trainingResults[i][j]))
+                    return false;
+            }
+            i++;
+        }
+        return true;
+    }
+
+    static float  learnTrainingSpec(float[] networkSpec, LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec, float maxAcceptabledError, int maxSteps, float convergenceThreshold, boolean allowWeightResetsP, FastLSTMNetwork.WeightUpdateType updateType)
+    {
+        float maxError = Float.MIN_VALUE, error=0, prevError = 0, averageError = 0;
+        boolean afterWeightInitialization = true, returnAverage = false;
+        float compError=0;
+        float[][] errors = new float[trainingSpec.size()][];
+        float[] fullResult;
+        int j;
+        int i = 0;
+        for (i=0; i < maxSteps; i++)
         {
             FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
             maxError = Float.MIN_VALUE;
-
+            j = 0;
             for (FastLSTMNetwork.TrainingSpec spec:trainingSpec)
             {
+                returnAverage =spec.useAverageErrorP;
                 if (spec.resetNetworkStateP)
                     FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
-                error = FastLSTMNetwork.learnMap(networkSpec, spec, null);
+
+
+                fullResult = FastLSTMNetwork.learnMapWithDetails(networkSpec, spec, null);
+                error = fullResult[0];
+                averageError = averageError*i/(i+1F)+error/(i + 1F);
                 if (!spec.skipMinAcceptabledErrorCheckP)
                 {
                     maxError = Math.max(maxError, error);
                 }
+
+                if (returnAverage)
+                    compError = averageError;
+                else
+                    compError = maxError;
+
+                errors[j++] = fullResult;
             }
 
-            if (maxError < maxAcceptabledError)
-                return error;
+
+
+            boolean verify =  verifyTrainingResult(errors, trainingSpec);
+            if (verify)
+            {
+                System.out.println("Verified with erro: " + compError);
+                return 0;
+            }
+
 
             if (afterWeightInitialization)
             {
                 afterWeightInitialization = false;
-                prevError = maxError;
+                prevError = compError;
                 FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
             }
             else
             {
-                float convergenceFraction = (Math.abs(maxError - prevError)/maxError);
+                float convergenceFraction = (Math.abs(compError - prevError)/compError);
                 if (convergenceFraction < convergenceThreshold && allowWeightResetsP)
                 {
                     FastLSTMNetwork.initializeAllWeights(networkSpec);
@@ -465,7 +1144,7 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
 
                 }
                 FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
-                prevError = maxError;
+                prevError = compError;
             }
         }
 
@@ -474,7 +1153,7 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
 
 
 
-    FastLSTMNetwork.LSTMNetworkBuilder getStandardBuilder(int inputNodeCode, int outputNodeCode, int numMemoryCellStates)
+    static FastLSTMNetwork.LSTMNetworkBuilder getStandardBuilder(int inputNodeCode, int outputNodeCode, int numMemoryCellStates)
     {
         FastLSTMNetwork.LSTMNetworkBuilder builder = FastLSTMNetwork.getFastBuilder();
 
@@ -726,6 +1405,30 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
 
         return false;
     }
+
+    float[][][] getDiscretizedSequence(int[][] patterns, int bitWidth, int range)
+    {
+        float[][][] out = new float[patterns.length][][];
+        for (int pcount = 0;pcount < patterns.length;pcount++)
+        {
+            float[][] pattern = new float[patterns[pcount].length][];
+            for (int i = 0; i < patterns[pcount].length;i++)
+            {
+                ArrayList<Double> discretized = NNTools.stageDiscretize(patterns[pcount][i], range, bitWidth);
+                pattern[i] = new float[discretized.size()];
+                for (int j = 0; j < discretized.size();j++)
+                {
+                    pattern[i][j] = discretized.get(j).floatValue();
+                }
+            }
+            out[pcount] = pattern;
+        }
+
+        return out;
+    }
+
+
+
 
 
 }

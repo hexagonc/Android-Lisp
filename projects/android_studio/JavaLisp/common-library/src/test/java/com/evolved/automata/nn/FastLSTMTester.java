@@ -1376,7 +1376,7 @@ public class FastLSTMTester extends BaseLSTMTester {
             {
                 if (roundOutput)
                 {
-                    extrapInput = roundToInt(extrapInput);
+                    extrapInput = NNTools.roundToInt(extrapInput);
                 }
                 FastLSTMNetwork.forwardPass(networkSpec, extrapInput);
                 extrapInput = FastLSTMNetwork.getOutputActivation(networkSpec);
@@ -1520,7 +1520,7 @@ public class FastLSTMTester extends BaseLSTMTester {
             {
                 if (roundOutput)
                 {
-                    extrapInput = roundToInt(extrapInput);
+                    extrapInput = NNTools.roundToInt(extrapInput);
                 }
                 FastLSTMNetwork.forwardPass(networkSpec, extrapInput);
                 extrapInput = FastLSTMNetwork.getOutputActivation(networkSpec);

@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -13,6 +14,19 @@ import java.util.LinkedList;
 
 public class FastLSTMNetwork extends LSTMNetwork{
 
+    enum TRAINING_SPECIFICATION_MAP
+    {
+        TOTAL_LENGTH_IDX,
+        INPUT_LENGTH_IDX,
+        EXPECTED_OUTPUT_LENGTH_IDX,
+        ERROR_MASK_LENGTH_IDX,
+        RESET_NETWORK_STATE_IDX,
+        USE_AVERAGE_ERROR_IDX,
+        INPUT_DATA_POINTER_IDX,
+        EXPECTED_OUTPUT_DATA_POINTER_IDX,
+        ERROR_MASK_DATA_POINTER_IDX
+    }
+
     public static class TrainingSpec
     {
         public float[] input;
@@ -20,8 +34,70 @@ public class FastLSTMNetwork extends LSTMNetwork{
         public float[] errorMask;
         public boolean skipMinAcceptabledErrorCheckP;
         public boolean resetNetworkStateP;
+        public boolean useAverageErrorP;
+
+        public float[] toArray()
+        {
+            int inputLength = input.length;
+            int expectedLength = expectedOutput.length;
+            int errorMaskLength = 0;
+            if (errorMask != null && errorMask.length > 0)
+            {
+                errorMaskLength = errorMask.length;
+            }
+
+            int indexLengths = TRAINING_SPECIFICATION_MAP.values().length;
+            int arrayLengths = inputLength + expectedLength + errorMaskLength;
+            int totalDataLength = indexLengths + arrayLengths;
+            float[] out = new float[totalDataLength];
+
+            out[TRAINING_SPECIFICATION_MAP.TOTAL_LENGTH_IDX.ordinal()] = totalDataLength;
+            out[TRAINING_SPECIFICATION_MAP.INPUT_LENGTH_IDX.ordinal()] = inputLength;
+            out[TRAINING_SPECIFICATION_MAP.EXPECTED_OUTPUT_LENGTH_IDX.ordinal()] = expectedLength;
+            out[TRAINING_SPECIFICATION_MAP.ERROR_MASK_LENGTH_IDX.ordinal()] = errorMaskLength;
+            out[TRAINING_SPECIFICATION_MAP.RESET_NETWORK_STATE_IDX.ordinal()] = booleanToFloat(resetNetworkStateP);
+            out[TRAINING_SPECIFICATION_MAP.USE_AVERAGE_ERROR_IDX.ordinal()] = booleanToFloat(useAverageErrorP);
+
+            int inputDataIdx = indexLengths;
+            int expectedOutputDataIdx = inputDataIdx + inputLength;
+            int errorMaskDataIdx = expectedOutputDataIdx + expectedLength;
+            out[TRAINING_SPECIFICATION_MAP.INPUT_DATA_POINTER_IDX.ordinal()] = inputDataIdx;
+            out[TRAINING_SPECIFICATION_MAP.EXPECTED_OUTPUT_DATA_POINTER_IDX.ordinal()] = expectedOutputDataIdx;
+            out[TRAINING_SPECIFICATION_MAP.ERROR_MASK_DATA_POINTER_IDX.ordinal()] = errorMaskDataIdx;
+
+
+            for (int i = inputDataIdx; i < expectedOutputDataIdx;i++)
+            {
+                out[i] = input[i - inputDataIdx];
+            }
+
+            for (int i = expectedOutputDataIdx; i < errorMaskDataIdx;i++)
+            {
+                out[i] = expectedOutput[i - expectedOutputDataIdx];
+            }
+
+            if (errorMaskLength > 0)
+            {
+                for (int i = errorMaskDataIdx; i < totalDataLength;i++)
+                {
+                    out[i] = errorMask[i - errorMaskDataIdx];
+                }
+            }
+
+            return out;
+        }
+
+        float booleanToFloat(boolean v)
+        {
+            if (v)
+                return 1;
+            else
+                return 0;
+        }
 
     }
+
+
 
     public static TrainingSpec trainingSpec(float[] input, float[] expectedOutput, float[] errorMask, boolean skipMinErrorCheck, boolean resetNetworkStateP)
     {
@@ -31,6 +107,7 @@ public class FastLSTMNetwork extends LSTMNetwork{
         spec.expectedOutput = expectedOutput;
         spec.skipMinAcceptabledErrorCheckP = skipMinErrorCheck;
         spec.resetNetworkStateP = resetNetworkStateP;
+        spec.useAverageErrorP =  false;
         return spec;
     }
 
@@ -596,17 +673,20 @@ public class FastLSTMNetwork extends LSTMNetwork{
     // START: Port these constants to c/c++ as static variables/defines
     // ******************************************************
 
-
+    static final int ERROR_STATUS_FAILURE = 1;
+    static final int ERROR_STATUS_SUCESS = 0;
 
     static final int LINK_DATA_SOURCE_LAYER_ID_IDX = 0;
     static final int LINK_DATA_TARGET_LAYER_ID_IDX = 1;
     static final int LINK_DATA_WEIGHT_MATRIX_IDX = 2;
 
     static final int NUM_LAYERS = 8;
-
+    static final int NUM_CUSTOM_DATA_REGISTERS = 5;
 
     static final int VERSION_IDX = 0;
-    static final int FORWARD_PASS_LINK_ORDER_DATA_IDX = VERSION_IDX + 1;
+    static final int CUSTOM_VARIABLE_DATA_IDX = VERSION_IDX + 1;
+    static final int CUSTOM_DATA_1_IDX = CUSTOM_VARIABLE_DATA_IDX + 1;
+    static final int FORWARD_PASS_LINK_ORDER_DATA_IDX = CUSTOM_DATA_1_IDX + NUM_CUSTOM_DATA_REGISTERS;
     static final int BACKWARD_PASS_LINK_ORDER_DATA_IDX = FORWARD_PASS_LINK_ORDER_DATA_IDX + 1;
 
     static final int MIN_INITIAL_WEIGHT_IDX = BACKWARD_PASS_LINK_ORDER_DATA_IDX + 1;
@@ -658,7 +738,7 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
 
     // Activation function ids
-    static final int SIGMOID_ACTIVATION_ID = 0;
+    public static final int SIGMOID_ACTIVATION_ID = 0;
     static final int HYPERTANGENT_ACTIVATION_ID = 1;
     static final int RECTILINEAR_ACTIVATION_ID = 2;
     static final int IDENTITY_ACTIVATION_ID = 3;
@@ -672,8 +752,8 @@ public class FastLSTMNetwork extends LSTMNetwork{
     static final int[] LAYER_ID_ACTIVATION_FUNCTION_MAP = {IDENTITY_ACTIVATION_ID, SIGMOID_ACTIVATION_ID, SIGMOID_ACTIVATION_ID, SIGMOID_ACTIVATION_ID, SIGMOID_ACTIVATION_ID, SIGMOID_ACTIVATION_ID, SIGMOID_ACTIVATION_ID, HYPERTANGENT_ACTIVATION_ID};
 
 
-    static final int MSE_ERROR_FUNCTION_ID = 0;
-    static final int CROSS_ENTROPY_ERROR_ID = 1;
+    public static final int MSE_ERROR_FUNCTION_ID = 0;
+    public static final int CROSS_ENTROPY_ERROR_ID = 1;
 
     static final OutputErrorFunction[] ERROR_FUNCTION_MAP = {MeanSquaredError, CrossEntropyError};
     // Default layer activation definition
@@ -957,6 +1037,7 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
         int graphData_idx = nextIndex;
         int dataLength = graphData_idx;
+        network.put(CUSTOM_VARIABLE_DATA_IDX, Float.valueOf(nextIndex));
 
         for (int linkId = 0; linkId < (NUM_LAYERS * NUM_LAYERS); linkId++)
         {
@@ -1062,14 +1143,11 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
 
 
-
-
-
-
-
     // --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>--
     //                  Main Neural Network Methods
     // --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>-- --<(==)>--
+
+
 
     private static int getLinkId(int sourceId, int targetId)
     {
@@ -1911,6 +1989,33 @@ public class FastLSTMNetwork extends LSTMNetwork{
     // o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o
     //              Primary Public Helper Utility functions
     // o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o
+
+    public static int getNumCustomData(float[] networkSpec)
+    {
+        return NUM_CUSTOM_DATA_REGISTERS;
+    }
+
+    public static int setCustomData(float[] networkSpec, float data, int index)
+    {
+        if (index >= getNumCustomData(networkSpec) || index < 0)
+            return ERROR_STATUS_FAILURE;
+        networkSpec[CUSTOM_DATA_1_IDX + index] = data;
+        return ERROR_STATUS_SUCESS;
+    }
+
+
+    public static float getCustomData(float[] networkSpec, int index, float errorValue)
+    {
+        if (index >= getNumCustomData(networkSpec) || index < 0)
+            return errorValue;
+        return networkSpec[CUSTOM_DATA_1_IDX + index];
+    }
+
+    public static int getCustomVariableDataIndex(float[] networkSpec)
+    {
+        return (int)networkSpec[CUSTOM_VARIABLE_DATA_IDX];
+    }
+
     public static void setOutputErrorMask(float[] rawData, float[] mask)
     {
         for (int i = 0;i < mask.length;i++)
@@ -2078,6 +2183,17 @@ public class FastLSTMNetwork extends LSTMNetwork{
     // *o o* *o o* *o o* *o o* *o o* *o o* *o o* *o o* *o o* *o o*
 
 
+    public float[] getCopyofData()
+    {
+        return Arrays.copyOf(_networkData, _networkData.length);
+    }
+
+    public float[] getActualData()
+    {
+        return _networkData;
+    }
+
+
 
 
     // + reviewed +
@@ -2202,6 +2318,27 @@ public class FastLSTMNetwork extends LSTMNetwork{
             updatePartialGradient(networkSpec, linkId, targetOutput);
         }
 
+        OutputErrorFunction outError = ERROR_FUNCTION_MAP[(int)networkSpec[OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
+        return (float)outError.error(networkSpec, targetOutput);
+    }
+
+
+    public static float getOutputError(float[] networkSpec, float[] targetOutput)
+    {
+        OutputErrorFunction outError = ERROR_FUNCTION_MAP[(int)networkSpec[OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
+        return (float)outError.error(networkSpec, targetOutput);
+    }
+
+    public static float getRoundedOutputError(float[] networkSpec, float[] targetOutput)
+    {
+        int idx = getLayerActivationIndex(networkSpec, OUTPUT_LAYER_ID);
+        int width = getLayerWidth(networkSpec, OUTPUT_LAYER_ID);
+        float prior;
+        for (int i = idx; i < width + idx; i++)
+        {
+            prior = networkSpec[i];
+            networkSpec[i] = roundToInt(prior);
+        }
         OutputErrorFunction outError = ERROR_FUNCTION_MAP[(int)networkSpec[OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
         return (float)outError.error(networkSpec, targetOutput);
     }
@@ -2379,6 +2516,13 @@ public class FastLSTMNetwork extends LSTMNetwork{
         return all_data[vector_idx + i];
     }
 
+    public static int  roundToInt(float v)
+    {
+        if (v < 0.5)
+            return 0;
+        else
+            return 1;
+    }
 
 
 
@@ -2460,6 +2604,70 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
         return updateForwardPassErrors(networkSpec, expectedOutput);
     }
+
+    public static float[] learnMapWithDetails(float[] networkSpec, TrainingSpec spec, float[] inputMatchingMask)
+    {
+        float[] input = spec.input;
+        float[] expectedOutput = spec.expectedOutput;
+        float[] mask = spec.errorMask;
+        float[] out = new float[expectedOutput.length + 1];
+        if (spec.resetNetworkStateP)
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+
+        if (mask != null)
+        {
+            setOutputErrorMask (networkSpec, mask);
+
+        }
+        else
+        {
+
+            // TODO: Decide if we want to explicitly clear this or leave it as it was
+            //clearOutputErrorMask(networkSpec);
+        }
+
+        forwardPass(networkSpec, input);
+        if (inputMatchingMask != null)
+        {
+            for (int i = 0;i < inputMatchingMask.length;i++)
+            {
+                if (inputMatchingMask[i] == 1)
+                {
+                    expectedOutput[i] = networkSpec[getOutputLayerMaskIndex(networkSpec) + i];
+                }
+
+            }
+        }
+        float error = updateForwardPassErrors(networkSpec, expectedOutput);
+        float[] output = FastLSTMNetwork.getOutputActivation(networkSpec);
+        for (int i = 0;i < output.length;i ++)
+        {
+            if (i == 0)
+                out[i] = error;
+            out[i + 1] = output[i];
+        }
+        return out;
+    }
+
+
+    public static float[] addNoise(float[] input, float width, boolean gaussian)
+    {
+        float[] out = new float[input.length];
+        for (int i = 0; i < input.length;i++)
+        {
+            float random = 1;
+            if (gaussian)
+                random = (float)randomGaussian();
+            else
+            {
+                random = (float)randomLCG() - 0.5F;
+            }
+            out[i] = Math.min(1, Math.max(0, input[i] + width*random));
+        }
+        return out;
+    }
+
+
 
 
 

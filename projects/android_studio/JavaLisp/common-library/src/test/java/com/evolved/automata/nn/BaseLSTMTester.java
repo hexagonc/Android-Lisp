@@ -19,6 +19,44 @@ import java.util.HashSet;
  */
 public class BaseLSTMTester {
 
+    public interface IndexViewer
+    {
+        String out(int i);
+    }
+
+    public static String setViewer(float[] set, String separator, boolean includeEmptyP, IndexViewer viewer)
+    {
+        StringBuilder builder = new StringBuilder("{");
+        boolean second =  false;
+        for (int i = 0;i < set.length;i++)
+        {
+            if (includeEmptyP)
+            {
+                if (second)
+                {
+                    builder.append(separator);
+                }
+                second = true;
+            }
+
+            if (set[i] == 1)
+            {
+                if (!includeEmptyP)
+                {
+                    if (second)
+                    {
+                        builder.append(separator);
+                    }
+                    second = true;
+                }
+                builder.append(viewer.out(i));
+            }
+        }
+        builder.append("}");
+        return builder.toString();
+    }
+
+
     public enum ReberGrammar {
         B("B", "T1", "P1"),
         E("E", ReberGrammar.EXIT_STATE_REP),
@@ -340,13 +378,7 @@ public class BaseLSTMTester {
             return 1;
     }
 
-    float[] roundToInt(float[] v)
-    {
-        float[] o = new float[v.length];
-        for (int i = 0;i < v.length;i++)
-            o[i] = NNTools.roundToInt(v[i]);
-        return o;
-    }
+
 
 
 
@@ -438,5 +470,14 @@ public class BaseLSTMTester {
         return o;
     }
 
+
+    float[] stageDiscretize(float value, float range, int bitwidth)
+    {
+        ArrayList<Double> disc = NNTools.stageDiscretize(value, range, bitwidth);
+        float[] o = new float[disc.size()];
+        for (int i = 0;i < o.length;i++)
+            o[i] = disc.get(i).floatValue();
+        return o;
+    }
 
 }
