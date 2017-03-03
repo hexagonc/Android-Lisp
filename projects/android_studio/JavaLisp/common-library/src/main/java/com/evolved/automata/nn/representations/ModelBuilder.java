@@ -5,13 +5,13 @@ import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.RingBufferManager;
 
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-
-import javax.tools.Tool;
 
 /**
  * Created by Evolved8 on 2/27/17.
@@ -49,14 +49,37 @@ public class ModelBuilder {
     HashMap<PREDICTOR_MATCH_STATE, PREDICTOR_MATCH_STATE> __EQUIVALENCY_MAP = new HashMap<PREDICTOR_MATCH_STATE, PREDICTOR_MATCH_STATE>()
     {
         {
-            put(PREDICTOR_MATCH_STATE.STARTING_TO_MATCH_FROM_BEGINNING, PREDICTOR_MATCH_STATE.NOT_MATCHING);
+            //put(PREDICTOR_MATCH_STATE.STARTING_TO_MATCH_FROM_BEGINNING, PREDICTOR_MATCH_STATE.NOT_MATCHING);
             put(PREDICTOR_MATCH_STATE.STARTING_TO_MATCH_FROM_MIDDLE, PREDICTOR_MATCH_STATE.NOT_MATCHING);
         }
     };
 
 
+    HashSet<PREDICTOR_MATCH_STATE> __START_BLOCKING_SET = new HashSet<PREDICTOR_MATCH_STATE>()
+    {
+        {
+            add(PREDICTOR_MATCH_STATE.MATCHING_FROM_BEGINNING);
+            add(PREDICTOR_MATCH_STATE.MATCHING_FROM_MIDDLE);
+
+        }
+    };
+
+
+    HashSet<PREDICTOR_MATCH_STATE> __START_SET = new HashSet<PREDICTOR_MATCH_STATE>()
+    {
+        {
+            add(PREDICTOR_MATCH_STATE.STARTING_TO_MATCH_FROM_BEGINNING);
+            add(PREDICTOR_MATCH_STATE.STARTING_TO_MATCH_FROM_MIDDLE);
+
+        }
+    };
+
 
     public interface FastLSTMNetworkViewer {
+        String toString(float[] network);
+    }
+
+    public interface VectorInputViewer {
         String toString(float[] network);
     }
 
@@ -99,6 +122,13 @@ public class ModelBuilder {
         {
             return name();
         }
+    }
+
+    public enum FEATURE_SAVE_OPTIONS
+    {
+        CONSIDER_LAST,
+        SELECT_RANDOM,
+        SELECT_MOST
     }
 
     public enum CURRENT_FEATURE_RECOGNITION_STATE
@@ -178,6 +208,9 @@ public class ModelBuilder {
             Tools.resetCappedLSTM(sequenceStartPredictor, initialState);
             Tools.resetCappedLSTM(midSequencePredictor, initialState);
             simpleStateHistory.clear();
+            stateVector =  new float[stateWidth];
+            setStateFlag(stateVector, PREDICTOR_MATCH_STATE.NOT_MATCHING);
+
         }
 
         public float[] getState()
@@ -197,6 +230,15 @@ public class ModelBuilder {
         }
 
         public PREDICTOR_MATCH_STATE getStateSummary(float[] state)
+        {
+            PREDICTOR_MATCH_STATE out = getStateSummaryInternal(state);
+            PREDICTOR_MATCH_STATE corrected = __EQUIVALENCY_MAP.get(out);
+            if (corrected == null)
+                return out;
+            else
+                return corrected;
+        }
+        public PREDICTOR_MATCH_STATE getStateSummaryInternal(float[] state)
         {
             if (isStateFlagSet(state, PREDICTOR_MATCH_STATE.NOT_MATCHING))
                 return PREDICTOR_MATCH_STATE.NOT_MATCHING;
@@ -278,14 +320,14 @@ public class ModelBuilder {
 
             maxMatchLength = 0;
 
-            if (startOfSequencePredictorAtFinalState && isCompleteEnough(startSequenceMatchCount))
+            if (startOfSequencePredictorAtFinalState && matchedStartPredictor && isCompleteEnough(startSequenceMatchCount+1))
             {
                 setStateFlag(newStateVector, PREDICTOR_MATCH_STATE.MATCHED_TO_END);
                 Tools.resetCappedLSTM(sequenceStartPredictor, initialState);
                 Tools.resetCappedLSTM(midSequencePredictor, initialState, true);
                 maxMatchLength = Math.max(midSequenceMatchCount, startSequenceMatchCount);
             }
-            else if (midSequencePredictorAtFinalState && isMatching(midSequenceMatchCount))
+            else if (midSequencePredictorAtFinalState && matchedMidPredictor && isMatching(midSequenceMatchCount + 1))
             {
                 Tools.resetCappedLSTM(midSequencePredictor, initialState);
                 Tools.resetCappedLSTM(sequenceStartPredictor, initialState);
@@ -446,12 +488,18 @@ public class ModelBuilder {
 
     }
 
-    FastLSTMNetworkViewer viewer = null;
-
-
+    FastLSTMNetworkViewer lstmViewer = null;
+    VectorInputViewer inputViewer = null;
+    FEATURE_SAVE_OPTIONS saveMode = FEATURE_SAVE_OPTIONS.SELECT_MOST;
 
     int capacity;
     ModelBuilder nextLevel;
+    ModelBuilder prevLevel;
+    boolean allowHigherLevelP = false;
+    boolean allowLearningP = true;
+    boolean hasNewPredictedStateP = false;
+
+
 
     int dimension;
     Predictor[] _predictors;
@@ -471,7 +519,7 @@ public class ModelBuilder {
     boolean extrapModeP = false;
     LinkedList<CURRENT_FEATURE_RECOGNITION_STATE> currentFeatureState;
 
-    PREDICTOR_MATCH_STATE[] hiearchicalState;
+    PREDICTOR_MATCH_STATE[] currentState, nextPredictedState = null;
 
     int lastSelectedPredictor = -1;
 
@@ -490,11 +538,21 @@ public class ModelBuilder {
         __CURRENT_FEATURE_TRAINING_STEP_LIMIT = limit;
 
         manager = new RingBufferManager(capacity);
+        currentState = new PREDICTOR_MATCH_STATE[capacity];
 
-
-
+        resetState(currentState);
         currentFeatureState = new LinkedList<CURRENT_FEATURE_RECOGNITION_STATE>();
         currentFeatureLSTM = getNetwork();
+        lstmViewer = getLowerLevelStateTransitionLSTMViewer(initialState, finalState);
+        inputViewer = getLowerOrderStateInputVectorViewer();
+    }
+
+    private void resetState(PREDICTOR_MATCH_STATE[] state)
+    {
+        for (int i = manager.getNumberOfClaimedSlots();i < capacity;i++)
+        {
+            state[i] = PREDICTOR_MATCH_STATE.NOT_MATCHING;
+        }
     }
 
     FastLSTMNetwork getNetwork()
@@ -507,16 +565,86 @@ public class ModelBuilder {
     }
 
 
+    ModelBuilder.FastLSTMNetworkViewer getLowerLevelStateTransitionLSTMViewer(final float[] initialValue, final float[] finalValue)
+    {
+        return new ModelBuilder.FastLSTMNetworkViewer() {
+            @Override
+            public String toString(float[] networkSpec)
+            {
+                float[] copy =  Arrays.copyOf(networkSpec, networkSpec.length);
+                FastLSTMNetwork.resetNetworkToInitialState(copy);
+                FastLSTMNetwork.forwardPass(copy, initialValue);
+                float[] output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+                StringBuilder builder = new StringBuilder("{");
+                boolean second = false;
+                while (!Arrays.equals(output, finalValue))
+                {
+                    if (second)
+                        builder.append(", ");
+                    second = true;
+                    PREDICTOR_MATCH_STATE[] logical = getLogicalStateFromPredictionVectorState(NNTools.unwrapVector(output));
 
-    String viewPredictor(int i)
+                    builder.append(Arrays.toString(logical));
+                    FastLSTMNetwork.forwardPass(copy, output);
+                    output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+                }
+                return builder.append("}").toString();
+            }
+        };
+    }
+
+    VectorInputViewer getRawDataViewer(final float[] data)
+    {
+        return new VectorInputViewer()
+        {
+
+            @Override
+            public String toString(float[] network)
+            {
+                return Arrays.toString(data);
+            }
+        };
+    }
+
+    VectorInputViewer getLowerOrderStateInputVectorViewer()
+    {
+        return new VectorInputViewer()
+        {
+
+            @Override
+            public String toString(float[] lowerOrderState)
+            {
+                PREDICTOR_MATCH_STATE[] logical = getLogicalStateFromPredictionVectorState(lowerOrderState);
+                return Arrays.toString(logical);
+            }
+        };
+    }
+
+    public void setInputVectorViewer(VectorInputViewer viewer)
+    {
+        inputViewer = viewer;
+    }
+
+    public void setAllowLearning(boolean allowP)
+    {
+        allowLearningP = allowP;
+    }
+
+    public void setAllowHigherlevel(boolean allowP)
+    {
+        allowHigherLevelP = allowP;
+    }
+
+
+    public String viewPredictor(int i)
     {
         if (i < manager.getNumberOfClaimedSlots())
         {
             String stateName = _predictors[i].getStateSummary().name();
-            if (viewer == null)
+            if (lstmViewer == null)
                 return stateName;
             else
-                return "<" + stateName + "> " + viewer.toString(_predictors[i].getFeatureData());
+                return "<" + stateName + "> " + lstmViewer.toString(_predictors[i].getFeatureData());
         }
         else
             return "";
@@ -549,6 +677,7 @@ public class ModelBuilder {
 
     public void reset()
     {
+        lastSelectedPredictor = -1;
         for (int i = 0; i < manager.getNumberOfClaimedSlots();i ++)
         {
             _predictors[i].reset();
@@ -674,7 +803,7 @@ public class ModelBuilder {
 
     public void setLSTMViewer(FastLSTMNetworkViewer viewer)
     {
-        this.viewer = viewer;
+        this.lstmViewer = viewer;
     }
 
     private int getNextPredictorIndex()
@@ -684,8 +813,16 @@ public class ModelBuilder {
     }
 
 
+
     public PREDICTOR_MATCH_STATE[] observePredict(float[] input, float[] mask)
     {
+        hasNewPredictedStateP = false;
+        resetState(currentState);
+        if (Tools.DEBUG && prevLevel != null)
+        {
+
+            System.out.println("% Processing input: " + inputViewer.toString(input));
+        }
         int featureLength = Tools.getCappedLSTMLength(currentFeatureLSTM.getActualData());
         float[] lstmInput = NNTools.wrapVector(input);
         float[] wrappedMask = null;
@@ -693,7 +830,6 @@ public class ModelBuilder {
             wrappedMask = NNTools.wrapVector(mask);
 
         LinkedList<PREDICTOR_MATCH_STATE> outputState = new LinkedList<PREDICTOR_MATCH_STATE>();
-        PREDICTOR_MATCH_STATE[] nextState = getBaseState();
 
         PREDICTOR_MATCH_STATE predictorState;
         stateIsNewP = false;
@@ -705,22 +841,55 @@ public class ModelBuilder {
         int[] matchingStateCounts = new int[CURRENT_FEATURE_RECOGNITION_STATE.values().length];
         int matchLength, predictorLength, totalPredictors = manager.getNumberOfClaimedSlots();
         CURRENT_FEATURE_RECOGNITION_STATE currentFeatureRecognitionSummary = CURRENT_FEATURE_RECOGNITION_STATE.UNFAMILIAR;
+        HashSet<Integer> maxStartPredictors;
+
+        boolean allowStartState = true;
+
+        int maxStartMatchLength = 0;
+        HashMap<Integer, PREDICTOR_MATCH_STATE> startValues = new HashMap<Integer, PREDICTOR_MATCH_STATE>();
+
+
         for (int i = 0; i < totalPredictors; i++)
         {
             fullState = _predictors[i].observePredict(lstmInput, wrappedMask);
             predictorState = _predictors[i].getStateSummary();
 
-            if (fullState != null)
+            if (i == lastSelectedPredictor && (predictorState == PREDICTOR_MATCH_STATE.MATCHED_TO_END || predictorState == PREDICTOR_MATCH_STATE.NOT_MATCHING))
             {
-                stateIsNewP = true;
+                lastSelectedPredictor = -1;
             }
+
+            if (__START_BLOCKING_SET.contains(predictorState))
+            {
+                allowStartState = false;
+            }
+
+
 
             matchLength = _predictors[i].getMaxMatchLength();
             predictorLength = _predictors[i].getLength();
 
+            if (__START_SET.contains(predictorState))
+            {
+                startValues.put(Integer.valueOf(i), predictorState);
+                if (startValues.size() == 0 || maxStartMatchLength < matchLength)
+                    maxStartMatchLength = matchLength;
+            }
+            else
+            {
+                if (currentState[i] != predictorState)
+                {
+                    stateIsNewP = true;
+                    currentState[i] = predictorState;
+                }
+            }
+
+
             maxMatchLength = Math.max(maxMatchLength, matchLength);
-            nextState[i] = predictorState;
+
             outputState.add(predictorState);
+
+
 
             if (predictorState != PREDICTOR_MATCH_STATE.NOT_MATCHING)
             {
@@ -749,7 +918,7 @@ public class ModelBuilder {
         if (!matchingPredictorsP)
             lastSelectedPredictor = -1;
 
-        hiearchicalState = nextState;
+
 
         if (totalPredictors > 0)
         {
@@ -778,8 +947,23 @@ public class ModelBuilder {
             }
         }
 
-
-
+        if (startValues.size() > 0)
+        {
+            for (Integer predictorIndex: startValues.keySet())
+            {
+                int i = predictorIndex.intValue();
+                int matchCount =  _predictors[i].getMaxMatchLength();
+                if (matchCount != maxStartMatchLength)
+                {
+                    currentState[i] = PREDICTOR_MATCH_STATE.NOT_MATCHING;
+                }
+                else if (currentState[i] != startValues.get(i))
+                {
+                    currentState[i] = startValues.get(i);
+                    stateIsNewP = true;
+                }
+            }
+        }
 
         currentFeatureState.add(currentFeatureRecognitionSummary);
 
@@ -787,129 +971,359 @@ public class ModelBuilder {
 
         boolean endOfFeatureP = learnNextFeatureState(lstmInput);
 
-        if (endOfFeatureP)
+        if (endOfFeatureP )
         {
+            CURRENT_FEATURE_RECOGNITION_STATE representativeSummary = CURRENT_FEATURE_RECOGNITION_STATE.UNFAMILIAR;
+            switch (saveMode)
+            {
+                case SELECT_MOST:
+                {
+                    int maxScore = 0;
+                    CURRENT_FEATURE_RECOGNITION_STATE maxstate = representativeSummary;
+                    int[] counts = new int[CURRENT_FEATURE_RECOGNITION_STATE.values().length];
 
-            if (Tools.DEBUG)
+                    for (CURRENT_FEATURE_RECOGNITION_STATE state: currentFeatureState)
+                    {
+                        counts[state.ordinal()]++;
+                        if (counts[state.ordinal()] > maxScore)
+                        {
+                            maxstate = state;
+                            maxScore = counts[state.ordinal()];
+                        }
+                    }
+                    representativeSummary = maxstate;
+                }
+                break;
+                case SELECT_RANDOM:
+                    representativeSummary  = currentFeatureState.get((int)(FastLSTMNetwork.randomLCG()*(1 + featureLength)));
+                    break;
+                case CONSIDER_LAST:
+                    representativeSummary = currentFeatureState.getLast();
+                    break;
+            }
+
+
+            if (Tools.DEBUG && prevLevel == null)
             {
                 String featureDescription = currentFeatureState.toString();
-                if (viewer!=null)
-                    featureDescription = featureDescription + " (" + viewer.toString(currentFeatureLSTM.getActualData()) + ")";
+                featureDescription = featureDescription + " (" + lstmViewer.toString(currentFeatureLSTM.getActualData()) + ")";
 
-                System.out.println("Completed feature " + featureDescription);
+                System.out.println("% Completed feature " + featureDescription);
+                System.out.println("Using representative feature: " + representativeSummary);
             }
-            switch (currentFeatureRecognitionSummary)
+            if (allowLearningP)
             {
-                case VERY_FAMILIAR:
-                case FULLY_MATCHED:
-                case STARTING_TO_BE_RECOGNIZED:
-                case BEING_RECOGNIZED:
+                switch (representativeSummary)
                 {
-                    currentFeatureState.clear();
-                    // discard this feature since it is redundant
-                    currentFeatureLSTM = getNetwork();
-
-                    if (currentFeatureLSTM == null)
+                    case VERY_FAMILIAR:
+                    case FULLY_MATCHED:
+                    case STARTING_TO_BE_RECOGNIZED:
+                    case BEING_RECOGNIZED:
                     {
-                        throw new RuntimeException("Failure to create capped lstm");
-                    }
-                    if (!matchingPredictorsP)
-                        learnNextFeatureState(lstmInput);
-                    if (Tools.DEBUG)
-                        System.out.println("feature discarded");
-                }
-                break;
-                case UNFAMILIAR:
-                {
-                    // there is new information so save it
-                    // really, however, we probably only want to save all of it,
-                    // maybe only the parts that are unfamiliar based on the history
-                    // in currentFeatureState
-                    saveCurrentFeature();
-                    currentFeatureLSTM = getNetwork();
+                        currentFeatureState.clear();
+                        // discard this feature since it is redundant
+                        currentFeatureLSTM = getNetwork();
 
-                    if (currentFeatureLSTM == null)
-                    {
-                        throw new RuntimeException("Failure to create capped lstm");
+                        if (currentFeatureLSTM == null)
+                        {
+                            throw new RuntimeException("Failure to create capped lstm");
+                        }
+                        if (!matchingPredictorsP)
+                        {
+                            learnNextFeatureState(lstmInput);
+                            currentFeatureState.add(currentFeatureRecognitionSummary);
+                        }
+                        if (Tools.DEBUG)
+                            System.out.println("feature discarded");
                     }
-                    if (!matchingPredictorsP)
-                        learnNextFeatureState(lstmInput);
-                    if (Tools.DEBUG)
-                        System.out.println("feature is saved");
+                    break;
+                    case UNFAMILIAR:
+                    {
+                        // there is new information so save it
+                        // really, however, we probably only want to save all of it,
+                        // maybe only the parts that are unfamiliar based on the history
+                        // in currentFeatureState
+                        saveCurrentFeature();
+                        currentFeatureLSTM = getNetwork();
+
+                        if (currentFeatureLSTM == null)
+                        {
+                            throw new RuntimeException("Failure to create capped lstm");
+                        }
+                        if (!matchingPredictorsP)
+                        {
+                            learnNextFeatureState(lstmInput);
+                            currentFeatureState.add(currentFeatureRecognitionSummary);
+                        }
+                        if (Tools.DEBUG)
+                            System.out.println("feature is saved");
+                    }
+                    break;
                 }
-                break;
             }
+            else
+            {
+                currentFeatureState.clear();
+                currentFeatureLSTM = getNetwork();
+
+                if (currentFeatureLSTM == null)
+                {
+                    throw new RuntimeException("Failure to create capped lstm");
+                }
+                if (!matchingPredictorsP)
+                {
+                    learnNextFeatureState(lstmInput);
+                    currentFeatureState.add(currentFeatureRecognitionSummary);
+                }
+            }
+
 
 
         }
 
 
-        if (stateIsNewP)
-        {
-            float[][] predictorStatesVectors = new float[capacity][];
-            for (int i = 0; i < nextState.length; i++)
-            {
-                predictorStatesVectors[i] = nextState[i].toArray();
-            }
 
-            float[] hierarchicalStateVector = NNTools.flattenArray(predictorStatesVectors);
+        if (stateIsNewP && hasPredictionsP(currentState) && allowHigherLevelP)
+        {
+
+            float[] currentStateVector = getStateVector(currentState);
 
             if (nextLevel != null)
             {
-                PREDICTOR_MATCH_STATE[] stateGroups = nextLevel.observePredict(hierarchicalStateVector, null);
+                PREDICTOR_MATCH_STATE[] higherOrderState = nextLevel.observePredict(currentStateVector, null);
 
-                // TODO: Filter nextState based on stateGroups
-                float[] higherOrderPrediction = nextLevel.getPrediction(stateGroups);
-                PREDICTOR_MATCH_STATE[] updatedNextState = getLogicalStateFromHierarchicalVectorState(higherOrderPrediction);
+                if (hasPredictionsP(higherOrderState))
+                {
+                    if (Tools.DEBUG)
+                    {
+                        System.out.println("~<o>~<o>~<o>~<o>~<o>~<o>~<o>~<o>~<o>~");
+                        System.out.println("Processing predictions of: " + nextLevel.toString());
+                    }
 
-                nextState = hiearchicalState = updatedNextState;
+                    // TODO: Filter nextState based on stateGroups
+                    float[] nextPredictedState = nextLevel.getPrediction(higherOrderState);
+                    if (nextPredictedState != null)
+                    {
+                        if (Tools.DEBUG)
+                            System.out.println("-=+=-=+=-=+=-=+=-=+=-=+=-=+=-=+=-");
+
+                        this.nextPredictedState = getLogicalStateFromHierarchicalVectorState(nextPredictedState);
+                        hasNewPredictedStateP =  true;
+                        if (lastSelectedPredictor!= -1 && higherOrderState[lastSelectedPredictor] == PREDICTOR_MATCH_STATE.NOT_MATCHING)
+                            lastSelectedPredictor = -1;
+                        if (Tools.DEBUG)
+                            System.out.println("% Predicting next match state and setting as current state: " + Arrays.toString(this.nextPredictedState));
+
+                    }
+                    else
+                    {
+                        if (Tools.DEBUG)
+                            System.out.println("No predictions from " + nextLevel.toString());
+                    }
+                    if (Tools.DEBUG)
+                        System.out.println("~<o>~<o>~<o>~<o>~<o>~<o>~<o>~<o>~<o>~");
+                }
+
             }
-
-            //PREDICTOR_MATCH_STATE[] updatedNextState = getLogicalStateFromHierarchicalVectorState(hierarchicalStateVector);
-            //boolean matched = Arrays.equals(updatedNextState, nextState);
 
 
         }
 
-        return nextState;
+        if (!hasNewPredictedStateP)
+            nextPredictedState = currentState;
+        return currentState;
 
     }
 
-    public float[] getPrediction()
+    public boolean hasPredictionsP(PREDICTOR_MATCH_STATE[] state)
     {
-        return getPrediction(hiearchicalState);
-    }
-
-    public float[] getPrediction(PREDICTOR_MATCH_STATE[] higherOrderState)
-    {
-        float[] scoredAverage = new float[higherOrderState.length];
-        for (int i = 0;i < manager.getNumberOfClaimedSlots();i++)
+        for (int i = 0;i < state.length;i++)
         {
-            scoredAverage[i] = 1;
-            switch (higherOrderState[i])
+            switch (state[i])
             {
                 case STARTING_TO_MATCH_FROM_BEGINNING:
                 case STARTING_TO_MATCH_FROM_MIDDLE:
                 case MATCHING_FROM_BEGINNING:
                 case MATCHING_FROM_MIDDLE:
                 case MATCHED_TO_END:
-                    if (i == lastSelectedPredictor)
-                    {
+                    return true;
 
-                        return _predictors[i].getBestPrediction();
+            }
+
+        }
+
+        return false;
+    }
+
+
+    public void setFeatureSaveMode(FEATURE_SAVE_OPTIONS saveMode)
+    {
+        this.saveMode = saveMode;
+    }
+    public ModelBuilder addHigherOrderLevel(int capacity)
+    {
+        int nextLevelDataWidth = this.capacity*PREDICTOR_MATCH_STATE.values().length;
+        ModelBuilder builder = new ModelBuilder(nextLevelDataWidth, capacity, __CURRENT_FEATURE_TRAINING_STEP_LIMIT);
+        builder.prevLevel = this;
+        return nextLevel = builder;
+    }
+
+    public float[] getPrediction()
+    {
+        return getPrediction(nextPredictedState);
+    }
+
+    public int getSelectedPredictor()
+    {
+        return lastSelectedPredictor;
+    }
+
+    public PREDICTOR_MATCH_STATE[] getCurrentState()
+    {
+        return currentState;
+    }
+
+    public PREDICTOR_MATCH_STATE[] getNextPredictedState()
+    {
+        return nextPredictedState;
+    }
+
+    public boolean hasNewPredictedStateP()
+    {
+        return hasNewPredictedStateP;
+    }
+
+    public void setState(PREDICTOR_MATCH_STATE[] higherOrderState)
+    {
+        nextPredictedState = currentState = higherOrderState;
+    }
+
+
+
+    public float[] getStateVector(PREDICTOR_MATCH_STATE[] state)
+    {
+        float[][] predictorStatesVectors = new float[capacity][];
+        for (int i = 0; i < state.length; i++)
+        {
+            predictorStatesVectors[i] = state[i].toArray();
+        }
+
+        return NNTools.flattenArray(predictorStatesVectors);
+    }
+
+    public float[] getPrediction(PREDICTOR_MATCH_STATE[] higherOrderState)
+    {
+        float[] scoredAverage = new float[higherOrderState.length];
+        float maxScore = 0, matchLength = 0;
+        HashSet<Integer> maxSet = new HashSet<Integer>();
+
+
+        for (int i = 0;i < manager.getNumberOfClaimedSlots();i++)
+        {
+            scoredAverage[i] = 1;
+            switch (higherOrderState[i])
+            {
+                case MATCHED_TO_END:
+                    if (currentState[i] == higherOrderState[i])
+                        break;
+                case STARTING_TO_MATCH_FROM_BEGINNING:
+                case STARTING_TO_MATCH_FROM_MIDDLE:
+                case MATCHING_FROM_BEGINNING:
+                case MATCHING_FROM_MIDDLE:
+                    if (-1 != lastSelectedPredictor && higherOrderState[lastSelectedPredictor] != PREDICTOR_MATCH_STATE.NOT_MATCHING)
+                    {
+                        return _predictors[lastSelectedPredictor].getBestPrediction();
                     }
                     else
                     {
-                        scoredAverage[i] += _predictors[i].getMaxMatchLength();
+                        matchLength = _predictors[i].getMaxMatchLength();
+                        if (maxScore == matchLength)
+                        {
+                            maxSet.add(Integer.valueOf(i));
+                        }
+                        else if (matchLength > maxScore)
+                        {
+                            maxSet = new HashSet<Integer>();
+                            maxSet.add(Integer.valueOf(i));
+                            maxScore = matchLength;
+                        }
+
+                        scoredAverage[i] +=  matchLength;
                     }
                     break;
                 default:
             }
         }
 
+        if (maxSet.size() > 0)
+        {
+            for (int i = 0; i < scoredAverage.length;i++)
+            {
+                if (!maxSet.contains(Integer.valueOf(i)))
+                {
+                    scoredAverage[i] = 0;
+                }
+            }
+        }
+
+
         lastSelectedPredictor = FastLSTMNetwork.sampleVectorIndexProportionally(scoredAverage, 0, higherOrderState.length, 1, false);
 
-        return _predictors[lastSelectedPredictor].getBestPrediction();
+        if (lastSelectedPredictor < manager.getNumberOfClaimedSlots())
+        {
+
+            return _predictors[lastSelectedPredictor].getBestPrediction();
+        }
+        else
+            return null;
+    }
+
+
+
+    PREDICTOR_MATCH_STATE[] getLogicalStateFromPredictionVectorState(float[] vector)
+    {
+
+
+        int predictorStateWidth = PREDICTOR_MATCH_STATE.values().length;
+        PREDICTOR_MATCH_STATE[] out = new PREDICTOR_MATCH_STATE[vector.length/predictorStateWidth];
+        for (int i = 0; i < out.length;i++)
+            out[i] = PREDICTOR_MATCH_STATE.NOT_MATCHING;
+
+        int subStateOffsetIndex = 0, subStateBaseIndex = 0;
+        float[] subState = null;
+        int predictorIndex = -1;
+        for (int i = 0; i < vector.length;i++)
+        {
+
+            if (i % predictorStateWidth == 0)
+            {
+                subStateBaseIndex = i;
+                subState = new float[predictorStateWidth];
+                predictorIndex++;
+            }
+
+            subStateOffsetIndex = i - subStateBaseIndex;
+
+            if (subStateOffsetIndex < predictorStateWidth)
+            {
+                subState[subStateOffsetIndex] = vector[i];
+
+                if (vector[i] == 1)
+                {
+                    out[predictorIndex] = PREDICTOR_MATCH_STATE.values()[subStateOffsetIndex];
+                }
+
+                if (subStateOffsetIndex == predictorStateWidth - 1)
+                {
+                    // Do something with the whole subState vector
+                }
+            }
+
+
+        }
+
+        return out;
+
     }
 
     PREDICTOR_MATCH_STATE[] getLogicalStateFromHierarchicalVectorState(float[] vector)
@@ -954,6 +1368,17 @@ public class ModelBuilder {
 
         return out;
 
+    }
+
+    public ArrayList<ModelBuilder> getHigherLayers()
+    {
+        ArrayList<ModelBuilder> levels = new ArrayList<ModelBuilder>();
+        if (nextLevel != null)
+        {
+            levels.add(nextLevel);
+            levels.addAll(nextLevel.getHigherLayers());
+        }
+        return levels;
     }
 
 }

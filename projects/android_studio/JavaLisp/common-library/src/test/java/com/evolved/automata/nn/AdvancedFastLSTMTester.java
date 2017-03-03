@@ -9,6 +9,7 @@ import com.evolved.automata.nn.grammar.GrammarStateMachine;
 import com.evolved.automata.nn.grammar.MatchStatus;
 import com.evolved.automata.nn.representations.ModelBuilder;
 import com.evolved.automata.nn.representations.Tools;
+import com.sun.org.apache.xpath.internal.operations.Mod;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
@@ -521,9 +522,8 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
     }
 
 
-
     @Test
-    public void testHierarchicalRepresentation()
+    public void testHierarchicalRepresentationHighLevelExtrapolation()
     {
         String errorMessage = "Failed to create base training level";
         try
@@ -553,12 +553,15 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
 
             ModelBuilder base = new ModelBuilder(inputNodeCode, capacity, featureTrainingSteps);
             base.setLSTMViewer(getNumericLSTMNetworkViewer(range, base.getFeatureInitialState(), base.getFeatureFinalState()));
+            base.setInputVectorViewer(getNumericInputVectorViewer(range));
+            ModelBuilder nextLevel = base.addHigherOrderLevel(10);
             boolean success = false;
             errorMessage = "Failed to learn features";
 
             if (Tools.DEBUG)
-                System.out.println("Generating hierarchical model of " + Arrays.toString(baseInput));
-
+                System.out.println("Generating base feature model of " + Arrays.toString(baseInput));
+            base.setAllowLearning(true);
+            base.setAllowHigherlevel(false);
             for (int i = 0; i < baseInput.length;i++)
             {
                 System.out.println("" + i + ") Trying to learn: " + baseInput[i]);
@@ -566,6 +569,8 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
                 base.observePredict(input, null);
             }
             base.finalize(true);
+            base.setAllowLearning(false);
+            base.setAllowHigherlevel(true);
 
             String features = base.viewAllPredictors();
             errorMessage = "Failed to construct predictors";
@@ -593,61 +598,217 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
                 System.out.println("<><><><><><><><><><><><><><><>\n");
             }
 
+            base.finalize(true);
+
             System.out.println("\n**********************");
-            System.out.println("Final model state: \n" + features);
+            System.out.println("Processing higher order models state: \n" + nextLevel.viewAllPredictors());
 
 
-            // TODO: add code to detect non-overlapping features
 
             // --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+--
             //                  Extrapolation
             // --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+--
-            /*
-            base.finalize(true);
 
-            String newfeatures = base.viewAllPredictors();
-            Assert.assertTrue("Should not have created new features ", newfeatures.equals(features));
-            System.out.println("Learned updated patterns: " + newfeatures);
-            base.setExtrapMode(true, true);
-            input = firstValue;
-            int[] prediction = null;
-            int selectedPredictorIndex;
-            double logicalFeature;
-            int lastSelectedIndex = -1;
+            base.setAllowLearning(false);
+            ModelBuilder.PREDICTOR_MATCH_STATE[] baseState = new ModelBuilder.PREDICTOR_MATCH_STATE[capacity], currenState;
+            for (int i = 0; i < baseState.length;i++)
+                baseState[i] = ModelBuilder.PREDICTOR_MATCH_STATE.NOT_MATCHING;
+
+            int selectedFeature = 2;
+
+            baseState[selectedFeature] = ModelBuilder.PREDICTOR_MATCH_STATE.MATCHING_FROM_BEGINNING;
+
+
+            base.setState(baseState);
+            int extrapCount = 0, maxExtrap = 50;
+            System.out.println("Extrapolating from: " + base.viewPredictor(selectedFeature));
+
+            System.out.println("total features: " + base.viewAllPredictors());
+
             StringBuilder outputBuilder = new StringBuilder("{");
-            float[] weights = new float[capacity];
-            boolean hasLastSelectedP = false;
-            int extrapCount = 0;
-            while ((prediction = base.observePredict(input, null))!=null)
+            double logicalFeature;
+            int pointer = base.getSelectedPredictor();
+            input = base.getPrediction();
+            while (input!=null && extrapCount < maxExtrap)
             {
+                pointer = base.getSelectedPredictor();
+                extrapCount++;
                 logicalFeature = NNTools.averagedStageContinuize(range, input);
-                System.out.print("Extrapolating from: " + logicalFeature);
+                System.out.println("(" + extrapCount + ") generated: " + logicalFeature);
                 outputBuilder.append(logicalFeature + " ");
-                hasLastSelectedP = false;
-                weights = new float[capacity];
-                for (int i = 0; i < prediction.length;i++)
+                base.observePredict(input, null);
+                currenState = base.getCurrentState();
+                for (int k = 0; k < currenState.length;k++)
                 {
-                    weights[prediction[i]] = base.getPredictorWeight(prediction[i]);
-                    if (prediction[i] == lastSelectedIndex)
+
+                    if (currenState[k] ==ModelBuilder.PREDICTOR_MATCH_STATE.MATCHED_TO_END)
                     {
-                        hasLastSelectedP =  true;
+
+                        System.out.println("" +  k + " finished.  Selected feature is: " + pointer);
                     }
                 }
+                input = base.getPrediction();
 
-                if (!hasLastSelectedP)
-                {
-                    lastSelectedIndex = FastLSTMNetwork.sampleVectorIndexProportionally(weights, 0, weights.length, 0, false);
-                }
-
-                input = base.getPrediction(lastSelectedIndex);
-                logicalFeature = NNTools.averagedStageContinuize(range, input);
-                System.out.println("to " + logicalFeature);
-                extrapCount++;
             }
             outputBuilder.append("}");
 
-            System.out.println("Reconstructed: " + outputBuilder);
-            */
+            System.out.println("<><><><><><<> Extrapolated: \n" + outputBuilder);
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+
+    @Test
+    public void testHierarchicalRepresentationExtrapolation()
+    {
+        String errorMessage = "Failed to create base training level";
+        try
+        {
+            int[] baseInput = new int[]{10, 20, 24, 30, 20, 250, 100, 50, 45, 40, 35, 30, 30, 30, 25, 20, 15, 230, 200, 180, 160, 150, +145, 5, 10, 15, 20, 100, 110, 120, 130, 130, 130, 120, 110, 100, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 40, +40, 40, 35, 30, 20, 15, 15, +15, 10, 90, 95, 90, 95, 90, 95, 90, 75, 65, 75, 65, 75, 65, 75, 65};
+
+            float[] nextInput;
+
+            int bitWidth = 3;
+            int range = 256;
+
+
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+            //              Build the TrainingLevel
+            // =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+= =+=
+
+
+
+            int inputNodeCode = 2*bitWidth;
+            int capacity = 15;
+            int featureTrainingSteps = 100;
+            float[] input;
+            //long seed = System.currentTimeMillis();
+            long seed = 1488293344623L;
+            FastLSTMNetwork.setSeed(seed);
+            System.out.println("Using seed: " + seed);
+
+            ModelBuilder base = new ModelBuilder(inputNodeCode, capacity, featureTrainingSteps);
+            base.setLSTMViewer(getNumericLSTMNetworkViewer(range, base.getFeatureInitialState(), base.getFeatureFinalState()));
+            base.setInputVectorViewer(getNumericInputVectorViewer(range));
+            ModelBuilder nextLevel = base.addHigherOrderLevel(10);
+            boolean success = false;
+            errorMessage = "Failed to learn features";
+
+            if (Tools.DEBUG)
+                System.out.println("Generating hierarchical model of " + Arrays.toString(baseInput));
+
+            for (int i = 0; i < baseInput.length;i++)
+            {
+                System.out.println("" + i + ") Trying to learn: " + baseInput[i]);
+                input = stageDiscretize(baseInput[i], range, bitWidth);
+                base.observePredict(input, null);
+            }
+            base.finalize(true);
+            base.setAllowHigherlevel(false);
+
+            String features = base.viewAllPredictors();
+            errorMessage = "Failed to construct predictors";
+            Assert.assertTrue(errorMessage, features.length() > 10);
+            System.out.println("Partitioned into initial features: " + features);
+
+
+
+            errorMessage = "Failed to match patterns, building hierarchical representations";
+
+            System.out.println("+++++ Reprocessing initial features into hierarchical model ++++++");
+            float[] firstValue = null;
+            ModelBuilder.PREDICTOR_MATCH_STATE[] modelState = null, prevModel = null;
+            for (int i = 0; i < baseInput.length;i++)
+            {
+                System.out.println("**********************");
+                System.out.println( "("+ i + ") Reprocessing: " + baseInput[i]);
+                input = stageDiscretize(baseInput[i], range, bitWidth);
+                if (i == 0)
+                    firstValue = input;
+                modelState = base.observePredict(input, null);
+                features = base.viewAllPredictors();
+                if (base.previousStateWasNewP())
+                    System.out.println("\n" + i + ") Features to be passed to higher level: \n" + features);
+                System.out.println("<><><><><><><><><><><><><><><>\n");
+            }
+
+            base.finalize(true);
+
+            System.out.println("\n**********************");
+            System.out.println("Processing higher order models state: \n" + nextLevel.viewAllPredictors());
+
+            // Third pass
+
+            for (int i = 0; i < baseInput.length;i++)
+            {
+                System.out.println("._--._--._--._--._--._--._--._--._--._--");
+                System.out.println( "("+ i + ") Higher processing: " + baseInput[i]);
+                input = stageDiscretize(baseInput[i], range, bitWidth);
+                if (i == 0)
+                    firstValue = input;
+                modelState = base.observePredict(input, null);
+                features = base.viewAllPredictors();
+                if (base.previousStateWasNewP())
+                    System.out.println("\n" + i + ") Features to be passed to higher level: \n" + features);
+                System.out.println("._--._--._--._--._--._--._--._--._--._--");
+            }
+
+            base.finalize(true);
+
+
+            // --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+--
+            //                  Extrapolation
+            // --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+-- --+o- -o+--
+
+            base.setAllowLearning(false);
+            ModelBuilder.PREDICTOR_MATCH_STATE[] baseState = new ModelBuilder.PREDICTOR_MATCH_STATE[capacity], currenState;
+            for (int i = 0; i < baseState.length;i++)
+                baseState[i] = ModelBuilder.PREDICTOR_MATCH_STATE.NOT_MATCHING;
+
+            int selectedFeature = 1;
+
+            baseState[selectedFeature] = ModelBuilder.PREDICTOR_MATCH_STATE.MATCHING_FROM_BEGINNING;
+
+
+            base.setState(baseState);
+            int extrapCount = 0, maxExtrap = 100;
+            System.out.println("Extrapolating from: " + base.viewPredictor(selectedFeature));
+
+            System.out.println("total features: " + base.viewAllPredictors());
+
+            StringBuilder outputBuilder = new StringBuilder("{");
+            double logicalFeature;
+            int pointer = base.getSelectedPredictor();
+            while ((input = base.getPrediction())!=null && extrapCount < maxExtrap)
+            {
+                pointer = base.getSelectedPredictor();
+                extrapCount++;
+                logicalFeature = NNTools.averagedStageContinuize(range, input);
+                System.out.println("(" + extrapCount + ") generated: " + logicalFeature);
+                outputBuilder.append(logicalFeature + " ");
+                base.observePredict(input, null);
+                currenState = base.getCurrentState();
+                for (int k = 0; k < currenState.length;k++)
+                {
+
+                    if (currenState[k] ==ModelBuilder.PREDICTOR_MATCH_STATE.MATCHED_TO_END)
+                    {
+
+                        System.out.println("" +  k + " finished.  Selected feature is: " + pointer);
+                    }
+                }
+
+            }
+            outputBuilder.append("}");
+
+            System.out.println("<><><><><><<> Extrapolated: \n" + outputBuilder);
+
         }
         catch (Exception e)
         {
@@ -715,6 +876,19 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
         }
     }
 
+    ModelBuilder.VectorInputViewer getNumericInputVectorViewer(final int range)
+    {
+        return new ModelBuilder.VectorInputViewer()
+        {
+
+            @Override
+            public String toString(float[] network)
+            {
+                double out = NNTools.averagedStageContinuize(range, network);
+                return ""+ out;
+            }
+        };
+    }
 
     ModelBuilder.FastLSTMNetworkViewer getNumericLSTMNetworkViewer(final int range, final float[] initialValue, final float[] finalValue)
     {
