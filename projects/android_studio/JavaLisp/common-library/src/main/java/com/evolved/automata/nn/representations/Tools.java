@@ -4,8 +4,14 @@ import com.evolved.automata.nn.FastLSTMNetwork;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.NNTools;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by Evolved8 on 2/27/17.
@@ -339,4 +345,332 @@ public class Tools {
     {
         return FastLSTMNetwork.getCustomData(networkSpec, ID, -1) ;
     }
+
+
+    public static <T> HashMap<T, LinkedList<Integer>> getInvertedIndex(ArrayList<T> input)
+    {
+        HashMap<T, LinkedList<Integer>> invertedIndex = new HashMap<T, LinkedList<Integer>>();
+        for (int i = 0; i < input.size();i++)
+        {
+            T value = input.get(i);
+            LinkedList<Integer> index = invertedIndex.get(value);
+            if (index == null)
+            {
+                index = new LinkedList<Integer>();
+                invertedIndex.put(value, index);
+            }
+            index.add(Integer.valueOf(i));
+        }
+        return invertedIndex;
+    }
+
+    public static <T> ArrayList<ArrayList<T>> factorDuplicatePatterns(ArrayList<ArrayList<T>> patterns, Comparator<T> comparator, int minimumSubsequenceLength)
+    {
+        if (patterns.size() == 1)
+            return patterns;
+        ArrayList<HashMap<T, LinkedList<Integer>>> invertedIndices = new ArrayList<HashMap<T, LinkedList<Integer>>>();
+
+        for (int i = 0;i < patterns.size();i ++)
+        {
+            invertedIndices.add(getInvertedIndex(patterns.get(i)));
+        }
+
+        ArrayList<ArrayList<T>> out = new ArrayList<ArrayList<T>>();
+
+
+        ArrayList<T> pattern;
+        ArrayList<ArrayList<T>> compPatterns;
+        ArrayList<HashMap<T, LinkedList<Integer>>> compIndices;
+        for (int i = 0; i < patterns.size() - 1;i++)
+        {
+            pattern = patterns.get(i);
+            compPatterns = new ArrayList<ArrayList<T>>();
+            compIndices = new ArrayList<HashMap<T, LinkedList<Integer>>>();
+            for (int j = i +1; j < patterns.size();j++)
+            {
+                compPatterns.add(patterns.get(j));
+                compIndices.add(invertedIndices.get(j));
+            }
+            ArrayList<ArrayList<T>> partitionedOnCommonSubSequences = splitPatternByDuplicates(pattern, compPatterns, compIndices, comparator, minimumSubsequenceLength);
+            // TODO: filter duplicates?
+            out.addAll(partitionedOnCommonSubSequences);
+        }
+
+        // last pattern
+        pattern = patterns.get(patterns.size()-1);
+        compPatterns = new ArrayList<ArrayList<T>>();
+        compIndices = new ArrayList<HashMap<T, LinkedList<Integer>>>();
+        for (int j = 0; j < patterns.size()-1;j++)
+        {
+            compPatterns.add(patterns.get(j));
+            compIndices.add(invertedIndices.get(j));
+        }
+        ArrayList<ArrayList<T>> partitionedOnCommonSubSequences = splitPatternByDuplicates(pattern, compPatterns, compIndices, comparator, minimumSubsequenceLength);
+        // TODO: filter duplicates
+        out.addAll(partitionedOnCommonSubSequences);
+
+        return out;
+    }
+
+
+    public static <T> ArrayList<ArrayList<T>> splitPatternByDuplicates(ArrayList<T> currentPattern, ArrayList<ArrayList<T>> patterns, ArrayList<HashMap<T, LinkedList<Integer>>> invertedIndices, Comparator<T> comparator, int minimumSubsequenceLength)
+    {
+
+
+        ArrayList<ArrayList<T>> out = new ArrayList<ArrayList<T>>();
+
+
+        HashMap<T, LinkedList<Integer>> matchingIndex, index;
+        HashSet<Integer> viableOtherPatterns;
+        int proposedStartingIndex = 0;
+        ArrayList<T> commonSubsequence, subSequence = new ArrayList<T>();
+        subSequence = new ArrayList<T>();
+        while (proposedStartingIndex < currentPattern.size() - minimumSubsequenceLength)
+        {
+            // TODO: Check for minimum pattern lengths
+            commonSubsequence = new ArrayList<T>();
+
+            T value = currentPattern.get(proposedStartingIndex);
+            viableOtherPatterns = new HashSet<Integer>();
+            for (int i = 0; i < patterns.size();i++)
+            {
+                index = invertedIndices.get(i);
+                if (index.containsKey(value))
+                {
+                    viableOtherPatterns.add(i);
+                }
+            }
+
+            if (viableOtherPatterns.size() > 0)
+            {
+
+                HashMap<Integer, HashSet<Integer>> verifiedIndexMap = new HashMap<Integer, HashSet<Integer>>();
+                HashSet<Integer> nextPatterns = null;
+                //ArrayList<HashSet<Integer>> verifiedIndexList = new ArrayList<HashSet<Integer>>();
+                for (Integer v:viableOtherPatterns)
+                {
+                    HashMap<T, LinkedList<Integer>> relevantIndex = invertedIndices.get(v);
+                    HashSet<Integer> verifiedIndices = new HashSet<Integer>();
+                    verifiedIndices.addAll(relevantIndex.get(value));
+                    verifiedIndexMap.put(v, verifiedIndices);
+                }
+
+
+                for (int i = 1; proposedStartingIndex + i < currentPattern.size();i++)
+                {
+                    T nextValue = currentPattern.get(proposedStartingIndex + i);
+                    nextPatterns = new HashSet<Integer>();
+
+                    for (Integer compIndex:viableOtherPatterns)
+                    {
+                        ArrayList<T> compPattern = patterns.get(compIndex);
+
+                        HashSet<Integer> verifiedIndices = verifiedIndexMap.get(compIndex);
+                        Iterator<Integer> iter = verifiedIndices.iterator();
+                        while (iter.hasNext())
+                        {
+                            Integer startCompIndex = iter.next();
+                            if (startCompIndex + i < compPattern.size() &&  comparator.compare(nextValue, compPattern.get(startCompIndex + i)) == 0)
+                            {
+                                nextPatterns.add(compIndex);
+                            }
+                            else
+                            {
+                                iter.remove();
+                            }
+                        }
+
+                    }
+                    viableOtherPatterns = nextPatterns;
+                    if (nextPatterns.size() == 0)
+                        break;
+                    else
+                    {
+                        if (commonSubsequence.size() == 0)
+                            commonSubsequence.add(value);
+                        commonSubsequence.add(nextValue);
+                    }
+                }
+
+                if (commonSubsequence.size() >= minimumSubsequenceLength)
+                {
+                    if (subSequence.size() > 0)
+                    {
+                        out.add(subSequence);
+                        subSequence = new ArrayList<T>();
+                    }
+                    out.add(commonSubsequence);
+                    proposedStartingIndex+=commonSubsequence.size();
+                }
+                else
+                {
+                    proposedStartingIndex++;
+                    subSequence.add(value);
+                }
+            }
+            else
+            {
+                proposedStartingIndex++;
+                subSequence.add(value);
+            }
+        }
+
+        if (subSequence.size() > 0)
+        {
+            for (int i = proposedStartingIndex;i < currentPattern.size();i++)
+                subSequence.add(currentPattern.get(i));
+            out.add(subSequence);
+        }
+        else
+        {
+            for (int i = proposedStartingIndex;i < currentPattern.size();i++)
+                subSequence.add(currentPattern.get(i));
+            if (subSequence.size() > 0)
+                out.add(subSequence);
+        }
+
+
+        return out;
+
+    }
+
+    public static <T extends Comparable<T>> ArrayList<ArrayList<T>> partition(ArrayList<T> input, int maxCategoryRepeatingSubsequenceLength)
+    {
+        ArrayList<ArrayList<T>> out = new ArrayList<ArrayList<T>>();
+        HashMap<T, LinkedList<Integer>> invertedIndex = getInvertedIndex(input);
+
+        int categoryId = 0;
+        int currentCategorLength = 0;
+
+        int currentCategoryUpperBound = input.size();
+        int inputIndex = 0;
+
+        ArrayList<T> category;
+
+        while (inputIndex < input.size())
+        {
+            // process current category
+            category = new ArrayList<T>();
+            currentCategoryUpperBound = input.size();
+            while (inputIndex < currentCategoryUpperBound)
+            {
+                T value = input.get(inputIndex);
+                LinkedList<Integer> testIndices = new LinkedList<Integer>();
+                LinkedList<Integer> valueIndex = invertedIndex.get(value);
+                for (Integer i:valueIndex)
+                {
+                    if (i > inputIndex && i < currentCategoryUpperBound)
+                        testIndices.add(i);
+                }
+
+                if (testIndices.size() == 0)
+                {
+                    category.add(value);
+                    inputIndex++;
+                }
+                else
+                {
+                    outer: for (Integer compIndex:testIndices)
+                    {
+                        if (compIndex < currentCategoryUpperBound && compIndex + maxCategoryRepeatingSubsequenceLength < currentCategoryUpperBound)
+                        {
+                            for (int i = 1; i <= maxCategoryRepeatingSubsequenceLength;i++)
+                            {
+
+                                if (input.get(inputIndex + i).compareTo(input.get(compIndex + i)) != 0)
+                                {
+                                    continue outer;
+                                }
+                            }
+                            currentCategoryUpperBound = Math.min(currentCategoryUpperBound, compIndex);
+                        }
+                        else
+                            break;
+
+                    }
+                    if (currentCategoryUpperBound > inputIndex)
+                    {
+                        category.add(value);
+                    }
+                    inputIndex++;
+
+                }
+            }
+            if (category.size() > 0)
+                out.add(category);
+
+        }
+        return out;
+
+    }
+
+    public static <T> ArrayList<ArrayList<T>> partition(ArrayList<T> input, int maxCategoryRepeatingSubsequenceLength, Comparator<T> comparator)
+    {
+        ArrayList<ArrayList<T>> out = new ArrayList<ArrayList<T>>();
+        HashMap<T, LinkedList<Integer>> invertedIndex = getInvertedIndex(input);
+        int categoryId = 0;
+        int currentCategorLength = 0;
+
+        int currentCategoryUpperBound = input.size();
+        int inputIndex = 0;
+
+        ArrayList<T> category;
+
+        while (inputIndex < input.size())
+        {
+            // process current category
+            category = new ArrayList<T>();
+            currentCategoryUpperBound = input.size();
+            while (inputIndex < currentCategoryUpperBound)
+            {
+                T value = input.get(inputIndex);
+                LinkedList<Integer> testIndices = new LinkedList<Integer>();
+                LinkedList<Integer> valueIndex = invertedIndex.get(value);
+                for (Integer i:valueIndex)
+                {
+                    if (i > inputIndex && i < currentCategoryUpperBound)
+                        testIndices.add(i);
+                }
+
+                if (testIndices.size() == 0)
+                {
+                    category.add(value);
+                    inputIndex++;
+                }
+                else
+                {
+                    outer: for (Integer compIndex:testIndices)
+                    {
+                        if (compIndex < currentCategoryUpperBound && compIndex + maxCategoryRepeatingSubsequenceLength < currentCategoryUpperBound)
+                        {
+                            for (int i = 1; i <= maxCategoryRepeatingSubsequenceLength;i++)
+                            {
+
+                                if (comparator.compare(input.get(inputIndex + i), input.get(compIndex + i)) != 0)
+                                {
+                                    continue outer;
+                                }
+                            }
+                            currentCategoryUpperBound = Math.min(currentCategoryUpperBound, compIndex);
+                        }
+                        else
+                            break;
+
+                    }
+                    if (currentCategoryUpperBound > inputIndex)
+                    {
+                        category.add(value);
+                    }
+                    inputIndex++;
+
+                }
+            }
+            if (category.size() > 0)
+                out.add(category);
+
+        }
+        return out;
+
+    }
+
 }

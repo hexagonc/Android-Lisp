@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -660,6 +661,156 @@ public class AdvancedFastLSTMTester extends BaseLSTMTester {
             e.printStackTrace();
             Assert.assertTrue(errorMessage, false);
         }
+    }
+
+    @Test
+    public void testFullPatternPartioningCharacters()
+    {
+        String test = "ABCDEFCDYABCZ12ABCXX";
+
+        ArrayList<Character> values = new ArrayList<Character>();
+
+        Comparator<Character> stringComparator = new Comparator<Character>()
+        {
+
+            @Override
+            public int compare(Character s1, Character s2)
+            {
+                return s1.compareTo(s2);
+            }
+        };
+
+        try
+        {
+            for (int i = 0;i < test.length();i++)
+            {
+                values.add(test.charAt(i));
+            }
+
+            ArrayList<ArrayList<Character>> partition = Tools.partition(values, 2);
+            System.out.println("Raw features: " + test);
+            System.out.println("Base Non-overlapping Parition: " + partition.toString());
+
+            int minSize = 2;
+            ArrayList<ArrayList<Character>> atomicFeatures = Tools.factorDuplicatePatterns(partition, stringComparator, minSize);
+
+            HashSet<ArrayList<Character>> outputMap = new HashSet<ArrayList<Character>>();
+            for (ArrayList<Character> v:atomicFeatures)
+            {
+                outputMap.add(v);
+            }
+
+            System.out.println("Atomic feature partition: " + outputMap);
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+
+
+    }
+
+
+
+    @Test
+    public void testFullPatternPartioning()
+    {
+        int[] baseInput = new int[]{10, 20, 24, 30, 20, 250, 100, 50, 45, 40, 35, 30, 30, 30, 25, 20, 15, 230, 200, 180, 160, 150, +145, 5, 10, 15, 20, 100, 110, 120, 130, 130, 130, 120, 110, 100, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 40, +40, 40, 35, 30, 20, 15, 15, +15, 10, 90, 95, 90, 95, 90, 95, 90, 75, 65, 75, 65, 75, 65, 75, 65};
+        ArrayList<Integer> values = new ArrayList<Integer>();
+
+        Comparator<Integer> intComparator = new Comparator<Integer>()
+        {
+
+            @Override
+            public int compare(Integer integer, Integer t1)
+            {
+                return integer.compareTo(t1);
+            }
+        };
+
+        try
+        {
+            for (int i = 0;i < baseInput.length;i++)
+            {
+                values.add(Integer.valueOf(baseInput[i]));
+            }
+
+            ArrayList<ArrayList<Integer>> partition = Tools.partition(values, 2, intComparator);
+            System.out.println("Base partition: " + partition.toString());
+
+            int minSize = 2;
+            ArrayList<ArrayList<Integer>> atomicFeatures = Tools.factorDuplicatePatterns(partition, intComparator, minSize);
+
+            HashSet<ArrayList<Integer>> outputMap = new HashSet<ArrayList<Integer>>();
+            for (ArrayList<Integer> v:atomicFeatures)
+            {
+                outputMap.add(v);
+            }
+
+            System.out.println("Atomic features: " + outputMap);
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+
+
+    }
+
+
+    @Test
+    public void testPatternPartioning()
+    {
+        int[] baseInput = new int[]{10, 20, 24, 30, 20, 250, 100, 50, 45, 40, 35, 30, 30, 30, 25, 20, 15, 230, 200, 180, 160, 150, +145, 5, 10, 15, 20, 100, 110, 120, 130, 130, 130, 120, 110, 100, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 40, +40, 40, 35, 30, 20, 15, 15, +15, 10, 90, 95, 90, 95, 90, 95, 90, 75, 65, 75, 65, 75, 65, 75, 65};
+        ArrayList<Integer> values = new ArrayList<Integer>();
+
+        try
+        {
+            for (int i = 0;i < baseInput.length;i++)
+            {
+                values.add(Integer.valueOf(baseInput[i]));
+            }
+
+            ArrayList<ArrayList<Integer>> partition = Tools.partition(values, 2);
+            System.out.println("Parition: " + partition.toString());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+
+
+    }
+
+    @Test
+    public void testPatternPartioningCharacter()
+    {
+        String test = "ABCDEFCDYABCZ12ABCXX";
+
+        ArrayList<Character> values = new ArrayList<Character>();
+
+        try
+        {
+            for (int i = 0;i < test.length();i++)
+            {
+                values.add(test.charAt(i));
+            }
+
+            ArrayList<ArrayList<Character>> partition = Tools.partition(values, 2);
+            System.out.println("Parition: " + partition.toString());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(false);
+        }
+
+
     }
 
 
