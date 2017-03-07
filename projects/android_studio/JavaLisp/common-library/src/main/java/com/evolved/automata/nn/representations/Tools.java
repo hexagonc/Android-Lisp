@@ -364,7 +364,12 @@ public class Tools {
         return invertedIndex;
     }
 
+
     public static <T> ArrayList<ArrayList<T>> factorDuplicatePatterns(ArrayList<ArrayList<T>> patterns, Comparator<T> comparator, int minimumSubsequenceLength)
+    {
+        return factorDuplicatePatterns(patterns, comparator, minimumSubsequenceLength, false);
+    }
+    public static <T> ArrayList<ArrayList<T>> factorDuplicatePatterns(ArrayList<ArrayList<T>> patterns, Comparator<T> comparator, int minimumSubsequenceLength, boolean onlyIncludeDuplicatesP)
     {
         if (patterns.size() == 1)
             return patterns;
@@ -391,7 +396,7 @@ public class Tools {
                 compPatterns.add(patterns.get(j));
                 compIndices.add(invertedIndices.get(j));
             }
-            ArrayList<ArrayList<T>> partitionedOnCommonSubSequences = splitPatternByDuplicates(pattern, compPatterns, compIndices, comparator, minimumSubsequenceLength);
+            ArrayList<ArrayList<T>> partitionedOnCommonSubSequences = splitPatternByDuplicates(pattern, compPatterns, compIndices, comparator, minimumSubsequenceLength, onlyIncludeDuplicatesP);
             // TODO: filter duplicates?
             out.addAll(partitionedOnCommonSubSequences);
         }
@@ -405,7 +410,7 @@ public class Tools {
             compPatterns.add(patterns.get(j));
             compIndices.add(invertedIndices.get(j));
         }
-        ArrayList<ArrayList<T>> partitionedOnCommonSubSequences = splitPatternByDuplicates(pattern, compPatterns, compIndices, comparator, minimumSubsequenceLength);
+        ArrayList<ArrayList<T>> partitionedOnCommonSubSequences = splitPatternByDuplicates(pattern, compPatterns, compIndices, comparator, minimumSubsequenceLength, onlyIncludeDuplicatesP);
         // TODO: filter duplicates
         out.addAll(partitionedOnCommonSubSequences);
 
@@ -413,7 +418,7 @@ public class Tools {
     }
 
 
-    public static <T> ArrayList<ArrayList<T>> splitPatternByDuplicates(ArrayList<T> currentPattern, ArrayList<ArrayList<T>> patterns, ArrayList<HashMap<T, LinkedList<Integer>>> invertedIndices, Comparator<T> comparator, int minimumSubsequenceLength)
+    public static <T> ArrayList<ArrayList<T>> splitPatternByDuplicates(ArrayList<T> currentPattern, ArrayList<ArrayList<T>> patterns, ArrayList<HashMap<T, LinkedList<Integer>>> invertedIndices, Comparator<T> comparator, int minimumSubsequenceLength, boolean onlyIncludeDuplicatesP)
     {
 
 
@@ -494,7 +499,7 @@ public class Tools {
 
                 if (commonSubsequence.size() >= minimumSubsequenceLength)
                 {
-                    if (subSequence.size() > 0)
+                    if (subSequence.size() > 0 && !onlyIncludeDuplicatesP)
                     {
                         out.add(subSequence);
                         subSequence = new ArrayList<T>();
@@ -515,19 +520,23 @@ public class Tools {
             }
         }
 
-        if (subSequence.size() > 0)
+        if (!onlyIncludeDuplicatesP)
         {
-            for (int i = proposedStartingIndex;i < currentPattern.size();i++)
-                subSequence.add(currentPattern.get(i));
-            out.add(subSequence);
-        }
-        else
-        {
-            for (int i = proposedStartingIndex;i < currentPattern.size();i++)
-                subSequence.add(currentPattern.get(i));
             if (subSequence.size() > 0)
+            {
+                for (int i = proposedStartingIndex;i < currentPattern.size();i++)
+                    subSequence.add(currentPattern.get(i));
                 out.add(subSequence);
+            }
+            else
+            {
+                for (int i = proposedStartingIndex;i < currentPattern.size();i++)
+                    subSequence.add(currentPattern.get(i));
+                if (subSequence.size() > 0)
+                    out.add(subSequence);
+            }
         }
+
 
 
         return out;

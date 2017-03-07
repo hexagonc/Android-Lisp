@@ -555,6 +555,62 @@ public class ModelBuilder {
         }
     }
 
+    String getPredictorCSVState(int i)
+    {
+        Predictor p = _predictors[i];
+        float[] copy = Arrays.copyOf(p.sequenceStartPredictor, p.sequenceStartPredictor.length);
+        StringBuilder builder = new StringBuilder();
+        int width = prevLevel.capacity;
+        FastLSTMNetwork.resetNetworkToInitialState(copy);
+        FastLSTMNetwork.forwardPass(copy, initialState);
+        float[] output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+
+        boolean second = false;
+        while (!Arrays.equals(output, finalState))
+        {
+            if (second)
+                builder.append("\n");
+            second = true;
+            PREDICTOR_MATCH_STATE[] logical = prevLevel.getLogicalStateFromPredictionVectorState(NNTools.unwrapVector(output));
+
+            builder.append(Arrays.toString(logical));
+            FastLSTMNetwork.forwardPass(copy, output);
+            output = NNTools.roundToInt(FastLSTMNetwork.getOutputActivation(copy));
+        }
+        return builder.toString();
+    }
+
+    public String getStateCSVFromLower()
+    {
+        int width = prevLevel.capacity;
+        String separatorChar = "<>";
+        StringBuilder separatorLine = new StringBuilder();
+        for (int i = 0; i < width;i++)
+        {
+            if (separatorLine.length()>0)
+                separatorLine.append(", ");
+            separatorLine.append(separatorChar);
+        }
+        separatorLine.append("\n");
+        StringBuilder sbuilder = new StringBuilder();
+        if (prevLevel != null)
+        {
+
+
+
+            for (int i = 0; i < manager.getNumberOfClaimedSlots();i++)
+            {
+                if (i > 0)
+                    sbuilder.append("\n").append(separatorLine);
+                String pattern = getPredictorCSVState(i);
+
+                sbuilder.append(pattern);
+            }
+        }
+        return sbuilder.toString().replace("[", "").replace("]", "");
+
+    }
+
     FastLSTMNetwork getNetwork()
     {
         FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(dimension, dimension, initialNumCellStates);
