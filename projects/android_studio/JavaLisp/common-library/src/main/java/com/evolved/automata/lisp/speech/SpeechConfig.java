@@ -3,7 +3,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 
+import com.evolved.automata.Metaphone;
 import com.evolved.automata.parser.general.PatternParser;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 public class SpeechConfig {
 	
@@ -65,26 +69,90 @@ public class SpeechConfig {
 	double _resultSignificanceThreshold = 0.01;
 	private String _canonicalPhraseArgumentKey = "*canonical*";
 	double _ambiguityThresholdFraction = 0.8;
+    HashMap<String, LinkedList<String>> canonicalPatterns;
 	PATTERN_WIDTH_SEARCH_METHOD _patternWidthSearchMethod = PATTERN_WIDTH_SEARCH_METHOD.LINEAR;
 	
 	BOUNDING_PATTERN_EVALUATION_STRATEGY _boundingPatternEvaluationStrategy = BOUNDING_PATTERN_EVALUATION_STRATEGY.ACCEPT_FIRST_RESULT;
-	
+	boolean _useMetaphoneP = false;
 	
 	public SpeechConfig(HashMap<String, LinkedList<String>> patternSpec, HashMap<String, LinkedList<String>> typeSpec, String[] defaultPrecedence)
 	{
 		_defaultTypePrecedencePolicyMap = new HashMap<String, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY>();
 		_patternSpecificationMap = patternSpec;
+        canonicalPatterns = patternSpec;
 		_patternTypeMap = typeSpec;
 		_defaultFunctionPrecedence = defaultPrecedence;
 		_functionsWithSideEffects = new HashSet<String>();
 		_intrinsicallyAmbiguousFunctions = new HashSet<String>(); 
 				 
 	}
-	
+
+    private void convertPatternSpecToMetaPhone()
+    {
+        HashMap<String, LinkedList<String>> patternSpec = new HashMap<String, LinkedList<String>>();
+
+        for (String functionName:_patternSpecificationMap.keySet())
+        {
+            LinkedList<String> converted = new LinkedList<String>(), original = _patternSpecificationMap.get(functionName);
+            for (String pattern:original)
+            {
+                String[] tokens = StringUtils.split(pattern, ' ');
+                StringBuilder recombined = new StringBuilder();
+                for (String token: tokens)
+                {
+                    if (recombined.length() > 0)
+                    {
+                        recombined.append(" ");
+                    }
+                    Metaphone phone = new Metaphone(token);
+                    Pair<String, String> meta = phone.getMetaphone();
+                    String first = meta.getLeft();
+                    if (first.length() == 0 || SpeechMap.isGroup(token) != null || SpeechMap.isNonTerminal(token) != null)
+                    {
+                        recombined.append(token);
+                    }
+                    else
+                    {
+
+                        recombined.append(first);
+                    }
+                }
+                converted.add(recombined.toString());
+            }
+            patternSpec.put(functionName, converted);
+        }
+        canonicalPatterns = _patternSpecificationMap;
+        _patternSpecificationMap = patternSpec;
+    }
+
+
+
+	public SpeechConfig setUseMetaphoneMatching(boolean useMetaphone)
+	{
+
+		_useMetaphoneP = useMetaphone;
+        if (useMetaphone)
+        {
+            convertPatternSpecToMetaPhone();
+            if (_simpleGrammarParser != null)
+            {
+                _simpleGrammarParser.convertToMetaphone();
+            }
+        }
+		return this;
+	}
+
+	public boolean usesMetaphoneMatchingP()
+	{
+		return _useMetaphoneP;
+	}
+
 	public void setDefaultTypePrecedencePolicy(String typename, PRECEDENCE_ADHERENCE_POLICY policy)
 	{
 		_defaultTypePrecedencePolicyMap.put(typename, policy);
 	}
+
+
 	
 	
 	public PRECEDENCE_ADHERENCE_POLICY getTypePrecedencePolicy(String typename)

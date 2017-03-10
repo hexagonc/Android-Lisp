@@ -1,8 +1,10 @@
 package com.evolved.automata.lisp.speech;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 
@@ -10,12 +12,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
+import com.evolved.automata.Metaphone;
 import com.evolved.automata.lisp.speech.SpeechConfig.AMBIGUITY_NOTICATION_POLICY;
 import com.evolved.automata.lisp.speech.SpeechConfig.BOUNDING_PATTERN_EVALUATION_STRATEGY;
 import com.evolved.automata.lisp.speech.SpeechConfig.PRECEDENCE_ADHERENCE_POLICY;
 import com.evolved.automata.parser.general.GeneralizedCharacter;
 import com.evolved.automata.parser.general.PatternParser;
 import com.evolved.automata.parser.general.TextCharacter;
+
 
 public class SpeechMap {
 	
@@ -151,6 +155,118 @@ public class SpeechMap {
 			speechFunction = speechFunctionName;
 		}
 	}
+
+	class WordToken {
+		String raw;
+		String metaphone;
+
+		public WordToken(String s)
+		{
+			raw = s;
+			if (_speechConfig.usesMetaphoneMatchingP())
+			{
+				metaphone = (new Metaphone(raw)).getMetaphone().getLeft();
+			}
+			else
+				metaphone = raw;
+		}
+
+		public String getLiteral()
+		{
+			return raw;
+		}
+
+		public String getMetaphone()
+		{
+			return metaphone;
+		}
+
+	}
+
+	class TokenizedInput
+	{
+		String[] metaphoneInput;
+		String[] rawInput;
+		private TokenizedInput()
+		{
+
+		}
+		public TokenizedInput(String[] literalTokens)
+		{
+			rawInput = literalTokens;
+			if (_speechConfig.usesMetaphoneMatchingP())
+			{
+				metaphoneInput = new String[literalTokens.length];
+				for (int i = 0; i < literalTokens.length;i++)
+				{
+					String meta = (new Metaphone(literalTokens[i])).getMetaphone().getLeft();
+					if (meta.length()>0 && isGroup(rawInput[i]) == null && isNonTerminal(rawInput[i]) == null)
+						metaphoneInput[i] = meta;
+					else
+						metaphoneInput[i] = rawInput[i];
+				}
+			}
+			else
+				metaphoneInput = rawInput;
+		}
+
+		public String toString()
+		{
+			return Arrays.toString(rawInput) + ":" + Arrays.toString(metaphoneInput);
+		}
+
+		public String[] getMetaphoneInput()
+		{
+			return metaphoneInput;
+		}
+
+		public String[] getLiteralInput()
+		{
+			return rawInput;
+		}
+
+		public int getLength()
+		{
+			return rawInput.length;
+		}
+
+		public String getMetaphoneToken(int i)
+		{
+			return metaphoneInput[i];
+		}
+
+		public String getLiteralToken(int i)
+		{
+			return rawInput[i];
+		}
+
+		public TokenizedInput slice(int start)
+		{
+			return slice(start, this.getLength());
+		}
+
+		public TokenizedInput slice(int start, int end)
+		{
+			TokenizedInput tokenized = new TokenizedInput();
+			int stop = Math.min(this.getLength(), end);
+
+			tokenized.rawInput = new String[Math.max(0,stop - start)];
+			tokenized.metaphoneInput = new String[tokenized.rawInput.length];
+			for (int i=start; i < stop;i++) {
+				tokenized.rawInput[i - start] = this.getLiteralToken(i);
+				tokenized.metaphoneInput[i - start] = this.getMetaphoneToken(i);
+			}
+			return tokenized;
+		}
+
+	}
+
+
+	public TokenizedInput getTokenizedInput(String[] literalInput)
+	{
+		return new TokenizedInput(literalInput);
+	}
+
 	
 	final SpeechCache _cache;
 	final SpeechConfig _speechConfig;
@@ -199,7 +315,12 @@ public class SpeechMap {
 	//					Begin Utility Functions
 	//  /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\
 	
- 
+    WordToken getWordToken(String literal)
+	{
+		return new WordToken(literal);
+	}
+
+
 	
 	String[] slice(String[] data, int start)
 	{
@@ -214,9 +335,11 @@ public class SpeechMap {
 			n[i - start] = data[i];
 		return n;
 	}
+
+
+
 	
-	
-	private String isGroup(String token)
+	static String isGroup(String token)
 	{
 		if (token.startsWith("[") && token.endsWith("]"))
 			return token.substring(0, token.length()-1).substring(1);
@@ -226,7 +349,7 @@ public class SpeechMap {
 	}
 	
 	
-	private String isNonTerminal(String token)
+	static String isNonTerminal(String token)
 	{
 		if (token.startsWith("<") && token.endsWith(">"))
 			return token.substring(0, token.length()-1).substring(1);
@@ -483,32 +606,34 @@ public class SpeechMap {
 		}
 		return sbuilder.toString();
 	}
-	
-	
-	//  /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ 
+
+
+
+
+	//  /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\
 	//					End Utility Functions
 	//  /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\ /.:.\
-	
-	Pair<String[], HashMap<String, ScoredValue>> getTransformedInput(String[] tokenizedInput, String[] tokenizedPattern)
+
+	Pair<String[], HashMap<String, ScoredValue>> getTransformedInput(TokenizedInput tokenizedInput, String[] tokenizedPattern)
 	{
 		Pair<Boolean, String> hasCache = _cache.hasCachedTransformedValue(tokenizedInput, tokenizedPattern);
-		
+
 		if (hasCache.getLeft().booleanValue())
 		{
 			return _cache.getCachedTransformedValue(hasCache.getRight());
 		}
-		
-		
+
+
 		PatternParser.MatcherController controller;
-		
+
 		int inputIndex = 0, patternIndex = 0;
-		int maxInput = tokenizedInput.length, maxPattern = tokenizedPattern.length;
-		String patternToken, inputToken;
+		int maxInput = tokenizedInput.getLength(), maxPattern = tokenizedPattern.length;
+		String patternToken, inputToken, literalToken;
 		Triple<String, Integer,SPECIAL_TOKEN_TYPE> nextSpecialTokenData;
 		LinkedList<String> transformedInput = new LinkedList<String>();
 		HashMap<String, ScoredValue> transformMap = new HashMap<String, ScoredValue>();
 		int i;
-		
+
 		HashSet<String> failureSet;
 		GeneralizedCharacter gchar;
 		boolean reset, firstToken;
@@ -524,21 +649,22 @@ public class SpeechMap {
 				controller = _cache.getController(patternToken);
 				patternIndex = nextSpecialTokenData.getMiddle().intValue();
 				failureSet = _cache.getFailedStartTokens(patternToken);
-				while (inputIndex < maxInput && failureSet.contains(tokenizedInput[inputIndex]))
+				while (inputIndex < maxInput && failureSet.contains(tokenizedInput.getMetaphoneToken(inputIndex)))
 				{
-					transformedInput.add(tokenizedInput[inputIndex++]);
+					transformedInput.add(tokenizedInput.getLiteralToken(inputIndex++));
 				}
 				if (inputIndex >= maxInput)
 					break;
-				
+
 				reset = true;
-				
+
 				firstToken = true;
 				loopAheadBaseIndex = inputIndex;
 				i = loopAheadBaseIndex;
 				while (i < maxInput)
 				{
-					inputToken = tokenizedInput[i];
+					inputToken = tokenizedInput.getMetaphoneToken(i);
+					literalToken = tokenizedInput.getLiteralToken(i);
 					gchar = new TextCharacter(inputToken,false);
 					if (reset)
 					{
@@ -547,7 +673,7 @@ public class SpeechMap {
 						controller.reset();
 						capturedTokens = new LinkedList<String>();
 					}
-					
+
 					if (matchingFinished = controller.update(gchar))
 					{ // parsing halted
 						if (!controller.anyMatches())
@@ -555,13 +681,13 @@ public class SpeechMap {
 							if (firstToken)
 							{
 								failureSet.add(inputToken);
-								transformedInput.add(inputToken);
+								transformedInput.add(literalToken);
 								inputIndex++;
 								reset = true;
 								i = ++loopAheadBaseIndex;
 								continue;
 							}
-							
+
 							if (controller.getCurrentMatches().size()>0)
 							{
 								transformMap.put(patternToken, ScoredValue.from(capturedTokens));
@@ -578,7 +704,7 @@ public class SpeechMap {
 						}
 						else
 						{
-							capturedTokens.add(inputToken);
+							capturedTokens.add(literalToken);
 							inputIndex = i + 1;
 							transformMap.put(patternToken, ScoredValue.from(capturedTokens));
 							transformedInput.add(tokenizedPattern[patternIndex]);
@@ -589,9 +715,9 @@ public class SpeechMap {
 					else
 					{
 						i++;
-						capturedTokens.add(inputToken);
+						capturedTokens.add(literalToken);
 					}
-					
+
 					firstToken = false;
 				}
 				// Test for breaking pattern at end of string
@@ -602,30 +728,25 @@ public class SpeechMap {
 						transformMap.put(patternToken, ScoredValue.from(capturedTokens));
 						inputIndex = i;
 						transformedInput.add(tokenizedPattern[patternIndex]); // raw token representation
-						
+
 					}
 				}
-				
+
 				patternIndex++;
-				
+
 			}
 			else
 			{
 				patternIndex = maxPattern;
 			}
 		}
-		
+
 		for (i = inputIndex;i < maxInput;i++)
-			transformedInput.add(tokenizedInput[i]);
-		
+			transformedInput.add(tokenizedInput.getLiteralToken(i));
+
 		return _cache.setCachedTransformedValue(hasCache.getRight(), Pair.of(transformedInput.toArray(new String[0]), transformMap));
 	}
-	
-	
-	
-	
-	
-	
+
 	public static class AssessingRemainingStructuredLiterals
 	{
 		HashSet<String> inputTokenSet = new HashSet<String>();
@@ -634,7 +755,7 @@ public class SpeechMap {
 		double score;
 	}
 	
-	private AssessingRemainingStructuredLiterals assessingRemainingStructuredLiterals(ProcessStateInfo pinfo, String[] tokenizedInput, HashSet<String> structuredLiteralTextSet)
+	private AssessingRemainingStructuredLiterals assessingRemainingStructuredLiterals(ProcessStateInfo pinfo, TokenizedInput tokenizedInput, HashSet<String> structuredLiteralTextSet)
 	{
 		AssessingRemainingStructuredLiterals out = new AssessingRemainingStructuredLiterals();
 		int i = 0;
@@ -642,9 +763,9 @@ public class SpeechMap {
 		int intersectionCount = 0;
 		int unionCount = structuredLiteralTextSet.size();
 		boolean foundIntersection = false;
-		for (i = 0; i< tokenizedInput.length;i++)
+		for (i = 0; i< tokenizedInput.getLength();i++)
 		{
-			inputToken = tokenizedInput[i];
+			inputToken = tokenizedInput.getMetaphoneToken(i);
 			if (!out.inputTokenSet.contains(inputToken))
 			{
 				if (structuredLiteralTextSet.contains(inputToken))
@@ -675,7 +796,7 @@ public class SpeechMap {
 	
 	
 	
-	private FunctionApplicabilityData assessStructuredLiteralAfterUnstructuredGroup(ProcessStateInfo pinfo, String unstructuredGroupName, String[]  tokenizedInput, String structuredLiteral, String[] remaingPatternWithStructuredLiteral)
+	private FunctionApplicabilityData assessStructuredLiteralAfterUnstructuredGroup(ProcessStateInfo pinfo, String unstructuredGroupName, TokenizedInput  tokenizedInput, String structuredLiteral, String[] remaingPatternWithStructuredLiteral)
 	{
 		FunctionApplicabilityData finalOutput = null;
 		// find first match in tokenized input
@@ -684,14 +805,14 @@ public class SpeechMap {
 		String token;
 		PriorityQueue<FunctionApplicabilityData> resultHeap = new PriorityQueue<SpeechMap.FunctionApplicabilityData>(1, _descendingApplicabilityComparator);
 		
-		while (inputIndex < tokenizedInput.length)
+		while (inputIndex < tokenizedInput.getLength())
 		{
-			token = tokenizedInput[inputIndex];
+			token = tokenizedInput.getMetaphoneToken(inputIndex);
 			if (token.equals(structuredLiteral) && inputIndex > 0)
 			{
 				
 				// try aligning the input with the remaining pattern
-				finalOutput = assessPatternArguments(pinfo, slice(tokenizedInput, inputIndex), remaingPatternWithStructuredLiteral);
+				finalOutput = assessPatternArguments(pinfo, tokenizedInput.slice(inputIndex), remaingPatternWithStructuredLiteral);
 				if (finalOutput.isSuccess())
 				{
 					// Add score for value of capture group
@@ -711,11 +832,11 @@ public class SpeechMap {
 					break;
 				}
 				else
-					potentialUnstructuredGroupText.add(token);
+					potentialUnstructuredGroupText.add(tokenizedInput.getLiteralToken(inputIndex));
 			}
 			else
 			{
-				potentialUnstructuredGroupText.add(token);
+				potentialUnstructuredGroupText.add(tokenizedInput.getLiteralToken(inputIndex));
 			}
 			inputIndex++;
 		}
@@ -731,7 +852,7 @@ public class SpeechMap {
 	}
 	
 	
-	private FunctionApplicabilityData assessGroupAfterUnstructuredGroup(ProcessStateInfo pinfo, String unstructuredGroupName, String[]  tokenizedInput, String[] remaingPattern)
+	private FunctionApplicabilityData assessGroupAfterUnstructuredGroup(ProcessStateInfo pinfo, String unstructuredGroupName, TokenizedInput  tokenizedInput, String[] remaingPattern)
 	{
 		FunctionApplicabilityData finalOutput = null;
 		// find first match in tokenized input
@@ -740,13 +861,13 @@ public class SpeechMap {
 		String token;
 		PriorityQueue<FunctionApplicabilityData> resultHeap = new PriorityQueue<SpeechMap.FunctionApplicabilityData>(1, _descendingApplicabilityComparator);
 		
-		while (inputIndex < tokenizedInput.length)
+		while (inputIndex < tokenizedInput.getLength())
 		{
-			token = tokenizedInput[inputIndex];
+			token = tokenizedInput.getLiteralToken(inputIndex);
 			if (inputIndex > 0)
 			{
 				// try processing the remaining
-				finalOutput = assessPatternArguments(pinfo, slice(tokenizedInput, inputIndex), remaingPattern);
+				finalOutput = assessPatternArguments(pinfo, tokenizedInput.slice(inputIndex), remaingPattern);
 				if (finalOutput.isSuccess())
 				{
 					finalOutput.addArgument(unstructuredGroupName, ScoredValue.from(potentialUnstructuredGroupText));
@@ -786,14 +907,14 @@ public class SpeechMap {
 	
 	
 	
-	private FunctionApplicabilityData assessingPatternAfterUnstructuredGroup(ProcessStateInfo pinfo, String unstructuredGroupName, String[] tokenizedInput, String[] remainingPatternTokens)
+	private FunctionApplicabilityData assessingPatternAfterUnstructuredGroup(ProcessStateInfo pinfo, String unstructuredGroupName, TokenizedInput tokenizedInput, String[] remainingPatternTokens)
 	{
 		FunctionApplicabilityData finalOutput = new FunctionApplicabilityData(0, null).setFailureMissingTokens();
 		HashMap<String, ScoredValue> resultmap;
 		if (remainingPatternTokens.length == 0)
 		{
 			resultmap = new HashMap<String, ScoredValue>();
-			resultmap.put(unstructuredGroupName, ScoredValue.from(tokenizedInput));
+			resultmap.put(unstructuredGroupName, ScoredValue.from(tokenizedInput.getLiteralInput()));
 			finalOutput = new FunctionApplicabilityData(1, resultmap).setSuccess();
 		}
 		else
@@ -825,7 +946,7 @@ public class SpeechMap {
 		return finalOutput;
 	}
 	
-	private FunctionApplicabilityData assessingLeadingStructuredLiteral(ProcessStateInfo pinfo, HashSet<String> initialLiteralSet, String[] tokenizedInput, String[] remainingPatternTokens)
+	private FunctionApplicabilityData assessingLeadingStructuredLiteral(ProcessStateInfo pinfo, HashSet<String> initialLiteralSet, TokenizedInput tokenizedInput, String[] remainingPatternTokens)
 	{
 		FunctionApplicabilityData finalOutput = new FunctionApplicabilityData(0, null).setFailureMissingTokens();
 		
@@ -841,9 +962,9 @@ public class SpeechMap {
 		
 		double bestScore = 0;
 		boolean startingMatch = false;
-		while (inputIndex < tokenizedInput.length)
+		while (inputIndex < tokenizedInput.getLength())
 		{
-			token = tokenizedInput[inputIndex];
+			token = tokenizedInput.getMetaphoneToken(inputIndex);
 			if (!inputSet.contains(token))
 			{
 				inputSet.add(token);
@@ -879,7 +1000,7 @@ public class SpeechMap {
 		if (!startingMatch)
 			return finalOutput;
 		
-		return  assessPatternArguments(pinfo, slice(tokenizedInput, bestStartingIndex+1), remainingPatternTokens).setStartingSkipCount(initialSkip).addScore(bestScore);
+		return  assessPatternArguments(pinfo, tokenizedInput.slice(bestStartingIndex+1), remainingPatternTokens).setStartingSkipCount(initialSkip).addScore(bestScore);
 		
 	}
 	
@@ -889,7 +1010,7 @@ public class SpeechMap {
 	}
 	
 	// TODO: Need to improve strategy for finding optimal input size for matching group
-	private FunctionApplicabilityData assessingLeadingStructuredGroup(ProcessStateInfo pinfo, String structuredGroupName, String[] tokenizedInput, String[] remainingPatternTokens)
+	private FunctionApplicabilityData assessingLeadingStructuredGroup(ProcessStateInfo pinfo, String structuredGroupName, TokenizedInput tokenizedInput, String[] remainingPatternTokens)
 	{
 		FunctionApplicabilityData resultRemaining = null, bestRemaining = null, finalOutput = new FunctionApplicabilityData(0, null).setFailureMissingTokens();
 		
@@ -929,20 +1050,16 @@ public class SpeechMap {
 		if (remainingPatternTokens.length > 0)
 		{
 			minTokensToMatchRemainingPattern = getMinimumTokensForMatchingPattern(pinfo.speechFunction, remainingPatternTokens, 2);
-			maxTokensForMatchingCurrentGroup = tokenizedInput.length - minTokensToMatchRemainingPattern;
+			maxTokensForMatchingCurrentGroup = tokenizedInput.getLength() - minTokensToMatchRemainingPattern;
 		}
 		else
-			maxTokensForMatchingCurrentGroup = tokenizedInput.length;
+			maxTokensForMatchingCurrentGroup = tokenizedInput.getLength();
 		
 		int bestAction = -1;
 		double bestScore = -1;
 		ScoredValue bestResult = null;
 		int maxRecursiveAttempts = (maxTokensForMatchingCurrentGroup - minimumPatternSize)*2;
-		
-		
-		
-		
-		
+
 		
 		switch (_speechConfig.getPatternWidthSearchPolicy())
 		{
@@ -950,14 +1067,14 @@ public class SpeechMap {
 				int leadingShiftLimit = 3;
 				outer: for (currentInputOffset = 0;currentInputOffset < leadingShiftLimit;  currentInputOffset++)
 				{
-					inner: for (numTokensForMatchingCurrentGroup = minimumPatternSize; (tokenizedInput.length - (currentInputOffset + numTokensForMatchingCurrentGroup)) >= minTokensToMatchRemainingPattern;numTokensForMatchingCurrentGroup++)
+					inner: for (numTokensForMatchingCurrentGroup = minimumPatternSize; (tokenizedInput.getLength() - (currentInputOffset + numTokensForMatchingCurrentGroup)) >= minTokensToMatchRemainingPattern;numTokensForMatchingCurrentGroup++)
 					{
-						String[] input = slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup);
+						TokenizedInput input = tokenizedInput.slice(currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup);
 						resultValue = evaluate(input, functionPrec, false, precedencePolicy);
 						if (resultValue.score <= 0)
 							continue;
 						if (!skipRemaining)
-							resultRemaining = assessPatternArguments(pinfo, slice(tokenizedInput, currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
+							resultRemaining = assessPatternArguments(pinfo, tokenizedInput.slice(currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
 						
 						if (resultValue.score > 0 && resultRemaining.isSuccess())
 						{
@@ -1018,9 +1135,9 @@ public class SpeechMap {
 							{
 								return finalOutput.setFailureTooFewTokens();
 							}
-							initialResultValue = evaluate(slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false, precedencePolicy);
+							initialResultValue = evaluate(tokenizedInput.slice(currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false, precedencePolicy);
 							if (!skipRemaining)
-								resultRemaining = assessPatternArguments(pinfo, slice(tokenizedInput, currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
+								resultRemaining = assessPatternArguments(pinfo, tokenizedInput.slice(currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
 							if (initialResultValue.score > 0 && resultRemaining.isSuccess())
 							{
 								bestResult = initialResultValue;
@@ -1058,7 +1175,7 @@ public class SpeechMap {
 							}
 							break;
 						case actionGetResult:
-							if (currentInputOffset + numTokensForMatchingCurrentGroup + minTokensToMatchRemainingPattern> tokenizedInput.length)
+							if (currentInputOffset + numTokensForMatchingCurrentGroup + minTokensToMatchRemainingPattern> tokenizedInput.getLength())
 							{
 								if (currentInputOffset > 0)
 								{
@@ -1072,9 +1189,9 @@ public class SpeechMap {
 								break;
 							}
 							
-							resultValue = evaluate(slice(tokenizedInput, currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false, precedencePolicy);
+							resultValue = evaluate(tokenizedInput.slice(currentInputOffset, currentInputOffset + numTokensForMatchingCurrentGroup), functionPrec, false, precedencePolicy);
 							if (!skipRemaining)
-								resultRemaining = assessPatternArguments(pinfo, slice(tokenizedInput, currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
+								resultRemaining = assessPatternArguments(pinfo, tokenizedInput.slice(currentInputOffset + numTokensForMatchingCurrentGroup), remainingPatternTokens);
 							
 							if (resultValue.score > 0 && resultRemaining.isSuccess())
 							{
@@ -1129,10 +1246,10 @@ public class SpeechMap {
 	
 	
 	
-	FunctionApplicabilityData assessPatternArguments(ProcessStateInfo pinfo, String[] tokenizedInput, String[] tokenizedPattern)
+	FunctionApplicabilityData assessPatternArguments(ProcessStateInfo pinfo, TokenizedInput tokenizedInput, String[] tokenizedPattern)
 	{
 		int minimumTokensForMatch = getMinimumTokensForMatchingPattern(pinfo.speechFunction, tokenizedPattern, 2);
-		if (tokenizedInput.length < minimumTokensForMatch)
+		if (tokenizedInput.getLength() < minimumTokensForMatch)
 			return new FunctionApplicabilityData(0, null).setFailureTooFewTokens();
 		
 		
@@ -1198,7 +1315,7 @@ public class SpeechMap {
 		}
 	}
 	
-	FunctionApplicabilityData assessPattern(ProcessStateInfo pinfo, String[] tokenizedInput, String[] tokenizedPattern)
+	FunctionApplicabilityData assessPattern(ProcessStateInfo pinfo, TokenizedInput tokenizedInput, String[] tokenizedPattern)
 	{
 		Pair<Boolean, String> hasCache = _cache.hasCachedPatternAssessmentValue(tokenizedInput, tokenizedPattern);
 		if (hasCache.getLeft().booleanValue())
@@ -1208,7 +1325,8 @@ public class SpeechMap {
 		
 		// TODO: fix handling of transformed input for recursively called patterns
 		Pair<String[], HashMap<String, ScoredValue>> transformedData = getTransformedInput(tokenizedInput, tokenizedPattern);
-		String[] transformedInput = transformedData.getKey();
+		String[] transformedLiteralInput = transformedData.getKey();
+		TokenizedInput transformedInput = getTokenizedInput(transformedLiteralInput);
 		boolean purelySemanticPattern = purelySemanticPattern(tokenizedPattern);
 		// Purely semantic patterns can't be assessed based on their grammatical structure; instead, they must be evaluated by a 
 		// function
@@ -1238,23 +1356,24 @@ public class SpeechMap {
 		return _cache.setCachedAssessmentValue(hasCache.getRight(), argumentSpec.setScore(actualScore));
 		
 	}
-	
-	private ScoredValue evaluate(String[] tokenizedInput, String[] functionPrecedence, boolean top, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
+
+
+	private ScoredValue evaluate(TokenizedInput tokenizedInput, String[] functionPrecedence, boolean top, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
 	{
-		
+
 		Pair<Boolean, String> hasCached = _cache.hasCachedPhraseValue(precedencePolicy, tokenizedInput, functionPrecedence);
 		if (hasCached.getLeft().booleanValue())
 		{
 			return _cache.getCachedPhraseValue(hasCached.getRight());
 		}
 		Pair<Boolean, String> hasCachedFunctionValue = null;
-		
-		
+
+
 		ScoredValue result;
 		HashMap<String, LinkedList<String>> patternSpec = _speechConfig.getPatternSpecMap();
 		LinkedList<String> patternVariations;
-		
-		
+
+
 		double minResultScore = _speechConfig.getMinimumResultScoreThreshold();
 		String[] tokenizedPattern;
 		FunctionApplicabilityData functionApplicability;
@@ -1265,17 +1384,17 @@ public class SpeechMap {
 		int i = 0, numFunctions = functionPrecedence.length;
 		double effectiveScore, maxScore=0;
 		double minimumPatternScore = _speechConfig.getMinimumPatternScoreThreshold();
-		
-		
-		
+
+
+
 		for (i = 0;i <  numFunctions; i ++)
 		{
 			functionName = functionPrecedence[i];
 			patternVariations = patternSpec.get(functionName);
 			maxApplicability = null;
-			
+
 			hasCachedFunctionValue = _cache.hasCachedFunctionValue(tokenizedInput, functionName);
-			
+
 			if (hasCachedFunctionValue.getLeft().booleanValue())
 			{
 				cachedAppData = _cache.getCachedFunctionValue(hasCachedFunctionValue.getRight());
@@ -1292,7 +1411,7 @@ public class SpeechMap {
 							if (maxApplicability == null || cachedAppData.score > maxApplicability.score)
 							{
 								maxApplicability = cachedAppData;
-								
+
 							}
 							break;
 						case PARTIAL:
@@ -1305,22 +1424,26 @@ public class SpeechMap {
 							}
 							break;
 					}
-					
-					
+
+
 				}
-				
+
 				// At this point we have the processed results of the current speech input and the current function
 			}
 			else
 			{
+
+				LinkedList<String> rawVariations = _speechConfig.canonicalPatterns.get(functionName);
+				Iterator<String> pIter = rawVariations.iterator();
 				for (String pattern:patternVariations)
 				{
 					ProcessStateInfo pinfo = new ProcessStateInfo(functionName);
 					tokenizedPattern = _evaluationExternalInterface.tokenize(pattern);
+					// TODO: assess for metaphone modifications
 					functionApplicability = assessPattern(pinfo, tokenizedInput, tokenizedPattern);
 					functionApplicability.setFunctionName(functionName);
-					functionApplicability.pattern = tokenizedPattern;
-					
+					functionApplicability.pattern = _evaluationExternalInterface.tokenize(pIter.next());
+
 					if (functionApplicability.isSuccess() && functionApplicability.score >= minimumPatternScore)
 					{
 						functionApplicability.relativeScore = functionApplicability.score;
@@ -1333,7 +1456,7 @@ public class SpeechMap {
 								if (maxApplicability == null || functionApplicability.score > maxApplicability.score)
 								{
 									maxApplicability = functionApplicability;
-									
+
 								}
 								break;
 							case PARTIAL:
@@ -1348,25 +1471,25 @@ public class SpeechMap {
 						}
 					}
 				}
-				
+
 				_cache.addSpeechFunctionToCompletionIndex(functionName);
-				
-				if (((precedencePolicy != PRECEDENCE_ADHERENCE_POLICY.FULL) && maxApplicability == null) || 
+
+				if (((precedencePolicy != PRECEDENCE_ADHERENCE_POLICY.FULL) && maxApplicability == null) ||
 						((precedencePolicy == PRECEDENCE_ADHERENCE_POLICY.FULL) && maxVariationHeap.size() == 0))
 				{
 					_cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), new FunctionApplicabilityData(0, null).setFunctionName(functionName).setFailureMissingTokens() , new ScoredValue(null, 0));
 				}
-				
+
 			}
-			
-			
-			
+
+
+
 			if (precedencePolicy == SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.FULL)
 			{
 				while (maxVariationHeap.size()>0)
 				{
 					functionApplicability = maxVariationHeap.poll();
-					
+
 					if (functionApplicability.resultValue != null)
 					{
 						result = functionApplicability.resultValue;
@@ -1374,36 +1497,36 @@ public class SpeechMap {
 					else
 					{
 						canonicalPhrase = getCanonicalPhrase(functionApplicability.pattern, functionApplicability);
-						
+
 						if (canonicalPhrase == null)
 							break;
 						functionApplicability.addArgument(_speechConfig.getCanonicalPhraseArgumentKey(),  ScoredValue.from(canonicalPhrase));
-						
+
 						result = _cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), functionApplicability, _evaluationExternalInterface.evaluate(functionName, functionApplicability.argMap));
 						result.score*=functionApplicability.score;
-						
+
 					}
 					if (result.score > minResultScore)
 					{
-						
+
 						return _cache.setCachedPhraseValue(hasCached.getRight(), result);
 					}
-					
+
 				}
 			}
 			else if (maxApplicability != null)
 			{
 				maxVariationHeap.add(maxApplicability);
 			}
-			
+
 		}
-		
+
 		// TODO: HANDLE the cases where  non-full precedence policy
 		AMBIGUITY_NOTICATION_POLICY ambiguityPolicy = _speechConfig.getAmbiguityNotificationPolicy();
 		double prevScore = -1;
 		double ambiguityThreshold = _speechConfig.getAmbiguityThresholdFraction();
-		LinkedList<FunctionApplicabilityData> intrinsicallyAmbiguousFunctions = new LinkedList<SpeechMap.FunctionApplicabilityData>(); 
-		
+		LinkedList<FunctionApplicabilityData> intrinsicallyAmbiguousFunctions = new LinkedList<SpeechMap.FunctionApplicabilityData>();
+
 		LinkedList<FunctionApplicabilityData> ambiguityList = new LinkedList<SpeechMap.FunctionApplicabilityData>();
 		while (maxVariationHeap.size()>0)
 		{
@@ -1412,12 +1535,12 @@ public class SpeechMap {
 			{
 				functionName = functionApplicability.functionName;
 				hasCachedFunctionValue = _cache.hasCachedFunctionValue(tokenizedInput, functionName);
-				
+
 				if (_speechConfig.isIntrinsicallyAmbiguousFunction(functionName))
 				{
 					if (!_speechConfig.functionWithSideEffectsP(functionName))
 					{
-							
+
 						if (hasCachedFunctionValue.getLeft().booleanValue())
 						{
 							functionApplicability = _cache.getCachedFunctionValue(hasCachedFunctionValue.getRight());
@@ -1426,13 +1549,13 @@ public class SpeechMap {
 						else
 						{
 							canonicalPhrase = getCanonicalPhrase(functionApplicability.pattern, functionApplicability);
-							
+
 							if (canonicalPhrase == null)
 								continue;
 							functionApplicability.addArgument(_speechConfig.getCanonicalPhraseArgumentKey(),  ScoredValue.from(canonicalPhrase));
-							
+
 							result = _evaluationExternalInterface.evaluate(functionName, functionApplicability.argMap);
-							
+
 							if (result!=null)
 							{
 								result.score*=functionApplicability.score;
@@ -1441,7 +1564,7 @@ public class SpeechMap {
 							else
 								_cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), functionApplicability, new ScoredValue(null, 0));
 						}
-						
+
 						if (result != null && result.score > 0)
 						{
 							functionApplicability.resultValue = result;
@@ -1453,7 +1576,7 @@ public class SpeechMap {
 						intrinsicallyAmbiguousFunctions.add(functionApplicability);
 					}
 				}
-				else 
+				else
 				{
 					if (hasCachedFunctionValue.getLeft().booleanValue())
 					{
@@ -1463,13 +1586,13 @@ public class SpeechMap {
 					else
 					{
 						canonicalPhrase = getCanonicalPhrase(functionApplicability.pattern, functionApplicability);
-						
+
 						if (canonicalPhrase == null)
 							continue;
 						functionApplicability.addArgument(_speechConfig.getCanonicalPhraseArgumentKey(),  ScoredValue.from(canonicalPhrase));
-						
+
 						result = _evaluationExternalInterface.evaluate(functionName, functionApplicability.argMap);
-						
+
 						if (result!=null)
 						{
 							result.score*=functionApplicability.score;
@@ -1478,19 +1601,19 @@ public class SpeechMap {
 						else
 							_cache.setCachedFunctionValue(hasCachedFunctionValue.getRight(), functionApplicability, new ScoredValue(null, 0));
 					}
-					
+
 
 					if (result != null && result.score > 0)
 					{
 						functionApplicability.resultValue = result;
 						prevScore = functionApplicability.relativeScore;
-						if (ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.ALWAYS_NOTIFY || 
+						if (ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.ALWAYS_NOTIFY ||
 								(ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.NOTIFY_ONLY_AT_TOP_LEVEL && top))
 						{
-							
+
 							ambiguityList.add(functionApplicability);
 						}
-						else 
+						else
 						{
 							return _cache.setCachedPhraseValue(hasCached.getRight(), result);
 						}
@@ -1499,27 +1622,27 @@ public class SpeechMap {
 			}
 			else
 				break;
-			
+
 		}
-		
-		ScoredValue finalResult = new ScoredValue(null, 0); 
+
+		ScoredValue finalResult = new ScoredValue(null, 0);
 		if (ambiguityList.size() == 1)
 		{
-			
-			
-			
+
+
+
 			return _cache.setCachedPhraseValue(hasCached.getRight(), ambiguityList.getFirst().resultValue);
 		}
 		else if (ambiguityList.size() > 0)
 		{
 			FunctionApplicabilityData[] optionList = ambiguityList.toArray(new FunctionApplicabilityData[0]);
-			if (ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.ALWAYS_NOTIFY || 
+			if (ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.ALWAYS_NOTIFY ||
 					(ambiguityPolicy == AMBIGUITY_NOTICATION_POLICY.NOTIFY_ONLY_AT_TOP_LEVEL && top))
 			{
 				return _evaluationExternalInterface.onAmbiguousResult(optionList, top).resultValue;
 			}
 		}
-		
+
 		if (intrinsicallyAmbiguousFunctions.size() == 1)
 		{
 			functionApplicability = intrinsicallyAmbiguousFunctions.getFirst();
@@ -1528,10 +1651,10 @@ public class SpeechMap {
 			else
 			{
 				finalResult = _evaluationExternalInterface.evaluate(functionApplicability.functionName, functionApplicability.argMap);
-				
+
 			}
 		}
-		
+
 		return _cache.setCachedPhraseValue(hasCached.getRight(), finalResult);
 	}
 	
@@ -1543,7 +1666,7 @@ public class SpeechMap {
 	
 	public ScoredValue evaluate(String[] tokenizedInput, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
 	{
-		return evaluate(tokenizedInput, _speechConfig.getDefaultFunctionPrecedence(), true, precedencePolicy);
+		return evaluate(getTokenizedInput(tokenizedInput), _speechConfig.getDefaultFunctionPrecedence(), true, precedencePolicy);
 	}
 	
 	
@@ -1552,7 +1675,8 @@ public class SpeechMap {
 		return evaluate(tokenizedInput, _speechConfig.getPrecedencePolicy());
 	}
 	
-	
+
+
 	//TODO: fix flex-evaluate to work properly with non-terminals
 	/**
 	 * This is a desperation function.  Call it as a last resort if you really need a response.  It doesn't work as well
@@ -1560,12 +1684,13 @@ public class SpeechMap {
 	 * modified from context-free grammar patterns.  Any patterns that are reliant on CFGs may be excluded from this 
 	 * function.
 	 * 
-	 * @param tokenizedInput
+	 * @param
 	 * @return
 	 */
 
-	public ScoredValue flexEvaluate(String[] tokenizedInput)
+	public ScoredValue flexEvaluate(String[] rawInput)
 	{
+		TokenizedInput tokenizedInput = getTokenizedInput(rawInput);
 		SpeechConfig.PRECEDENCE_ADHERENCE_POLICY policy = SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.NONE;
 		if (_cache.hasCompleteSpeechFunctionIndex())
 		{
@@ -1584,6 +1709,7 @@ public class SpeechMap {
 		}
 		
 	}
+
 	
 	public void clearSubCache(SpeechCache.SUB_CACHE cache)
 	{
@@ -1599,6 +1725,8 @@ public class SpeechMap {
 		}
 		
 	}
+
+
 	
 	public SpeechCache getCache()
 	{

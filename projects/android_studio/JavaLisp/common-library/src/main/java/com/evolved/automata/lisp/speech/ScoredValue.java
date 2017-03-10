@@ -15,7 +15,7 @@ public class ScoredValue {
 		score = s;
 	}
 	
-	private ScoredValue()
+	protected ScoredValue()
 	{
 		
 	}

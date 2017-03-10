@@ -1,4 +1,8 @@
 package com.evolved.automata.parser.general;
+import com.evolved.automata.Metaphone;
+
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.io.BufferedReader;
 
 import java.io.IOException;
@@ -998,11 +1002,20 @@ public class PatternParser
 	
 	Hashtable<String, Integer> _weightDistribution;
 
-	
+    String[] grammarDefinition;
+    boolean stringAsCharP;
 	public PatternParser(String[] grammarDefinition) 
 	{
-		init(grammarDefinition,  false);
+        this.grammarDefinition = grammarDefinition;
+        init(grammarDefinition,  false);
 	}
+
+    public PatternParser(String[] grammarDefinition, boolean stringAsCharP)
+    {
+        this.grammarDefinition = grammarDefinition;
+        this.stringAsCharP = stringAsCharP;
+        init(grammarDefinition, stringAsCharP);
+    }
 	
 	public HashSet<String> getWordTerminals()
 	{
@@ -1019,9 +1032,11 @@ public class PatternParser
 			_nonTerminals = _baseState._parseMap.keySet().toArray(new String[0]);
 		return out; 
 	}
-	
+
+    HashMap<String, CustomTerminalMatcher> customMatchers = new HashMap<String, CustomTerminalMatcher>();
 	public void setCustomTerminalMatcher(String name, CustomTerminalMatcher cm)
 	{
+        customMatchers.put(name, cm);
 		_baseState.setCustomTerminalMatcher(name, cm);
 	}
 	
@@ -1051,7 +1066,106 @@ public class PatternParser
 			addNonterminal(disjunctiveNonTerminal, disjunctiveDef);
 		addNonterminalToDisjunction(targetNonTerminalName, disjunctiveNonTerminal);
 	}
-	
+
+    public String[] getGrammarDefinition()
+    {
+        return grammarDefinition;
+    }
+
+    public void convertToMetaphone()
+    {
+        reInit(getMetaphoneGrammar(), this.stringAsCharP);
+        for (String nt:customMatchers.keySet())
+        {
+            _baseState.setCustomTerminalMatcher(nt, customMatchers.get(nt));
+        }
+
+    }
+
+    public String[] getMetaphoneGrammar()
+    {
+        String[] converted = new String[grammarDefinition.length];
+        for (int i = 0; i < converted.length;i++)
+        {
+            converted[i] = convertGrammarLine(grammarDefinition[i]);
+        }
+        return converted;
+    }
+
+    public String replaceTerminalsWithMetaphone(String definition)
+    {
+        StringBuilder builder = new StringBuilder();
+        int terminalStart;
+        int previousSearchEnd = -1;
+        while (previousSearchEnd + 4 <= definition.length() && (terminalStart = definition.indexOf('[', previousSearchEnd+1)) != -1)
+        {
+
+            int terminalEnd = definition.indexOf(']', terminalStart);
+            if (terminalEnd != -1)
+            {
+                builder.append(definition.substring(previousSearchEnd+1, terminalStart));
+                String terminal = definition.substring(terminalStart+1, terminalEnd);
+                Metaphone meta = new Metaphone(terminal);
+                Pair<String, String> pair = meta.getMetaphone();
+                builder.append("[").append(pair.getLeft()).append("]");
+                previousSearchEnd = terminalEnd;
+            }
+            else
+            {
+                builder.append(definition.substring(previousSearchEnd+1, terminalStart+1));
+
+                previousSearchEnd = terminalStart;
+            }
+        }
+        if (previousSearchEnd + 1 < definition.length())
+        {
+            builder.append(definition.substring(previousSearchEnd+1));
+        }
+        return builder.append(Parser.lineTerminator).toString();
+    }
+
+    public String convertGrammarLine(String definition)
+    {
+        String[] defParts;
+
+
+        StringBuilder sBuilder = null;
+
+        String nonTerminalName = null;
+
+        String lineDefinition;
+
+        definition = definition.trim();
+        if (definition.length()>0)
+        {
+            if (!definition.substring(0, 1).equals(Parser.commentChar))
+            {
+                defParts = definition.split(Parser.nonterminalDefinitionSeparator);
+                if (defParts.length>1)
+                {
+
+                    nonTerminalName = defParts[0].trim();
+
+                    lineDefinition = defParts[1].trim();
+                    sBuilder = new StringBuilder();
+                }
+                else
+                    lineDefinition = definition.trim();
+
+                if (lineDefinition.endsWith(Parser.lineTerminator))
+                {
+                    sBuilder.append(lineDefinition.substring(0, lineDefinition.length() - 1));
+                    return nonTerminalName + "==" + replaceTerminalsWithMetaphone(sBuilder.toString());
+
+                }
+                else
+                    sBuilder.append(lineDefinition);
+
+
+            }
+        }
+        return "";
+    }
 	
 	public String[] getSubDefinitions(String nonTerminalName)
 	{
@@ -1168,6 +1282,7 @@ public class PatternParser
 		_nonTerminals = _baseState.getNonterminals();
 
 	}
+
 	
 	// Using custom Environments is deprecated in conjunction with CustomTerminalMatchers
 	public void reInit(String[] grammarDefinition, boolean stringAsCharP)

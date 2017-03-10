@@ -145,10 +145,10 @@ public class SpeechCache {
 		_indexedSpeechFunctionSet.add(speechFunction);
 	}
 	
-	public HashSet<String> getViableSpeechFunctions(String[] tokenizedInput)
+	public HashSet<String> getViableSpeechFunctions(SpeechMap.TokenizedInput tokenizedInput)
 	{
 		HashSet<String> consistentFunctions = new HashSet<String>(), indexedFunctions;
-		for (String token: tokenizedInput)
+		for (String token: tokenizedInput.getMetaphoneInput())
 		{
 			indexedFunctions = _markerSpeechFunctionIndexMap.get(token);
 			if (indexedFunctions != null)
@@ -173,11 +173,11 @@ public class SpeechCache {
 		return _indexedSpeechFunctionSet.contains(speechFunction);
 	}
 	
-	Pair<Boolean, String> hasCachedFunctionValue(String[] tokenizedInput, String functionName)
+	Pair<Boolean, String> hasCachedFunctionValue(SpeechMap.TokenizedInput tokenizedInput, String functionName)
 	{
 		if (_config.functionWithSideEffectsP(functionName))
 			return Pair.of(Boolean.valueOf(false), null);
-		StringBuilder key = new StringBuilder(SpeechMap.serializeTokens(tokenizedInput));
+		StringBuilder key = new StringBuilder(SpeechMap.serializeTokens(tokenizedInput.getMetaphoneInput()));
 		key.append("+").append(functionName);
 		String akey = key.toString();
 		return Pair.of(_functionValueMap.containsKey(akey), akey);
@@ -227,10 +227,10 @@ public class SpeechCache {
 	// l
 	
 	
-	public Pair<Boolean, String> hasCachedPatternAssessmentValue(String[] input, String[] pattern)
+	public Pair<Boolean, String> hasCachedPatternAssessmentValue(SpeechMap.TokenizedInput input, String[] pattern)
 	{
 		StringBuilder totalKey = new StringBuilder();
-		totalKey.append(SpeechMap.serializeTokens(input)).append("+").append(SpeechMap.serializeTokens(pattern));
+		totalKey.append(SpeechMap.serializeTokens(input.getMetaphoneInput())).append("+").append(SpeechMap.serializeTokens(pattern));
 		
 		String key = totalKey.toString();
 		return Pair.of(_assessPatternMap.containsKey(key), key);
@@ -251,10 +251,10 @@ public class SpeechCache {
 	}
 	
 	
-	public Pair<Boolean, String> hasCachedTransformedValue(String[] input, String[] pattern)
+	public Pair<Boolean, String> hasCachedTransformedValue(SpeechMap.TokenizedInput input, String[] pattern)
 	{
 		StringBuilder totalKey = new StringBuilder();
-		totalKey.append(SpeechMap.serializeTokens(input)).append("+").append(SpeechMap.serializeTokens(pattern));
+		totalKey.append(SpeechMap.serializeTokens(input.getLiteralInput())).append("+").append(SpeechMap.serializeTokens(pattern));
 		
 		String key = totalKey.toString();
 		return Pair.of(_transformedInputCacheMap.containsKey(key), key);
@@ -355,7 +355,7 @@ public class SpeechCache {
 	
 	
 	
-	Pair<Boolean, String> hasCachedPhraseValue(SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedence, String[] phrase, String[] functionPrec)
+	Pair<Boolean, String> hasCachedPhraseValue(SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedence, SpeechMap.TokenizedInput phrase, String[] functionPrec)
 	{
 		for (String function: functionPrec)
 		{
@@ -363,9 +363,11 @@ public class SpeechCache {
 				return Pair.of(Boolean.valueOf(false), null); // can't cache a function with side-effects
 		}
 		
-		String key = getPhraseCacheKey(precedence, phrase, functionPrec);
+		String key = getPhraseCacheKey(precedence, phrase.getMetaphoneInput(), functionPrec);
 		return Pair.of(Boolean.valueOf(_functionListResultCache.containsKey(key)), key);
 	}
+
+
 	
 	private String getPhraseCacheKey(SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedence, String[] phrase, String[] functionPrec)
 	{
@@ -373,6 +375,7 @@ public class SpeechCache {
 		sbuilder.append("+").append(StringUtils.join(functionPrec, ':')).append("+").append(precedence.toString());
 		return sbuilder.toString(); 
 	}
-	
+
+
 
 }
