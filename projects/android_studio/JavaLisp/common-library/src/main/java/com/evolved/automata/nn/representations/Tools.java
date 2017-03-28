@@ -175,6 +175,12 @@ public class Tools {
     }
 
 
+    public static boolean roundedEquals(float lvalue, float rvalue)
+    {
+        return NNTools.roundToInt(lvalue) == NNTools.roundToInt(rvalue);
+    }
+
+
     static boolean verifyTrainingResult(float[][] trainingResults, LinkedList<FastLSTMNetwork.TrainingSpec> trainingSpec)
     {
 

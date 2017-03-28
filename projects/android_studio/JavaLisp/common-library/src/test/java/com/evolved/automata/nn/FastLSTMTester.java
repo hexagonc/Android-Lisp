@@ -2,10 +2,12 @@ package com.evolved.automata.nn;
 
 import com.evolved.automata.nn.grammar.GrammarStateMachine;
 import com.evolved.automata.nn.grammar.MatchStatus;
+import com.evolved.automata.nn.representations.Tools;
 
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -24,6 +26,150 @@ import static org.junit.Assert.assertTrue;
 public class FastLSTMTester extends BaseLSTMTester {
 
 
+
+    @Test
+    public void testNativeImplementation()
+    {
+        int numInputNodes = 1;
+        int numOutputNodes = 1;
+        int memoryCellCount = 8;
+
+        String errorMessage = "Failed to create fast LSTM";
+        try
+        {
+            FastLSTMNetwork.LSTMNetworkBuilder builder = FastLSTMNetwork.getFastBuilder();
+
+            builder.setInputNodeCount(numInputNodes, FastLSTMNetwork.MSE_ERROR_FUNCTION_ID, FastLSTMNetwork.SIGMOID_ACTIVATION_ID);
+            builder.setOutputNodeCount(numOutputNodes);
+            builder.addMemoryCell("M", memoryCellCount);
+            HashMap<String, ArrayList<String>> connectivityMap = NNTools.getStandardLinkConnectivityMap("M");
+            for (String sourceNode:connectivityMap.keySet())
+            {
+                builder.addNodeConnections(sourceNode, NNTools.arrayListToArray(connectivityMap.get(sourceNode)));
+            }
+
+            builder.addWeightUpdateOrder(NNTools.getStandardSingleCellWeightUpdateOrder("M"));
+            builder.addFeedForwardLinkOrder(NNTools.getStandardSingleCellFeedforwardOrder("M"));
+            builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.INITIAL_DELTA, 0.012);
+            builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MAX_DELTA, 50);
+            builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
+            builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MAX, 1.2);
+            builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.N_MIN, 0.5);
+            builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.CONVERGENCE_THRESHOLD, 0.0001);
+            builder.setWeightUpdateType(LSTMNetwork.WeightUpdateType.RPROP);
+
+            builder.setInputNodeCount(numInputNodes, FastLSTMNetwork.MSE_ERROR_FUNCTION_ID, FastLSTMNetwork.SIGMOID_ACTIVATION_ID);
+            FastLSTMNetwork network = builder.build();
+
+            float[] networkSpec = network._networkData;
+
+
+            int dataLength = networkSpec.length;
+
+            int declaredLength = (int)networkSpec[FastLSTMNetwork.NETWORK_LENGTH_IDX];
+
+            errorMessage = String.format("Failed to match data length: %1$s != %2$s\n", dataLength,declaredLength);
+            Assert.assertTrue(errorMessage, dataLength == declaredLength);
+
+            float[] input = new float[]{0.5F};
+
+            FastLSTMNetwork.setSeed(100);
+            FastLSTMNetwork.setRNDAlgorithm(FastLSTMNetwork.RNG_ALGORITHM.PARK_AND_MILLER);
+            double randomValue = FastLSTMNetwork.randomLCG();
+            System.out.println("using initial value: " + randomValue);
+
+            FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
+            FastLSTMNetwork.forwardPass(networkSpec, input);
+            float[] output = FastLSTMNetwork.getOutputActivation(networkSpec);
+            System.out.println("Output: " + Arrays.toString(output));
+
+
+            int maxSteps = 3000;
+
+            float[] inputBuffer = new float[1];
+            float[] expectedOutputBuffer = new float[1];
+
+
+
+            int testInput[] = { 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0};
+            int trainingSpecLength = testInput.length - 1;
+            FastLSTMNetwork.setSeed(100);
+            FastLSTMNetwork.initializeAllWeights(networkSpec);
+            float error ;
+            float maxError = Float.MIN_VALUE;
+            float[] errors = new float[trainingSpecLength];
+            float errorThreshold = 0.1F;
+            float[] outputValues = new float[trainingSpecLength];
+            int j, base = 0;
+            float prevError=0;
+            float convergenceThreshold = 0.0001F;
+            boolean second = false;
+            int i;
+            FastLSTMNetwork.WeightUpdateType updateType = FastLSTMNetwork.WeightUpdateType.RPROP;
+            boolean pass = true;
+            boolean showMaxErrorP = false;
+
+            for (j = 0; j < maxSteps; j++)
+            {
+                maxError = Float.MIN_VALUE;
+                FastLSTMNetwork.resetNetworkToInitialState(networkSpec);
+                pass = true;
+                for (i = 0; i < trainingSpecLength; i++)
+                {
+
+                    inputBuffer[0] = testInput[i];
+                    expectedOutputBuffer[0] = testInput[i + 1];
+                    FastLSTMNetwork.forwardPass(networkSpec, inputBuffer);
+                    error = FastLSTMNetwork.updateForwardPassErrors(networkSpec, expectedOutputBuffer);
+                    output = FastLSTMNetwork.getOutputActivation(networkSpec);
+                    outputValues[i] = output[0];
+                    errors[i] = error;
+                    maxError = Math.max(maxError, error);
+                    if (!Tools.roundedEquals(output[0], expectedOutputBuffer[0]))
+                    {
+                        pass = false;
+                    }
+                }
+
+                if (pass)
+                {
+                    System.out.println(String.format("Found solution after %d steps!", j));
+                    break;
+                }
+                if (second && updateType == FastLSTMNetwork.WeightUpdateType.RPROP)
+                {
+                    if (Math.abs(prevError - maxError) < convergenceThreshold)
+                    {
+                        FastLSTMNetwork.initializeAllWeights(networkSpec);
+                        second = false;
+                        System.out.println(String.format("Reseting weights after %d steps and error: %f", j - base, maxError));
+                        base = j;
+                        continue;
+                    }
+                }
+                second = true;
+                prevError = maxError;
+                FastLSTMNetwork.updateWeightsFromErrors(networkSpec, updateType);
+                if (showMaxErrorP)
+                    System.out.println(String.format("Max error for step %d is %10.10f\n", j, maxError));
+            }
+            System.out.println(String.format("Final errors after %d steps and max error %f: ", j, maxError));
+            System.out.println(Arrays.toString(errors));
+
+            System.out.println("Final output: ");
+            System.out.println(Arrays.toString(outputValues));
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+
+
+
+    }
 
     @Test
     public void testStochasticStateMachine()
@@ -891,6 +1037,8 @@ public class FastLSTMTester extends BaseLSTMTester {
     }
 
 
+    // Need a new network structure to learn embedded reber
+    @Ignore
     @Test
     public void testTeachingEmbeddedReberGrammar()
     {
@@ -1446,7 +1594,7 @@ public class FastLSTMTester extends BaseLSTMTester {
             int smallestNoisyMemoryCells =currentNumMemoryCells, smallestSimplifiedMemoryCells = currentNumMemoryCells ;
             float[] smallestSimplifiedData = null, smallestNoisyData;
             Pair<Float, Integer> result = null;
-            FastLSTMNetwork.useEmbeddedRNG = false;
+            FastLSTMNetwork.setRNDAlgorithm(FastLSTMNetwork.RNG_ALGORITHM.JAVA_DERIVATIVE);
             outer: while (testStage != END_STATE)
             {
                 switch (testStage)
@@ -1552,7 +1700,7 @@ public class FastLSTMTester extends BaseLSTMTester {
         String errorMessage = "failed to create noisy input";
         try
         {
-            FastLSTMNetwork.useEmbeddedRNG = false;
+            FastLSTMNetwork.setRNDAlgorithm(FastLSTMNetwork.RNG_ALGORITHM.JAVA_DERIVATIVE);
             float[][] testInput = new float[][]{{1, 0}, {0, 1}, {1, 0} , {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}, {0, 1}, {1, 0}};
 
             int inputWidth = testInput[0].length;

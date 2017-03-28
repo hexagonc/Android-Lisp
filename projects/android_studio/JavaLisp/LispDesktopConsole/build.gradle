@@ -9,12 +9,18 @@ repositories {
 
 
 
-
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.evolved.automata.desktop.LispTester'
+    }
+}
 
 dependencies {
-	compile group: 'org.xerial', name: 'sqlite-jdbc', version: '3.8.11.1'
-	compile project(':common-library')
-	compile project(':common-desktop')
-	compile project(':common-filesystem')
-
+    compile 'org.xerial:sqlite-jdbc:3.8.11.1'
+    compile project(':common-library')
+    compile project(':common-desktop')
+    compile project(':common-filesystem')
+    // Currently seem to need this in order to see the resources correctly
+    // on Andrdoid Studio 2+.  Clean this up eventually
+    compile files( '../common-library/build/libs/common-library.jar')
 }
