@@ -285,6 +285,11 @@ public class CodeEditFragment extends LispBuilderFragment implements CodeManagem
     private void configureToolArea()
     {
     	ToolAreaType type = getLastClickedToolAreaType();
+
+        if (DropboxManager.get() == null && type == ToolAreaType.DROPBOX)
+        { // Dropbox no longer available
+            type = ToolAreaType.CODE_TEMPLATE;
+        }
         switch (type)
         {
             case LOCAL_STORAGE:
