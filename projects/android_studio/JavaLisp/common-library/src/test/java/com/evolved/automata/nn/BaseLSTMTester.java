@@ -6,7 +6,7 @@ import com.evolved.automata.nn.grammar.CharacterNode;
 import com.evolved.automata.nn.grammar.GrammarNode;
 import com.evolved.automata.nn.grammar.GrammarStateMachine;
 import com.evolved.automata.nn.grammar.MatchStatus;
-import com.sun.org.apache.regexp.internal.RE;
+
 
 import org.apache.commons.lang3.tuple.Pair;
 
