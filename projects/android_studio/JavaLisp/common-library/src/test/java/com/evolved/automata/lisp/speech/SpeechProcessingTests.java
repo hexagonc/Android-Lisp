@@ -26,17 +26,17 @@ import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
 import com.evolved.automata.lisp.speech.SpeechMap.ProcessStateInfo;
 import com.evolved.automata.parser.general.PatternParser;
 
-public class SpeechProcessingTests extends TestHarnessBase 
+public class SpeechProcessingTests extends TestHarnessBase
 {
 
 	String[] grammar = new String[]{
-			"seconds == [second] | [seconds];", 
+			"seconds == [second] | [seconds];",
 			"sequence_next == [then] | [next];",
 			"conjunction == [and];",
 			"alternative == [or];",
 			"basic_noun == ([mount], [everest]) | ([your], [distance]) | [area] | [room] | [variable] | [region];",
 			"modifier == [height] | [speed] | [length] | [width] | [distance] | [time] | [size];",
-			
+
 			"greater_than ==  [is]?, ([more] | [greater]), [than];",
 			"equals == [is] | [equals];",
 			"less_than == ([smaller] | [less]), [than];",
@@ -77,46 +77,46 @@ public class SpeechProcessingTests extends TestHarnessBase
 			"or == [or];",
 			"and == [and];",
 			"predicate_not == [not];"};
-	
+
 	String[][] basePatternSpec = new String[][]{
-			{"[decimal]"}, 
-			{"[lvalue#number] <plus> [rvalue#number]"}, 
+			{"[decimal]"},
+			{"[lvalue#number] <plus> [rvalue#number]"},
 			{"[lvalue#number] <minus> [rvalue#number]", "[rvalue#number] <subtract> [lvalue#number]"},
-			{"[lvalue#number] <times> [rvalue#number]"}, 
+			{"[lvalue#number] <times> [rvalue#number]"},
 			{"[lvalue#number] <divided> [rvalue#number]"},
 			{"[lvalue#number] <equals> [rvalue#number]"},
 			{"[lvalue#number] <less_than> [rvalue#number]"},
 			{"[lvalue#number] <greater_than> [rvalue#number]"},
 			{"set [variable] to [number]", "[variable] is [number]" },
 			{"[variable]"}};
-	
+
 	String[] baseFunctions = new String[]{
-			"speech-number", 
-			"speech-add", 
-			"speech-subtract", 
-			"speech-times", 
-			"speech-divide", 
-			"speech-equals", 
-			"speech-less", 
+			"speech-number",
+			"speech-add",
+			"speech-subtract",
+			"speech-times",
+			"speech-divide",
+			"speech-equals",
+			"speech-less",
 			"speech-greater",
 			"speech-set",
 			"speech-variable-get"};
-			
+
 	Value selectedOption;
 	int ambiguousOptionCount = 0;
-	
+
 	SpeechConfig config;
 	String[] baseTypeNames = new String[]{
-			"number", 
+			"number",
 			"predicate"};
-	
-	
+
+
 	String[][] baseTypeSpec = new String[][]{
-			{ "speech-add", "speech-subtract", "speech-times", "speech-divide", "speech-number", "speech-set", "speech-variable-get"}, 
+			{ "speech-add", "speech-subtract", "speech-times", "speech-divide", "speech-number", "speech-set", "speech-variable-get"},
 			{"speech-equals", "speech-less", "speech-greater" }};
-	
+
 	String ambiguity_handler_function_name = "on-ambiguity-handler";
-	
+
 	@SuppressWarnings("serial")
 	HashMap<String, String> baseFunctionDefMap = new HashMap<String, String>(){
 		{
@@ -132,23 +132,23 @@ public class SpeechProcessingTests extends TestHarnessBase
 			this.put("speech-variable-get", "(defun speech-variable-get (arg-map) 	(if (not (setq tokenized-var-name 				   (gethash arg-map \"variable\"))) 		(return F))  	(gethash var-map  			 (join tokenized-var-name \" \")))");
 		}
 	};
-	
-	
+
+
 	public Value getLispPatternSpec(String[] keys, String[][] values, HashSet<String> filteredFunctions)
 	{
 		HashMap<String, Value> map = new HashMap<String, Value>();
-		
+
 		int i = 0, length;
 		String key;
 		Value[] strings;
-		
+
 		for (i = 0;i<keys.length;i++)
 		{
 			key = keys[i];
-			
+
 			if (!filteredFunctions.contains(key))
 				continue;
-			
+
 			length = values[i].length;
 			strings = new Value[length];
 			for (int j = 0;j<length;j++)
@@ -157,38 +157,38 @@ public class SpeechProcessingTests extends TestHarnessBase
 			}
 			map.put(key, NLispTools.makeValue(strings));
 		}
-		
+
 		return new StringHashtableValue(map);
 	}
-	
+
 	public Value getLispTypeSpec(String[] keys, String[][] values, HashSet<String> filterFunctions)
 	{
 		HashMap<String, Value> map = new HashMap<String, Value>();
-		
+
 		int i = 0, length;
 		String key, functionName;
 		Value[] strings;
 		LinkedList<String> filteredInput;
 		String[] definedFunctions;
-		
+
 		for (i = 0;i<keys.length;i++)
 		{
-			
+
 			key = keys[i];
-			
+
 			filteredInput = new LinkedList<String>();
 			definedFunctions = values[i];
-			
+
 			for (int j = 0;j<definedFunctions.length;j++)
 			{
 				functionName = values[i][j];
 				if (filterFunctions.contains(functionName))
 					filteredInput.add(functionName);
 			}
-			
+
 			if (filteredInput.size() == 0)
 				continue;
-			
+
 			length = filteredInput.size();
 			strings = new Value[length];
 			int j = 0;
@@ -198,11 +198,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			}
 			map.put(key, NLispTools.makeValue(strings));
 		}
-		
+
 		return new StringHashtableValue(map);
 	}
-	
-	
+
+
 	HashSet<String> arrayToSet(String[] array)
 	{
 		HashSet<String> out = new HashSet<String>();
@@ -210,9 +210,9 @@ public class SpeechProcessingTests extends TestHarnessBase
 			out.add(s);
 		return out;
 	}
-	
-	
-	
+
+
+
 	Environment env;
 	@Before
 	public void setupEnvironment() throws InstantiationException, IllegalAccessException
@@ -225,20 +225,22 @@ public class SpeechProcessingTests extends TestHarnessBase
 		env.mapFunction("evaluate-speech-fast", evaluate_speech_fast());
 		env.mapFunction("add-function-wo-side-effects", add_function_wo_side_effects());
 		env.mapFunction("on-ambiguity-handler", on_ambiguity_handler());
-		env.mapValue("parser", ExtendedFunctions.makeValue(new PatternParser(grammar )));
+		PatternParser parser = new PatternParser(grammar );
+
+		env.mapValue("parser", ExtendedFunctions.makeValue(parser));
 		env.evaluate("(setq var-map (make-string-hashtable))", true);
 		selectedOption = null;
 		ambiguousOptionCount = 0;
-		
+
 		for (String function:baseFunctionDefMap.keySet())
 		{
 			String definition = baseFunctionDefMap.get(function);
 			env.evaluate(definition, true);
 		}
-		
-		
+
+
 	}
-	
+
 	// Actual unit tests
 	@Test
 	public void testNumberEvaluation()
@@ -247,7 +249,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number"});
 		String[] functionPrec = {"speech-number"};
 		String utterance = "10";
-		
+
 		boolean success = false;
 		try
 		{
@@ -260,8 +262,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp pattern-spec", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -273,8 +275,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp type-spec", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -286,8 +288,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp function-prec", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -299,9 +301,9 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp utterance", success);
-		
-		
-		
+
+
+
 		try
 		{
 			success = false;
@@ -313,8 +315,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp speech-config", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -326,11 +328,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp speech-map", success);
-		
-		Value expectedResult = NLispTools.makeValue(10);	
-		
+
+		Value expectedResult = NLispTools.makeValue(10);
+
 		Value actualResult = null;
-		
+
 		try
 		{
 			success = false;
@@ -342,8 +344,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
-		
+
+
 		try
 		{
 			actualResult = env.getVariableValue("result");
@@ -355,18 +357,18 @@ public class SpeechProcessingTests extends TestHarnessBase
 			Assert.fail("Failed due to invalid result");
 		}
 		Assert.assertTrue( "Failed to get valid result for: '" + utterance + "'", success);
-		
+
 		Assert.assertTrue( "Failed to get valid type for: '" + utterance + "', expected integer, got: " + actualResult.getType(),  NLispTools.isNumericType(actualResult));
 		Assert.assertTrue( "Incorrect result valued type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), actualResult.getIntValue() == expectedResult.getIntValue());
-		
+
 	}
-	
-	
+
+
 	private void setupSpeechMap(HashSet<String> availableFunctions, String[] functionPrec)
 	{
 		setupSpeechMap(availableFunctions, functionPrec, SpeechConfig.AMBIGUITY_NOTICATION_POLICY.NEVER_NOTIFY, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.FULL);
 	}
-	
+
 	private void setupSpeechMap(HashSet<String> availableFunctions, String[] functionPrec, SpeechConfig.AMBIGUITY_NOTICATION_POLICY ambigPolicy, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY precedencePolicy)
 	{
 		boolean success = false;
@@ -381,8 +383,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp pattern-spec", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -394,8 +396,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp type-spec", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -407,12 +409,12 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp function-prec", success);
-		
-	
-		
+
+
+
 		try
 		{
-			success = false; 
+			success = false;
 			env.evaluate("(setq speech-config (create-speech-config pattern-spec type-spec function-prec parser))", true);
 			env.evaluate("(add-function-wo-side-effects speech-config \"speech-set\")", true);
 			env.evaluate("(add-function-wo-side-effects speech-config \"speech-variable-get\")", true);
@@ -427,13 +429,13 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp speech-config", success);
-		
+
 		try
 		{
 			success = false;
 			env.evaluate("(setq speech-map (create-speech-map speech-config))", true);
-			
-			
+
+
 			success = true;
 		}
 		catch (Exception e)
@@ -442,90 +444,90 @@ public class SpeechProcessingTests extends TestHarnessBase
 		}
 		Assert.assertTrue("Failed to bind lisp speech-map", success);
 	}
-	
+
 	@SuppressWarnings("deprecation")
 	@Test
 	public void testTransformingPatterns()
 	{
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number", "speech-add", "speech-times"});
 		String[] functionPrec = { "speech-add", "speech-times", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec);
-		
+
 		String [] tokenizedPattern = {"<plus>", "10"};
 		String [] tokenizedInput = {"<plus>", "10"};
-		
+
 		SpeechMap map = (SpeechMap)env.getVariableValue("speech-map").getObjectValue();
-		
-		Pair<String[], HashMap<String, ScoredValue>> out = map.getTransformedInput(tokenizedInput, tokenizedPattern);
-		
-		
-		
-		
+
+		Pair<String[], HashMap<String, ScoredValue>> out = map.getTransformedInput(map.getTokenizedInput(tokenizedInput), tokenizedPattern);
+
+
+
+
 		Assert.assertEquals(out.getKey(), tokenizedInput);
 		Assert.assertEquals(out.getRight().size(), 0);
 	}
-	
-	
+
+
 	@Test
 	public void testScoringPatterns()
 	{
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number", "speech-add"});
 		String[] functionPrec = { "speech-add", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec);
-		
+
 		SpeechMap map = (SpeechMap)env.getVariableValue("speech-map").getObjectValue();
-		
-		
+
+
 		// Test scoring simple explicit matches
 		String [] tokenizedPattern = testTokenizer("[lvalue#number] <plus> [rvalue#number]");
 		String [] tokenizedInput = testTokenizer("10 plus 10");
-		
-		
-		FunctionApplicabilityData result = map.assessPattern(new ProcessStateInfo("speech-add"), tokenizedInput, tokenizedPattern);
+
+
+		FunctionApplicabilityData result = map.assessPattern(new ProcessStateInfo("speech-add"), map.getTokenizedInput(tokenizedInput), tokenizedPattern);
 		double argumentScore = result.score;
 		Assert.assertTrue("Score of perfectly matching pattern should be 1, was :" + argumentScore, argumentScore==1.0);
-		
+
 		// test hierarchical, indirect matches
-		
+
 		tokenizedInput = testTokenizer("10 plus 10 plus 20");
-		result = map.assessPattern(new ProcessStateInfo("speech-add"), tokenizedInput, tokenizedPattern);
+		result = map.assessPattern(new ProcessStateInfo("speech-add"), map.getTokenizedInput(tokenizedInput), tokenizedPattern);
 		argumentScore = result.score;
 		Assert.assertTrue("Score of hierachical pattern [" + "10 plus 10 plus 20" + "] should be 1, was :" + argumentScore, argumentScore==1.0);
 	}
-	
-	
+
+
 	@Test
 	public void testSimpleArithmeticEvaluation()
 	{
 		// Test number evaluation
-		
+
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number", "speech-add", "speech-subtract", "speech-times", "speech-divide"});
 		String[] functionPrec = { "speech-add", "speech-subtract", "speech-times", "speech-divide", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec);
-		
-		
+
+
 		int lvalue = 10;
 		int rvalue = 20;
-		
+
 		String[] operators = {"plus", "minus", "times", "divide"};
 		int[] results = {(lvalue + rvalue + rvalue), (lvalue - rvalue - rvalue), (lvalue * rvalue * rvalue), (lvalue / rvalue / rvalue)};
-		
-		
-		
+
+
+
 		String utterance = "" + lvalue + " plus " + rvalue + " plus " + rvalue;
 		boolean success = true;
-		
-		
-		
-		
+
+
+
+
 		int maxTestOperators = 1;
 		for (int operatorIndex = 0;operatorIndex < maxTestOperators; operatorIndex++)
 		{
 			utterance = "" + lvalue + " " + operators[operatorIndex] + " " + rvalue + " " + operators[operatorIndex] + " " + rvalue;
-			
+
 			try
 			{
 				success = false;
@@ -537,11 +539,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 				e.printStackTrace();
 			}
 			Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
-			
-			Value expectedResult = NLispTools.makeValue(results[operatorIndex]);	
-			
+
+			Value expectedResult = NLispTools.makeValue(results[operatorIndex]);
+
 			Value actualResult = null;
-			
+
 			try
 			{
 				success = false;
@@ -553,8 +555,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 				e.printStackTrace();
 			}
 			Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-			
-			
+
+
 			try
 			{
 				actualResult = env.getVariableValue("result");
@@ -566,15 +568,15 @@ public class SpeechProcessingTests extends TestHarnessBase
 				Assert.fail("Failed due to invalid result");
 			}
 			Assert.assertTrue( "Failed to get valid result for: '" + utterance + "'", success);
-			
+
 			Assert.assertTrue( "Failed to get valid type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), NLispTools.isNumericType(actualResult));
 			Assert.assertTrue( "Incorrect result valued for: '" + utterance + "', expected integer, got: " + actualResult.getType(), actualResult.getIntValue() == expectedResult.getIntValue());
 		}
-		
+
 		// Test base result still works
-		
+
 		utterance = "10";
-		
+
 		try
 		{
 			success = false;
@@ -586,11 +588,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
-		
-		Value expectedResult = NLispTools.makeValue(10);	
-		
+
+		Value expectedResult = NLispTools.makeValue(10);
+
 		Value actualResult = null;
-		
+
 		try
 		{
 			success = false;
@@ -602,8 +604,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
-		
+
+
 		try
 		{
 			actualResult = env.getVariableValue("result");
@@ -615,29 +617,29 @@ public class SpeechProcessingTests extends TestHarnessBase
 			Assert.fail("Failed due to invalid result");
 		}
 		Assert.assertTrue( "Failed to get valid result for: '" + utterance + "'", success);
-		
+
 		Assert.assertTrue( "Failed to get valid type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), actualResult.isInteger());
 		Assert.assertTrue( "Incorrect result valued type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), actualResult.getIntValue() == expectedResult.getIntValue());
-		
+
 	}
-	
-	
+
+
 	@Test
 	public void testComplexArithmeticEvaluation()
 	{
 		// Test number evaluation
-		
+
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-times", "speech-number", "speech-add"});
 		String[] functionPrec = { "speech-add", "speech-times", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec);
-		
-		
+
+
 		String utterance = "20 times 10 plus 15 times 2";
 		boolean success = true;
-		
+
 		int out = 20*10+15*2;
-		
+
 		try
 		{
 			success = false;
@@ -649,11 +651,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
-		
-		Value expectedResult = NLispTools.makeValue(out);	
-		
+
+		Value expectedResult = NLispTools.makeValue(out);
+
 		Value actualResult = null;
-		
+
 		try
 		{
 			success = false;
@@ -665,8 +667,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
-		
+
+
 		try
 		{
 			actualResult = env.getVariableValue("result");
@@ -678,28 +680,28 @@ public class SpeechProcessingTests extends TestHarnessBase
 			Assert.fail("Failed due to invalid result");
 		}
 		Assert.assertTrue( "Failed to get valid result for: '" + utterance + "'", success);
-		
+
 		Assert.assertTrue( "Failed to get valid type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), NLispTools.isNumericType(actualResult));
 		Assert.assertTrue( "Incorrect result valued for: '" + utterance + "', expected: " + expectedResult + ", got: " + actualResult, actualResult.getIntValue() == expectedResult.getIntValue());
 	}
-	
-	
+
+
 	@Test
 	public void testAmbiguityEvaluation()
 	{
-		
-		
+
+
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-times", "speech-number", "speech-add"});
 		String[] functionPrec = { "speech-add", "speech-times", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec, SpeechConfig.AMBIGUITY_NOTICATION_POLICY.NOTIFY_ONLY_AT_TOP_LEVEL, SpeechConfig.PRECEDENCE_ADHERENCE_POLICY.PARTIAL);
-		
-		
+
+
 		String utterance = "20 times plus 2";
 		boolean success = true;
-		
-		
-		
+
+
+
 		try
 		{
 			success = false;
@@ -711,11 +713,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
-		
-		Value expectedResult = NLispTools.makeValue(22);	
-		
+
+		Value expectedResult = NLispTools.makeValue(22);
+
 		Value actualResult = null;
-		
+
 		try
 		{
 			success = false;
@@ -727,8 +729,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
-		
+
+
 		try
 		{
 			actualResult = env.getVariableValue("result");
@@ -740,32 +742,32 @@ public class SpeechProcessingTests extends TestHarnessBase
 			Assert.fail("Failed due to invalid result");
 		}
 		Assert.assertTrue( "Failed to get valid result for: '" + utterance + "'", success);
-		
+
 		Assert.assertTrue( "Failed to get valid type for: '" + utterance + "', expected integer, got: " + actualResult.getType(), NLispTools.isNumericType(actualResult));
 		Assert.assertTrue( "Incorrect result valued for: '" + utterance + "', expected: " + expectedResult + ", got: " + actualResult, actualResult.getIntValue() == expectedResult.getIntValue());
 	}
-	
-	
-	
+
+
+
 	@Test
 	public void testAssignment()
 	{
 		// Test number evaluation
-		
+
 		//HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-times", "speech-number", "speech-add", "speech-set", "speech-variable-get"});
 		//String[] functionPrec = { "speech-add", "speech-times", "speech-set", "speech-variable-get", "speech-number"};
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number", "speech-set", "speech-variable-get"});
-		
+
 		String[] functionPrec = {  "speech-set", "speech-variable-get", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec);
-		
+
 		String varName = "the upper x";
 		String utterance = varName + " is 10";
 		boolean success = true;
-		
+
 		int out = 2*10;
-		
+
 		try
 		{
 			success = false;
@@ -777,11 +779,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
-		
-		Value expectedResult = NLispTools.makeValue(out);	
-		
+
+		Value expectedResult = NLispTools.makeValue(out);
+
 		Value varMap = null;
-		
+
 		try
 		{
 			success = false;
@@ -793,8 +795,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
-		
+
+
 		try
 		{
 			success = false;
@@ -808,33 +810,33 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 			Assert.fail("Failed due to invalid result and/or expected result");
 		}
-		
+
 		Assert.assertTrue("Failed to save value", success && expectedResult.getIntValue() == 10);
-		
+
 		utterance = varName + " is 10";
-		
+
 	}
-	
-	
+
+
 	@Test
 	public void testAssignmentAndRetrieval()
 	{
 		// Test number evaluation
-		
+
 		HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-times", "speech-number", "speech-set", "speech-variable-get"});
 		String[] functionPrec = {  "speech-times", "speech-set", "speech-variable-get", "speech-number"};
 		//HashSet<String> availableFunctions = arrayToSet(new String[]{"speech-number", "speech-set", "speech-variable-get"});
-		
+
 		//String[] functionPrec = {"speech-add",  "speech-set", "speech-variable-get", "speech-number"};
-		
+
 		setupSpeechMap(availableFunctions, functionPrec);
-		
+
 		String varName = "the upper x";
 		String utterance = varName + " is 10";
 		boolean success = true;
-		
-		
-		
+
+
+
 		try
 		{
 			success = false;
@@ -846,11 +848,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to bind lisp utterance: '" + utterance+"'", success);
-		
+
 		Value expectedResult = null;
-		
+
 		Value varMap = null;
-		
+
 		try
 		{
 			success = false;
@@ -862,7 +864,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
+
 		HashMap<String, Value> map = null;
 		try
 		{
@@ -877,14 +879,14 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 			Assert.fail("Failed due to invalid result and/or expected result");
 		}
-		
+
 		Assert.assertTrue("Failed to save value", success && expectedResult.getIntValue() == 10);
-		
-		
-		
+
+
+
 		int out = 10*10 + 3;
 		utterance = varName + " times 10";
-		
+
 		// Redefine utterance
 		try
 		{
@@ -897,7 +899,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue("Failed to rebind lisp utterance: '" + utterance+"'", success);
-	
+
 		try
 		{
 			success = false;
@@ -909,45 +911,45 @@ public class SpeechProcessingTests extends TestHarnessBase
 			e.printStackTrace();
 		}
 		Assert.assertTrue( "Failed to evaluate speech utterance: '" + utterance + "'", success);
-		
+
 		Value actualResult;
 		try
 		{
 			actualResult = env.getVariableValue("result");
 			success = (actualResult != null && actualResult.getIntValue() == 100);
-			
-			
+
+
 		}
 		catch (Exception e)
 		{
 			e.printStackTrace();
 			Assert.fail("Failed due to invalid result");
 		}
-		
+
 		Assert.assertTrue("Incorrect result for: " + utterance + "", success);
-		
-		
+
+
 	}
-	
-	
+
+
 	// Unit Test-specific helpers
-	
+
 	// Common Lisp SpeechMap methods and fields
-	
+
 	String[] testTokenizer(String input)
 	{
 		return StringUtils.split(input, ' ');
 	}
-	
-	
+
+
 	String rawStringConverterFunctionName = null;
-	
+
 	final SpeechExternalInterface _topEvaluator = new SpeechExternalInterface()
 	{
 
 		@Override
 		public ScoredValue evaluate(String name, HashMap<String, ScoredValue> argMap) {
-			
+
 			try
 			{
 				FunctionTemplate template = env.getFunction(name);
@@ -971,13 +973,13 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{
 				throw new RuntimeException(e);
 			}
-			
-			
+
+
 		}
 
 		@Override
 		public String[] tokenize(String phrase) {
-			
+
 			return StringUtils.split(phrase, ' ');
 		}
 
@@ -1000,12 +1002,12 @@ public class SpeechProcessingTests extends TestHarnessBase
 					data = possibilities[i];
 					args[i] = convertFunctionApplicabilityData(config, data);
 				}
-				
+
 				Value[] fargs = {NLispTools.makeValue(args), NLispTools.makeValue(isTop)};
 				template.setActualParameters(fargs);
 				Value returnValue = template.evaluate(env, false);
 				return LispUtilities.convertToFunctionApplicabilityData(config, returnValue);
-				
+
 			}
 			catch (Exception e)
 			{
@@ -1013,11 +1015,11 @@ public class SpeechProcessingTests extends TestHarnessBase
 				return new FunctionApplicabilityData(0, null).setFailureRejected();
 			}
 		}
-		
+
 	};
-	
-	
-	
+
+
+
 	Value convertArgument(HashMap<String, ScoredValue> argMap)
 	{
 		HashMap<String, Value> map = new HashMap<String, Value>();
@@ -1025,15 +1027,15 @@ public class SpeechProcessingTests extends TestHarnessBase
 		{
 			map.put(key, convertScoredValue(argMap.get(key)));
 		}
-		
+
 		return new StringHashtableValue(map);
 	}
-	
+
 	Value convertScoredValue(ScoredValue value)
 	{
 		if (value.simpleString != null)
 			return NLispTools.makeValue(value.simpleString);
-		
+
 		if (value.value != null)
 		{
 			return (Value)value.value;
@@ -1059,9 +1061,9 @@ public class SpeechProcessingTests extends TestHarnessBase
 		}
 		else
 			return Environment.getNull();
-			
+
 	}
-	
+
 	/**
 	 * FunctionApplicabilityData gets converted into a list:
 	 * (score, arg-map, function-name, pattern, scored-value, canonical-phrase)
@@ -1083,7 +1085,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 		}
 		else
 			argMap = new HashMap<String, ScoredValue>();
-		
+
 		result[1] = new StringHashtableValue(map);
 		result[2] = NLispTools.makeValue(data.functionName);
 		result[3] = LispUtilities.convertStringArray(data.pattern);
@@ -1094,7 +1096,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 		result[6] = NLispTools.makeValue(s);
 		return NLispTools.makeValue(result);
 	}
-	
+
 	Value convertRawStringTokens(Value stringArray)
 	{
 		try
@@ -1114,15 +1116,15 @@ public class SpeechProcessingTests extends TestHarnessBase
 			throw new RuntimeException(e);
 		}
 		return stringArray;
-		
+
 	}
-	
-	
-	
-	
-	
+
+
+
+
+
 	// FunctionTemplate methods
-	
+
 	public SimpleFunctionTemplate create_speech_config()
 	{
 		return new SimpleFunctionTemplate()
@@ -1134,7 +1136,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{
 				return (T)create_speech_config();
 			}
-			
+
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
 				checkActualArguments(4, true, false);
@@ -1142,16 +1144,16 @@ public class SpeechProcessingTests extends TestHarnessBase
 				Value typeSpecMap = evaluatedArgs[1];
 				Value functionPrec = evaluatedArgs[2];
 				Value parserValue = evaluatedArgs[3];
-				
+
 				SpeechConfigLispWrapper wrapper = new SpeechConfigLispWrapper(patternSpecMap, typeSpecMap, functionPrec, parserValue);
 				return ExtendedFunctions.makeValue(wrapper);
 			}
 
-			
-			
+
+
 		};
 	}
-	
+
 	public SimpleFunctionTemplate create_speech_map()
 	{
 		return new SimpleFunctionTemplate()
@@ -1163,7 +1165,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{
 				return (T)create_speech_map();
 			}
-			
+
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
 				checkActualArguments(1, false, false);
@@ -1174,9 +1176,9 @@ public class SpeechProcessingTests extends TestHarnessBase
 			}
 		};
 	}
-	
-	
-	
+
+
+
 	public SimpleFunctionTemplate on_ambiguity_handler()
 	{
 		return new SimpleFunctionTemplate()
@@ -1188,7 +1190,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{
 				return (T)on_ambiguity_handler();
 			}
-			
+
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
 				checkActualArguments(2, false, false);
@@ -1201,9 +1203,9 @@ public class SpeechProcessingTests extends TestHarnessBase
 			}
 		};
 	}
-	
-	
-	
+
+
+
 	public SimpleFunctionTemplate add_function_wo_side_effects()
 	{
 		return new SimpleFunctionTemplate()
@@ -1215,7 +1217,7 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{
 				return (T)add_function_wo_side_effects();
 			}
-			
+
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
 				checkActualArguments(2, false, false);
@@ -1229,8 +1231,8 @@ public class SpeechProcessingTests extends TestHarnessBase
 			}
 		};
 	}
-	
-	
+
+
 	public SimpleFunctionTemplate evaluate_speech_fast()
 	{
 		return new SimpleFunctionTemplate()
@@ -1242,24 +1244,24 @@ public class SpeechProcessingTests extends TestHarnessBase
 			{
 				return (T)evaluate_speech_fast();
 			}
-			
+
 			@Override
 			public Value evaluate(Environment env, Value[] evaluatedArgs) {
 				checkActualArguments(2, false, false);
 				Value speechMap = evaluatedArgs[0];
 				Value tokenizedInput = evaluatedArgs[1];
-				
+
 				SpeechMap smap = (SpeechMap)speechMap.getObjectValue();
 				String[] tokenizedSpeech = LispUtilities.convertStringArray(tokenizedInput);
-				
+
 				ScoredValue result = smap.evaluate(tokenizedSpeech);
 				if (result.score == 0 || result.value == null)
 					return Environment.getNull();
 				else
 					return (Value)result.value;
-				
+
 			}
 		};
 	}
-	
+
 }
