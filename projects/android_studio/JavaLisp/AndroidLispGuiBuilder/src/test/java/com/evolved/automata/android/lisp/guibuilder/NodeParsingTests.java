@@ -221,8 +221,8 @@ public class NodeParsingTests {
         String errorMessage = "Failed testSequences";
         try
         {
-            String input = "10 23 \"up\" -12.89 \"   \" + rotate-left-90 (upside-down)";
-            int numChildCount = 0, expectedNumChildren = 15, expectedTokens = 8, numTokens ;
+            String input = "10 ; this is a comment\n23 \"up\" -12.89 \"   \" + rotate-left-90 (upside-down)";
+            int numChildCount = 0, expectedNumChildren = 16, expectedTokens = 9, numTokens ;
             TopParseNode node = new TopParseNode();
             ParseNode.ParseStatus status = null, expectedFinalStatus = ParseNode.ParseStatus.FINISHED;
             for (char c:input.toCharArray())
@@ -248,7 +248,7 @@ public class NodeParsingTests {
             numTokens = node.getTokenChildren().size();
 
             errorMessage = "Found incorrect num tokens.  Expected: " + expectedTokens + " but found: " + numTokens;
-            Assert.assertTrue(errorMessage, expectedNumChildren == numChildCount);
+            Assert.assertTrue(errorMessage, expectedTokens == numTokens);
         }
         catch (Exception e)
         {
@@ -424,7 +424,7 @@ public class NodeParsingTests {
         try
         {
             boolean wrap = false;
-            String input = "12 3.141592  (left (of 12) 89) \"over\" \"there\" (map x (list \"x\" \"\\\"over\\\"\") (println x))";
+            String input = "12 3.141592 ;Move left please\n (left (of 12) 89) \"over\" \"there\" (map x (list \"x\" \"\\\"over\\\"\") (println x))";
             String expectedResult = input; //StringUtils.replace(input, "\\\"", "\"");
             TopParseNode node = new TopParseNode();
             errorMessage = "Failed to obtain proper parse state";
@@ -644,7 +644,43 @@ public class NodeParsingTests {
         }
     }
 
+    @Test
+    public void testTopComment()
+    {
+        String string = ";  this is garabage\n";
+        String expectedResult = string;
+        TopParseNode node = new TopParseNode();
+        String errorMessage = "Failed to obtain proper parse state";
+        ParseNode.ParseStatus status, expectedStatus;
+        for (char c:string.toCharArray())
+        {
+            status = node.appendChar(c);
 
+        }
+        String result = node.getValue();
+        errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+        Assert.assertTrue(errorMessage, result.equals(expectedResult));
+    }
+
+    @Test
+    public void testTopCommentSequence()
+    {
+        String string = ";  this is garabage\n; 89 + 23\n12";
+        String expectedResult = string;
+        TopParseNode node = new TopParseNode();
+        String errorMessage = "Failed to obtain proper parse state";
+        ParseNode.ParseStatus status, expectedStatus;
+        for (char c:string.toCharArray())
+        {
+            status = node.appendChar(c);
+
+        }
+        String result = node.getValue();
+        errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+        Assert.assertTrue(errorMessage, result.equals(expectedResult));
+    }
 
     private String printNodeSelection(String baseInput, ParseNode selection)
     {

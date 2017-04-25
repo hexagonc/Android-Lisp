@@ -45,7 +45,7 @@ public class StringNode extends AtomNode {
         }
         else
         {
-            mStatus = ParseStatus.IN_COMPLETE;
+            mStatus = ParseStatus.ERROR;
         }
         return mStatus;
     }

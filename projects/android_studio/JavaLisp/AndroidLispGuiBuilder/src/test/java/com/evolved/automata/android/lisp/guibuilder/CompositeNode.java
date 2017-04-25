@@ -28,7 +28,7 @@ public abstract class CompositeNode extends ParseNode {
         mPossibleChildTypes.add(StringNode.class);
         mPossibleChildTypes.add(VarNameNode.class);
         mPossibleChildTypes.add(ListNode.class);
-
+        mPossibleChildTypes.add(CommentNode.class);
 
     }
 
@@ -171,7 +171,7 @@ public abstract class CompositeNode extends ParseNode {
                     switch (newPossible.size())
                     {
                         case 0:
-                            returnStatus = mStatus = ParseStatus.IN_COMPLETE;
+                            returnStatus = mStatus = ParseStatus.ERROR;
                             break;
                         case 1:
                             status = finalizePossibleChildren(value);
@@ -180,7 +180,7 @@ public abstract class CompositeNode extends ParseNode {
                                 case COMPLETE_ABSORB:
                                     mNumWorkingChildren = 0;
                                     break;
-                                case IN_COMPLETE:
+                                case ERROR:
                                     returnStatus = status;
                                     if (acceptWorkingChildP)
                                         mStatus = returnStatus;
@@ -205,7 +205,7 @@ public abstract class CompositeNode extends ParseNode {
                                 returnStatus = mStatus = ParseStatus.FINISHED;
                             return returnStatus;
                         case COMPLETE_BOUNDARY:
-                        case IN_COMPLETE:
+                        case ERROR:
                             mNumWorkingChildren = 0;
                             continueProcessingP = true;
                             break;
@@ -218,7 +218,7 @@ public abstract class CompositeNode extends ParseNode {
                     switch (newPossible.size())
                     {
                         case 0:
-                            return mStatus = ParseStatus.IN_COMPLETE;
+                            return mStatus = ParseStatus.ERROR;
                         case 1:
                             status = finalizePossibleChildren(value);
                             if (acceptWorkingChildP)
@@ -228,7 +228,7 @@ public abstract class CompositeNode extends ParseNode {
                                 case COMPLETE_ABSORB:
                                     mNumWorkingChildren = 0;
                                     break;
-                                case IN_COMPLETE:
+                                case ERROR:
                                     returnStatus = status;
                                     if (acceptWorkingChildP)
                                         mStatus = returnStatus;
@@ -285,7 +285,7 @@ public abstract class CompositeNode extends ParseNode {
         else
         {
             mPossibleNextChild = null;
-            mStatus = ParseStatus.IN_COMPLETE;
+            mStatus = ParseStatus.ERROR;
         }
         return mStatus;
     }

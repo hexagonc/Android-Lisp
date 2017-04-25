@@ -32,7 +32,7 @@ public class ListNode extends CompositeNode {
             case INITIAL:
                 return "";
             case BUILDING:
-            case IN_COMPLETE:
+            case ERROR:
                 return "(" + super.getValue();
             case COMPLETE_ABSORB:
                 return "(" + super.getValue() + ")";
@@ -51,7 +51,7 @@ public class ListNode extends CompositeNode {
             if (value == '(')
                 return mStatus = ParseStatus.BUILDING;
             else
-                return mStatus = ParseStatus.IN_COMPLETE;
+                return mStatus = ParseStatus.ERROR;
         }
         else if (mStatus == ParseStatus.BUILDING)
         {
@@ -91,7 +91,7 @@ public class ListNode extends CompositeNode {
             return ParseStatus.COMPLETE_BOUNDARY;
         }
         else
-            return ParseStatus.IN_COMPLETE;
+            return ParseStatus.ERROR;
 
     }
 
@@ -103,7 +103,7 @@ public class ListNode extends CompositeNode {
             case INITIAL:
                 return 0;
             case BUILDING:
-            case IN_COMPLETE:
+            case ERROR:
                 return 1 + super.getLength();
             case COMPLETE_ABSORB:
                 return 2 + super.getLength();

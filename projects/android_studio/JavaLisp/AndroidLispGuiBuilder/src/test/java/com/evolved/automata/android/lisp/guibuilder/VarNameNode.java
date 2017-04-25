@@ -22,12 +22,16 @@ public class VarNameNode extends AtomNode {
                 firstChar != '(' &&
                 firstChar != '\"' &&
                 firstChar != ')' &&
-                firstChar != '\'';
+                firstChar != '\'' &&
+                firstChar != ';';
 
     }
 
 
-
+    boolean isBoundaryCharacter(char value)
+    {
+        return Character.isWhitespace(value) || value == ')' || value == ';';
+    }
 
     @Override
     public ParseStatus appendChar(char value)
@@ -42,14 +46,8 @@ public class VarNameNode extends AtomNode {
             }
         }
         else if (mStatus == ParseStatus.FINISHED &&
-                Character.isWhitespace(value))
+                isBoundaryCharacter(value))
         {
-            mStatus = ParseStatus.COMPLETE_BOUNDARY;
-        }
-        else if (mStatus == ParseStatus.FINISHED &&
-                value == ')')
-        {
-
             mStatus = ParseStatus.COMPLETE_BOUNDARY;
         }
         else if ( mStatus == ParseStatus.FINISHED && value == '\'')
@@ -60,7 +58,7 @@ public class VarNameNode extends AtomNode {
         }
         else if (mStatus == ParseStatus.FINISHED && (Character.isDigit(value) || value == '.') && startsWithHyphenP && previousHyphenP)
         {
-            mStatus = ParseStatus.IN_COMPLETE;
+            mStatus = ParseStatus.ERROR;
         }
         else if (mStatus == ParseStatus.FINISHED &&
                 value != '\"' &&
@@ -72,7 +70,7 @@ public class VarNameNode extends AtomNode {
         }
         else
         {
-            mStatus = ParseStatus.IN_COMPLETE;
+            mStatus = ParseStatus.ERROR;
         }
 
         return mStatus;

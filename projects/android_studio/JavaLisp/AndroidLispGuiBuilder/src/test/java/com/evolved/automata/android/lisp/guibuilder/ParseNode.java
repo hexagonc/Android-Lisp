@@ -12,13 +12,13 @@ public abstract class ParseNode {
 
     public enum TYPE
     {
-        LIST, NUMBER, VAR_NAME, TOP, WHITE_SPACE, STRING, LEFT_PAREN, RIGHT_PAREN, QUOTE
+        LIST, NUMBER, VAR_NAME, TOP, WHITE_SPACE, STRING, COMMENT, INVALID_CHARS
     }
 
 
     public enum ParseStatus
     {
-        INITIAL(false, true), BUILDING(true, true), IN_COMPLETE(false, false), FINISHED(true, true), COMPLETE_BOUNDARY(true, false), COMPLETE_ABSORB(true, true);
+        INITIAL(false, true), BUILDING(true, true), ERROR(false, false), FINISHED(true, true), COMPLETE_BOUNDARY(true, false), COMPLETE_ABSORB(true, true);
 
         boolean isProgressStatus = false;
         boolean consumedInputCharP = false;

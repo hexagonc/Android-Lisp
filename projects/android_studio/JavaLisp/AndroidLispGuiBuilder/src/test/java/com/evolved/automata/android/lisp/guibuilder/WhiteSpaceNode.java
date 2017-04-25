@@ -32,7 +32,7 @@ public class WhiteSpaceNode extends AtomNode {
         else
         {
             if (mStatus != ParseStatus.FINISHED)
-                return mStatus = ParseStatus.IN_COMPLETE;
+                return mStatus = ParseStatus.ERROR;
             else
                 return mStatus = ParseStatus.COMPLETE_BOUNDARY;
         }
