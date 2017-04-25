@@ -49,7 +49,7 @@ public class NumberNode extends AtomNode {
             mHasDecimalP = true;
             mStatus = ParseStatus.BUILDING;
         }
-        else if (Character.isWhitespace(value))
+        else if (Character.isWhitespace(value) || value == ')')
         {
             if (mStatus == ParseStatus.FINISHED)
             {

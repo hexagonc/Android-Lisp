@@ -81,10 +81,11 @@ public class NodeParsingTests {
             {
                 expectedStatus = ParseNode.ParseStatus.FINISHED;
             }
-            errorMessage =  "With " + number + " and input: '" + c + "'.  Failed to obtain proper parse state.  Expected: " + expectedStatus.toString() + " found: " + status.toString();
+
 
             */
         }
+        errorMessage =  "With " + number + ".  Failed to obtain proper parse state.  Expected: " + expectedStatus.toString() + " found: " + status.toString();
         Assert.assertTrue(errorMessage, status == expectedStatus);
         String result = node.getValue();
         errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
@@ -220,8 +221,8 @@ public class NodeParsingTests {
         String errorMessage = "Failed testSequences";
         try
         {
-            String input = "10 23 \"up\" -12.89 \"   \" + rotate-left-90";
-            int numChildCount = 0, expectedNumChildren = 13, expectedTokens = 7, numTokens ;
+            String input = "10 23 \"up\" -12.89 \"   \" + rotate-left-90 (upside-down)";
+            int numChildCount = 0, expectedNumChildren = 15, expectedTokens = 8, numTokens ;
             TopParseNode node = new TopParseNode();
             ParseNode.ParseStatus status = null, expectedFinalStatus = ParseNode.ParseStatus.FINISHED;
             for (char c:input.toCharArray())
@@ -255,4 +256,110 @@ public class NodeParsingTests {
             Assert.assertTrue(errorMessage, false);
         }
     }
+
+    @Test
+    public void testListNodes()
+    {
+        String errorMessage = "";
+        try
+        {
+            String[] inputs = new String[]{"(+ 12 34)", "()", "(rotate-left \"40 degrees\")"};
+            int[][] expectedListChildren = new int[][]{{5,3}, {0,0}, {3, 2}};
+
+            for (int i = 0; i < inputs.length;i++)
+            {
+                testList(inputs[i], expectedListChildren[i][0], expectedListChildren[i][1]);
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    private void testList(String listInput, int expectedNumChildren, int expectedNumTokenChildren)
+    {
+        System.out.println("Testing: " + listInput);
+        String errorMessage = "Failed to create top node";
+        TopParseNode node = new TopParseNode();
+        errorMessage = "Failed to add characters to top node";
+        ParseNode.ParseStatus status = null, expectedFinalStatus = ParseNode.ParseStatus.COMPLETE_ABSORB;
+        for (char c:listInput.toCharArray())
+        {
+            status = node.appendChar(c);
+
+        }
+        String result = node.getValue();
+        String expectedResult = listInput;
+        errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+        Assert.assertTrue(errorMessage, result.equals(expectedResult));
+
+
+        LinkedList<ParseNode> children = node.getChildren();
+
+        errorMessage = "Failed to create correct number of top level children";
+
+        int numChildCount = children.size();
+
+        Assert.assertTrue(errorMessage, numChildCount == 1);
+
+        ParseNode child = children.getFirst();
+
+        errorMessage = "Failed to get correct child type.  Expected " + ParseNode.TYPE.LIST.toString() + " but found: " + child.getType().toString();
+
+        Assert.assertTrue(errorMessage, ParseNode.TYPE.LIST == child.getType());
+
+        ListNode listChild = (ListNode)child;
+
+        int numListChildren = listChild.getChildren().size();
+        int numListTokenChildren = listChild.getTokenChildren().size();
+        errorMessage = "Failed to construct proper number of list children.  Expected: " + expectedNumChildren + " but found: " +  numListChildren;
+
+
+        Assert.assertTrue(errorMessage, numListChildren == expectedNumChildren);
+
+        errorMessage = "Found incorrect num list token children.  Expected: " + expectedNumTokenChildren + " but found: " + numListTokenChildren;
+        Assert.assertTrue(errorMessage, expectedNumTokenChildren == numListTokenChildren);
+
+        status = listChild.getStatus();
+        errorMessage = "Failed to match final status: Expected: " + expectedFinalStatus.toString() + " but found: " + status.toString();
+        Assert.assertTrue(errorMessage, expectedFinalStatus == status);
+
+
+    }
+
+    @Test
+    public void testSimpleNestedLists()
+    {
+        String errorMessage = "Failed to create TopParse node";
+
+        try
+        {
+
+            String input = "  12   (left (of 12) 89)";
+            TopParseNode node = new TopParseNode();
+            errorMessage = "Failed to obtain proper parse state";
+            ParseNode.ParseStatus status;
+            for (char c:input.toCharArray())
+            {
+                status = node.appendChar(c);
+                //Assert.assertTrue(errorMessage, status == ParseNode.ParseStatus.FINISHED);
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs.  Expected: [" + input + "] but found: [" + result + "]";
+            Assert.assertTrue(errorMessage, result.equals(input));
+
+            LinkedList<ParseNode> children = node.getChildren();
+            System.out.println("Childre are: " + children);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
 }

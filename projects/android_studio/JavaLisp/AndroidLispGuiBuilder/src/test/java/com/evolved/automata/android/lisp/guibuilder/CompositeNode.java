@@ -11,16 +11,14 @@ import java.util.LinkedList;
 
 public abstract class CompositeNode extends ParseNode {
 
-
-
-    public enum State
+    public enum WORKING_CHILD_STATE
     {
-        NO_CHILDREN, TESTING_POSSIBLE_CHILDREN, BUILDING_CHILD, FINDING_POSSIBLE_CHILDREN
+        NONE, SINGLE
     }
 
 
-    State mAppendState = State.NO_CHILDREN;
-
+    int mNumWorkingChildren = 0;
+    protected boolean acceptWorkingChildP = false;
     static LinkedList<Class<? extends ParseNode>> mPossibleChildTypes;
 
     static {
@@ -29,6 +27,7 @@ public abstract class CompositeNode extends ParseNode {
         mPossibleChildTypes.add(NumberNode.class);
         mPossibleChildTypes.add(StringNode.class);
         mPossibleChildTypes.add(VarNameNode.class);
+        mPossibleChildTypes.add(ListNode.class);
 
 
     }
@@ -43,6 +42,7 @@ public abstract class CompositeNode extends ParseNode {
 
     protected HashSet<ParseNode> getPossibleChildren(char firstChar)
     {
+        mNumWorkingChildren = 0;
         try
         {
             HashSet<ParseNode> possible = new HashSet<ParseNode>();
@@ -56,6 +56,7 @@ public abstract class CompositeNode extends ParseNode {
                 status = node.appendChar(firstChar);
                 if (status.isProgressP())
                 {
+                    mNumWorkingChildren++;
                     possible.add(node);
                 }
 
@@ -85,15 +86,31 @@ public abstract class CompositeNode extends ParseNode {
     {
         HashSet<ParseNode> newPossible = new HashSet<ParseNode>();
         ParseStatus status;
+        mNumWorkingChildren = 0;
         for (ParseNode node:mPossibleNextChild)
         {
             status = node.appendChar(value);
             if (status.isProgressP())
+            {
+                mNumWorkingChildren++;
                 newPossible.add(node);
+            }
         }
         return newPossible;
     }
 
+    @Override
+    public String getValue()
+    {
+        StringBuilder builder = new StringBuilder();
+        Link link = mChildLinks;
+        while (link != null)
+        {
+            builder.append(link.node.getValue());
+            link = link.nextChild;
+        }
+        return builder.toString();
+    }
 
     @Override
     public int getLength()
@@ -138,64 +155,100 @@ public abstract class CompositeNode extends ParseNode {
 
     public ParseStatus appendChar(char value)
     {
-        boolean firstrunner= true;
-        if (mLastChildLink != null)
+
+        ParseStatus returnStatus = mStatus, status;
+        HashSet<ParseNode> newPossible;
+        boolean continueProcessingP = false;
+
+        do
         {
-            if (mLastChildLink.node.getStatus() == ParseStatus.BUILDING ||
-                    mLastChildLink.node.getStatus() == ParseStatus.FINISHED)
+            switch (mNumWorkingChildren)
             {
-                ParseStatus status = mLastChildLink.node.appendChar(value);
-                firstrunner = false;
-                if (status.reprocessInputP())
-                {
-                    mPossibleNextChild = null;
-                    mStatus = status;
-                }
-                else if (status == ParseStatus.COMPLETE_ABSORB)
-                {
-                    mPossibleNextChild = null;
-                    mStatus = ParseStatus.FINISHED;
-                    return mStatus;
-                }
-                else
-                {
-                    mStatus = status;
-                    return mStatus;
-                }
+                case 0: // process value as start of new token or child
+                    continueProcessingP = false;
+                    newPossible = getPossibleChildren(value);
+                    mPossibleNextChild = newPossible;
+                    switch (newPossible.size())
+                    {
+                        case 0:
+                            returnStatus = mStatus = ParseStatus.IN_COMPLETE;
+                            break;
+                        case 1:
+                            status = finalizePossibleChildren(value);
+                            switch (status)
+                            {
+                                case COMPLETE_ABSORB:
+                                    mNumWorkingChildren = 0;
+                                    break;
+                                case IN_COMPLETE:
+                                    returnStatus = status;
+                                    if (acceptWorkingChildP)
+                                        mStatus = returnStatus;
+                            }
+                            if (acceptWorkingChildP)
+                                mStatus = returnStatus = status;
+                            break;
+                        default:
+                            if (acceptWorkingChildP)
+                                mStatus = returnStatus = ParseStatus.BUILDING;
+                    }
+                    break;
+                case 1: // process value as continuation of existing token or child
+                    status = mLastChildLink.node.appendChar(value);
+                    if (acceptWorkingChildP)
+                        returnStatus = mStatus = status;
+                    switch (status)
+                    {
+                        case COMPLETE_ABSORB:
+                            mNumWorkingChildren = 0;
+                            if (acceptWorkingChildP) // override in this case
+                                returnStatus = mStatus = ParseStatus.FINISHED;
+                            return returnStatus;
+                        case COMPLETE_BOUNDARY:
+                        case IN_COMPLETE:
+                            mNumWorkingChildren = 0;
+                            continueProcessingP = true;
+                            break;
+                    }
+                    break;
+                default: // process value as continuation of multiple possible children.
+                    continueProcessingP = false;
+                    newPossible = getUpdatedPossibleChildren(mPossibleNextChild, value);
+                    mPossibleNextChild = newPossible;
+                    switch (newPossible.size())
+                    {
+                        case 0:
+                            return mStatus = ParseStatus.IN_COMPLETE;
+                        case 1:
+                            status = finalizePossibleChildren(value);
+                            if (acceptWorkingChildP)
+                                returnStatus = mStatus = status;
+                            switch (status)
+                            {
+                                case COMPLETE_ABSORB:
+                                    mNumWorkingChildren = 0;
+                                    break;
+                                case IN_COMPLETE:
+                                    returnStatus = status;
+                                    if (acceptWorkingChildP)
+                                        mStatus = returnStatus;
+                            }
+                            break;
+                        default:
+                            if (acceptWorkingChildP)
+                                mStatus = returnStatus = ParseStatus.BUILDING;
+
+                    }
+
             }
 
-        }
+        }while (continueProcessingP);
 
-        HashSet<ParseNode> newPossible;
-        if (mPossibleNextChild != null && mPossibleNextChild.size()>0)
-        {
-            newPossible = getUpdatedPossibleChildren(mPossibleNextChild, value);
-        }
-        else
-        {
-            newPossible = getPossibleChildren(value);
-        }
 
-        mPossibleNextChild = newPossible;
-        if (newPossible.size() == 1)
-        {
-            return mStatus = finalizePossibleChildren(value, firstrunner);
-
-        }else if (newPossible.size() > 1)
-        {
-            mStatus = ParseStatus.BUILDING;
-        }
-        else
-        { // this shouldn't happen
-            assert false;
-            mPossibleNextChild = null;
-            mStatus = ParseStatus.IN_COMPLETE;
-        }
-
-        return mStatus;
+        return returnStatus;
     }
 
-    private ParseStatus finalizePossibleChildren(char value, boolean first)
+    private ParseStatus finalizePossibleChildren(char value)
     {
         Link newLink = new Link(mPossibleNextChild.iterator().next());
 
@@ -211,18 +264,12 @@ public abstract class CompositeNode extends ParseNode {
             mLastChildLink = newLink;
         }
 
-
-        if (newLink.node.getStatus() == ParseStatus.COMPLETE_BOUNDARY && first) // this probably never happens
-        {
-
-            return appendCharRoundTwo(value);
-        }
-        else
-            return newLink.node.getStatus();
+        return newLink.node.getStatus();
     }
 
 
-    private ParseStatus appendCharRoundTwo(char value)
+    /*
+    protected ParseStatus appendUnconsummedChar(char value)
     {
         mPossibleNextChild = getPossibleChildren(value);
 
@@ -242,5 +289,6 @@ public abstract class CompositeNode extends ParseNode {
         }
         return mStatus;
     }
+    */
 
 }

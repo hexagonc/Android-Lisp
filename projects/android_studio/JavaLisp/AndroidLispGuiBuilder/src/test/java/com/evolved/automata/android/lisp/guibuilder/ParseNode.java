@@ -18,14 +18,14 @@ public abstract class ParseNode {
 
     public enum ParseStatus
     {
-        INITIAL(false, false), BUILDING(true, false), IN_COMPLETE(false, true), FINISHED(true, false), COMPLETE_BOUNDARY(true, true), COMPLETE_ABSORB(true, false);
+        INITIAL(false, true), BUILDING(true, true), IN_COMPLETE(false, false), FINISHED(true, true), COMPLETE_BOUNDARY(true, false), COMPLETE_ABSORB(true, true);
 
         boolean isProgressStatus = false;
-        boolean isBoundaryStateP = false;
-        ParseStatus(boolean progressStatus, boolean boundary)
+        boolean consumedInputCharP = false;
+        ParseStatus(boolean progressStatus, boolean consumed)
         {
             isProgressStatus = progressStatus;
-            isBoundaryStateP = boundary;
+            consumedInputCharP = consumed;
         }
 
         public boolean isProgressP()
@@ -33,9 +33,9 @@ public abstract class ParseNode {
             return isProgressStatus;
         }
 
-        public boolean reprocessInputP()
+        public boolean consumedInputP()
         {
-            return isBoundaryStateP;
+            return consumedInputCharP;
         }
 
     }
@@ -187,6 +187,13 @@ public abstract class ParseNode {
         else
             return null;
     }
+
+    @Override
+    public String toString()
+    {
+        return getValue();
+    }
+
 
     public abstract ParseStatus appendChar(char value);
 
