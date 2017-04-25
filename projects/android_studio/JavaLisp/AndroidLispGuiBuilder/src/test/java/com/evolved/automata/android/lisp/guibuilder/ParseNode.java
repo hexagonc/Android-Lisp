@@ -137,7 +137,7 @@ public abstract class ParseNode {
         if (getPrevSibling() != null)
             return getPrevSibling().getStartIndex() + getPrevSibling().getLength();
         else if (mParent != null)
-            return mParent.getChildOffset();
+            return mParent.getStartIndex() + mParent.getChildOffset();
         else
             return 0;
     }
@@ -362,14 +362,8 @@ public abstract class ParseNode {
     {
         int start = getStartIndex();
         int len = getLength();
-        if (start + len == absPosition )
-        {
-            if (mChildLinks == null)
-                return this;
-            else
-                return mChildLinks.node.findNode(absPosition);
-        }
-        else if (start + len < absPosition)
+
+        if (start + len <= absPosition)
         {
             if (getNextSibling() != null)
                 return getNextSibling().findNode(absPosition);

@@ -362,4 +362,58 @@ public class NodeParsingTests {
         }
     }
 
+
+    @Test
+    public void testSelectingNodes()
+    {
+        String errorMessage = "Failed to create TopParse node";
+
+        try
+        {
+
+            String input = "  12   (left (of 12) 89)";
+            TopParseNode node = new TopParseNode();
+            errorMessage = "Failed to obtain proper parse state";
+            ParseNode.ParseStatus status;
+            for (char c:input.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs.  Expected: [" + input + "] but found: [" + result + "]";
+            Assert.assertTrue(errorMessage, result.equals(input));
+
+            LinkedList<ParseNode> children = node.getChildren();
+            System.out.println("Children are: " + children);
+
+
+            // Scan
+            for (int i = 0;i < input.length();i++)
+            {
+                ParseNode selectedNode = node.findNode(i);
+                System.out.println("Scanning position: " + insertText(input, "|", i) + " found [" + selectedNode + "]");
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    private String insertText(String input, String text, int pos)
+    {
+        if (pos == 0)
+        {
+            return text + input;
+        }
+        else if (pos == input.length())
+        {
+            return input + text;
+        }
+        else
+            return input.substring(0, pos) + text + input.substring(pos);
+    }
+
 }

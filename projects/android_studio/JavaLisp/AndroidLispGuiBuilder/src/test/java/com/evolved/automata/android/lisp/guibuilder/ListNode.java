@@ -113,5 +113,44 @@ public class ListNode extends CompositeNode {
         return 0;
     }
 
+    /**
+     *
+     * @param absPosition Character position whose containing node you want
+     * @return
+     */
+    @Override
+    public ParseNode findNode(int absPosition)
+    {
+        int start = getStartIndex();
+        int len = getLength();
+        if (absPosition == start + len - 1 && mStatus == ParseStatus.COMPLETE_ABSORB) // right parenthesis
+        {
+            return this;
+        }
+        else if (start == absPosition) // left parenthesis
+        {
+            return this;
+        }
+        else if (start + len <= absPosition) // after this node
+        {
+            if (getNextSibling() != null)
+                return getNextSibling().findNode(absPosition);
+            else
+                return null;
+        }
+        else if (absPosition < start) // prior to this node
+        {
+            return null;
+        }
+        else
+        {
+            if (mChildLinks != null) // there will never be both a non-null mChildLinks and mValue.length > 0
+            {
+                return mChildLinks.node.findNode(absPosition);
+            }
+            else
+                return this;
+        }
+    }
 
 }
