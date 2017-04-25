@@ -113,7 +113,7 @@ public class NodeParsingTests {
 
     private void testTopString(String string)
     {
-        String expectedResult = StringUtils.replace(string, "\\\"", "\"");
+        String expectedResult = string;
         TopParseNode node = new TopParseNode();
         String errorMessage = "Failed to obtain proper parse state";
         ParseNode.ParseStatus status, expectedStatus;
@@ -130,7 +130,7 @@ public class NodeParsingTests {
 
     private void testString(String string, ParseNode.ParseStatus finalStatus)
     {
-        String expectedResult = StringUtils.replace(string, "\\\"", "\"");
+        String expectedResult = string;//StringUtils.replace(string, "\\\"", "\"");
         StringNode node = new StringNode(null);
         String errorMessage = "Failed to obtain proper parse state";
         ParseNode.ParseStatus status, expectedStatus;
@@ -416,4 +416,242 @@ public class NodeParsingTests {
             return input.substring(0, pos) + text + input.substring(pos);
     }
 
+    @Test
+    public void testBackwardSiblingNavigation()
+    {
+        String errorMessage = "Failed to create TopParse node";
+
+        try
+        {
+            boolean wrap = false;
+            String input = "12 3.141592  (left (of 12) 89) \"over\" \"there\" (map x (list \"x\" \"\\\"over\\\"\") (println x))";
+            String expectedResult = input; //StringUtils.replace(input, "\\\"", "\"");
+            TopParseNode node = new TopParseNode();
+            errorMessage = "Failed to obtain proper parse state";
+            ParseNode.ParseStatus status;
+            for (char c:input.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs.  Expected: [" + expectedResult + "] but found: [" + result + "]";
+            Assert.assertTrue(errorMessage, result.equals(expectedResult));
+
+            LinkedList<ParseNode> children = node.getChildren();
+            System.out.println("Children are: " + children);
+
+            ParseNode current = node.getFirstChild(), next;
+            System.out.println("Testing backward from start");
+            System.out.println("Initial Selection: " + printNodeSelection(input, current));
+            next = current.getPreviousTokenSibling(wrap);
+            errorMessage = "Expected null previous node, found: " + next + " instead";
+            Assert.assertTrue(errorMessage, next == null);
+
+            current = node.getLastChild();
+            System.out.println("Testing backward from end");
+            System.out.println("Initial Selection: " + printNodeSelection(input, current));
+
+            int selectionCount = node.getTokenChildren().size();
+            for (int i = 0;i < selectionCount;i++)
+            {
+                next = current.getPreviousTokenSibling(wrap);
+                System.out.println("Previous Selection: " + printNodeSelection(input, next));
+                if (i != selectionCount - 1)
+                {
+                    errorMessage = "Expected non-null final node";
+                    Assert.assertTrue(errorMessage, next != null);
+                    current = next;
+                }
+                else
+                {
+                    errorMessage = "Expected null final node, found: " + next + " instead";
+                    Assert.assertTrue(errorMessage, next == null);
+                }
+
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testWrappingBackwardSiblingNavigation()
+    {
+        String errorMessage = "Failed to create TopParse node";
+
+        try
+        {
+            boolean wrap = true;
+            String input = "12 3.141592  (left (of 12) 89) \"over\" \"there\" (map x (list \"x\" \"\\\"over\\\"\") (println x))";
+            String expectedResult = input; //StringUtils.replace(input, "\\\"", "\"");
+            TopParseNode node = new TopParseNode();
+            errorMessage = "Failed to obtain proper parse state";
+            ParseNode.ParseStatus status;
+            for (char c:input.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs.  Expected: [" + expectedResult + "] but found: [" + result + "]";
+            Assert.assertTrue(errorMessage, result.equals(expectedResult));
+
+            LinkedList<ParseNode> children = node.getChildren();
+            System.out.println("Children are: " + children);
+
+            ParseNode current = node.getFirstChild(), next, first;
+            first = current;
+            System.out.println("Testing backward from start");
+            System.out.println("Initial Selection: " + printNodeSelection(input, current));
+
+            int step = 0, stepMax = node.getTokenChildren().size();
+            while ((next = current.getPreviousTokenSibling(wrap)) != first)
+            {
+                errorMessage = "Expected non-null final node";
+                Assert.assertTrue(errorMessage, next != null);
+                System.out.println("Previous Selection: " + printNodeSelection(input, next));
+                step++;
+                current = next;
+            }
+            errorMessage = "Expected wrap to beginning after " + (stepMax - 1) + " steps";
+            Assert.assertTrue(errorMessage, step == stepMax - 1);
+
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testForwardSiblingNavigation()
+    {
+        String errorMessage = "Failed to create TopParse node";
+
+        try
+        {
+            boolean wrap = false;
+            String input = "12 3.141592  (left (of 12) 89) \"over\" \"there\" (map x (list \"x\" \"\\\"over\\\"\") (println x))";
+            String expectedResult = input; //StringUtils.replace(input, "\\\"", "\"");
+            TopParseNode node = new TopParseNode();
+            errorMessage = "Failed to obtain proper parse state";
+            ParseNode.ParseStatus status;
+            for (char c:input.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs.  Expected: [" + expectedResult + "] but found: [" + result + "]";
+            Assert.assertTrue(errorMessage, result.equals(expectedResult));
+
+            LinkedList<ParseNode> children = node.getChildren();
+            System.out.println("Children are: " + children);
+
+            ParseNode current = node.getLastChild(), next;
+            System.out.println("Testing forward from end");
+            System.out.println("Initial Selection: " + printNodeSelection(input, current));
+            next = current.getNextTokenSibling(wrap);
+            errorMessage = "Expected null next node, found: " + next + " instead";
+            Assert.assertTrue(errorMessage, next == null);
+
+            current = node.getFirstChild();
+            System.out.println("Testing forward navigation from start");
+            System.out.println("Initial Selection: " + printNodeSelection(input, current));
+
+            int selectionCount = node.getTokenChildren().size();
+            for (int i = 0;i < selectionCount;i++)
+            {
+                next = current.getNextTokenSibling(wrap);
+                System.out.println("Next Selection: " + printNodeSelection(input, next));
+                if (i != selectionCount - 1)
+                {
+                    errorMessage = "Expected non-null final node";
+                    Assert.assertTrue(errorMessage, next != null);
+                    current = next;
+                }
+                else
+                {
+                    errorMessage = "Expected null final node, found: " + next + " instead";
+                    Assert.assertTrue(errorMessage, next == null);
+                }
+
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testWrappingForwardSiblingNavigation()
+    {
+        String errorMessage = "Failed to create TopParse node";
+
+        try
+        {
+            boolean wrap = true;
+            String input = "12 3.141592  (left (of 12) 89) \"over\" \"there\" (map x (list \"x\" \"\\\"over\\\"\") (println x))";
+            String expectedResult = input; //StringUtils.replace(input, "\\\"", "\"");
+            TopParseNode node = new TopParseNode();
+            errorMessage = "Failed to obtain proper parse state";
+            ParseNode.ParseStatus status;
+            for (char c:input.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs.  Expected: [" + expectedResult + "] but found: [" + result + "]";
+            Assert.assertTrue(errorMessage, result.equals(expectedResult));
+
+            LinkedList<ParseNode> children = node.getChildren();
+            System.out.println("Children are: " + children);
+
+            ParseNode current = node.getLastChild(), next, first;
+            first = current;
+            System.out.println("Testing forward from end");
+            System.out.println("Initial Selection: " + printNodeSelection(input, current));
+
+            int step = 0, stepMax = node.getTokenChildren().size();
+            while ((next = current.getNextTokenSibling(wrap)) != first)
+            {
+                errorMessage = "Expected non-null final node";
+                Assert.assertTrue(errorMessage, next != null);
+                System.out.println("Next Selection: " + printNodeSelection(input, next));
+                step++;
+                current = next;
+            }
+            errorMessage = "Expected wrap to end after " + (stepMax - 1) + " steps";
+            Assert.assertTrue(errorMessage, step == stepMax - 1);
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+
+    private String printNodeSelection(String baseInput, ParseNode selection)
+    {
+        if (selection == null)
+            return baseInput;
+        int startIndex = selection.getStartIndex(), length = selection.getLength();
+        String startDelimited = insertText(baseInput, "|", startIndex);
+        return insertText(startDelimited, "|", startIndex + length + 1);
+    }
 }

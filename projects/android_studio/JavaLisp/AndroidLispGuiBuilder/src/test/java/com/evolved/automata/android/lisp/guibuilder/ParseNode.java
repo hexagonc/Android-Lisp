@@ -188,6 +188,14 @@ public abstract class ParseNode {
             return null;
     }
 
+    public ParseNode getLastChild()
+    {
+        if (mLastChildLink != null)
+            return mLastChildLink.node;
+        else
+            return null;
+    }
+
     @Override
     public String toString()
     {
@@ -383,6 +391,94 @@ public abstract class ParseNode {
             else
                 return this;
         }
+    }
+
+    /**
+     * Finds the most applicable surrounding expression.  If absPosition is in a number, or var_name or
+     * string then it returns the ParseNode.  If it is in a whitespace node then it returns the surrounding
+     * container node, (normally either the top node or a list node).  If absPosition is at ends of a list
+     * then the whole list is returned
+     * @param absPosition
+     * @return
+     */
+    public ParseNode selectSurroundingExpr(int absPosition)
+    {
+        ParseNode selected = findNode(absPosition);
+        if (selected != null && selected.getType() == TYPE.WHITE_SPACE)
+            return selected.getParent();
+        else
+            return selected;
+    }
+
+    /**
+     * Returns the previous non-whitespace sibling node.
+     * @param wrap When true, starts testing nodes from the end of the containing node, up to the current node
+     * @return
+     */
+    public ParseNode getPreviousTokenSibling(boolean wrap)
+    {
+        if (getParent() == null)
+        {
+            if (wrap)
+                return this;
+            else
+                return null;
+        }
+
+        Link testLink = myLink.prevChild;
+        Link stopLink;
+        if (wrap)
+            stopLink = myLink;
+        else
+            stopLink = null;
+
+        if (testLink == null && wrap)
+            testLink = getParent().getLastChild().myLink;
+
+        while (testLink != stopLink && testLink.node.getType() == TYPE.WHITE_SPACE)
+        {
+            testLink = testLink.prevChild;
+            if (testLink == null && wrap)
+                testLink = getParent().getLastChild().myLink;
+        }
+        return (testLink != null)?testLink.node : null;
+    }
+
+    /**
+     * Returns the next non-whitespace sibling node.
+     * @param wrap When true, starts testing nodes from the start of the containing node, up to the current node
+     * @return
+     */
+    public ParseNode getNextTokenSibling(boolean wrap)
+    {
+        if (getParent() == null)
+        {
+            if (wrap)
+                return this;
+            else
+                return null;
+        }
+
+        Link testLink = myLink.nextChild;
+        Link stopLink;
+        if (wrap)
+            stopLink = myLink;
+        else
+            stopLink = null;
+
+        if (testLink == null && wrap)
+        {
+            testLink = getParent().getFirstChild().myLink;
+        }
+
+        while (testLink != stopLink && testLink.node.getType() == TYPE.WHITE_SPACE)
+        {
+
+            testLink = testLink.nextChild;
+            if (testLink == null && wrap)
+                testLink = getParent().getFirstChild().myLink;
+        }
+        return (testLink != null)?testLink.node : null;
     }
 
     public abstract String getValue();

@@ -35,6 +35,7 @@ public class StringNode extends AtomNode {
         else if (mStatus == ParseStatus.BUILDING && !mPreviousDelimiterP && value == '\\')
         {
             mPreviousDelimiterP = true;
+            mValue.append(value);
             mStatus = ParseStatus.BUILDING;
         }
         else if (mStatus == ParseStatus.BUILDING )
