@@ -55,6 +55,8 @@ public class NumberNode extends AtomNode {
             {
                 mStatus = ParseStatus.COMPLETE_BOUNDARY;
             }
+            else
+                mStatus = ParseStatus.ERROR;
         }
         else
             mStatus = ParseStatus.ERROR;

@@ -54,7 +54,7 @@ public abstract class CompositeNode extends ParseNode {
                 Constructor<? extends ParseNode> constructor = nodeClass.getConstructor(ParseNode.class);
                 node = constructor.newInstance(this);
                 status = node.appendChar(firstChar);
-                if (status.isProgressP())
+                if (status.isProgressP() || (node.getType() == TYPE.LIST && status == ParseStatus.INITIAL))
                 {
                     mNumWorkingChildren++;
                     possible.add(node);
@@ -90,7 +90,7 @@ public abstract class CompositeNode extends ParseNode {
         for (ParseNode node:mPossibleNextChild)
         {
             status = node.appendChar(value);
-            if (status.isProgressP())
+            if (status.isProgressP() || (node.getType() == TYPE.LIST && status == ParseStatus.INITIAL))
             {
                 mNumWorkingChildren++;
                 newPossible.add(node);
@@ -104,10 +104,17 @@ public abstract class CompositeNode extends ParseNode {
     {
         StringBuilder builder = new StringBuilder();
         Link link = mChildLinks;
+        ParseNode node;
         while (link != null)
         {
-            builder.append(link.node.getValue());
+            node = link.node;
+            builder.append(node.getValue());
             link = link.nextChild;
+        }
+        if (mPossibleNextChild != null && mPossibleNextChild.size() > 0)
+        {
+            node = mPossibleNextChild.iterator().next();
+            builder.append(node.getValue());
         }
         return builder.toString();
     }
@@ -228,10 +235,12 @@ public abstract class CompositeNode extends ParseNode {
                                 case COMPLETE_ABSORB:
                                     mNumWorkingChildren = 0;
                                     break;
+                                case COMPLETE_BOUNDARY:
                                 case ERROR:
-                                    returnStatus = status;
-                                    if (acceptWorkingChildP)
-                                        mStatus = returnStatus;
+                                    mNumWorkingChildren = 0;
+                                    continueProcessingP = true;
+                                    break;
+
                             }
                             break;
                         default:
@@ -252,7 +261,7 @@ public abstract class CompositeNode extends ParseNode {
     {
         Link newLink = new Link(mPossibleNextChild.iterator().next());
 
-
+        mPossibleNextChild = null;
         if (mLastChildLink == null)
         {
             mChildLinks = mLastChildLink = newLink;

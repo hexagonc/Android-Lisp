@@ -4,6 +4,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.LinkedList;
 
 /**
@@ -330,6 +334,9 @@ public class NodeParsingTests {
 
 
     }
+
+
+
 
     @Test
     public void testSimpleNestedLists()
@@ -680,6 +687,181 @@ public class NodeParsingTests {
         errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
 
         Assert.assertTrue(errorMessage, result.equals(expectedResult));
+    }
+
+    @Test
+    public void testMinusHandlingList()
+    {
+        String string = "(- 89 90)";
+        String expectedResult = string;
+        TopParseNode node = new TopParseNode();
+        String errorMessage = "Failed to obtain proper parse state";
+        ParseNode.ParseStatus status, expectedStatus;
+        for (char c:string.toCharArray())
+        {
+            status = node.appendChar(c);
+
+        }
+        String result = node.getValue();
+        errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+        Assert.assertTrue(errorMessage, result.equals(expectedResult));
+    }
+
+    @Test
+    public void testBackTickListHandling()
+    {
+        String string = "`(- 89 90)";
+        String expectedResult = string;
+        String errorMessage = "Failed to create top node";
+        try
+        {
+
+            TopParseNode node = new TopParseNode();
+
+            ParseNode.ParseStatus status;
+            for (char c:string.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+            Assert.assertTrue(errorMessage, result.equals(expectedResult));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+
+    }
+
+    @Test
+    public void testTopSplitList()
+    {
+        String string = "(89 89\n90 89)";
+        String expectedResult = string;
+        TopParseNode node = new TopParseNode();
+        String errorMessage = "Failed to obtain proper parse state";
+        ParseNode.ParseStatus status, expectedStatus;
+        for (char c:string.toCharArray())
+        {
+            status = node.appendChar(c);
+
+        }
+        String result = node.getValue();
+        errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+        Assert.assertTrue(errorMessage, result.equals(expectedResult));
+    }
+
+    @Test
+    public void testComplexNestedSplitList()
+    {
+        String string = "(89 (x (y)))";
+        String expectedResult = string;
+        TopParseNode node = new TopParseNode();
+        String errorMessage = "Failed to obtain proper parse state";
+        ParseNode.ParseStatus status, expectedStatus;
+        for (char c:string.toCharArray())
+        {
+            status = node.appendChar(c);
+
+        }
+        String result = node.getValue();
+        errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+        Assert.assertTrue(errorMessage, result.equals(expectedResult));
+    }
+
+    @Test
+    public void testTopSplitListComplex()
+    {
+
+        String string = "(setq mark-display-map\n" +
+                "\t  (make-int-hashtable (list (list X-MARK-ID \"X\")\n" +
+                "\t  \t\t\t\t\t\t\t(list O-MARK-ID \"O\")\n" +
+                "\t  \t\t\t\t\t\t\t(list EMPTY-MARK-ID \" \"))))";
+        System.out.println("Input:\n" + string);
+        String expectedResult = string;
+        TopParseNode node = new TopParseNode();
+        String errorMessage = "Failed to obtain proper parse state";
+        try
+        {
+            ParseNode.ParseStatus status, expectedStatus;
+            for (char c:string.toCharArray())
+            {
+                status = node.appendChar(c);
+
+            }
+
+            String result = node.getValue();
+            errorMessage = "Failed to match inputs: Expected [" + expectedResult + "] found: [" + result + "]";
+
+            Assert.assertTrue(errorMessage, result.equals(expectedResult));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+
+    }
+
+
+    @Test
+    public void largeTest()
+    {
+        String largeFileName = "/com/evolved/automata/android/lisp/guibuilder/tic-tac-toe-game.lisp";
+        String errorMessage = "Failed to open large test file";
+        InputStreamReader reader = null;
+        InputStream istream = null;
+        try
+        {
+            TopParseNode topNode = new TopParseNode();
+            istream = this.getClass().getResourceAsStream(largeFileName);
+            reader = new InputStreamReader(istream, Charset.forName("UTF-8"));
+            StringBuilder input = new StringBuilder();
+            char currentChar;
+            int charValue;
+            long start = System.currentTimeMillis();
+            while ((charValue = reader.read()) != -1)
+            {
+                currentChar = (char)charValue;
+                input.appendCodePoint(charValue);
+                topNode.appendChar(currentChar);
+            }
+            long duration = System.currentTimeMillis() - start;
+            System.out.println("Took " + duration + " ms to process input.");
+
+            String result = topNode.getValue();
+            errorMessage = "Failed to match parsed result to input.  Result is: " + result;
+            Assert.assertTrue(errorMessage, result.equals(input.toString()));
+
+
+
+        }
+        catch (Exception e)
+        {
+
+            e.printStackTrace();
+        }
+        finally
+        {
+            if (reader != null)
+            {
+                try
+                {
+                    reader.close();
+                }
+                catch (Exception e2)
+                {
+                    e2.printStackTrace();
+                }
+            }
+        }
     }
 
     private String printNodeSelection(String baseInput, ParseNode selection)

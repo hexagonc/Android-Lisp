@@ -6,6 +6,8 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 public class ListNode extends CompositeNode {
 
+
+    String prefix = "";
     public ListNode(ParseNode parent)
     {
         super(parent, TYPE.LIST);
@@ -15,13 +17,13 @@ public class ListNode extends CompositeNode {
     @Override
     public boolean possibleFirstCharP(char firstChar)
     {
-        return firstChar == '(';
+        return firstChar == '(' || firstChar == '`' || firstChar == ',';
     }
 
     @Override
     public int getChildOffset()
     {
-        return 1;
+        return prefix.length();
     }
 
     @Override
@@ -30,12 +32,13 @@ public class ListNode extends CompositeNode {
         switch (mStatus)
         {
             case INITIAL:
-                return "";
+                return prefix;
             case BUILDING:
             case ERROR:
-                return "(" + super.getValue();
+
+                return prefix + super.getValue();
             case COMPLETE_ABSORB:
-                return "(" + super.getValue() + ")";
+                return prefix + super.getValue() + ")";
 
         }
 
@@ -49,7 +52,15 @@ public class ListNode extends CompositeNode {
         if (mStatus == ParseStatus.INITIAL)
         {
             if (value == '(')
+            {
+                prefix= prefix + '(';
                 return mStatus = ParseStatus.BUILDING;
+            }
+            else if ((value == ',' || value == '`' || value == '@'))
+            {
+                prefix+=value;
+                return mStatus;
+            }
             else
                 return mStatus = ParseStatus.ERROR;
         }
@@ -67,7 +78,7 @@ public class ListNode extends CompositeNode {
                             case FINISHED:
                             case BUILDING:
                                 updatedStatus = mLastChildLink.node.appendChar(value);
-                                if (updatedStatus == ParseStatus.COMPLETE_ABSORB)
+                                if (updatedStatus.consumedInputP())
                                     return mStatus;
                                 break;
                         }
