@@ -156,9 +156,9 @@ public class ListNode extends CompositeNode {
         }
         else
         {
-            if (mChildLinks != null) // there will never be both a non-null mChildLinks and mValue.length > 0
+            if (mFirstChildLink != null) // there will never be both a non-null mFirstChildLink and mValue.length > 0
             {
-                return mChildLinks.node.findNode(absPosition);
+                return mFirstChildLink.node.findNode(absPosition);
             }
             else
                 return this;

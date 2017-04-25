@@ -8,7 +8,7 @@ public class ErrorTextNode extends AtomNode {
     public ErrorTextNode(ParseNode parent)
     {
         super(parent, TYPE.INVALID_CHARS);
-
+        setContext(parent.getParseContext());
     }
 
 

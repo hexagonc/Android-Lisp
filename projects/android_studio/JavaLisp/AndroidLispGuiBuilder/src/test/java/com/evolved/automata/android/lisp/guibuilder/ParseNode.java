@@ -1,6 +1,5 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Stack;
 
@@ -55,9 +54,9 @@ public abstract class ParseNode {
 
     StringBuilder mValue;
 
-    Link mChildLinks = null;
+    Link mFirstChildLink = null;
     Link mLastChildLink = null;
-    HashSet<ParseNode> mPossibleNextChild;
+
 
     ParseNode mParent;
     Link myLink;
@@ -71,7 +70,7 @@ public abstract class ParseNode {
         mParent = parent;
         mValue = new StringBuilder();
         this.mType = type;
-        mChildLinks = null;
+        mFirstChildLink = null;
         mStatus = ParseStatus.INITIAL;
     }
 
@@ -187,7 +186,7 @@ public abstract class ParseNode {
     public int getLength()
     {
         int total = mValue.length();
-        Link child = mChildLinks;
+        Link child = mFirstChildLink;
         while (child != null)
         {
             total+=child.node.getLength();
@@ -219,8 +218,8 @@ public abstract class ParseNode {
 
     public ParseNode getFirstChild()
     {
-        if (mChildLinks != null)
-            return mChildLinks.node;
+        if (mFirstChildLink != null)
+            return mFirstChildLink.node;
         else
             return null;
     }
@@ -270,12 +269,12 @@ public abstract class ParseNode {
             nextSiblign.myLink.prevChild = null;
         }
 
-        if (mParent.mChildLinks == myLink)
+        if (mParent.mFirstChildLink == myLink)
         {
             if (myLink.nextChild != null)
-                mParent.mChildLinks = myLink.nextChild;
+                mParent.mFirstChildLink = myLink.nextChild;
             else
-                mParent.mChildLinks = null;
+                mParent.mFirstChildLink = null;
         }
 
         if (prevSibling != null)
@@ -289,14 +288,14 @@ public abstract class ParseNode {
     {
         node.mParent = this;
         Link child = new Link(node);
-        if (mChildLinks == null)
+        if (mFirstChildLink == null)
         {
-            mChildLinks = child;
+            mFirstChildLink = child;
 
         }
         else
         {
-            ParseNode prevSibling = mChildLinks.node;
+            ParseNode prevSibling = mFirstChildLink.node;
             while (prevSibling.myLink.nextChild != null)
             {
                 prevSibling = myLink.nextChild.node;
@@ -312,14 +311,14 @@ public abstract class ParseNode {
     {
         child.node.mParent = this;
 
-        if (mChildLinks == null)
+        if (mFirstChildLink == null)
         {
-            mChildLinks = child;
+            mFirstChildLink = child;
 
         }
         else
         {
-            ParseNode prevSibling = mChildLinks.node;
+            ParseNode prevSibling = mFirstChildLink.node;
             while (prevSibling.myLink.nextChild != null)
             {
                 prevSibling = myLink.nextChild.node;
@@ -385,7 +384,7 @@ public abstract class ParseNode {
             myLink.prevChild = null;
         }
 
-        mParent.mChildLinks = myLink;
+        mParent.mFirstChildLink = myLink;
 
         return out;
     }
@@ -421,9 +420,9 @@ public abstract class ParseNode {
         }
         else
         {
-            if (mChildLinks != null) // there will never be both a non-null mChildLinks and mValue.length > 0
+            if (mFirstChildLink != null) // there will never be both a non-null mFirstChildLink and mValue.length > 0
             {
-                return mChildLinks.node.findNode(absPosition);
+                return mFirstChildLink.node.findNode(absPosition);
             }
             else
                 return this;

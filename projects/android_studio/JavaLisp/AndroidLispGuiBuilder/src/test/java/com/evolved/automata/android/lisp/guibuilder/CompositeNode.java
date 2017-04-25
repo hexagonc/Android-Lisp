@@ -11,15 +11,12 @@ import java.util.LinkedList;
 
 public abstract class CompositeNode extends ParseNode {
 
-    public enum WORKING_CHILD_STATE
-    {
-        NONE, SINGLE
-    }
 
 
     int mNumWorkingChildren = 0;
     protected boolean acceptWorkingChildStatusP = false;
     static LinkedList<Class<? extends ParseNode>> mPossibleChildTypes;
+    HashSet<ParseNode> mPossibleNextChild = null;
 
     static {
         mPossibleChildTypes = new LinkedList<Class<? extends ParseNode>>();
@@ -38,6 +35,25 @@ public abstract class CompositeNode extends ParseNode {
 
     }
 
+    public CompositeNode reset()
+    {
+        mNumWorkingChildren = 0;
+        mFirstChildLink = null;
+        mLastChildLink = null;
+        if (mPossibleNextChild != null)
+            mPossibleNextChild.clear();
+        return this;
+    }
+
+    public ParseStatus processAll(String input)
+    {
+        reset();
+        for (char c:input.toCharArray())
+        {
+            appendChar(c);
+        }
+        return getStatus();
+    }
 
 
     protected HashSet<ParseNode> getPossibleChildren(char firstChar)
@@ -107,7 +123,7 @@ public abstract class CompositeNode extends ParseNode {
     public String getValue()
     {
         StringBuilder builder = new StringBuilder();
-        Link link = mChildLinks;
+        Link link = mFirstChildLink;
         ParseNode node;
         while (link != null)
         {
@@ -127,7 +143,7 @@ public abstract class CompositeNode extends ParseNode {
     public int getLength()
     {
         int total = 0;
-        Link child = mChildLinks;
+        Link child = mFirstChildLink;
         while (child != null)
         {
             total+=child.node.getLength();
@@ -140,7 +156,7 @@ public abstract class CompositeNode extends ParseNode {
     public LinkedList<ParseNode> getChildren()
     {
         LinkedList<ParseNode> nodes = new LinkedList<ParseNode>();
-        Link child = mChildLinks;
+        Link child = mFirstChildLink;
         while (child != null)
         {
             nodes.add(child.node);
@@ -152,7 +168,7 @@ public abstract class CompositeNode extends ParseNode {
     public LinkedList<ParseNode> getTokenChildren()
     {
         LinkedList<ParseNode> nodes = new LinkedList<ParseNode>();
-        Link child = mChildLinks;
+        Link child = mFirstChildLink;
         while (child != null)
         {
             if (child.node.getType() != TYPE.WHITE_SPACE)
@@ -182,7 +198,11 @@ public abstract class CompositeNode extends ParseNode {
                     switch (newPossible.size())
                     {
                         case 0:
-                            setStatus(returnStatus = ParseStatus.ERROR);
+                            // invalid character
+
+                            ErrorTextNode errorChild = new ErrorTextNode(this);
+                            errorChild.appendChar(value);
+                            appendChild(errorChild);
                             break;
                         case 1:
                             status = finalizePossibleChildren(value);
@@ -232,7 +252,10 @@ public abstract class CompositeNode extends ParseNode {
                     switch (newPossible.size())
                     {
                         case 0:
-                            return setStatus(ParseStatus.ERROR);
+                            ErrorTextNode errorChild = new ErrorTextNode(this);
+                            errorChild.appendChar(value);
+                            appendChild(errorChild);
+                            break;
                         case 1:
                             status = finalizePossibleChildren(value);
                             if (acceptWorkingChildStatusP)
@@ -266,14 +289,21 @@ public abstract class CompositeNode extends ParseNode {
         return returnStatus;
     }
 
-    private ParseStatus finalizePossibleChildren(char value)
+    protected ParseStatus finalizePossibleChildren(char value)
     {
         Link newLink = new Link(mPossibleNextChild.iterator().next());
 
+        appendChild(newLink);
+
+        return newLink.node.getStatus();
+    }
+
+    protected ParseNode appendChild(Link newLink)
+    {
         mPossibleNextChild = null;
         if (mLastChildLink == null)
         {
-            mChildLinks = mLastChildLink = newLink;
+            mFirstChildLink = mLastChildLink = newLink;
         }
         else
         {
@@ -282,7 +312,12 @@ public abstract class CompositeNode extends ParseNode {
             mLastChildLink = newLink;
         }
 
-        return newLink.node.getStatus();
+        return this;
+    }
+
+    protected ParseNode appendChild(ParseNode node)
+    {
+        return appendChild(new Link(node));
     }
 
 
