@@ -76,7 +76,17 @@ public abstract class ParseNode {
     }
 
 
+    protected ParseStatus setStatus(ParseStatus newStatus)
+    {
+        mStatus = newStatus;
+        return mStatus;
+    }
 
+
+    public ParseContext getParseContext()
+    {
+        return mContext;
+    }
 
     public ParseNode setContext(ParseContext context)
     {

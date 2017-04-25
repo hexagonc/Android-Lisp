@@ -9,7 +9,7 @@ public class TopParseNode extends CompositeNode {
     public TopParseNode()
     {
         super(null, TYPE.TOP);
-        acceptWorkingChildP = true;
+        acceptWorkingChildStatusP = true;
     }
 
     public boolean possibleFirstCharP(char firstChar)

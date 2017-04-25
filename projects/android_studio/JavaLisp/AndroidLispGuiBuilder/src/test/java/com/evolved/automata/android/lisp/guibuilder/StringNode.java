@@ -25,18 +25,19 @@ public class StringNode extends AtomNode {
         if (mStatus == ParseStatus.INITIAL && value == '\"')
         {
             mValue.append(value);
-            mStatus = ParseStatus.BUILDING;
+            setStatus(ParseStatus.BUILDING);
+
         }
         else if (mStatus == ParseStatus.BUILDING && !mPreviousDelimiterP && value == '\"')
         {
             mValue.append(value);
-            mStatus = ParseStatus.COMPLETE_ABSORB;
+            setStatus(ParseStatus.COMPLETE_ABSORB);
         }
         else if (mStatus == ParseStatus.BUILDING && !mPreviousDelimiterP && value == '\\')
         {
             mPreviousDelimiterP = true;
             mValue.append(value);
-            mStatus = ParseStatus.BUILDING;
+            setStatus(ParseStatus.BUILDING);
         }
         else if (mStatus == ParseStatus.BUILDING )
         {
@@ -45,7 +46,7 @@ public class StringNode extends AtomNode {
         }
         else
         {
-            mStatus = ParseStatus.ERROR;
+            setStatus(ParseStatus.ERROR);
         }
         return mStatus;
     }

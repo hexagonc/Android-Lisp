@@ -27,14 +27,14 @@ public class WhiteSpaceNode extends AtomNode {
         {
             mValue.append(value);
 
-            return mStatus = ParseStatus.FINISHED;
+            return setStatus(ParseStatus.FINISHED);
         }
         else
         {
             if (mStatus != ParseStatus.FINISHED)
-                return mStatus = ParseStatus.ERROR;
+                return setStatus(ParseStatus.ERROR);
             else
-                return mStatus = ParseStatus.COMPLETE_BOUNDARY;
+                return setStatus(ParseStatus.COMPLETE_BOUNDARY);
         }
     }
 

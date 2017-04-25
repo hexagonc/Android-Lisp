@@ -11,7 +11,7 @@ public class ListNode extends CompositeNode {
     public ListNode(ParseNode parent)
     {
         super(parent, TYPE.LIST);
-        acceptWorkingChildP = false;
+        acceptWorkingChildStatusP = false;
     }
 
     @Override
@@ -42,9 +42,10 @@ public class ListNode extends CompositeNode {
 
         }
 
-        assert false;
-        return null;
+        throw new IllegalStateException(mStatus + " is not a valid state for a List");
     }
+
+
 
     @Override
     public ParseStatus appendChar(char value)
@@ -54,7 +55,7 @@ public class ListNode extends CompositeNode {
             if (value == '(')
             {
                 prefix= prefix + '(';
-                return mStatus = ParseStatus.BUILDING;
+                return setStatus(ParseStatus.BUILDING);
             }
             else if ((value == ',' || value == '`' || value == '@'))
             {
@@ -62,7 +63,7 @@ public class ListNode extends CompositeNode {
                 return mStatus;
             }
             else
-                return mStatus = ParseStatus.ERROR;
+                return setStatus(ParseStatus.ERROR);
         }
         else if (mStatus == ParseStatus.BUILDING)
         {
@@ -90,19 +91,19 @@ public class ListNode extends CompositeNode {
                         // the right parenthesis
                 }
 
-                mStatus = ParseStatus.COMPLETE_ABSORB;
-                return mStatus;
+
+
+                return setStatus(ParseStatus.COMPLETE_ABSORB);
             }
             else
                 return super.appendChar(value);
         }
         else if (mStatus == ParseStatus.COMPLETE_ABSORB)
-        { // this shouldn't happen.  You wouldn't try to append to a list that is already complete
-            assert false;
+        {
             return ParseStatus.COMPLETE_BOUNDARY;
         }
         else
-            return ParseStatus.ERROR;
+            return setStatus(ParseStatus.ERROR);
 
     }
 
@@ -112,16 +113,16 @@ public class ListNode extends CompositeNode {
         switch (mStatus)
         {
             case INITIAL:
-                return 0;
+                return prefix.length();
             case BUILDING:
             case ERROR:
-                return 1 + super.getLength();
+                return prefix.length() + super.getLength();
             case COMPLETE_ABSORB:
-                return 2 + super.getLength();
+                return prefix.length() + super.getLength() + 1;
 
         }
-        assert false;
-        return 0;
+        // TODO: remove this after testing or replace with assert
+        throw new IllegalStateException(mStatus + " is not allowed.");
     }
 
     /**

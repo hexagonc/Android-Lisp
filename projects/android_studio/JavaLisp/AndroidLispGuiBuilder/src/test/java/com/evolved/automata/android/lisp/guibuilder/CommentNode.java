@@ -25,11 +25,12 @@ public class CommentNode extends AtomNode {
             if (value == ';')
             {
                 mValue.append(value);
-                mStatus = ParseStatus.FINISHED;
+                setStatus(ParseStatus.FINISHED);
+
             }
             else
             {
-                mStatus = ParseStatus.ERROR;
+                setStatus(ParseStatus.ERROR);
             }
 
         }
@@ -37,7 +38,8 @@ public class CommentNode extends AtomNode {
         {
             if (value == '\n')
             {
-                mStatus = ParseStatus.COMPLETE_ABSORB;
+                setStatus(ParseStatus.COMPLETE_ABSORB);
+
             }
             mValue.append(value);
         }

@@ -42,23 +42,24 @@ public class VarNameNode extends AtomNode {
             {
                 startsWithHyphenP = previousHyphenP = value == '-';
                 mValue.append(value);
-                mStatus = ParseStatus.FINISHED;
+                setStatus(ParseStatus.FINISHED);
             }
         }
         else if (mStatus == ParseStatus.FINISHED &&
                 isBoundaryCharacter(value))
         {
-            mStatus = ParseStatus.COMPLETE_BOUNDARY;
+            setStatus(ParseStatus.COMPLETE_BOUNDARY);
         }
         else if ( mStatus == ParseStatus.FINISHED && value == '\'')
         {
 
             mValue.append(value);
-            mStatus = ParseStatus.COMPLETE_ABSORB;
+            setStatus(ParseStatus.COMPLETE_ABSORB);
+
         }
         else if (mStatus == ParseStatus.FINISHED && (Character.isDigit(value) || value == '.') && startsWithHyphenP && previousHyphenP)
         {
-            mStatus = ParseStatus.ERROR;
+            setStatus(ParseStatus.ERROR);
         }
         else if (mStatus == ParseStatus.FINISHED &&
                 value != '\"' &&
@@ -66,11 +67,11 @@ public class VarNameNode extends AtomNode {
         {
             previousHyphenP = false;
             mValue.append(value);
-            mStatus = ParseStatus.FINISHED;
+            setStatus(ParseStatus.FINISHED);
         }
         else
         {
-            mStatus = ParseStatus.ERROR;
+            setStatus(ParseStatus.ERROR);
         }
 
         return mStatus;

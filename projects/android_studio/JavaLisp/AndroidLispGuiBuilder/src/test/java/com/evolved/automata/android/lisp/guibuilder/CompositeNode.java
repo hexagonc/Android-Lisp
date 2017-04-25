@@ -18,7 +18,7 @@ public abstract class CompositeNode extends ParseNode {
 
 
     int mNumWorkingChildren = 0;
-    protected boolean acceptWorkingChildP = false;
+    protected boolean acceptWorkingChildStatusP = false;
     static LinkedList<Class<? extends ParseNode>> mPossibleChildTypes;
 
     static {
@@ -54,6 +54,7 @@ public abstract class CompositeNode extends ParseNode {
                 Constructor<? extends ParseNode> constructor = nodeClass.getConstructor(ParseNode.class);
                 node = constructor.newInstance(this);
                 status = node.appendChar(firstChar);
+                node.setContext(getParseContext());
                 if (status.isProgressP() || (node.getType() == TYPE.LIST && status == ParseStatus.INITIAL))
                 {
                     mNumWorkingChildren++;
@@ -163,7 +164,7 @@ public abstract class CompositeNode extends ParseNode {
     public ParseStatus appendChar(char value)
     {
 
-        ParseStatus returnStatus = mStatus, status;
+        ParseStatus returnStatus = getStatus(), status;
         HashSet<ParseNode> newPossible;
         boolean continueProcessingP = false;
 
@@ -178,7 +179,7 @@ public abstract class CompositeNode extends ParseNode {
                     switch (newPossible.size())
                     {
                         case 0:
-                            returnStatus = mStatus = ParseStatus.ERROR;
+                            setStatus(returnStatus = ParseStatus.ERROR);
                             break;
                         case 1:
                             status = finalizePossibleChildren(value);
@@ -189,27 +190,30 @@ public abstract class CompositeNode extends ParseNode {
                                     break;
                                 case ERROR:
                                     returnStatus = status;
-                                    if (acceptWorkingChildP)
-                                        mStatus = returnStatus;
+                                    if (acceptWorkingChildStatusP)
+                                        setStatus(returnStatus);
+
                             }
-                            if (acceptWorkingChildP)
-                                mStatus = returnStatus = status;
+                            if (acceptWorkingChildStatusP)
+                                setStatus(returnStatus = status);
+
                             break;
                         default:
-                            if (acceptWorkingChildP)
-                                mStatus = returnStatus = ParseStatus.BUILDING;
+                            if (acceptWorkingChildStatusP)
+                                setStatus(returnStatus = ParseStatus.BUILDING);
+
                     }
                     break;
                 case 1: // process value as continuation of existing token or child
                     status = mLastChildLink.node.appendChar(value);
-                    if (acceptWorkingChildP)
-                        returnStatus = mStatus = status;
+                    if (acceptWorkingChildStatusP)
+                        setStatus(returnStatus = status);
                     switch (status)
                     {
                         case COMPLETE_ABSORB:
                             mNumWorkingChildren = 0;
-                            if (acceptWorkingChildP) // override in this case
-                                returnStatus = mStatus = ParseStatus.FINISHED;
+                            if (acceptWorkingChildStatusP) // override in this case since, in general, composite codes are never completed (can always append another child)
+                                setStatus(returnStatus = ParseStatus.FINISHED);
                             return returnStatus;
                         case COMPLETE_BOUNDARY:
                         case ERROR:
@@ -225,11 +229,12 @@ public abstract class CompositeNode extends ParseNode {
                     switch (newPossible.size())
                     {
                         case 0:
-                            return mStatus = ParseStatus.ERROR;
+                            return setStatus(ParseStatus.ERROR);
                         case 1:
                             status = finalizePossibleChildren(value);
-                            if (acceptWorkingChildP)
-                                returnStatus = mStatus = status;
+                            if (acceptWorkingChildStatusP)
+                                setStatus(returnStatus = status);
+
                             switch (status)
                             {
                                 case COMPLETE_ABSORB:
@@ -244,8 +249,9 @@ public abstract class CompositeNode extends ParseNode {
                             }
                             break;
                         default:
-                            if (acceptWorkingChildP)
-                                mStatus = returnStatus = ParseStatus.BUILDING;
+                            if (acceptWorkingChildStatusP)
+                                setStatus(returnStatus = ParseStatus.BUILDING);
+
 
                     }
 
@@ -276,28 +282,5 @@ public abstract class CompositeNode extends ParseNode {
         return newLink.node.getStatus();
     }
 
-
-    /*
-    protected ParseStatus appendUnconsummedChar(char value)
-    {
-        mPossibleNextChild = getPossibleChildren(value);
-
-        if (mPossibleNextChild.size() == 1)
-        {
-
-            return finalizePossibleChildren(value, false);
-
-        }else if (mPossibleNextChild.size() > 1)
-        {
-            mStatus = ParseStatus.BUILDING;
-        }
-        else
-        {
-            mPossibleNextChild = null;
-            mStatus = ParseStatus.ERROR;
-        }
-        return mStatus;
-    }
-    */
 
 }

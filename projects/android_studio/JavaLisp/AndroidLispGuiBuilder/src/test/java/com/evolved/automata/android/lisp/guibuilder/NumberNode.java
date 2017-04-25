@@ -35,31 +35,32 @@ public class NumberNode extends AtomNode {
         if (value == '-' && mStatus == ParseStatus.INITIAL)
         {
             mHasMinusSignP = true;
-            mStatus = ParseStatus.BUILDING;
+            setStatus(ParseStatus.BUILDING);
             mValue.append('-');
         }
         else if (Character.isDigit(value))
         {
             mValue.append(value);
-            mStatus = ParseStatus.FINISHED;
+            setStatus(ParseStatus.FINISHED);
+
         }
         else if (!mHasDecimalP && value == '.')
         {
             mValue.append(value);
             mHasDecimalP = true;
-            mStatus = ParseStatus.BUILDING;
+            setStatus(ParseStatus.BUILDING);
         }
         else if (Character.isWhitespace(value) || value == ')')
         {
             if (mStatus == ParseStatus.FINISHED)
             {
-                mStatus = ParseStatus.COMPLETE_BOUNDARY;
+                setStatus(ParseStatus.COMPLETE_BOUNDARY);
             }
             else
-                mStatus = ParseStatus.ERROR;
+                setStatus(ParseStatus.ERROR);;
         }
         else
-            mStatus = ParseStatus.ERROR;
+            setStatus(ParseStatus.ERROR);
 
         return mStatus;
     }

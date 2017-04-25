@@ -10,7 +10,7 @@ import java.util.LinkedList;
  * Created by Evolved8 on 4/23/17.
  */
 
-public class ParseContext {
+public interface ParseContext {
 
 
 
@@ -24,23 +24,6 @@ public class ParseContext {
         public void onAppend(StringBuilder currentFunctionName, char nextCharacter);
     }
 
-    HashMap<String, Integer> mVariableReferences;
-    HashMap<String, Integer> mFunctionReferences;
-    HashMap<String, HashSet<ParseNode>> mIncompleteQuoteReferences;
-    HashMap<String, HashSet<ParseNode>> mIncompleteLeftParenReferences;
-    HashMap<String, HashSet<ParseNode>> mIncompleteRightParenReferences;
-
-    OnFunctionAppendListener mFunctionAppendListener;
-    OnVariableAppendListener mVariableAppendListener;
-
-    public ParseContext()
-    {
-        mFunctionReferences = new HashMap<String, Integer>();
-        mVariableReferences = new HashMap<String, Integer>();
-        mIncompleteQuoteReferences = new HashMap<String, HashSet<ParseNode>>();
-        mIncompleteLeftParenReferences = new HashMap<String, HashSet<ParseNode>>();
-        mIncompleteRightParenReferences = new HashMap<String, HashSet<ParseNode>>();
-    }
 
 
     /**
@@ -50,12 +33,8 @@ public class ParseContext {
      * @param nextCharacter
      * @return
      */
-    public ParseContext onVariableCharacterAppend(StringBuilder wholeName, char nextCharacter)
-    {
-        if (mVariableAppendListener != null)
-            mVariableAppendListener.onAppend(wholeName, nextCharacter);
-        return this;
-    }
+    public ParseContext onVariableCharacterAppend(StringBuilder wholeName, char nextCharacter);
+
 
     /**
      * This is mostly to facilitate suggested completions.  This is called by a
@@ -64,40 +43,35 @@ public class ParseContext {
      * @param nextCharacter
      * @return
      */
-    public ParseContext onFunctionCharacterAppend(StringBuilder wholeName, char nextCharacter)
-    {
-        if (mFunctionAppendListener != null)
-            mFunctionAppendListener.onAppend(wholeName, nextCharacter);
-        return this;
-    }
+    public ParseContext onFunctionCharacterAppend(StringBuilder wholeName, char nextCharacter);
 
     /**
      * Called by the Parse
      * @param name
      * @return
      */
-    public ParseContext onVariableNameComplete(String name)
-    {
-        Integer priorCount = mVariableReferences.get(name);
-        if (priorCount == null)
-        {
-            priorCount = Integer.valueOf(0);
+    public ParseContext onVariableNameComplete(String name);
 
-        }
-        mVariableReferences.put(name, Integer.valueOf(priorCount + 1));
-        return this;
-    }
 
-    public ParseContext onFunctionNameComplete(String name)
-    {
-        Integer priorCount = mFunctionReferences.get(name);
-        if (priorCount == null)
-        {
-            priorCount = Integer.valueOf(0);
+    public ParseContext onFunctionNameComplete(String name);
 
-        }
-        mFunctionReferences.put(name, Integer.valueOf(priorCount + 1));
-        return this;
-    }
+    ParseContext setErrorNode(ParseNode errorNode);
+
+    HashSet<ParseNode> getErrorNodes();
+
+    boolean hasErrors();
+
+
+
+    HashSet<ParseNode> getIncompleteNodes();
+
+    ParseContext addIncompleteNode(ParseNode node);
+
+    boolean hasIncompleteNodes();
+
+
+
+    ParseContext removeIncompleteNode(ParseNode node);
+
 
 }
