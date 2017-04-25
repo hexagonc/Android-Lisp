@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.BufferedReader;
@@ -839,9 +840,6 @@ public class NodeParsingTests {
             String result = topNode.getValue();
             errorMessage = "Failed to match parsed result to input.  Result is: " + result;
             Assert.assertTrue(errorMessage, result.equals(input.toString()));
-
-
-
         }
         catch (Exception e)
         {
@@ -871,5 +869,60 @@ public class NodeParsingTests {
         int startIndex = selection.getStartIndex(), length = selection.getLength();
         String startDelimited = insertText(baseInput, "|", startIndex);
         return insertText(startDelimited, "|", startIndex + length + 1);
+    }
+
+    @Ignore
+    @Test
+    public void largeTestWithErrors()
+    {
+        String largeFileName = "/com/evolved/automata/android/lisp/guibuilder/tic-tac-toe-game.lisp";
+        String errorMessage = "Failed to open large test file";
+        InputStreamReader reader = null;
+        InputStream istream = null;
+        try
+        {
+            TopParseNode topNode = new TopParseNode();
+            istream = this.getClass().getResourceAsStream(largeFileName);
+            reader = new InputStreamReader(istream, Charset.forName("UTF-8"));
+            StringBuilder input = new StringBuilder();
+            int charValue;
+
+            while ((charValue = reader.read()) != -1)
+            {
+
+                input.appendCodePoint(charValue);
+            }
+
+            long start = System.currentTimeMillis();
+            for (char c: input.toString().toCharArray())
+            {
+                topNode.appendChar(c);
+            }
+            long duration = System.currentTimeMillis() - start;
+            System.out.println("Took " + duration + " ms to process input.");
+
+            String result = topNode.getValue();
+            errorMessage = "Failed to match parsed result to input.  Result is: " + result;
+            Assert.assertTrue(errorMessage, result.equals(input.toString()));
+        }
+        catch (Exception e)
+        {
+
+            e.printStackTrace();
+        }
+        finally
+        {
+            if (reader != null)
+            {
+                try
+                {
+                    reader.close();
+                }
+                catch (Exception e2)
+                {
+                    e2.printStackTrace();
+                }
+            }
+        }
     }
 }

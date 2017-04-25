@@ -57,11 +57,12 @@ public interface ParseContext {
 
     ParseContext setErrorNode(ParseNode errorNode);
 
+    ParseContext removeErrorNode(ParseNode errorNode);
+
+
     HashSet<ParseNode> getErrorNodes();
 
     boolean hasErrors();
-
-
 
     HashSet<ParseNode> getIncompleteNodes();
 

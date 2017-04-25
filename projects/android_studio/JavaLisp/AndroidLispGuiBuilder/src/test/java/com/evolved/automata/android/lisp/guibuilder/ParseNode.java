@@ -76,11 +76,7 @@ public abstract class ParseNode {
     }
 
 
-    protected ParseStatus setStatus(ParseStatus newStatus)
-    {
-        mStatus = newStatus;
-        return mStatus;
-    }
+
 
 
     public ParseContext getParseContext()
@@ -101,6 +97,37 @@ public abstract class ParseNode {
 
     public ParseStatus getStatus()
     {
+        return mStatus;
+    }
+
+    protected ParseStatus setStatus(ParseStatus newStatus)
+    {
+        if (newStatus == mStatus)
+            return mStatus;
+
+        mStatus = newStatus;
+
+        if (mContext != null)
+        {
+            switch (mStatus)
+            {
+                case ERROR:
+                    mContext.setErrorNode(this);
+                    break;
+                case COMPLETE_ABSORB:
+                case COMPLETE_BOUNDARY:
+                case FINISHED:
+                    mContext.removeIncompleteNode(this);
+                    mContext.removeErrorNode(this);
+                    break;
+                case INITIAL:
+                case BUILDING:
+                    mContext.removeErrorNode(this);
+                    mContext.addIncompleteNode(this);
+                    break;
+
+            }
+        }
         return mStatus;
     }
 

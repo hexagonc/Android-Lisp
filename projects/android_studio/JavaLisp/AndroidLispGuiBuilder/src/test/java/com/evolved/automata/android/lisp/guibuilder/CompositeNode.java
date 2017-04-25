@@ -53,14 +53,17 @@ public abstract class CompositeNode extends ParseNode {
             {
                 Constructor<? extends ParseNode> constructor = nodeClass.getConstructor(ParseNode.class);
                 node = constructor.newInstance(this);
-                status = node.appendChar(firstChar);
-                node.setContext(getParseContext());
-                if (status.isProgressP() || (node.getType() == TYPE.LIST && status == ParseStatus.INITIAL))
-                {
-                    mNumWorkingChildren++;
-                    possible.add(node);
-                }
 
+                if (node.possibleFirstCharP(firstChar))
+                {
+                    status = node.appendChar(firstChar);
+                    node.setContext(getParseContext());
+                    if (status.isProgressP() || (node.getType() == TYPE.LIST && status == ParseStatus.INITIAL))
+                    {
+                        mNumWorkingChildren++;
+                        possible.add(node);
+                    }
+                }
             }
             return possible;
         }

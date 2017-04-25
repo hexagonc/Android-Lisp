@@ -87,17 +87,20 @@ public class LispCodeEditorParseContext implements  ParseContext{
     }
 
 
+    @Override
     public ParseContext setErrorNode(ParseNode errorNode)
     {
         mErrorNodes.add(errorNode);
         return this;
     }
 
+    @Override
     public ParseContext removeErrorNode(ParseNode errorNode)
     {
         mErrorNodes.remove(errorNode);
         return this;
     }
+
     @Override
     public HashSet<ParseNode> getIncompleteNodes()
     {
@@ -125,11 +128,13 @@ public class LispCodeEditorParseContext implements  ParseContext{
     }
 
 
+    @Override
     public HashSet<ParseNode> getErrorNodes()
     {
         return mErrorNodes;
     }
 
+    @Override
     public boolean hasErrors()
     {
         return mErrorNodes.size() > 0;
