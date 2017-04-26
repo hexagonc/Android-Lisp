@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.lisp.editor;
 
 /**
  * Created by Evolved8 on 4/23/17.

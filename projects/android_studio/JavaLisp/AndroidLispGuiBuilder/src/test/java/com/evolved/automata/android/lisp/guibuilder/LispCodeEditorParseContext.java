@@ -1,5 +1,8 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import com.evolved.automata.lisp.editor.ParseContext;
+import com.evolved.automata.lisp.editor.ParseNode;
+
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -7,7 +10,7 @@ import java.util.HashSet;
  * Created by Evolved8 on 4/25/17.
  */
 
-public class LispCodeEditorParseContext implements  ParseContext{
+public class LispCodeEditorParseContext implements ParseContext {
 
 
     HashMap<String, Integer> mVariableReferences;

@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.lisp.editor;
 
 import org.junit.Assert;
 import org.junit.Test;
