@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+    <com.evolved.automata.android.lisp.guibuilder.v2.LispEditText
+        android:layout_width="match_parent"
+        android:layout_height="0px"
+        android:layout_weight = "1"
+        android:id = "@+id/v2_edit_main_code"
+        style = "@style/v2_code_editor"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button android:id = "@+id/v2_button_up"
+                android:text = "UP"
+                android:layout_width = "wrap_content"
+                android:layout_height = "wrap_content"/>
+        <Button android:id = "@+id/v2_but_down"
+                android:text = "DOWN"
+                android:layout_width = "wrap_content"
+                android:layout_height = "wrap_content"
+                />
+        <Button android:id = "@+id/v2_but_prev"
+                android:text = "&lt;&lt;"
+                android:layout_width = "wrap_content"
+                android:layout_height = "wrap_content"/>
+        <Button android:id = "@+id/v2_but_next"
+                android:text = "&gt;&gt;"
+                android:layout_width = "wrap_content"
+                android:layout_height = "wrap_content"/>
+        <Button android:id = "@+id/v2_but_eval"
+                android:text = "EVAL"
+                android:layout_width = "wrap_content"
+                android:layout_height = "wrap_content"/>
+    </LinearLayout>
+    <TextView
+        android:id = "@+id/v2_txt_result"
+        android:text = ">"
+        android:layout_width="match_parent"
+        android:layout_height= "100dp"
+        style = "@style/v2_result_window"
+        />
+
+
+
+</LinearLayout>

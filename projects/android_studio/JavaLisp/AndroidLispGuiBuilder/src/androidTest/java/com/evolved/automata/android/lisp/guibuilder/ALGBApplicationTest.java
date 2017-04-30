@@ -17,6 +17,7 @@ import android.support.test.runner.AndroidJUnit4;
 
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.editor.TopParseNode;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -24,6 +25,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -40,17 +44,6 @@ public class ALGBApplicationTest {
 
 
 
-    /*
-    public ActivityTestRule<MainActivity> mActivityRule = new ActivityTestRule<MainActivity>(MainActivity.class)
-    {
-        @Override
-        protected void afterActivityFinished()
-        {
-            super.afterActivityFinished();
-            System.out.println("Finished<><<><><<><><<<");
-        }
-    };
-    */
 
 
     @UiThreadTest
@@ -234,6 +227,7 @@ public class ALGBApplicationTest {
     }
 
 
+    @Ignore("Fix this")
     @UiThreadTest
     @Test
     public void testApplicationAndActivity()
@@ -382,6 +376,100 @@ public class ALGBApplicationTest {
         {
             e.printStackTrace();
             Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+
+    @Test
+    public void debugMainActivity()
+    {
+        String errorMessage = "Failed to start activity";
+        final CountDownLatch latch = new CountDownLatch(1);
+        try
+        {
+            final Instrumentation instrument = InstrumentationRegistry.getInstrumentation();
+            Context context = instrument.getTargetContext();
+
+            Intent intent = new Intent();
+            intent.setAction(Intent.ACTION_MAIN);
+            intent.setClass(context, ALGBBaseActivity.class);
+            ComponentName cname = new ComponentName("com.evolved.automata.android.lisp.guibuilder", "com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity");
+            intent.setComponent(cname);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+
+            final ALGBBaseActivity base = (ALGBBaseActivity)instrument.startActivitySync(intent);
+
+            Runnable shutdownRunnable = new Runnable()
+            {
+                public void run()
+                {
+                    latch.countDown();
+                }
+            };
+
+            base.setOnTestCompleteHandler(shutdownRunnable);
+
+            latch.await();
+
+
+        }
+        catch (Throwable e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void largeTest()
+    {
+        String largeFileName = "/com/evolved/automata/android/lisp/guibuilder/generated.lisp";
+        String errorMessage = "Failed to open large test file";
+        InputStreamReader reader = null;
+        InputStream istream = null;
+        try
+        {
+            TopParseNode topNode = new TopParseNode();
+            istream = this.getClass().getResourceAsStream(largeFileName);
+            reader = new InputStreamReader(istream, Charset.forName("UTF-8"));
+            StringBuilder input = new StringBuilder();
+            char currentChar;
+            int charValue;
+            long start = System.currentTimeMillis();
+            while ((charValue = reader.read()) != -1)
+            {
+                currentChar = (char)charValue;
+                input.appendCodePoint(charValue);
+                topNode.appendChar(currentChar);
+            }
+            long duration = System.currentTimeMillis() - start;
+            System.out.println("Took " + duration + " ms to process input.");
+
+            String result = topNode.getValue();
+            errorMessage = "Failed to match parsed result to input.  Result is: " + result;
+            Assert.assertTrue(errorMessage, result.equals(input.toString()));
+        }
+        catch (Exception e)
+        {
+
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+        finally
+        {
+            if (reader != null)
+            {
+                try
+                {
+                    reader.close();
+                }
+                catch (Exception e2)
+                {
+                    e2.printStackTrace();
+                }
+            }
         }
     }
 
