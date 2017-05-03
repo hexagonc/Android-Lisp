@@ -1,6 +1,7 @@
 package com.evolved.automata.lisp;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class StringHashtableValue extends Value
 {
@@ -48,4 +49,15 @@ public class StringHashtableValue extends Value
 		return new StringHashtableValue(_map);
 	}
 
+	@Override
+	public boolean isSerializable()
+	{
+
+		for (Map.Entry<String, Value> pair: _map.entrySet())
+		{
+			if (!pair.getValue().isSerializable())
+				return false;
+		}
+		return true;
+	}
 }

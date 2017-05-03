@@ -71,6 +71,20 @@ public class NLispTools
 			}
 		};
 	}
+
+	public static SimpleFunctionTemplate getEnvironmentMap()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+				return new StringHashtableValue(env.getVariableMap());
+			}
+		};
+	}
+
 	
 	public static Environment addDefaultFunctionsAddMacros(Environment env) throws InstantiationException, IllegalAccessException
 	{
@@ -4008,6 +4022,10 @@ public class NLispTools
 		env.mapFunction("asin", asin());
 		env.mapFunction("acos", acos());
 		env.mapFunction("atan", atan());
+
+
+        env.mapFunction("get-env-map", getEnvironmentMap());
+
 		
 		return env;
 	}

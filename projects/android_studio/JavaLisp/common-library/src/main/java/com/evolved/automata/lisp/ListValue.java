@@ -1,6 +1,7 @@
 package com.evolved.automata.lisp;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 
 public class ListValue extends Value
@@ -124,6 +125,17 @@ public class ListValue extends Value
 			l[i] = _values[i];
 		return copyStatus(new ListValue(l));
 	}
-	
+
+	@Override
+	public boolean isSerializable()
+	{
+
+		for (Value v:_values)
+		{
+			if (!v.isSerializable())
+				return false;
+		}
+		return true;
+	}
 	
 }

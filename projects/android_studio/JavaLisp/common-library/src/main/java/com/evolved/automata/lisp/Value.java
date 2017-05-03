@@ -1,6 +1,7 @@
 package com.evolved.automata.lisp;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public abstract class Value {
 	public static enum Type
@@ -32,6 +33,23 @@ public abstract class Value {
 	{
 		return null;
 	}
+
+    public boolean isSerializable()
+    {
+        switch (_type)
+        {
+            case STRING:
+            case INTEGER:
+            case FLOAT:
+            case NULL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+
+
 	
 	public Value setMetaData(Value data)
 	{
@@ -389,4 +407,6 @@ public abstract class Value {
 		s.append(value);
 		return s.toString();
 	}
+
+
 }

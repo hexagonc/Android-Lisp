@@ -53,5 +53,12 @@ public class LambdaValue extends Value {
 		else
 			return addQualifiers(((Lambda)_lambda).serializeAsObject());
 	}
+
+
+	@Override
+	public boolean isSerializable()
+	{
+		return true;
+	}
 	
 }

@@ -202,7 +202,7 @@ public class Lambda extends FunctionTemplate {
 		Value check;
 		boolean first = true;
 		for (String name: _innerEnvironment._valueMap.keySet()){
-			if (name.equals("this"))
+			if (name.equals("this") || _innerEnvironment._valueMap.get(name).isSerializable())
 				continue;
 			if (first) {
 				binding.append(name);

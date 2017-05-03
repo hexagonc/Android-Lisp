@@ -598,6 +598,51 @@ public class Environment
 		}
 		return null;
 	}
+
+
+	public boolean hasSerializableEnvironment()
+    {
+        for (Map.Entry<String, Value> pair: _valueMap.entrySet())
+        {
+            if (!Lambda._THIS_VAR_NAME.equals(pair.getKey()))
+            {
+                if (!pair.getValue().isSerializable())
+                    return false;
+            }
+
+        }
+        return true;
+    }
+
+	public HashMap<String, Value> getSerializableState()
+	{
+        HashMap<String, Value> serializableValues = new HashMap<String, Value>();
+        for (Map.Entry<String, Value> pair: _valueMap.entrySet())
+        {
+            if (pair.getValue().isSerializable())
+                serializableValues.put(pair.getKey(), pair.getValue());
+        }
+        return serializableValues;
+
+	}
+
+    public HashMap<String, Value> getVariableMap()
+    {
+        HashMap<String, Value> map = new HashMap<String, Value>();
+        for (Map.Entry<String, Value> pair: _valueMap.entrySet())
+        {
+            map.put(pair.getKey(), pair.getValue());
+        }
+        return map;
+
+    }
+
+	public Environment setVariableValues(HashMap<String, Value> newMap)
+    {
+        _valueMap.clear();
+        _valueMap.putAll(newMap);
+        return this;
+    }
 	
 	
 }
