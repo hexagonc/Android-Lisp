@@ -16,6 +16,7 @@ import android.support.test.rule.UiThreadTestRule;
 import android.support.test.runner.AndroidJUnit4;
 
 import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.TopParseNode;
 
@@ -60,10 +61,10 @@ public class ALGBApplicationTest {
             errorMessage = "Failed to successfully call application onCreate";
 
             instrumentation.callApplicationOnCreate(application);
-            GlobalInterface global = application.getGlobalData();
-            errorMessage = "Failed to get Environment";
-            Environment topEnvironment = global.getEnvironment();
 
+            errorMessage = "Failed to get Environment";
+            Environment topEnvironment = new Environment();
+            NLispTools.addDefaultFunctionsAddMacros(topEnvironment);
             Value result = topEnvironment.evaluate("(+ 12 12)",false);
             Assert.assertTrue("Failed to evaluate result: ", result!=null && result.toString() != null);
             System.out.println(result.toString());

@@ -643,6 +643,62 @@ public class Environment
         _valueMap.putAll(newMap);
         return this;
     }
-	
+
+    public Value simpleEvaluateFunction(String name, Object... args)
+    {
+        Value[] largs = new Value[args.length];
+        for (int i = 0; i <  args.length;i++)
+        {
+            largs[i] = wrapSimpleValue(args[i]);
+        }
+        return evaluateFunction(name, largs);
+    }
+
+    public Value evaluateFunction(String name, Value[] args)
+    {
+
+        try
+        {
+            FunctionTemplate function = getFunction(name);
+            function.setActualParameters(args);
+            return function.evaluate(this, false);
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Value wrapSimpleValue(Object value)
+    {
+        if (value instanceof  Value)
+            return (Value)value;
+        else if (value instanceof String)
+        {
+            return NLispTools.makeValue((String)value);
+        }
+        else if (value instanceof  Integer)
+        {
+            Integer actual = (Integer)value;
+            return NLispTools.makeValue(actual.intValue());
+        }
+        else if (value instanceof  Long)
+        {
+            Long actual = (Long)value;
+            return NLispTools.makeValue(actual.longValue());
+        }
+        else if (value instanceof  Number)
+        {
+            Number actual = (Number)value;
+            return NLispTools.makeValue(actual.doubleValue());
+        }
+        else if (value instanceof  Boolean)
+        {
+            Boolean actual = (Boolean)value;
+            return NLispTools.makeValue(actual.booleanValue());
+        }
+        else
+            throw new IllegalArgumentException("Only works with simple primitives");
+    }
 	
 }
