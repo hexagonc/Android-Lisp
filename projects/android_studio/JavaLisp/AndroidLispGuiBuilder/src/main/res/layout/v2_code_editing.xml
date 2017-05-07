@@ -61,14 +61,6 @@
                      android:background="@drawable/v2_code_editor_toolbar_button_background"
                      android:src="@drawable/ic_skip_next_black_24dp"/>
     </LinearLayout>
-    <TextView
-        android:id = "@+id/v2_txt_result"
-        android:text = ">"
-        android:layout_width="match_parent"
-        android:layout_height= "@dimen/v2_result_pane_height"
-        style = "@style/v2_result_window"
-        />
-
 
 
 </LinearLayout>

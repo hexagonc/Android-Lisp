@@ -19,6 +19,11 @@ public class ALGBBaseActivity extends Activity {
 
     Runnable mOnTestComplete = null;
 
+    Page mTestPage;
+    ALGB mApplication;
+    Workspace mCurrentWorkspace;
+
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState)
     {
@@ -27,12 +32,28 @@ public class ALGBBaseActivity extends Activity {
 
         FragmentManager manager = getFragmentManager();
         FragmentTransaction ft = manager.beginTransaction();
-        CodeEditorFragment cef = new CodeEditorFragment();
+        CodePageFragment cef = new CodePageFragment();
         ft.add(R.id.v2_top, cef);
         ft.commit();
 
         ActionBar bar = getActionBar();
         bar.show();
+
+        try
+        {
+            mApplication = new ALGB(getApplicationContext());
+            mCurrentWorkspace = mApplication.getCurrentWorkspace();
+            mTestPage = mCurrentWorkspace.getCurrentPage();
+            if (mTestPage instanceof CodePage)
+            {
+                cef.setCodePage((CodePage) mTestPage);
+            }
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e);
+        }
+
     }
 
     public void setOnTestCompleteHandler(Runnable r)

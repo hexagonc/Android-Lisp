@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -11,6 +12,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
+import com.evolved.automata.State;
 import com.evolved.automata.android.lisp.guibuilder.v2.LispCodeEditorParseContext;
 import com.evolved.automata.android.lisp.guibuilder.v2.LispEditText;
 import com.evolved.automata.lisp.editor.ParseNode;
@@ -20,10 +22,17 @@ import com.evolved.automata.lisp.editor.WordCompletor;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.util.HashSet;
 
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Consumer;
 import io.reactivex.subjects.PublishSubject;
 import io.reactivex.subjects.Subject;
 
@@ -33,23 +42,46 @@ import io.reactivex.subjects.Subject;
 
 public class CodeEditorFragment extends Fragment {
 
-    public interface Controller {
 
+    public static final String NOT_PRESENT_EXCEPTION_MESSAGE = "code editor not present";
+
+    public enum CHANGE_TYPE
+    {
+        CURSOR, TEXT, SELECTION, READONLY
     }
 
-
-    public static class EditorState
+    public static class StateChange
     {
         public int _cursorPos;
         public String _text;
         public ParseNode _selection;
+        public boolean _readOnlyModeP;
+
+        HashSet<CHANGE_TYPE> _changeType = new HashSet<CHANGE_TYPE>();
+
+
     }
 
-    PublishSubject<EditorState> mStateObserver;
+    public interface EditorController
+    {
+        Disposable setStateObserver(Observer<StateChange> observer);
+        String getText();
+        Disposable setText(String text, int cursor, Observer<StateChange> observer);
+        Disposable enableReadOnlyMode(Observer<StateChange> observer);
+        Disposable disableReadOnlyMode(Observer<StateChange> observer);
+        int getCursorPosition();
+        ParseNode getSelection();
+        boolean isReadOnlyMode();
+
+    }
 
 
+    PublishSubject<StateChange> mStateObserver;
+    Observable<StateChange> mExternalObservable;
 
-    EditorState mCurrentState;
+
+    boolean isPresentP = false;
+    StateChange mLastStateChange;
 
     WordCompletor mCodeCompletor;
     LispCodeEditorParseContext mCodeEditorParseContext;
@@ -66,6 +98,8 @@ public class CodeEditorFragment extends Fragment {
 
     LispEditText.ControlInterface mController;
 
+
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState)
     {
@@ -74,11 +108,10 @@ public class CodeEditorFragment extends Fragment {
 
         mCodeEditorParseContext = new LispCodeEditorParseContext();
 
-        mCurrentState = new EditorState();
+        mLastStateChange = new StateChange();
 
         mStateObserver = PublishSubject.create();
-
-
+        mExternalObservable = mStateObserver.observeOn(AndroidSchedulers.mainThread());
     }
 
     @Nullable
@@ -167,73 +200,333 @@ public class CodeEditorFragment extends Fragment {
             @Override
             public void onCursorChange(int cursorPos)
             {
-                Log.d("<><<><>><><>", "New cursor: " + cursorPos);
+                mLastStateChange._cursorPos = cursorPos;
+                mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
+                {
+                    {
+                        add(CHANGE_TYPE.CURSOR);
+                    }
+                };
 
+                mStateObserver.onNext(mLastStateChange);
             }
 
             @Override
             public void onTextChange(String newText, int cursorPos)
             {
-                // (<>o<>)
-                Log.d("<><<><>><><>", "Text change: cursor: " + cursorPos + "\n text" + newText);
+                final boolean cursorChangedP = mLastStateChange._cursorPos != cursorPos;
+                mLastStateChange._cursorPos = cursorPos;
+                mLastStateChange._text = newText;
+                mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
+                {
+                    {
+                        if (cursorChangedP)
+                            add(CHANGE_TYPE.CURSOR);
+
+                        add(CHANGE_TYPE.TEXT);
+                    }
+                };
+
+                mStateObserver.onNext(mLastStateChange);
             }
 
             @Override
             public void onSelectionChanged(ParseNode newNode)
             {
-                Log.d("<><<><>><><>", "New selection: " + newNode.toString());
+                mLastStateChange._selection = newNode;
+                mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
+                {
+                    {
+
+                        add(CHANGE_TYPE.SELECTION);
+                    }
+                };
+
+                mStateObserver.onNext(mLastStateChange);
+            }
+
+            @Override
+            public void onReadOnlyStateChanged(boolean isReadOnly)
+            {
+                mLastStateChange._readOnlyModeP = isReadOnly;
+                mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
+                {
+                    {
+
+                        add(CHANGE_TYPE.READONLY);
+                    }
+                };
+
+                mStateObserver.onNext(mLastStateChange);
             }
         });
 
         mController.setReadOnly();
-        loadTestInput();
+
         return top;
     }
 
-    private void loadTestInput()
+    @Override
+    public void onDetach()
     {
-        String largeFileName = "/com/evolved/automata/android/lisp/guibuilder/generated.lisp";
+        super.onDetach();
+        isPresentP =  false;
+    }
 
-        InputStreamReader reader = null;
-        InputStream istream = null;
-        try
-        {
+    @Override
+    public void onAttach(Activity activity)
+    {
+        super.onAttach(activity);
+        isPresentP = true;
+    }
 
-            istream = this.getClass().getResourceAsStream(largeFileName);
-            reader = new InputStreamReader(istream, Charset.forName("UTF-8"));
-            StringBuilder input = new StringBuilder();
 
-            int charValue;
 
-            while ((charValue = reader.read()) != -1)
+    public EditorController getEditorController()
+    {
+
+        return new EditorController() {
+            @Override
+            public Disposable setStateObserver(final Observer<StateChange> observer)
             {
-                input.appendCodePoint(charValue);
+
+                final Consumer<StateChange> resultConsumer = new Consumer<StateChange>() {
+                    @Override
+                    public void accept(@NonNull StateChange stateChange) throws Exception
+                    {
+                        observer.onNext(stateChange);
+                    }
+                };
+
+                final Consumer<? super Throwable> errorConsumer = new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception
+                    {
+                        observer.onError(throwable);
+                    }
+                };
+
+                final Action onComplete = new Action() {
+
+                    @Override
+                    public void run() throws Exception
+                    {
+                        observer.onComplete();
+                    }
+                };
+
+                return mExternalObservable.subscribe(resultConsumer, errorConsumer, onComplete);
             }
 
-
-            mController.setText(input.toString());
-
-
-        }
-        catch (Exception e)
-        {
-
-            e.printStackTrace();
-
-        }
-        finally
-        {
-            if (reader != null)
+            @Override
+            public String getText()
             {
-                try
-                {
-                    reader.close();
-                }
-                catch (Exception e2)
-                {
-                    e2.printStackTrace();
-                }
+                if (isPresentP)
+                    return mController.getText();
+                else
+                    throw new IllegalStateException(NOT_PRESENT_EXCEPTION_MESSAGE);
             }
-        }
+
+            public Disposable setText(final String text, final int cursor, final Observer<StateChange> observer)
+            {
+                if (!isPresentP)
+                    throw new IllegalStateException(NOT_PRESENT_EXCEPTION_MESSAGE);
+
+                final Consumer<StateChange> resultConsumer = new Consumer<StateChange>() {
+                    @Override
+                    public void accept(@NonNull StateChange stateChange) throws Exception
+                    {
+                        observer.onNext(stateChange);
+                    }
+                };
+
+                final Consumer<? super Throwable> errorConsumer = new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception
+                    {
+                        observer.onError(throwable);
+                    }
+                };
+
+                final Action onComplete = new Action() {
+
+                    @Override
+                    public void run() throws Exception
+                    {
+                        observer.onComplete();
+                    }
+                };
+
+                Observable<StateChange> worker = Observable.create(new ObservableOnSubscribe<StateChange>() {
+                    @Override
+                    public void subscribe(@NonNull ObservableEmitter<StateChange> subscriber) throws Exception
+                    {
+                        if (!subscriber.isDisposed())
+                        {
+                            try
+                            {
+                                mController.setText(text, cursor);
+                                StateChange change = new StateChange();
+                                change._text = mController.getText();
+                                change._cursorPos = mController.getCursorPos();
+                                subscriber.onNext(change);
+                            }
+                            catch (Exception e)
+                            {
+                                subscriber.onError(e);
+                            }
+                        }
+                    }
+                }).subscribeOn(AndroidSchedulers.mainThread()).observeOn(AndroidSchedulers.mainThread());
+
+                return worker.subscribe(resultConsumer, errorConsumer, onComplete);
+
+            }
+
+            @Override
+            public Disposable enableReadOnlyMode(final Observer<StateChange> observer)
+            {
+                if (!isPresentP)
+                    throw new IllegalStateException(NOT_PRESENT_EXCEPTION_MESSAGE);
+
+                final Consumer<StateChange> resultConsumer = new Consumer<StateChange>() {
+                    @Override
+                    public void accept(@NonNull StateChange stateChange) throws Exception
+                    {
+                        observer.onNext(stateChange);
+                    }
+                };
+
+                final Consumer<? super Throwable> errorConsumer = new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception
+                    {
+                        observer.onError(throwable);
+                    }
+                };
+
+                final Action onComplete = new Action() {
+
+                    @Override
+                    public void run() throws Exception
+                    {
+                        observer.onComplete();
+                    }
+                };
+
+                Observable<StateChange> worker = Observable.create(new ObservableOnSubscribe<StateChange>() {
+                    @Override
+                    public void subscribe(@NonNull ObservableEmitter<StateChange> subscriber) throws Exception
+                    {
+                        if (!subscriber.isDisposed())
+                        {
+                            try
+                            {
+                                mController.setReadOnly();
+                                StateChange change = new StateChange();
+                                change._readOnlyModeP = mController.isReadOnlyMode();
+                                change._changeType = new HashSet<CHANGE_TYPE>()
+                                {
+                                    {
+                                        add(CHANGE_TYPE.READONLY);
+                                    }
+
+                                };
+
+                                subscriber.onNext(change);
+                            }
+                            catch (Exception e)
+                            {
+                                subscriber.onError(e);
+                            }
+                        }
+                    }
+                }).subscribeOn(AndroidSchedulers.mainThread()).observeOn(AndroidSchedulers.mainThread());
+
+                return worker.subscribe(resultConsumer, errorConsumer, onComplete);
+            }
+
+            @Override
+            public Disposable disableReadOnlyMode(final Observer<StateChange> observer)
+            {
+                if (!isPresentP)
+                    throw new IllegalStateException(NOT_PRESENT_EXCEPTION_MESSAGE);
+
+                final Consumer<StateChange> resultConsumer = new Consumer<StateChange>() {
+                    @Override
+                    public void accept(@NonNull StateChange stateChange) throws Exception
+                    {
+                        observer.onNext(stateChange);
+                    }
+                };
+
+                final Consumer<? super Throwable> errorConsumer = new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception
+                    {
+                        observer.onError(throwable);
+                    }
+                };
+
+                final Action onComplete = new Action() {
+
+                    @Override
+                    public void run() throws Exception
+                    {
+                        observer.onComplete();
+                    }
+                };
+
+                Observable<StateChange> worker = Observable.create(new ObservableOnSubscribe<StateChange>() {
+                    @Override
+                    public void subscribe(@NonNull ObservableEmitter<StateChange> subscriber) throws Exception
+                    {
+                        if (!subscriber.isDisposed())
+                        {
+                            try
+                            {
+                                mController.disableReadOnly();
+                                StateChange change = new StateChange();
+                                change._readOnlyModeP = mController.isReadOnlyMode();
+                                change._changeType = new HashSet<CHANGE_TYPE>()
+                                {
+                                    {
+                                        add(CHANGE_TYPE.READONLY);
+                                    }
+
+                                };
+
+                                subscriber.onNext(change);
+                            }
+                            catch (Exception e)
+                            {
+                                subscriber.onError(e);
+                            }
+                        }
+                    }
+                }).subscribeOn(AndroidSchedulers.mainThread()).observeOn(AndroidSchedulers.mainThread());
+
+                return worker.subscribe(resultConsumer, errorConsumer, onComplete);
+            }
+
+            @Override
+            public int getCursorPosition()
+            {
+                return mController.getCursorPos();
+            }
+
+            @Override
+            public ParseNode getSelection()
+            {
+                return mController.getSelection();
+            }
+
+            @Override
+            public boolean isReadOnlyMode()
+            {
+                return mController.isReadOnlyMode();
+            }
+
+        };
     }
 }

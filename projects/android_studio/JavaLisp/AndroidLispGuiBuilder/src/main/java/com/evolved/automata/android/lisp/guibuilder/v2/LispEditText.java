@@ -47,7 +47,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         void onCursorChange(int cursorPos);
         void onTextChange(String newText, int cursorPos);
         void onSelectionChanged(ParseNode newNode);
-
+        void onReadOnlyStateChanged(boolean isReadOnly);
     }
 
     public interface ControlInterface
@@ -56,7 +56,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         void enableSelectionEffects();
         void setReadOnly();
         void disableReadOnly();
+        boolean isReadOnlyMode();
         String getText();
+        ParseNode getSelection();
+        int getCursorPos();
         void setText(String text);
         void setText(String text, int cursorPos);
         void setCursorPos(int pos);
@@ -90,7 +93,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     CodeUpdateListener mUpdateListener;
     boolean mAllowSelectionChangesP;
-
+    boolean mReadOnlyModeP = false;
 
     GestureDetector mReadOnlyGestureDetector;
 
@@ -239,14 +242,12 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         };
     }
 
-    private void setStateListener(StateListener listener)
-    {
-        mStateListener = listener;
-    }
 
-    // TODO: Review this
     public void setReadOnlyState()
     {
+        mReadOnlyModeP = true;
+        if (mStateListener != null)
+            mStateListener.onReadOnlyStateChanged(mReadOnlyModeP);
         setOnTouchListener(new View.OnTouchListener() {
 
             @Override
@@ -283,6 +284,9 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     public void removeReadOnlyState()
     {
         setOnTouchListener(null);
+        mReadOnlyModeP = false;
+        if (mStateListener != null)
+            mStateListener.onReadOnlyStateChanged(mReadOnlyModeP);
     }
 
     private void setSelectionDisplayPolicy(boolean displaySelection)
@@ -359,9 +363,27 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             }
 
             @Override
+            public boolean isReadOnlyMode()
+            {
+                return mReadOnlyModeP;
+            }
+
+            @Override
             public String getText()
             {
                 return getEditableText().toString();
+            }
+
+            @Override
+            public ParseNode getSelection()
+            {
+                return mCurrentSelection;
+            }
+
+            @Override
+            public int getCursorPos()
+            {
+                return mCursorPosition;
             }
 
             @Override

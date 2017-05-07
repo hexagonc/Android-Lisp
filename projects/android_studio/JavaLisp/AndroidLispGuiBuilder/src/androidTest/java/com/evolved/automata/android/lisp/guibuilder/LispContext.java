@@ -244,14 +244,16 @@ public class LispContext {
                             }
                             else
                             {
-                                request.rListener.onNext(response);
-                                request.rListener.onComplete();
+                                // Quick hack.  Should use RxJava to do this better
+                                postResponse(response, request);
+
                                 toBeDeleted.add(key);
                             }
                         }
                         catch (Exception e)
                         {
-                            request.rListener.onError(e);
+                            postResponse(e, request);
+
                             toBeDeleted.add(key);
                         }
 
@@ -270,6 +272,32 @@ public class LispContext {
 
             }
         }.start();
+    }
+
+    private void postResponse(final Value result, final Request request)
+    {
+        Runnable r = new Runnable()
+        {
+            public void run()
+            {
+                request.rListener.onNext(result);
+                request.rListener.onComplete();
+            }
+        };
+        _mainHandler.post(r);
+
+    }
+
+    private void postResponse(final Exception e, final Request request)
+    {
+        Runnable r = new Runnable()
+        {
+            public void run()
+            {
+                request.rListener.onError(e);
+            }
+        };
+        _mainHandler.post(r);
     }
 
     private void addDataFunctions()
