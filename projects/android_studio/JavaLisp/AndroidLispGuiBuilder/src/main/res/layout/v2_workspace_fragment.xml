@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:custom = 'http://schemas.android.com/apk/res-auto'
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+    <LinearLayout
+        android:layout_width = 'match_parent'
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:id = "@+id/v2_lin_page_navigation"
+        android:layout_marginBottom = '@dimen/lisp_edit_title_margin'>
+        <FrameLayout
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            >
+            <com.evolved.automata.android.widgets.ShadowButton
+                custom:text = '@string/code_template_layout_history_back_label'
+                custom:textSize = '@dimen/history_button_text_size'
+                custom:textColor = '#000'
+                android:layout_gravity = 'left'
+                android:layout_width="wrap_content"
+                android:layout_height='wrap_content'
+                android:id = '@+id/v2_but_history_back'/>
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'
+            android:layout_gravity = 'center'>
+            <TextView
+                android:id = '@+id/v2_txt_page_title'
+                android:text = '@string/undefined_code_page_label'
+                android:layout_width = 'wrap_content'
+                android:layout_height = 'wrap_content'
+                android:layout_gravity="center"
+                android:textSize="@dimen/lisp_edit_title_text_size"
+                android:textStyle="bold"
+                />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width = '0px'
+            android:layout_height = 'wrap_content'
+            android:layout_weight = '1'>
+            <com.evolved.automata.android.widgets.ShadowButton
+                custom:text = '@string/code_template_layout_history_forward_label'
+                custom:textSize = '@dimen/history_button_text_size'
+                custom:textColor = '#000'
+                android:layout_gravity = "right"
+                android:layout_width="wrap_content"
+                android:layout_height='wrap_content'
+                android:id = '@+id/v2_but_history_forward'
+                android:paddingLeft="@dimen/history_button_padding_left_right"
+                android:paddingRight="@dimen/history_button_padding_left_right"
+                android:paddingTop = '@dimen/history_button_padding_top_bottom'
+                android:paddingBottom = '@dimen/history_button_padding_top_bottom'/>
+        </FrameLayout>
+    </LinearLayout>
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id = "@+id/v2_frag_page"
+        android:orientation="vertical">
+
+    </FrameLayout>
+
+</LinearLayout>

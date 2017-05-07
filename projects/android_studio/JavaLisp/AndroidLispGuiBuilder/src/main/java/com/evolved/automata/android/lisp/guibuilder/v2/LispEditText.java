@@ -4,12 +4,16 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.graphics.Color;
 import android.text.Editable;
+import android.text.Layout;
 import android.text.Spanned;
 import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -37,18 +41,59 @@ import io.reactivex.functions.Function;
 
 public class LispEditText extends EditText implements Observer<ParseNode> {
 
+
+    public interface StateListener
+    {
+        void onCursorChange(int cursorPos);
+        void onTextChange(String newText, int cursorPos);
+        void onSelectionChanged(ParseNode newNode);
+
+    }
+
+    public interface ControlInterface
+    {
+        void disableSelectionEffects();
+        void enableSelectionEffects();
+        void setReadOnly();
+        void disableReadOnly();
+        String getText();
+        void setText(String text);
+        void setText(String text, int cursorPos);
+        void setCursorPos(int pos);
+        void clearCurrentSelection();
+        void insertTextAtCursor(String text);
+        void moveCursorLeft();
+        void moveCursorRight();
+
+        void moveToParent();
+        void moveToFirstChild();
+        void moveToPrevSibling(boolean wrapAround);
+        void moveToNextSibling(boolean wrapAround);
+        void setStateListener(StateListener listener);
+    }
+
+
+
+    StateListener mStateListener;
+
     ForegroundColorSpan mSelectionForegroundSpan;
     BackgroundColorSpan mSelectionBackgroundSpan;
     Observable<ParseNode> mUpdateObservable;
 
     TopParseNode mParseNode;
-    ParseNode mCurrentSelection;
+    ParseNode mCurrentSelection, mPreviousSelection;
     int mCursorPosition=0;
+    int mSelectionColor = Color.rgb(198, 232, 237);
     boolean suppressSelectionUpdateP = false;
     long mUpdateTimeoutInterval = 2000;
     TimeUnit mUpdateTimeUnit = TimeUnit.MILLISECONDS;
 
     CodeUpdateListener mUpdateListener;
+    boolean mAllowSelectionChangesP;
+
+
+    GestureDetector mReadOnlyGestureDetector;
+
 
     public static class EditEvent
     {
@@ -64,7 +109,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         }
     }
 
-    public static class CodeUpdateListener implements TextWatcher, ObservableOnSubscribe<EditEvent>
+    public class CodeUpdateListener implements TextWatcher, ObservableOnSubscribe<EditEvent>
     {
 
         ObservableEmitter<EditEvent> _subScriber;
@@ -87,6 +132,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             Log.d("<><><<><<><", "Updated text");
             String updated  =s.toString();
             directUpdate(updated);
+
         }
 
         @Override
@@ -106,9 +152,12 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     private void init()
     {
+        mReadOnlyGestureDetector = new GestureDetector(getContext(), getGestureListener());
+        mAllowSelectionChangesP = true;
+        mStateListener = null;
         mSelectionForegroundSpan = new ForegroundColorSpan(Color.rgb(0, 0, 0));
-        mSelectionBackgroundSpan = new BackgroundColorSpan(Color.rgb(188, 221, 255));
-
+        mSelectionBackgroundSpan = new BackgroundColorSpan(mSelectionColor);
+        mPreviousSelection = null;
         mUpdateListener = new CodeUpdateListener();
         mUpdateObservable = Observable.create(mUpdateListener).debounce(mUpdateTimeoutInterval, mUpdateTimeUnit).map(new Function<EditEvent, ParseNode>(){
 
@@ -145,6 +194,277 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         init();
     }
 
+
+    GestureDetector.OnGestureListener getGestureListener()
+    {
+        return new GestureDetector.OnGestureListener() {
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent e) {
+                // TODO Auto-generated method stub
+                return false;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent e) {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX,
+                                    float distanceY) {
+                scrollBy((int)distanceX, (int)distanceY);
+                return true;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent e) {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
+                                   float velocityY) {
+                // TODO Auto-generated method stub
+                return false;
+            }
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                // TODO Auto-generated method stub
+                return false;
+            }
+        };
+    }
+
+    private void setStateListener(StateListener listener)
+    {
+        mStateListener = listener;
+    }
+
+    // TODO: Review this
+    public void setReadOnlyState()
+    {
+        setOnTouchListener(new View.OnTouchListener() {
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                mReadOnlyGestureDetector.onTouchEvent(event);
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_UP:
+                        Layout layout = ((EditText) v).getLayout();
+                        float x = event.getX() + getScrollX();
+                        float y = event.getY() + getScrollY();
+                        int line = layout.getLineForVertical((int) y);
+
+                        // Here is what you wanted:
+
+                        final int offset = layout.getOffsetForHorizontal( line,  x);
+
+                        post(new Runnable()
+                        {
+                            public void run()
+                            {
+                                setSelection(offset);
+                            }
+                        });
+
+                        break;
+                }
+                return true;
+            }
+
+        });
+    }
+
+
+    public void removeReadOnlyState()
+    {
+        setOnTouchListener(null);
+    }
+
+    private void setSelectionDisplayPolicy(boolean displaySelection)
+    {
+        if (displaySelection != mAllowSelectionChangesP)
+        {
+            mAllowSelectionChangesP = displaySelection;
+            if (!displaySelection)
+            {
+                getEditableText().removeSpan(mSelectionForegroundSpan);
+                getEditableText().removeSpan(mSelectionBackgroundSpan);
+                mCurrentSelection = null;
+            }
+            else
+            {
+                mCurrentSelection = mParseNode.findNode(mCursorPosition);
+                renderSelection(false);
+            }
+        }
+        mAllowSelectionChangesP = displaySelection;
+
+    }
+
+    public ControlInterface getControlInterface()
+    {
+        return new ControlInterface() {
+
+            @Override
+            public void moveToParent()
+            {
+                LispEditText.this.moveToParent();
+            }
+
+            @Override
+            public void moveToFirstChild()
+            {
+                LispEditText.this.moveToFirstChildToken();
+            }
+
+            @Override
+            public void moveToPrevSibling(boolean wrapAround)
+            {
+                moveToPreviousSiblingToken(wrapAround);
+            }
+
+            @Override
+            public void moveToNextSibling(boolean wrapAround)
+            {
+                moveToNextSiblingToken(wrapAround);
+            }
+
+            @Override
+            public void disableSelectionEffects()
+            {
+                setSelectionDisplayPolicy(false);
+            }
+
+            @Override
+            public void enableSelectionEffects()
+            {
+                setSelectionDisplayPolicy(true);
+            }
+
+            @Override
+            public void setReadOnly()
+            {
+                setReadOnlyState();
+            }
+
+            @Override
+            public void disableReadOnly()
+            {
+                removeReadOnlyState();
+            }
+
+            @Override
+            public String getText()
+            {
+                return getEditableText().toString();
+            }
+
+            @Override
+            public void setText(String text)
+            {
+
+                setText(text, 0);
+            }
+
+            @Override
+            public void setText(String text, int cursorPos)
+            {
+                if (text == null)
+                    text = "";
+                LispEditText.this.setText(text);
+                if (cursorPos <= 0 && cursorPos <= text.length())
+                {
+                    setSelection(cursorPos, cursorPos);
+                }
+                else if (text.length() == 0)
+                    setSelection(0, 0);
+            }
+
+            @Override
+            public void setCursorPos(int cursorPos)
+            {
+                String text = getText().toString();
+                if (text == null)
+                    text = "";
+                setText(text);
+                if (cursorPos <= 0 && cursorPos <= text.length())
+                {
+                    setSelection(cursorPos, cursorPos);
+                }
+                else if (text.length() == 0)
+                    setSelection(0, 0);
+            }
+
+            @Override
+            public void clearCurrentSelection()
+            {
+                if (mCurrentSelection != null)
+                {
+                    int start = mCurrentSelection.getStartIndex();
+                    int end = mCurrentSelection.getLength() + start;
+                    int newCursor = mCurrentSelection.getStartIndex();
+                    String newText = getText().toString();
+                    setText(newText.substring(0, start) + newText.substring(end + 1), newCursor);
+                }
+            }
+
+            @Override
+            public void insertTextAtCursor(String text)
+            {
+                String oldText = getText().toString();
+                int selection = getSelectionStart();
+                setText(oldText.substring(0, selection) + text + oldText.substring(selection), selection);
+            }
+
+            @Override
+            public void moveCursorLeft()
+            {
+                LispEditText.this.moveCursorLeft();
+            }
+
+            @Override
+            public void moveCursorRight()
+            {
+                LispEditText.this.moveCursorRight();
+            }
+
+            @Override
+            public void setStateListener(StateListener listener)
+            {
+                mStateListener = listener;
+            }
+        };
+    }
+
+    public void moveCursorRight()
+    {
+        mCursorPosition = getSelectionStart();
+        if (mCursorPosition < getText().toString().length())
+        {
+
+            setSelection(mCursorPosition + 1, mCursorPosition + 1);
+
+        }
+    }
+
+    public void moveCursorLeft()
+    {
+        mCursorPosition = getSelectionStart();
+        if (mCursorPosition > 0)
+        {
+
+            setSelection(mCursorPosition - 1, mCursorPosition - 1);
+            
+        }
+
+    }
+
+
     @Override
     public void setText(CharSequence text, BufferType type)
     {
@@ -163,6 +483,11 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         super.onSelectionChanged(selStart, selEnd);
         if (!suppressSelectionUpdateP && selStart == selEnd && mParseNode != null) // purse cursor movement change
         {
+            
+            if (mStateListener != null && selStart != mCursorPosition)
+            {
+                mStateListener.onCursorChange(mCursorPosition);
+            }
             mCursorPosition = selStart;
             mCurrentSelection = mParseNode.findNode(selStart);
             if (mCurrentSelection != null)
@@ -181,6 +506,17 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     private void renderSelection(boolean updateCursorP)
     {
+        if (!mAllowSelectionChangesP)
+            return;
+
+        if (mPreviousSelection != mCurrentSelection)
+        {
+            if (mStateListener != null)
+            {
+                mStateListener.onSelectionChanged(mCurrentSelection);
+            }
+            mPreviousSelection = mCurrentSelection;
+        }
         if (mCurrentSelection != null)
         {
             int start = mCurrentSelection.getStartIndex();
@@ -279,6 +615,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     public void onNext(@NonNull ParseNode value)
     {
         mParseNode = (TopParseNode)value;
+        if (mStateListener != null)
+        {
+            mStateListener.onTextChange(getText().toString(), mCursorPosition);
+        }
         renderSelection(false);
     }
 

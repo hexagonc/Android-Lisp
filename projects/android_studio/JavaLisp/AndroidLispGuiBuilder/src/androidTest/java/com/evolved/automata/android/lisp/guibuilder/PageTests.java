@@ -60,19 +60,19 @@ public class PageTests {
     @Test
     public void testDataAccessibility()
     {
-        String errorMessage = "Failed to create context";
+        String errorMessage = "Failed to create ALGB";
 
         try
         {
 
-            String testDataContext = ":TESTING:";
-            String testPageKey = "page 1";
+
 
             Instrumentation instrumentation =  InstrumentationRegistry.getInstrumentation();
             Context context = instrumentation.getTargetContext();
 
-            Environment top = new Environment();
-            ALGB manager = new ALGB(context);
+
+            ALGB app = new ALGB(context);
+
 
             errorMessage = "Failed to test for page existence";
 

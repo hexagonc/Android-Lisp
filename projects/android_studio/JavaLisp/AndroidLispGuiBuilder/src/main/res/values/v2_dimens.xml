@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name = 'v2_result_pane_height'>100dp</dimen>
+    <dimen name = 'v2_code_editor_toolbar_button_size'>45dp</dimen>
+    <dimen name = 'v2_code_editor_toolbar_narrow_button_size'>22dp</dimen>
+    <dimen name = "v2_parent_nav_buttons_margin_right">20dp</dimen>
+</resources>

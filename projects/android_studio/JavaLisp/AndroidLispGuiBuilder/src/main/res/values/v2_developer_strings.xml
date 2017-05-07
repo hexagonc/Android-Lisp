@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Do not commit and push this file to a public repository with these values set -->
-    <string name = "test_dropbox_token"></string>
+    <string name = "v2_test_dropbox_token">r-zGN0Slw3YAAAAAAAAhh7zF-DDZ9elfouyyK5zNWaPscbHICNOXMIY4hQw3BsC5</string>
 </resources>

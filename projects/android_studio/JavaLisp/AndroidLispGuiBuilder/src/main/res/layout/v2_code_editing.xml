@@ -3,43 +3,69 @@
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="match_parent">
+
     <com.evolved.automata.android.lisp.guibuilder.v2.LispEditText
+        android:id="@+id/v2_edit_main_code"
+        style="@style/v2_code_editor"
         android:layout_width="match_parent"
         android:layout_height="0px"
-        android:layout_weight = "1"
-        android:id = "@+id/v2_edit_main_code"
-        style = "@style/v2_code_editor"/>
+        android:layout_weight="1"/>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
-        <Button android:id = "@+id/v2_button_up"
+        <ImageButton android:id = "@+id/v2_up_to_parent"
                 android:text = "UP"
-                android:layout_width = "wrap_content"
-                android:layout_height = "wrap_content"/>
-        <Button android:id = "@+id/v2_but_down"
+                android:scaleType="fitXY"
+                android:layout_width = "@dimen/v2_code_editor_toolbar_button_size"
+                android:layout_height = "@dimen/v2_code_editor_toolbar_button_size"
+                android:src="@drawable/ic_expand_less_black_24dp"
+            android:background="@drawable/v2_code_editor_toolbar_button_background"
+            />
+        <ImageButton android:id = "@+id/v2_down_to_child"
+                     android:scaleType="fitXY"
                 android:text = "DOWN"
-                android:layout_width = "wrap_content"
-                android:layout_height = "wrap_content"
-                />
-        <Button android:id = "@+id/v2_but_prev"
-                android:text = "&lt;&lt;"
-                android:layout_width = "wrap_content"
-                android:layout_height = "wrap_content"/>
-        <Button android:id = "@+id/v2_but_next"
-                android:text = "&gt;&gt;"
-                android:layout_width = "wrap_content"
-                android:layout_height = "wrap_content"/>
-        <Button android:id = "@+id/v2_but_eval"
-                android:text = "EVAL"
-                android:layout_width = "wrap_content"
-                android:layout_height = "wrap_content"/>
+                android:layout_width = "@dimen/v2_code_editor_toolbar_button_size"
+                android:layout_height = "@dimen/v2_code_editor_toolbar_button_size"
+                android:background="@drawable/v2_code_editor_toolbar_button_background"
+                android:src="@drawable/ic_expand_more_black_24dp"
+                     android:layout_marginRight="@dimen/v2_parent_nav_buttons_margin_right"
+            />
+        <ImageButton android:id = "@+id/v2_prev_sibling"
+                     android:text = "PREV"
+                     android:scaleType="fitXY"
+                     android:layout_width = "@dimen/v2_code_editor_toolbar_button_size"
+                     android:layout_height = "@dimen/v2_code_editor_toolbar_button_size"
+                     android:background="@drawable/v2_code_editor_toolbar_button_background"
+                     android:src="@drawable/ic_skip_previous_black_24dp"/>
+        <ImageButton android:id = "@+id/v2_cursor_left"
+                     android:text = "CURSOR LEFT"
+                     android:scaleType="fitXY"
+                     android:layout_width = "@dimen/v2_code_editor_toolbar_narrow_button_size"
+                     android:layout_height = "@dimen/v2_code_editor_toolbar_button_size"
+                     android:background="@drawable/v2_code_editor_toolbar_button_background"
+                     android:src="@drawable/ic_navigate_before_black_24dp"/>
+        <ImageButton android:id = "@+id/v2_cursor_right"
+                     android:text = "CURSOR RIGHT"
+                     android:scaleType="fitXY"
+                     android:layout_width = "@dimen/v2_code_editor_toolbar_narrow_button_size"
+                     android:layout_height = "@dimen/v2_code_editor_toolbar_button_size"
+                     android:background="@drawable/v2_code_editor_toolbar_button_background"
+                     android:src="@drawable/ic_navigate_next_black_24dp"/>
+        <ImageButton android:id = "@+id/v2_next_sibling"
+                     android:text = "NEXT"
+                     android:scaleType="fitXY"
+                     android:layout_width = "@dimen/v2_code_editor_toolbar_button_size"
+                     android:layout_height = "@dimen/v2_code_editor_toolbar_button_size"
+                     android:background="@drawable/v2_code_editor_toolbar_button_background"
+                     android:src="@drawable/ic_skip_next_black_24dp"/>
     </LinearLayout>
     <TextView
         android:id = "@+id/v2_txt_result"
         android:text = ">"
         android:layout_width="match_parent"
-        android:layout_height= "100dp"
+        android:layout_height= "@dimen/v2_result_pane_height"
         style = "@style/v2_result_window"
         />
 
