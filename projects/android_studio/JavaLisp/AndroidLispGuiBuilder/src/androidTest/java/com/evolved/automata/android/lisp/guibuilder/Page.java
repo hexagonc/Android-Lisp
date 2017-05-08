@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 
 import java.util.HashMap;
@@ -52,7 +53,7 @@ public abstract class Page {
         mMyData.put(TITLE_KEY, NLispTools.makeValue(getPageType().toString()));
         setTitle(DEFAULT_TITLE);
         setStringDataValue(ID_KEY, mId);
-
+        setPageType();
     }
 
     public static String getPageTypeKey(String pageId)
@@ -70,11 +71,18 @@ public abstract class Page {
         ID_KEY = mId + "-" + ID_KEY_PREFIX;
         TYPE_KEY = mId + TYPE_KEY_PREFIX;
         mMyData.put(TITLE_KEY, NLispTools.makeValue(getPageType().toString()));
+
         if (!restorePage())
         {
             throw new IllegalArgumentException("Invalid page id: " + id + " doesn't exist");
         }
+        else
+        {
+            setPageType();
+        }
     }
+
+    protected abstract void setPageType();
 
     void initialize(ALGB app)
     {
@@ -109,7 +117,7 @@ public abstract class Page {
 
     public void savePage()
     {
-        mMyEnvironment.simpleEvaluateFunction("set-data-value", mId, mMyData, CONTEXT_KEY);
+        mMyEnvironment.simpleEvaluateFunction("set-data-value", mId, new StringHashtableValue(mMyData) , CONTEXT_KEY);
     }
 
     public boolean restorePage()
@@ -135,7 +143,13 @@ public abstract class Page {
     {
         Value v = mMyData.get(key);
         if (v != null)
-            return v.toString();
+        {
+            if (v.isString())
+                return v.getString();
+            else
+                return v.toString();
+        }
+
         else
             return null;
     }

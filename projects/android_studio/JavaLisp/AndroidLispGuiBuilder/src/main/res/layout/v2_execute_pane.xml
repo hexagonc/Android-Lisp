@@ -9,7 +9,7 @@
     android:gravity = "center_vertical">
     <com.evolved.automata.android.widgets.ShadowButton
         custom:text = 'Eval'
-        custom:textSize = '@dimen/history_button_text_size'
+        custom:textSize = '@dimen/v2_eval_panel_shadow_size'
         custom:textColor = '#000'
         android:layout_gravity = "right"
         android:layout_width="wrap_content"
@@ -30,12 +30,24 @@
         android:background="@drawable/v2_code_editor_toolbar_button_background"/>
     <com.evolved.automata.android.widgets.ShadowButton
         custom:text = 'Save'
-        custom:textSize = '@dimen/history_button_text_size'
+        custom:textSize = '@dimen/v2_eval_panel_shadow_size'
         custom:textColor = '#000'
         android:layout_gravity = "right"
         android:layout_width="wrap_content"
         android:layout_height='wrap_content'
         android:id = '@+id/v2_but_save_page'
+        android:paddingLeft="@dimen/history_button_padding_left_right"
+        android:paddingRight="@dimen/history_button_padding_left_right"
+        android:paddingTop = '@dimen/history_button_padding_top_bottom'
+        android:paddingBottom = '@dimen/history_button_padding_top_bottom'/>
+    <com.evolved.automata.android.widgets.ShadowButton
+        custom:text = 'Read-Only: False'
+        custom:textSize = '@dimen/v2_eval_panel_shadow_size'
+        custom:textColor = '#000'
+        android:layout_gravity = "right"
+        android:layout_width="wrap_content"
+        android:layout_height='wrap_content'
+        android:id = '@+id/v2_but_toggle_readonly'
         android:paddingLeft="@dimen/history_button_padding_left_right"
         android:paddingRight="@dimen/history_button_padding_left_right"
         android:paddingTop = '@dimen/history_button_padding_top_bottom'

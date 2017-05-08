@@ -16,6 +16,8 @@ import java.util.HashMap;
 
 public class ALGB {
 
+    String APP_DATA_CONTEXT = "APP_DATA";
+    String CURRENT_WORKSPACE_KEY = "current-workspace";
 
     HashMap<String, Page> mPageCache;
     HashMap<String, Workspace> mWorkspaceCache;
@@ -39,6 +41,36 @@ public class ALGB {
         ExtendedFunctions.addExtendedFunctions(mTop);
         mBaseLispContext = new LispContext(mContext, mTop, mData);
 
+        retrieveCurrentWorkspace();
+
+    }
+
+
+    private void retrieveCurrentWorkspace() throws IllegalAccessException, InstantiationException
+    {
+        String[] workspaces = mData.getAllKeys(Workspace.CONTEXT_KEY);
+        if (workspaces.length == 0)
+        {
+            mCurrentWorkspace = createNewWorkspace();
+        }
+        else
+        {
+            String previousID = mData.getData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT);
+            mCurrentWorkspace = new Workspace(this, previousID);
+        }
+    }
+
+
+    public void save(boolean saveWorkspace)
+    {
+        mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, mCurrentWorkspace.getWorkspaceId());
+        if (saveWorkspace)
+            mCurrentWorkspace.save(true);
+    }
+
+    public void deleteAllData() throws IllegalAccessException, InstantiationException
+    {
+        mData.deleteAllData();
         mCurrentWorkspace = createNewWorkspace();
     }
 

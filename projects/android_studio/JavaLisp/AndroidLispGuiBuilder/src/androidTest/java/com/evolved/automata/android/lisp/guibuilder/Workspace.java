@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 
 import java.util.HashMap;
@@ -70,6 +71,23 @@ public class Workspace {
         mMyData = app.getData(mId, CONTEXT_KEY).getStringHashtable();
 
         mPages = getChildPageIds();
+
+    }
+
+    public void save(boolean savePages)
+    {
+        mApplication.saveData(getWorkspaceId(), CONTEXT_KEY, new StringHashtableValue(mMyData));
+        if (savePages)
+        {
+            for (String key:mPages)
+            {
+                Page loaded = mApplication.retrievePage(key);
+                if (loaded!=null)
+                {
+                    loaded.savePage();
+                }
+            }
+        }
 
     }
 

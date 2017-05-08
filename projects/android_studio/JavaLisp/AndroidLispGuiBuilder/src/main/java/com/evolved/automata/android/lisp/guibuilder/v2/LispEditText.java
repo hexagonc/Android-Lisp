@@ -95,6 +95,8 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     boolean mAllowSelectionChangesP;
     boolean mReadOnlyModeP = false;
 
+    boolean mTempSuppressHighlightingP = false;
+
     GestureDetector mReadOnlyGestureDetector;
 
 
@@ -134,6 +136,8 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         {
             Log.d("<><><<><<><", "Updated text");
             String updated  =s.toString();
+            mTempSuppressHighlightingP = true;
+            clearSelectionDisplay();
             directUpdate(updated);
 
         }
@@ -641,6 +645,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         {
             mStateListener.onTextChange(getText().toString(), mCursorPosition);
         }
+        mTempSuppressHighlightingP = false;
         renderSelection(false);
     }
 
@@ -656,5 +661,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     }
 
+    private void clearSelectionDisplay()
+    {
+        getEditableText().removeSpan(mSelectionBackgroundSpan);
+        getEditableText().removeSpan(mSelectionForegroundSpan);
+    }
 
 }

@@ -1,5 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import com.evolved.automata.lisp.NLispTools;
+
 /**
  * Created by Evolved8 on 5/5/17.
  */
@@ -26,7 +28,7 @@ public class CodePage extends Page {
         DROPBOX_PATH_KEY = mId + "-" + DROPBOX_PATH_KEY_PREFIX;
         CURSOR_POSITION_KEY = mId + "-" + CURSOR_POSITION_KEY_PREFIX;
         setExpr("");
-        setCursorPosition(-1);
+        setCursorPosition(0);
     }
 
     public CodePage(ALGB app, String id)
@@ -36,6 +38,11 @@ public class CodePage extends Page {
         LOCAL_STORAGE_PATH_KEY = mId + "-" + LOCAL_STORAGE_PATH_KEY_PREFIX;
         DROPBOX_PATH_KEY = mId + "-" + DROPBOX_PATH_KEY_PREFIX;
         CURSOR_POSITION_KEY = mId + "-" + CURSOR_POSITION_KEY_PREFIX;
+    }
+
+    protected void setPageType()
+    {
+        mMyData.put(TYPE_KEY, NLispTools.makeValue(getPageType().toString()));
     }
 
     public PAGE_TYPE getPageType()

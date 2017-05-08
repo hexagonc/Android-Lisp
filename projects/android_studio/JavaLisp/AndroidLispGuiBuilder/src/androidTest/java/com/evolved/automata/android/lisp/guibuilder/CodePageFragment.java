@@ -5,6 +5,7 @@ import android.app.Fragment;
 import android.app.FragmentTransaction;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,11 +40,12 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     ShadowButton mEvalButton;
     ShadowButton mSaveButton;
+    ShadowButton mToggleReadOnlyButton;
     ImageButton mClearSelection;
 
     CodePage mCodePage;
 
-    String mTestData;
+
 
     @Override
     public void onAttach(Activity activity)
@@ -73,7 +75,25 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         ViewGroup parent = (ViewGroup)inflater.inflate(R.layout.v2_code_page, container, false);
         mEvalButton = (ShadowButton)parent.findViewById(R.id.v2_but_eval);
         mSaveButton = (ShadowButton)parent.findViewById(R.id.v2_but_save_page);
+        mToggleReadOnlyButton = (ShadowButton)parent.findViewById(R.id.v2_but_toggle_readonly);
         mClearSelection = (ImageButton) parent.findViewById(R.id.v2_but_clear_selection);
+
+
+        mToggleReadOnlyButton.setOnClickListener(new View.OnClickListener()
+        {
+
+            @Override
+            public void onClick(View v)
+            {
+                if (mEditorController.isReadOnlyMode())
+                {
+                    mEditorController.disableReadOnlyMode(CodePageFragment.this);
+                }
+                else
+                    mEditorController.enableReadOnlyMode(CodePageFragment.this);
+            }
+        });
+
 
         mEvalButton.setOnClickListener(new View.OnClickListener()
         {
@@ -82,6 +102,17 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             public void onClick(View v)
             {
                 evaluateSelection();
+            }
+        });
+
+
+        mSaveButton.setOnClickListener(new View.OnClickListener()
+        {
+
+            @Override
+            public void onClick(View v)
+            {
+                mCodePage.savePage();
             }
         });
 
@@ -112,9 +143,13 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
         mResultController = mResultFragment.getController();
 
-        loadTestInput();
+    }
 
-
+    private void updateToggleButton()
+    {
+        boolean currentReadonlyStatus = mEditorController.isReadOnlyMode();
+        String label = "Read-only: " + (currentReadonlyStatus);
+        mToggleReadOnlyButton.setText(label);
     }
 
     private void evaluateSelection()
@@ -159,7 +194,8 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onResume()
     {
         super.onResume();
-        mEditorController.setText(mTestData, 0, this);
+        String text = mCodePage.getExpr();
+        mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()) , this);
     }
 
     @Override
@@ -194,7 +230,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                 input.appendCodePoint(charValue);
             }
 
-            mTestData = input.toString();
+            //mTestData = input.toString();
 
 
         }
@@ -229,13 +265,23 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     @Override
     public void onNext(@NonNull CodeEditorFragment.StateChange stateChange)
     {
-        System.out.println("New state: " + stateChange._changeType.toString());
+
+        String code = stateChange._text;
+        mCodePage.setExpr(code);
+        Log.d("<><><><", code);
+        mCodePage.setCursorPosition(stateChange._cursorPos);
+
+        if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.READONLY))
+        {
+            updateToggleButton();
+        }
+
     }
 
     @Override
     public void onError(@NonNull Throwable e)
     {
-
+        mResultController.setResult(e.toString(), false);
     }
 
     @Override

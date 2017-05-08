@@ -1,5 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import com.evolved.automata.lisp.NLispTools;
+
 /**
  * Created by Evolved8 on 5/5/17.
  */
@@ -49,6 +51,12 @@ public class UIPage extends Page {
 
         DEBUG_EXPR_KEY = mId + "-" + DEBUG_EXPR_KEY_PREFIX;
         DEBUG_CURSOR_POSITION_KEY = mId + "-" + DEBUG_CURSOR_POSITION_KEY_PREFIX;
+
+        setInitCursorPosition(0);
+        setRenderCursorPosition(0);
+        setDebugExpr("");
+        setInitExpr("");
+
     }
 
     public UIPage(ALGB app, String id)
@@ -67,6 +75,11 @@ public class UIPage extends Page {
 
         DEBUG_EXPR_KEY = mId + "-" + DEBUG_EXPR_KEY_PREFIX;
         DEBUG_CURSOR_POSITION_KEY = mId + "-" + DEBUG_CURSOR_POSITION_KEY_PREFIX;
+    }
+
+    protected void setPageType()
+    {
+        mMyData.put(TYPE_KEY, NLispTools.makeValue(getPageType().toString()));
     }
 
     public PAGE_TYPE getPageType()

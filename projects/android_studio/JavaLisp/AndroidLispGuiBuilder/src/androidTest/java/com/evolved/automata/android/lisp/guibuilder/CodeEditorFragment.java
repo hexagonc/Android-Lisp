@@ -217,6 +217,7 @@ public class CodeEditorFragment extends Fragment {
                 final boolean cursorChangedP = mLastStateChange._cursorPos != cursorPos;
                 mLastStateChange._cursorPos = cursorPos;
                 mLastStateChange._text = newText;
+
                 mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
                 {
                     {
@@ -233,6 +234,7 @@ public class CodeEditorFragment extends Fragment {
             @Override
             public void onSelectionChanged(ParseNode newNode)
             {
+
                 mLastStateChange._selection = newNode;
                 mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
                 {
@@ -261,7 +263,7 @@ public class CodeEditorFragment extends Fragment {
             }
         });
 
-        mController.setReadOnly();
+
 
         return top;
     }
@@ -424,6 +426,8 @@ public class CodeEditorFragment extends Fragment {
                             {
                                 mController.setReadOnly();
                                 StateChange change = new StateChange();
+                                change._text = mController.getText();
+                                change._cursorPos = mController.getCursorPos();
                                 change._readOnlyModeP = mController.isReadOnlyMode();
                                 change._changeType = new HashSet<CHANGE_TYPE>()
                                 {
@@ -487,6 +491,8 @@ public class CodeEditorFragment extends Fragment {
                             {
                                 mController.disableReadOnly();
                                 StateChange change = new StateChange();
+                                change._text = mController.getText();
+                                change._cursorPos = mController.getCursorPos();
                                 change._readOnlyModeP = mController.isReadOnlyMode();
                                 change._changeType = new HashSet<CHANGE_TYPE>()
                                 {
