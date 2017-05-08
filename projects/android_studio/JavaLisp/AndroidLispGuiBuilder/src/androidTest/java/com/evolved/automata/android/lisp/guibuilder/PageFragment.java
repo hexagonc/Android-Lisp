@@ -52,6 +52,11 @@ public class PageFragment extends Fragment {
         mCodeFragment.setCodePage(page);
     }
 
+    public CodePage getPage()
+    {
+        return mPage;
+    }
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState)

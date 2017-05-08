@@ -96,6 +96,39 @@ public class Workspace {
 
     }
 
+    public boolean deletePage(int index)
+    {
+        if (mPages.size() > 1 && index < mPages.size() && index >= 0)
+        {
+            mPages.remove(index);
+            if (index == mPages.size() - 1)
+            {
+                setCurrentPageIndex(index - 1);
+            }
+
+            setPageList(mPages);
+            return true;
+        }
+        else
+            return false;
+    }
+
+    public Page addPage()
+    {
+        Page newPage  = mApplication.createNewCodePage();
+        String pageId = newPage.getPageId();
+        int index = getCurrentPageIndex();
+        mPages.add(index + 1, pageId);
+        setCurrentPageIndex(index + 1);
+        setPageList(mPages);
+        return newPage;
+    }
+
+    public int getNumPages()
+    {
+        return mPages.size();
+    }
+
     public Page gotoNextPage()
     {
 

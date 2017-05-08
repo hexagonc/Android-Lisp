@@ -565,8 +565,14 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
                         break;
                 }
 
-                e.setSpan(mSelectionForegroundSpan, start, end, flags);
-                e.setSpan(mSelectionBackgroundSpan, start, end, flags);
+                int expectedEnd = end, actualEnd = Math.min(end, e.toString().length());
+
+                if (expectedEnd != actualEnd)
+                {
+                    Log.e("<><><><><>", "Code model out of sync with code text");
+                }
+                e.setSpan(mSelectionForegroundSpan, start, actualEnd, flags);
+                e.setSpan(mSelectionBackgroundSpan, start, actualEnd, flags);
                 if (updateCursorP)
                 {
                     suppressSelectionUpdateP = true;

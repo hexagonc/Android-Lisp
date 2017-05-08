@@ -59,6 +59,7 @@ public abstract class Page {
         setTitle(DEFAULT_TITLE);
         setStringDataValue(ID_KEY, mId);
         setPageType();
+        setReadOnlyMode(false);
     }
 
     public static String getPageTypeKey(String pageId)
@@ -85,6 +86,7 @@ public abstract class Page {
         else
         {
             setPageType();
+
         }
     }
 
@@ -99,14 +101,15 @@ public abstract class Page {
     void initialize(ALGB app)
     {
         mApplication = app;
-        mMyEnvironment = new Environment(app.getBaseContext().getEnvironment());
-        mMyData = new HashMap<String, Value>();
 
-        mMyEnvironment.setVariableValues(mMyData);
+        mMyData = new HashMap<String, Value>();
 
         mBasePageLispContext = new LispContext(app.getBaseContext(), app.getContext());
 
-        setReadOnlyMode(false);
+        mMyEnvironment = mBasePageLispContext.getEnvironment();
+        mMyEnvironment.setVariableValues(mMyData);
+        mMyEnvironment.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, Environment.getNull());
+
     }
 
     public LispContext getBasePageLispContext()
@@ -153,6 +156,7 @@ public abstract class Page {
         {
             mMyData = stored.getStringHashtable();
             mMyEnvironment.setVariableValues(mMyData);
+            mMyEnvironment.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, Environment.getNull());
             return true;
         }
         else

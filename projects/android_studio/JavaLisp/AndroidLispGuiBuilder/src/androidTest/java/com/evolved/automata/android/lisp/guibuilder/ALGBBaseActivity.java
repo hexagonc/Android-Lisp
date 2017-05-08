@@ -23,7 +23,7 @@ public class ALGBBaseActivity extends Activity {
     ALGB mApplication;
     Workspace mCurrentWorkspace;
 
-    PageFragment mCurrentPage;
+    WorkspaceFragment mCurrentWorkspaceFragment;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState)
@@ -33,7 +33,7 @@ public class ALGBBaseActivity extends Activity {
 
         FragmentManager manager = getFragmentManager();
         FragmentTransaction ft = manager.beginTransaction();
-        mCurrentPage = new PageFragment();
+        mCurrentWorkspaceFragment = new WorkspaceFragment();
 
 
         ActionBar bar = getActionBar();
@@ -43,13 +43,8 @@ public class ALGBBaseActivity extends Activity {
         {
             mApplication = new ALGB(getApplicationContext());
             mCurrentWorkspace = mApplication.getCurrentWorkspace();
-            mTestPage = mCurrentWorkspace.getCurrentPage();
-            if (mTestPage instanceof CodePage)
-            {
-                mCurrentPage.setPage((CodePage)mTestPage);
-            }
-
-            ft.add(R.id.v2_top, mCurrentPage);
+            mCurrentWorkspaceFragment.setWorkspace(mCurrentWorkspace);
+            ft.add(R.id.v2_top, mCurrentWorkspaceFragment);
             ft.commit();
         }
         catch (Exception e)
@@ -96,14 +91,14 @@ public class ALGBBaseActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.v2_main, menu);
-        mCurrentPage.onCreateOptionsMenu(menu, getMenuInflater());
+        mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
         return true;
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
-        mCurrentPage.onPrepareOptionsMenu(menu);
+        mCurrentWorkspaceFragment.onPrepareOptionsMenu(menu);
         return true;
     }
 
@@ -120,7 +115,7 @@ public class ALGBBaseActivity extends Activity {
         else
         {
 
-            if (mCurrentPage.onOptionsItemSelected(item))
+            if (mCurrentWorkspaceFragment.onOptionsItemSelected(item))
                 return true;
             else
                 return super.onOptionsItemSelected(item);
