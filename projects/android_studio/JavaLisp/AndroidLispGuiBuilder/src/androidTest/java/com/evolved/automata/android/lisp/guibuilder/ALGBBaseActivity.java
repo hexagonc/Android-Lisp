@@ -23,6 +23,7 @@ public class ALGBBaseActivity extends Activity {
     ALGB mApplication;
     Workspace mCurrentWorkspace;
 
+    PageFragment mCurrentPage;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState)
@@ -32,9 +33,8 @@ public class ALGBBaseActivity extends Activity {
 
         FragmentManager manager = getFragmentManager();
         FragmentTransaction ft = manager.beginTransaction();
-        CodePageFragment cef = new CodePageFragment();
-        ft.add(R.id.v2_top, cef);
-        ft.commit();
+        mCurrentPage = new PageFragment();
+
 
         ActionBar bar = getActionBar();
         bar.show();
@@ -46,8 +46,11 @@ public class ALGBBaseActivity extends Activity {
             mTestPage = mCurrentWorkspace.getCurrentPage();
             if (mTestPage instanceof CodePage)
             {
-                cef.setCodePage((CodePage) mTestPage);
+                mCurrentPage.setPage((CodePage)mTestPage);
             }
+
+            ft.add(R.id.v2_top, mCurrentPage);
+            ft.commit();
         }
         catch (Exception e)
         {
@@ -93,6 +96,14 @@ public class ALGBBaseActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.v2_main, menu);
+        mCurrentPage.onCreateOptionsMenu(menu, getMenuInflater());
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu)
+    {
+        mCurrentPage.onPrepareOptionsMenu(menu);
         return true;
     }
 
@@ -107,6 +118,13 @@ public class ALGBBaseActivity extends Activity {
             return true;
         }
         else
-            return super.onOptionsItemSelected(item);
+        {
+
+            if (mCurrentPage.onOptionsItemSelected(item))
+                return true;
+            else
+                return super.onOptionsItemSelected(item);
+        }
+
     }
 }

@@ -25,12 +25,16 @@ public abstract class Page {
 
     final String TITLE_KEY;
     final String ID_KEY;
+    final String IS_READ_ONLY_KEY;
 
     final String TITLE_KEY_PREFIX = "TITLE";
     final String ID_KEY_PREFIX = "ID";
+    final String IS_READ_ONLY_KEY_PREFIX = "-IS-READ-ONLY";
 
     final String TYPE_KEY;
     public static final String TYPE_KEY_PREFIX = "-TYPE-KEY";
+
+
 
     final String mId;
 
@@ -50,6 +54,7 @@ public abstract class Page {
         TYPE_KEY = getPageTypeKey(mId);
         TITLE_KEY = mId + "-" + TITLE_KEY_PREFIX;
         ID_KEY = mId + "-" + ID_KEY_PREFIX;
+        IS_READ_ONLY_KEY = mId + IS_READ_ONLY_KEY_PREFIX;
         mMyData.put(TITLE_KEY, NLispTools.makeValue(getPageType().toString()));
         setTitle(DEFAULT_TITLE);
         setStringDataValue(ID_KEY, mId);
@@ -70,6 +75,7 @@ public abstract class Page {
         TITLE_KEY = mId + "-" + TITLE_KEY_PREFIX;
         ID_KEY = mId + "-" + ID_KEY_PREFIX;
         TYPE_KEY = mId + TYPE_KEY_PREFIX;
+        IS_READ_ONLY_KEY = mId + IS_READ_ONLY_KEY_PREFIX;
         mMyData.put(TITLE_KEY, NLispTools.makeValue(getPageType().toString()));
 
         if (!restorePage())
@@ -82,6 +88,12 @@ public abstract class Page {
         }
     }
 
+    public ALGB getApplication()
+    {
+        return mApplication;
+    }
+
+
     protected abstract void setPageType();
 
     void initialize(ALGB app)
@@ -93,6 +105,8 @@ public abstract class Page {
         mMyEnvironment.setVariableValues(mMyData);
 
         mBasePageLispContext = new LispContext(app.getBaseContext(), app.getContext());
+
+        setReadOnlyMode(false);
     }
 
     public LispContext getBasePageLispContext()
@@ -113,6 +127,17 @@ public abstract class Page {
     public String getTitle()
     {
         return mMyData.get(TITLE_KEY).getString();
+    }
+
+    public void setReadOnlyMode(boolean isReadOnly)
+    {
+        mMyData.put(IS_READ_ONLY_KEY, NLispTools.makeValue(isReadOnly));
+    }
+
+    public boolean isReadOnlyEnabled()
+    {
+        Value readOly = mMyData.get(IS_READ_ONLY_KEY);
+        return readOly != null && !readOly.isNull();
     }
 
     public void savePage()

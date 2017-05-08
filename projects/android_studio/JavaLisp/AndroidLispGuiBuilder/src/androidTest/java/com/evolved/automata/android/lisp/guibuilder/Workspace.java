@@ -74,6 +74,11 @@ public class Workspace {
 
     }
 
+    public ALGB getApplication()
+    {
+        return mApplication;
+    }
+
     public void save(boolean savePages)
     {
         mApplication.saveData(getWorkspaceId(), CONTEXT_KEY, new StringHashtableValue(mMyData));

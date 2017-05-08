@@ -7,6 +7,7 @@
     <LinearLayout
         android:layout_width = 'match_parent'
         android:layout_height="wrap_content"
+        android:gravity = "center_vertical"
         android:orientation="horizontal"
         android:id = "@+id/v2_lin_page_navigation"
         android:layout_marginBottom = '@dimen/lisp_edit_title_margin'>
@@ -39,10 +40,21 @@
                 android:textStyle="bold"
                 />
         </FrameLayout>
-        <FrameLayout
+
+
+        <LinearLayout
             android:layout_width = '0px'
             android:layout_height = 'wrap_content'
-            android:layout_weight = '1'>
+            android:layout_weight = '1'
+            android:orientation="horizontal"
+            android:gravity = "right|center_vertical"
+            >
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_add_black_24dp"
+                android:id = "@+id/v2_but_add_page"
+                android:background="@drawable/v2_code_editor_toolbar_button_background"/>
             <com.evolved.automata.android.widgets.ShadowButton
                 custom:text = '@string/code_template_layout_history_forward_label'
                 custom:textSize = '@dimen/history_button_text_size'
@@ -55,7 +67,7 @@
                 android:paddingRight="@dimen/history_button_padding_left_right"
                 android:paddingTop = '@dimen/history_button_padding_top_bottom'
                 android:paddingBottom = '@dimen/history_button_padding_top_bottom'/>
-        </FrameLayout>
+        </LinearLayout>
     </LinearLayout>
     <FrameLayout
         android:layout_width="match_parent"

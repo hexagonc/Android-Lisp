@@ -47,7 +47,7 @@ public class CodeEditorFragment extends Fragment {
 
     public enum CHANGE_TYPE
     {
-        CURSOR, TEXT, SELECTION, READONLY
+        CURSOR, TEXT, SELECTION, READONLY, VISIBILITY, COMMAND_COMPLETE
     }
 
     public static class StateChange
@@ -58,7 +58,7 @@ public class CodeEditorFragment extends Fragment {
         public boolean _readOnlyModeP;
 
         HashSet<CHANGE_TYPE> _changeType = new HashSet<CHANGE_TYPE>();
-
+        boolean isVisible = true;
 
     }
 
@@ -72,6 +72,7 @@ public class CodeEditorFragment extends Fragment {
         int getCursorPosition();
         ParseNode getSelection();
         boolean isReadOnlyMode();
+        boolean isPresentP();
 
     }
 
@@ -108,10 +109,20 @@ public class CodeEditorFragment extends Fragment {
 
         mCodeEditorParseContext = new LispCodeEditorParseContext();
 
+        if (mStateObserver != null)
+        {
+            Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onCreate with existing state observer");
+        }
+        else
+            Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onCreate WITHOUT existing state observer.  State observables created for first time");
+
         mLastStateChange = new StateChange();
 
         mStateObserver = PublishSubject.create();
+
         mExternalObservable = mStateObserver.observeOn(AndroidSchedulers.mainThread());
+
+
     }
 
     @Nullable
@@ -264,22 +275,93 @@ public class CodeEditorFragment extends Fragment {
         });
 
 
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onCreateView.  Layout inflated and widgets bound");
 
         return top;
     }
 
     @Override
+    public void onStart()
+    {
+        super.onStart();
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onStart.  View created and attached to hierarchy");
+
+    }
+
+    @Override
+    public void onResume()
+    {
+        super.onResume();
+        mLastStateChange.isVisible = true;
+        isPresentP = true;
+        mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
+        {
+            {
+
+                add(CHANGE_TYPE.VISIBILITY);
+            }
+        };
+        mStateObserver.onNext(mLastStateChange);
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onResume.  Fragment is visible and can receive messages");
+    }
+
+    @Override
+    public void onPause()
+    {
+
+        mLastStateChange.isVisible = false;
+        mLastStateChange._changeType = new HashSet<CHANGE_TYPE>()
+        {
+            {
+
+                add(CHANGE_TYPE.VISIBILITY);
+            }
+        };
+
+        isPresentP = false;
+        mStateObserver.onNext(mLastStateChange);
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onPause.  CodeEditor not visible and should not receive messages");
+        super.onPause();
+    }
+
+    @Override
+    public void onStop()
+    {
+
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onStop.  OnStart will be called before can display again");
+        super.onStop();
+    }
+
+    @Override
+    public void onDestroyView()
+    {
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onDestroyView");
+        super.onDestroyView();
+
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onDestroy");
+        super.onDestroy();
+    }
+
+    @Override
     public void onDetach()
     {
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onDetach.  Last callback");
         super.onDetach();
-        isPresentP =  false;
+
+
     }
 
     @Override
     public void onAttach(Activity activity)
     {
         super.onAttach(activity);
-        isPresentP = true;
+        Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onAttach.  Very first callback");
+
     }
 
 
@@ -317,7 +399,7 @@ public class CodeEditorFragment extends Fragment {
                     }
                 };
 
-                return mExternalObservable.subscribe(resultConsumer, errorConsumer, onComplete);
+                return mStateObserver.subscribe(resultConsumer, errorConsumer, onComplete);
             }
 
             @Override
@@ -371,6 +453,13 @@ public class CodeEditorFragment extends Fragment {
                                 StateChange change = new StateChange();
                                 change._text = mController.getText();
                                 change._cursorPos = mController.getCursorPos();
+                                change._readOnlyModeP = mController.isReadOnlyMode();
+                                change._changeType = new HashSet<CHANGE_TYPE>()
+                                {
+                                    {
+                                        add(CHANGE_TYPE.COMMAND_COMPLETE);
+                                    }
+                                };
                                 subscriber.onNext(change);
                             }
                             catch (Exception e)
@@ -429,12 +518,12 @@ public class CodeEditorFragment extends Fragment {
                                 change._text = mController.getText();
                                 change._cursorPos = mController.getCursorPos();
                                 change._readOnlyModeP = mController.isReadOnlyMode();
+
                                 change._changeType = new HashSet<CHANGE_TYPE>()
                                 {
                                     {
-                                        add(CHANGE_TYPE.READONLY);
+                                        add(CHANGE_TYPE.COMMAND_COMPLETE);
                                     }
-
                                 };
 
                                 subscriber.onNext(change);
@@ -497,9 +586,8 @@ public class CodeEditorFragment extends Fragment {
                                 change._changeType = new HashSet<CHANGE_TYPE>()
                                 {
                                     {
-                                        add(CHANGE_TYPE.READONLY);
+                                        add(CHANGE_TYPE.COMMAND_COMPLETE);
                                     }
-
                                 };
 
                                 subscriber.onNext(change);
@@ -531,6 +619,12 @@ public class CodeEditorFragment extends Fragment {
             public boolean isReadOnlyMode()
             {
                 return mController.isReadOnlyMode();
+            }
+
+            @Override
+            public boolean isPresentP()
+            {
+                return isPresentP;
             }
 
         };

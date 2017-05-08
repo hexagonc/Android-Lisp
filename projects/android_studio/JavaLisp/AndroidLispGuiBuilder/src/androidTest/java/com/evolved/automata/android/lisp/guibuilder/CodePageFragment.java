@@ -45,6 +45,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     CodePage mCodePage;
 
+    LispContext mCodeContext;
 
 
     @Override
@@ -60,12 +61,16 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         mCodePage = page;
     }
 
+    public void setLispContext(LispContext context)
+    {
+        mCodeContext = context;
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        mEditorFragment = new CodeEditorFragment();
-        mResultFragment = new LispResultFragment();
+
     }
 
     @Nullable
@@ -127,21 +132,35 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         });
 
 
+        mEditorFragment = new CodeEditorFragment();
+        mResultFragment = new LispResultFragment();
+
+        FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
+        transaction.add(R.id.v2_result_fragment, mResultFragment);
+        transaction.add(R.id.v2_frag_code_editor, mEditorFragment);
+        transaction.commit();
+
+        Log.i("-+*+--+*+--+*+-", "CodePage onCreateView - inflated layout and set buttons. started child fragment transactions");
         return parent;
+    }
+
+    @Override
+    public void onViewCreated(View view, @Nullable Bundle savedInstanceState)
+    {
+        super.onViewCreated(view, savedInstanceState);
+
+        Log.i("-+*+--+*+--+*+-", "CodePage onViewCreated - started CodeEditor and Result Fragment transactions");
     }
 
     @Override
     public void onStart()
     {
         super.onStart();
-        FragmentTransaction transaction = getActivity().getFragmentManager().beginTransaction();
-        transaction.add(R.id.v2_result_fragment, mResultFragment);
-        transaction.add(R.id.v2_frag_code_editor, mEditorFragment);
-        transaction.commit();
-
+        Log.i("-+*+--+*+--+*+-", "CodePage onStart");
         mEditorController = mEditorFragment.getEditorController();
-
+        mEditorController.setStateObserver(this);
         mResultController = mResultFragment.getController();
+
 
     }
 
@@ -157,7 +176,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         ParseNode selection = mEditorController.getSelection();
         if (selection != null)
         {
-            LispContext context = mCodePage.getBasePageLispContext();
+            LispContext context = mCodeContext;
             context.evaluateExpression(selection.getValue(), new Observer<Value>() {
                 @Override
                 public void onSubscribe(@NonNull Disposable d)
@@ -189,72 +208,68 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             Toast.makeText(getActivity(), "No expression selected", Toast.LENGTH_LONG).show();
     }
 
+    private void evaluateAll()
+    {
+        String text = mEditorController.getText();
+
+        if (text != null)
+        {
+            LispContext context = mCodeContext;
+            context.evaluateExpression(text, new Observer<Value>() {
+                @Override
+                public void onSubscribe(@NonNull Disposable d)
+                {
+
+                }
+
+                @Override
+                public void onNext(@NonNull Value value)
+                {
+                    mResultController.setResult(value.toString(), false);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable e)
+                {
+                    mResultController.setResult(e.toString(), false);
+                }
+
+                @Override
+                public void onComplete()
+                {
+
+                }
+            });
+
+        }
+        else
+            Toast.makeText(getActivity(), "No expression to evaluate", Toast.LENGTH_LONG).show();
+    }
+
 
     @Override
     public void onResume()
     {
         super.onResume();
-        String text = mCodePage.getExpr();
-        mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()) , this);
+
+        Log.i("-+*+--+*+--+*+-", "CodePage onResume");
     }
 
     @Override
     public void onPause()
     {
         super.onPause();
+        Log.i("-+*+--+*+--+*+-", "CodePage onPause");
     }
 
     @Override
     public void onStop()
     {
         super.onStop();
+        Log.i("-+*+--+*+--+*+-", "CodePage onStop");
     }
 
-    private void loadTestInput()
-    {
-        String largeFileName = "/com/evolved/automata/android/lisp/guibuilder/generated.lisp";
 
-        InputStreamReader reader = null;
-        InputStream istream = null;
-        try
-        {
-
-            istream = this.getClass().getResourceAsStream(largeFileName);
-            reader = new InputStreamReader(istream, Charset.forName("UTF-8"));
-            StringBuilder input = new StringBuilder();
-
-            int charValue;
-
-            while ((charValue = reader.read()) != -1)
-            {
-                input.appendCodePoint(charValue);
-            }
-
-            //mTestData = input.toString();
-
-
-        }
-        catch (Exception e)
-        {
-
-            e.printStackTrace();
-
-        }
-        finally
-        {
-            if (reader != null)
-            {
-                try
-                {
-                    reader.close();
-                }
-                catch (Exception e2)
-                {
-                    e2.printStackTrace();
-                }
-            }
-        }
-    }
 
     @Override
     public void onSubscribe(@NonNull Disposable d)
@@ -267,13 +282,31 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     {
 
         String code = stateChange._text;
-        mCodePage.setExpr(code);
-        Log.d("<><><><", code);
-        mCodePage.setCursorPosition(stateChange._cursorPos);
+        if (code != null)
+        {
+            mCodePage.setExpr(code);
+            mCodePage.setCursorPosition(stateChange._cursorPos);
+        }
 
         if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.READONLY))
         {
             updateToggleButton();
+            mCodePage.setReadOnlyMode(stateChange._readOnlyModeP);
+        }
+
+        if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.VISIBILITY))
+        {
+            if (stateChange.isVisible)
+            {
+                String text = mCodePage.getExpr();
+                mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()) , this);
+                if (mCodePage.isReadOnlyEnabled())
+                {
+                    mEditorController.enableReadOnlyMode(this);
+                }
+                else
+                    mEditorController.disableReadOnlyMode(this);
+            }
         }
 
     }
