@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name = "v2_code_editor_toolbar_background">#FFF</color>
+    <color name = "v2_floating_background_shadow">#575757</color>
 </resources>

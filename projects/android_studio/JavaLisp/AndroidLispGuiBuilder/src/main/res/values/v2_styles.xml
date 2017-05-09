@@ -16,4 +16,39 @@
         <item name = "android:textColor">#0F0</item>
 
     </style>
+    <style name ="v2_page_properties_title" parent = "@style/page_properties_header">
+        <item name="android:textSize">
+            25sp
+        </item>
+        <item name = "android:textColor">#000</item>
+
+    </style>
+    <style name = "v2_page_properties_panel">
+        <item name= "android:background">#FFF</item>
+    </style>
+    <style name="v2_properties_container">
+        <item name="android:layout_margin">10dp</item>
+    </style>
+    <style name = "properties_container_even" parent = "@style/v2_properties_container">
+        <item name = "android:background">@drawable/v2_floating_background_blue</item>
+        <item name = "android:padding">10dp</item>
+    </style>
+    <style name = "properties_container_odd" parent = "@style/v2_properties_container">
+        <item name = "android:background">@drawable/v2_floating_background_green</item>
+        <item name = "android:padding">10dp</item>
+    </style>
+    <style name = "v2_page_properties_buttons">
+        <item name = "android:textSize">20sp</item>
+    </style>
+    <style name = "page_properties_header">
+        <item name = "android:textSize">20sp</item>
+        <item name = "android:textStyle">bold</item>
+    </style>
+    <style name = "page_properties_subheader" parent = "@style/page_properties_header">
+        <item name = "android:textSize">15sp</item>
+    </style>
+    <style name = "page_properties_info">
+        <item name = "android:textSize">15sp</item>
+    </style>
+
 </resources>

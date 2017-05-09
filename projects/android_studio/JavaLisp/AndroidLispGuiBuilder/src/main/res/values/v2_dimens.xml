@@ -5,5 +5,9 @@
     <dimen name = 'v2_code_editor_toolbar_narrow_button_size'>22dp</dimen>
     <dimen name = "v2_parent_nav_buttons_margin_right">20dp</dimen>
     <dimen name = "v2_eval_panel_shadow_size">20sp</dimen>
-
+    <dimen name = "v2_page_properties_dialog_height">400dp</dimen>
+    <dimen name = "v2_page_properties_dialog_label_text_size">40sp</dimen>
+    <dimen name = "v2_page_properties_dialog_property_label_text_size">30sp</dimen>
+    <dimen name = "v2_page_properties_dialog_button_text_size">40sp</dimen>
+    <dimen name = "v2_workspace_list_height">200dp</dimen>
 </resources>

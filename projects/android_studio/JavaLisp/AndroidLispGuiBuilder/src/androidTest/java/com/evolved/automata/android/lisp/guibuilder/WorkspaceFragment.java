@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
 import android.app.Fragment;
+import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -18,6 +19,7 @@ import android.widget.Toast;
 
 import com.evolved.automata.android.widgets.ShadowButton;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 /**
@@ -167,6 +169,53 @@ public class WorkspaceFragment extends Fragment {
         }
     }
 
+    public void showPageProperties()
+    {
+
+        final String fragTag = "page_properties";
+        PagePropertiesFragment frag = PagePropertiesFragment.create(new PagePropertiesFragment.OnCompleteListener() {
+                                                                        @Override
+                                                                        public void close()
+                                                                        {
+                                                                            FragmentManager fm = getFragmentManager();
+                                                                            FragmentTransaction ft = fm.beginTransaction();
+                                                                            Fragment f = fm.findFragmentByTag(fragTag);
+                                                                            if (f!=null)
+                                                                                ft.remove(f).commit();
+
+                                                                        }
+
+                                                                        @Override
+                                                                        public void close(HashMap<PagePropertiesFragment.CHANGE_TYPE, PagePropertiesFragment.Change> changes)
+                                                                        {
+                                                                            FragmentManager fm = getFragmentManager();
+                                                                            FragmentTransaction ft = fm.beginTransaction();
+                                                                            Fragment f = fm.findFragmentByTag(fragTag);
+                                                                            if (f!=null)
+                                                                                ft.remove(f).commit();
+
+                                                                            if (changes.containsKey(PagePropertiesFragment.CHANGE_TYPE.TITLE))
+                                                                            {
+                                                                                PagePropertiesFragment.ChangeTitle cTitle = (PagePropertiesFragment.ChangeTitle)changes.get(PagePropertiesFragment.CHANGE_TYPE.TITLE);
+
+                                                                                CodePage page = getCurrentPage();
+                                                                                page.setTitle(cTitle.newTitle());
+                                                                                mPageTitleView.setText(cTitle.newTitle());
+
+                                                                            }
+
+                                                                            if (changes.containsKey(PagePropertiesFragment.CHANGE_TYPE.DROPBOX_SYNC_FILE))
+                                                                            {
+                                                                                PagePropertiesFragment.ChangeDropboxSyncFile cS = (PagePropertiesFragment.ChangeDropboxSyncFile)changes.get(PagePropertiesFragment.CHANGE_TYPE.DROPBOX_SYNC_FILE);
+                                                                                CodePage page = getCurrentPage();
+                                                                                page.setDropboxPath(cS.getSyncFile());
+                                                                            }
+                                                                        }
+                                                                    },
+                getCurrentPage());
+        frag.show(getFragmentManager(), fragTag);
+    }
+
     @Override
     public void onStart()
     {
@@ -208,6 +257,12 @@ public class WorkspaceFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item)
     {
 
-        return getCurrentPageFragment().onOptionsItemSelected(item);
+        if (item.getItemId() == R.id.v2_menu_page_properties)
+        {
+            showPageProperties();
+            return true;
+        }
+        else
+            return getCurrentPageFragment().onOptionsItemSelected(item);
     }
 }

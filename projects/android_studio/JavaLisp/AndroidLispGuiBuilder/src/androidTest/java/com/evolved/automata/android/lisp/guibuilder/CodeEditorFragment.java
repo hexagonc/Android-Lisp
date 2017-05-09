@@ -275,6 +275,9 @@ public class CodeEditorFragment extends Fragment {
         });
 
 
+        // Hack to handle case where mCodeView height is incorrect when displaying softkeyboard
+        // after moving from Render screen of another page
+        mCodeView.setReadOnlyState(true);
         Log.i("-+*+--+*+--+*+-", "CodeEditorFragment onCreateView.  Layout inflated and widgets bound");
 
         return top;

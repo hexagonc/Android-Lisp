@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <string name = "v2_workspace_management_title">Manage Workspaces</string>
+    <string name = "v2_page_properties_title">Page Properties</string>
 </resources>

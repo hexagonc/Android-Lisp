@@ -122,4 +122,6 @@ public class ALGBBaseActivity extends Activity {
         }
 
     }
+
+
 }

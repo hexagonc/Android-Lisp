@@ -5,4 +5,7 @@
 
         android:showAsAction="never"
         android:title="Finish test"/>
+    <item android:id = "@+id/v2_menu_page_properties"
+          android:title = "Page Properties"
+          android:showAsAction="never"/>
 </menu>
