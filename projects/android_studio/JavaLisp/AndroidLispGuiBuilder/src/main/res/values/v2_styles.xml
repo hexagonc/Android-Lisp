@@ -51,4 +51,9 @@
         <item name = "android:textSize">15sp</item>
     </style>
 
+    <style name = "workspace_list_item">
+        <item name = "android:height">@dimen/v2_workspace_list_item_size</item>
+        <item name = "android:paddingLeft">@dimen/v2_workspace_list_item_padding_sides</item>
+        <item name = "android:paddingRight">@dimen/v2_workspace_list_item_padding_sides</item>
+    </style>
 </resources>

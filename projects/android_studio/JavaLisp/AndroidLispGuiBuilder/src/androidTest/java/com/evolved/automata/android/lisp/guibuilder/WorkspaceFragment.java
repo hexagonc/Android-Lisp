@@ -210,6 +210,13 @@ public class WorkspaceFragment extends Fragment {
                                                                                 CodePage page = getCurrentPage();
                                                                                 page.setDropboxPath(cS.getSyncFile());
                                                                             }
+                                                                            if (changes.containsKey(PagePropertiesFragment.CHANGE_TYPE.CHANGE_TEXT))
+                                                                            {
+                                                                                PagePropertiesFragment.ChangeText cT = (PagePropertiesFragment.ChangeText)changes.get(PagePropertiesFragment.CHANGE_TYPE.CHANGE_TEXT);
+                                                                                CodePage page = getCurrentPage();
+                                                                                page.setExpr(cT.newText());
+                                                                                getCurrentPageFragment().updatePage();
+                                                                            }
                                                                         }
                                                                     },
                 getCurrentPage());

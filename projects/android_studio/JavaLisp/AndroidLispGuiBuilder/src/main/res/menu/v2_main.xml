@@ -8,4 +8,13 @@
     <item android:id = "@+id/v2_menu_page_properties"
           android:title = "Page Properties"
           android:showAsAction="never"/>
+    <item android:id = "@+id/v2_menu_workspace_management"
+          android:title = "Manage Workspaces"
+          android:showAsAction="never"/>
+    <item android:id = "@+id/v2_menu_open_dropbox"
+          android:title = "Open"
+          android:showAsAction="never"/>
+    <item android:id = "@+id/v2_menu_post_test_login"
+          android:title = "Test Dropbox Login"
+          android:showAsAction="never"/>
 </menu>

@@ -2,4 +2,6 @@
 <resources>
     <color name = "v2_code_editor_toolbar_background">#FFF</color>
     <color name = "v2_floating_background_shadow">#575757</color>
+    <color name = "v2_selected_workspace_bullet">#030093</color>
+    <color name = "v2_workspace_list_divider">#c6c5f1</color>
 </resources>

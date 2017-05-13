@@ -247,10 +247,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     }
 
 
-    public void setReadOnlyState()
+    public void setReadOnlyState(boolean suppressNotifications)
     {
         mReadOnlyModeP = true;
-        if (mStateListener != null)
+        if (mStateListener != null && !suppressNotifications)
             mStateListener.onReadOnlyStateChanged(mReadOnlyModeP);
         setOnTouchListener(new View.OnTouchListener() {
 
@@ -282,6 +282,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             }
 
         });
+    }
+    public void setReadOnlyState()
+    {
+        setReadOnlyState(false);
     }
 
 

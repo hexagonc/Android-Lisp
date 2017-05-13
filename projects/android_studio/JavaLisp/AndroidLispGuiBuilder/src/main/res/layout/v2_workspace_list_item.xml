@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android = "http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/v2_workspace_list_item_size"
+    android:orientation="horizontal"
+    style = "@style/workspace_list_item"
+    android:layout_marginBottom="10dp"
+    >
+    <LinearLayout
+        android:layout_width="0px"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical|left"
+        >
+        <TextView
+            android:layout_width = "wrap_content"
+            android:layout_height = "wrap_content"
+            android:text = "default"
+            android:id = "@+id/v2_workspace_item_name"
+            android:textSize = "15sp"
+            />
+
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="0px"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical|right"
+        >
+        <ImageView
+            android:layout_width = "@dimen/v2_workspace_list_item_bullet_size"
+            android:layout_height = "@dimen/v2_workspace_list_item_bullet_size"
+            android:src = "@drawable/v2_workspace_item_selected"
+            android:id = "@+id/v2_icon_workspace_item_selected"
+
+            />
+    </LinearLayout>
+
+
+
+</LinearLayout>

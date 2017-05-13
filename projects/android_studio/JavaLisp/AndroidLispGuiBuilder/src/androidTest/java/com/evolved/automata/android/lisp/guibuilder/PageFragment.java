@@ -54,6 +54,12 @@ public class PageFragment extends Fragment {
 
     }
 
+    public void updatePage()
+    {
+        mCodeFragment.setCodePage(mPage);
+        mCodeFragment.updatePage();
+    }
+
     public CodePage getPage()
     {
         return mPage;

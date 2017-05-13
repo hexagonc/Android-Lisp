@@ -45,10 +45,25 @@ public class ALGB {
 
     }
 
+    public String[] getAllWorkspaceId()
+    {
+        return mData.getAllKeys(Workspace.CONTEXT_KEY);
+    }
+
+    public Workspace setCurrentWorkspace(String id)
+    {
+        Workspace w = getWorkspace(id);
+        if (w == null)
+            throw new IllegalArgumentException("Workspace: " + id + " does not exist");
+        mCurrentWorkspace = w;
+        mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, id);
+        return w;
+    }
+
 
     private void retrieveCurrentWorkspace() throws IllegalAccessException, InstantiationException
     {
-        String[] workspaces = mData.getAllKeys(Workspace.CONTEXT_KEY);
+        String[] workspaces = getAllWorkspaceId();
         if (workspaces.length == 0)
         {
             mCurrentWorkspace = createNewWorkspace();
@@ -59,6 +74,8 @@ public class ALGB {
             mCurrentWorkspace = new Workspace(this, previousID);
         }
     }
+
+
 
 
     public void save(boolean saveWorkspace)
@@ -170,6 +187,48 @@ public class ALGB {
             }
         }
         return w;
+    }
+
+    public boolean deleteWorkspace(String id, String replacementIfCurrent)
+    {
+        Workspace w = getWorkspace(id);
+        if (w != null)
+        {
+
+            if (getAllWorkspaceId().length == 1)
+            {
+                return false;
+            }
+            else
+            {
+                if (id.equals(mCurrentWorkspace.getWorkspaceId()))
+                {
+                    if (id.equals(replacementIfCurrent))
+                    {
+                        throw new IllegalArgumentException("Can't delete a workspace and replace with self");
+                    }
+
+                    Workspace replacement = getWorkspace(replacementIfCurrent);
+                    if (replacement == null)
+                    {
+                        throw new IllegalArgumentException("Can't replace current workspace with non-existent one");
+                    }
+
+                    deleteData(id, Workspace.CONTEXT_KEY);
+                    mWorkspaceCache.remove(id);
+
+                    setCurrentWorkspace(replacementIfCurrent);
+                }
+                else
+                {
+                    deleteData(id, Workspace.CONTEXT_KEY);
+                    mWorkspaceCache.remove(id);
+                }
+                return true;
+            }
+        }
+        else
+            throw new IllegalArgumentException("Cannot delete workspace that does not exist");
     }
 
 

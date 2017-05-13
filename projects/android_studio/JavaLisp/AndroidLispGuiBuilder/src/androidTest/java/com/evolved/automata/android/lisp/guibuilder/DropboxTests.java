@@ -15,6 +15,7 @@ import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.DbxUserFilesRequests;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
+import com.evolved.automata.android.lisp.guibuilder.v2.Tools;
 
 import org.junit.Assert;
 import org.junit.Rule;
@@ -169,7 +170,7 @@ public class DropboxTests {
         try
         {
 
-            Instrumentation instrument = InstrumentationRegistry.getInstrumentation();
+            final Instrumentation instrument = InstrumentationRegistry.getInstrumentation();
 
             Context con = instrument.getTargetContext();
 
@@ -211,6 +212,28 @@ public class DropboxTests {
                             for (Metadata meta:folderResult.getEntries())
                             {
                                 names.add(meta.getName());
+
+                                String name = meta.getName();
+                                String pathLower = meta.getPathLower();
+                                String pathDisplay = meta.getPathDisplay();
+                                String total = meta.toString();
+
+
+                                String parent = Tools.getParentFolder(pathDisplay);
+                                System.out.println("Path:" + pathDisplay + " parent folder: " + parent);
+
+
+                                if (!parent.equals("/"))
+                                {
+                                    Metadata parentMeta = files.getMetadata(parent.toString());
+
+                                    System.out.println("Parent meta: " + parentMeta);
+                                }
+                                else
+                                {
+                                    System.out.println("no parent meta since parent is roolt");
+                                }
+
                             }
 
                             errorMessage = "Failed to get meta data";
@@ -269,6 +292,11 @@ public class DropboxTests {
         }
     }
 
+
+    public void testParentFolder()
+    {
+        String path = "";
+    }
 
 
     /*

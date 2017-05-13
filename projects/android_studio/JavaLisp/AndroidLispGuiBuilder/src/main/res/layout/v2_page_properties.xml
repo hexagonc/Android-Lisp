@@ -98,13 +98,17 @@
                 android:text = "Linked File:"
                 style = "@style/page_properties_subheader"
                 />
-            <TextView
+            <Button
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id = "@+id/v2_txt_dropbox_sync_filename"
                 style = "@style/page_properties_info"
-                android:text = "undefined"
-                android:enabled = "false"/>
+                android:text = ""
+                android:layout_marginTop="4dp"
+                android:textSize="18sp"
+                android:background="@drawable/v2_container_border_green"
+                android:gravity="left|center_vertical"
+                />
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

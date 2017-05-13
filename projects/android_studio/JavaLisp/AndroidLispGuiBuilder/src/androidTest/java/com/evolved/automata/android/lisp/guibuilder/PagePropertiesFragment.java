@@ -5,6 +5,7 @@ import android.app.DialogFragment;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,7 +13,14 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.evolved.automata.android.lisp.guibuilder.v2.*;
+import com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager;
+
 import java.util.HashMap;
+
+import io.reactivex.Observer;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
 
 /**
  * Created by Evolved8 on 5/8/17.
@@ -23,7 +31,7 @@ public class PagePropertiesFragment extends DialogFragment {
 
     public enum CHANGE_TYPE
     {
-        TITLE, DROPBOX_SYNC_FILE
+        TITLE, DROPBOX_SYNC_FILE, CHANGE_TEXT
     }
 
     public interface Change
@@ -48,6 +56,32 @@ public class PagePropertiesFragment extends DialogFragment {
         public String newTitle()
         {
             return title;
+        }
+
+        public HashMap<CHANGE_TYPE, Change> fill(HashMap<CHANGE_TYPE, Change> map)
+        {
+            map.put(getType(), this);
+            return map;
+        }
+
+    }
+
+    public static class ChangeText implements Change
+    {
+        String text = "";
+        public ChangeText(String t)
+        {
+            text = t;
+        }
+
+        public CHANGE_TYPE getType()
+        {
+            return CHANGE_TYPE.CHANGE_TEXT;
+        }
+
+        public String newText()
+        {
+            return text;
         }
 
         public HashMap<CHANGE_TYPE, Change> fill(HashMap<CHANGE_TYPE, Change> map)
@@ -94,10 +128,12 @@ public class PagePropertiesFragment extends DialogFragment {
 
     HashMap<CHANGE_TYPE, Change> mChanges = new HashMap<CHANGE_TYPE, Change>();
 
+    Button mSetNewPathButton;
     Button mAcceptDialogButton;
     Button mCancelDialogButton;
+    Button mSyncButton;
     EditText mPageTitleText;
-    TextView mDropboxSyncPath;
+    Button mDropboxSyncPath;
 
     CodePage mPage;
 
@@ -168,6 +204,11 @@ public class PagePropertiesFragment extends DialogFragment {
         setStyle(mStyle, mTheme);
     }
 
+    boolean canSync()
+    {
+        return mDropboxSyncPath.getText().toString().length()>0;
+    }
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState)
@@ -203,10 +244,67 @@ public class PagePropertiesFragment extends DialogFragment {
             }
         });
 
-        mDropboxSyncPath = (TextView)top.findViewById(R.id.v2_txt_dropbox_sync_filename);
+        mDropboxSyncPath = (Button)top.findViewById(R.id.v2_txt_dropbox_sync_filename);
         if (mPage.getDropboxPath() != null)
             mDropboxSyncPath.setText(mPage.getDropboxPath());
 
+
+
+        mDropboxSyncPath.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                showDropboxDialog();
+            }
+        });
+
+
+        mSetNewPathButton = (Button)top.findViewById(R.id.v2_but_set_dropbox_linked_file);
+        mSetNewPathButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+
+            }
+        });
+
+
+        mSyncButton = (Button)top.findViewById(R.id.v2_but_sync_now);
+        mSyncButton.setEnabled(canSync());
+        mSyncButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                String path = mDropboxSyncPath.getText().toString();
+                DropboxManager.get().getController().downloadFile(path, new Observer<DropboxManager.DropboxResponse>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull DropboxManager.DropboxResponse dropboxResponse)
+                    {
+                        DropboxManager.DownloadTextResponse response = (DropboxManager.DownloadTextResponse)dropboxResponse;
+                        (new ChangeText(response.getContents())).fill(mChanges);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e)
+                    {
+
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                });
+
+            }
+        });
         return top;
     }
 
@@ -252,5 +350,47 @@ public class PagePropertiesFragment extends DialogFragment {
     public void onDismiss(DialogInterface dialog)
     {
         finishedDialog();
+    }
+
+    private void showDropboxDialog()
+    {
+        com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager.Controller controller = com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager.get().getController();
+        controller.getFileDialog(getActivity(), "Select file to Sync With", "", new DropboxChooserItem.FileItemSelectHandler() {
+                    @Override
+                    public void onSelected(String filename)
+                    {
+                        Log.i(".oio..oio..oio.", "Selected file: " + filename);
+
+                        mDropboxSyncPath.setText(filename);
+                        mSyncButton.setEnabled(canSync());
+                    }
+                },
+                new Observer<com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager.DropboxResponse>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager.DropboxResponse dropboxResponse)
+                    {
+
+                        com.evolved.automata.android.lisp.guibuilder.v2.FileChooserDialog dialog = ((DropboxManager.FileDialogResponse)dropboxResponse).getDialog();
+                        dialog.show();
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e)
+                    {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                });
     }
 }

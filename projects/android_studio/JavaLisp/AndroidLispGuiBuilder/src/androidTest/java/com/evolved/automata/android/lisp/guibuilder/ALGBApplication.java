@@ -11,11 +11,14 @@ import java.sql.Types;
 import java.util.LinkedList;
 import java.util.Locale;
 
+import com.dropbox.core.v2.DbxClientV2;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.DeviceInfo;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.guibuilder.events.EventManager;
+import com.evolved.automata.android.lisp.guibuilder.v2.*;
+import com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
@@ -54,7 +57,10 @@ public class ALGBApplication extends Application
 
 			MenuManager.create(this);
 			CodeManager.create(this);
-			
+
+			com.evolved.automata.android.lisp.guibuilder.v2.DropboxManager.create(getApplicationContext());
+
+
 		}
 		catch (Exception e)
 		{

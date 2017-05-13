@@ -73,6 +73,38 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     }
 
+
+    public void updatePage()
+    {
+
+        String text = mCodePage.getExpr();
+        mEditorFragment.getEditorController().setText(text, 0, new Observer<CodeEditorFragment.StateChange>() {
+            @Override
+            public void onSubscribe(@NonNull Disposable d)
+            {
+
+            }
+
+            @Override
+            public void onNext(@NonNull CodeEditorFragment.StateChange stateChange)
+            {
+
+            }
+
+            @Override
+            public void onError(@NonNull Throwable e)
+            {
+                e.printStackTrace();;
+            }
+
+            @Override
+            public void onComplete()
+            {
+
+            }
+        });
+    }
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState)
