@@ -8,7 +8,10 @@ import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * Created by Evolved8 on 5/3/17.
@@ -47,7 +50,28 @@ public class ALGB {
 
     public String[] getAllWorkspaceId()
     {
-        return mData.getAllKeys(Workspace.CONTEXT_KEY);
+        HashSet<String> keys = new HashSet<String>();
+
+        for (String w:mData.getAllKeys(Workspace.CONTEXT_KEY))
+        {
+            keys.add(w);
+        }
+
+        for (String key:mWorkspaceCache.keySet())
+        {
+            keys.add(key);
+        }
+
+        String[] ordered = keys.toArray(new String[0]);
+
+        Arrays.sort(ordered, new Comparator<String>() {
+            @Override
+            public int compare(String lhs, String rhs)
+            {
+                return lhs.compareTo(rhs);
+            }
+        });
+        return ordered;
     }
 
     public Workspace setCurrentWorkspace(String id)

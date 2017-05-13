@@ -389,18 +389,28 @@ public class WorkspaceManagementFragment extends DialogFragment {
                         Toast.makeText(getActivity(), "Can't delete last workspace.  Trying renaming or clearing it.", Toast.LENGTH_LONG);
                         return;
                     }
+
+
                     WorkspaceData data = mWorkspaceListData.get(mSelectedWorkspacePos);
 
+                    if (data.isSelected())
+                    {
+                        Toast.makeText(getActivity(), "Can't delete the selected workspace.", Toast.LENGTH_LONG).show();
+                    }
+                    else
+                    {
+                        mWorkspacesToCreate.remove(data);
+                        mSelectedWorkspaceText.setText("");
 
-                    mWorkspacesToCreate.remove(data);
-                    mSelectedWorkspaceText.setText("");
+                        if (!data.isNew())
+                            mWorkspacesToDelete.add(data.getWorkspaceId());
+                        mWorkspaceListData.remove(mSelectedWorkspacePos);
+                        mSelectedWorkspacePos = -1;
 
-                    if (!data.isNew())
-                        mWorkspacesToDelete.add(data.getWorkspaceId());
-                    mWorkspaceListData.remove(mSelectedWorkspacePos);
-                    mSelectedWorkspacePos = -1;
+                        mWorkspaceAdapter.notifyDataSetChanged();
+                    }
 
-                    mWorkspaceAdapter.notifyDataSetChanged();
+
                 }
                 else
                 {
