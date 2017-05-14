@@ -4,7 +4,6 @@ import android.app.Dialog;
 import android.view.View;
 
 
-
 public interface FileChooserItem {
 	
 	public interface OnCreateChildFileListener
@@ -18,7 +17,7 @@ public interface FileChooserItem {
 	
 	public String getFileNameShort();
 	public void onClickListener(Dialog parent);
-	public void getChildren( OnChildFilesRequestedListener onChildrenReceived);
+	public void getChildren(OnChildFilesRequestedListener onChildrenReceived);
 	public boolean hasChildren();
 	public FileChooserItem getParent();
 	public int getViewResource();

@@ -1,16 +1,14 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
-import java.util.ArrayList;
-
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -19,37 +17,38 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.view.ViewGroup;
+
+import java.util.ArrayList;
 
 public class FileChooserDialog extends Dialog implements OnChildFilesRequestedListener
 {
-	
-	
+
+
 	ArrayList<FileChooserItem> _children = new ArrayList<FileChooserItem>();
-	
-	
+
+
 	FileChooserItem _currentFolder = null;
-	
+
 	Activity _parent;
 	ListView _fileList;
 	TextView _upButton;
-	
+
 	Button _createFolderButton;
 	Button _selectFileButton;
 	Button _cancelButton;
 	EditText _selectedFileEdit;
-	
+
 	ArrayAdapter<FileChooserItem> _fileAdapter = null;
-	
+
 	TextView _pathView = null;
-	
+
 	boolean _nothingToDo = false;
-	
+
 	ProgressDialog _progressDialog = null;
 	final String PREVIOUS_DIRECTORY_NAME = "...";
 	boolean _showProgressRequestedP = false;
 	FileChooserItem _selectedFile = null;
-	
+
 	String _title;
 	String _progressBarTitle = "";
 	Activity _activity;
@@ -66,7 +65,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 			_nothingToDo = true;
 		}
 	}
-	
+
 	public void setProgressTitle(String progressTitle)
 	{
 		_progressBarTitle = progressTitle;
@@ -81,33 +80,33 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 		}
 		return false;
 	}
-	
-	
+
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		
+
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.filechooser_layout);
 		_selectedFileEdit = (EditText)findViewById(R.id.edit_filename);
 		_createFolderButton = (Button)findViewById(R.id.but_create_folder);
 		final FileChooserItem.OnCreateChildFileListener folderListener = new FileChooserItem.OnCreateChildFileListener()
 		{
-			
+
 			@Override
 			public void onSuccess(FileChooserItem item) {
 				startProgressDialog();
 				_currentFolder.getChildren(FileChooserDialog.this);
 			}
-			
+
 			@Override
 			public void onError(String message) {
 				stopProgressDialog();
 				showError(message);
 			}
-		}; 
-		
+		};
+
 		_createFolderButton.setOnClickListener(new View.OnClickListener() {
-			
+
 			@Override
 			public void onClick(View v) {
 				String folderName = _selectedFileEdit.getText().toString().trim();
@@ -121,14 +120,14 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 					showError("Enter the name of the folder you want to create");
 			}
 		});
-		
-		
+
+
 		_selectFileButton = (Button)findViewById(R.id.but_ok);
 		_selectFileButton.setOnClickListener(new View.OnClickListener() {
-			
+
 			@Override
 			public void onClick(View v) {
-				
+
 				if (_selectedFile == null)
 				{
 					String fileShort = _selectedFileEdit.getText().toString().trim();
@@ -138,35 +137,35 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 					{
 						_currentFolder.onCreateChildFile(fileShort, getOnCreateNewFileListener());
 					}
-					
+
 				}
 				else
 				{
 					dismiss();
 					_selectedFile.onClickListener(FileChooserDialog.this);
-					
+
 				}
 			}
 		});
-		
+
 		_cancelButton = (Button)findViewById(R.id.but_cancel);
 		_cancelButton.setOnClickListener(new View.OnClickListener() {
-			
+
 			@Override
 			public void onClick(View v) {
 				dismiss();
 			}
 		});
-		
+
 		_upButton = new TextView(_parent);
 		_upButton.setText(PREVIOUS_DIRECTORY_NAME);
 		_upButton.setTextSize(30);
-		
+
 		_upButton.setOnClickListener(new View.OnClickListener() {
-			
+
 			@Override
 			public void onClick(View v) {
-				
+
 				if (_currentFolder.getParent()!=null)
 				{
 					startProgressDialog();
@@ -174,12 +173,12 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 				}
 			}
 		});
-		
+
 		_upButton.setLayoutParams(new AbsListView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-		
-		
+
+
 		setTitle(_title);
-		
+
 		_pathView = (TextView)findViewById(R.id.txt_parent_path_view);
 		_fileList = (ListView)findViewById(R.id.lst_files);
 		_fileList.addHeaderView(_upButton);
@@ -204,7 +203,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 					}
 				};
 		_fileList.setAdapter(_fileAdapter);
-		
+
 		_fileList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
 			@Override
@@ -212,24 +211,24 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 					int position, long id) {
 				position -=1; // decrement by one due to the presence of the header item w
 				FileChooserItem f = _children.get(position);
-				
+
 				if (f.hasChildren())
 				{
 					_selectedFile = null;
-					
+
 					startProgressDialog();
 					f.getChildren( FileChooserDialog.this);
 				}
 				else
 				{
-					_selectedFile = f; 
+					_selectedFile = f;
 					_selectedFileEdit.setText(f.getFileNameShort());
 				}
 			}
 		});
 	}
-	
-	
+
+
 	private FileChooserItem.OnCreateChildFileListener getOnCreateNewFileListener()
 	{
 		return new FileChooserItem.OnCreateChildFileListener()
@@ -245,13 +244,13 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 			public void onError(String message) {
 				stopProgressDialog();
 				showError(message);
-				
+
 			}
-			
+
 		};
 	}
-	
-	
+
+
 	private void startProgressDialog()
 	{
 		_showProgressRequestedP = true;
@@ -275,11 +274,11 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 			{
 				_progressDialog = ProgressDialog.show(_parent,_progressBarTitle, "");
 			}
-			
+
 		}
-		
+
 	}
-	
+
 	private void stopProgressDialog()
 	{
 		_showProgressRequestedP = false;
@@ -293,7 +292,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 					{
 						_progressDialog.dismiss();
 						_progressDialog = null;
-						
+
 					}
 				}
 			};
@@ -305,13 +304,13 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 			{
 				_progressDialog.dismiss();
 				_progressDialog = null;
-				
+
 			}
-			
+
 		}
-		
+
 	}
-	
+
 	private void setCurrentFolder(FileChooserItem f, ArrayList<FileChooserItem> children)
 	{
 		_currentFolder = f;
@@ -320,7 +319,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 		_children.addAll(children);
 		_fileAdapter.notifyDataSetChanged();
 	}
-	
+
 	private void showError(final String text)
 	{
 		Runnable r = new Runnable()
@@ -332,20 +331,20 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 		};
 		_cancelButton.post(r);
 	}
-	
-	
-	
+
+
+
 	private void setPathText(String text)
 	{
 		_pathView.setText(text);
 	}
-	
+
 	private void setPathText(FileChooserItem item)
 	{
 		java.io.File jf = new java.io.File(item.getFileName());
 		setPathText(jf.getAbsolutePath());
 	}
-	
+
 	@Override
 	public void onChildrenRetrieved(FileChooserItem parentOfChildren, ArrayList<FileChooserItem> onChildren)
 	{

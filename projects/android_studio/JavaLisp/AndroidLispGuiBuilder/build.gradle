@@ -80,6 +80,7 @@ dependencies {
 	compile project(':common-library')
 	compile project(':AndroidTools')
 	compile fileTree(dir: 'libs', include: ['*.jar'])
+	compile 'com.android.support:support-annotations:24.0.0'
 	compile "com.fasterxml.jackson.core:jackson-databind:2.6.0"
 	compile "de.greenrobot:eventbus:2.4.0"
 	compile 'io.reactivex.rxjava2:rxjava:2.1.0'

@@ -4,10 +4,12 @@ import android.app.Instrumentation;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 
-import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.android.lisp.guibuilder.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.CodePage;
+import com.evolved.automata.android.lisp.guibuilder.Page;
+import com.evolved.automata.android.lisp.guibuilder.Workspace;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.InputStream;
