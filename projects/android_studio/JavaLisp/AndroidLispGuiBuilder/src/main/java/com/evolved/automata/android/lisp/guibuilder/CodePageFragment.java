@@ -13,6 +13,10 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import com.evolved.automata.android.widgets.ShadowButton;
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.ParseNode;
 
@@ -51,6 +55,37 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     }
 
+    SimpleFunctionTemplate getPrintln()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)getPrintln();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+
+                StringBuilder sBuilder = new StringBuilder();
+                for (int i = 0;i<evaluatedArgs.length;i++)
+                {
+                    sBuilder.append((evaluatedArgs[i].isString())?evaluatedArgs[i].getString():evaluatedArgs[i].toString());
+                }
+                String out = sBuilder.toString();
+
+
+                mResultController.setResult(out, false);
+
+
+                return NLispTools.makeValue(out);
+            }
+        };
+    }
+
 
     public void setCodePage(CodePage page)
     {
@@ -60,6 +95,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void setLispContext(LispContext context)
     {
         mCodeContext = context;
+        mCodeContext.getEnvironment().mapFunction("println", getPrintln());
     }
 
     @Override
@@ -74,7 +110,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     {
 
         String text = mCodePage.getExpr();
-        mEditorFragment.getEditorController().setText(text, 0, new Observer<CodeEditorFragment.StateChange>() {
+        mEditorFragment.getEditorController().setText(text, mCodePage.getCursorPosition(), new Observer<CodeEditorFragment.StateChange>() {
             @Override
             public void onSubscribe(@NonNull Disposable d)
             {
@@ -90,7 +126,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             @Override
             public void onError(@NonNull Throwable e)
             {
-                e.printStackTrace();;
+                e.printStackTrace();
             }
 
             @Override

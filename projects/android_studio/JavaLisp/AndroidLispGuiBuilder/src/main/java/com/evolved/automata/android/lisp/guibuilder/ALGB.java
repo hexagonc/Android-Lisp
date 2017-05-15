@@ -1,16 +1,28 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
+import android.util.Log;
 
+import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
+import com.evolved.automata.android.mindstorms.lisp.NXTLispFunctions;
+import com.evolved.automata.android.speech.SpeechInterface;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
+import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
+import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+
+import io.reactivex.Observer;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
 
 /**
  * Created by Evolved8 on 5/3/17.
@@ -18,6 +30,8 @@ import java.util.HashSet;
 
 public class ALGB {
 
+    public static final String _SPEECH_LOG_LABEL = "GUI-BUILDER-SPEECH";
+    HashSet<String> _expectedWords = new HashSet<String>();
     String APP_DATA_CONTEXT = "APP_DATA";
     String CURRENT_WORKSPACE_KEY = "current-workspace";
 
@@ -32,6 +46,11 @@ public class ALGB {
 
     LispContext mBaseLispContext;
 
+    SpeechInterface mSpeechInterface;
+
+
+
+
     public ALGB(Context con) throws IllegalAccessException, InstantiationException
     {
         mTop = new Environment();
@@ -39,12 +58,143 @@ public class ALGB {
         mWorkspaceCache = new HashMap<String, Workspace>();
         mContext = con;
         mData = new AndroidLispDAI(mContext);
-        NLispTools.addDefaultFunctionsAddMacros(mTop);
-        ExtendedFunctions.addExtendedFunctions(mTop);
+
+        addStandardFunctions();
+        mSpeechInterface = new SpeechInterface(mContext, _SPEECH_LOG_LABEL, null,_expectedWords );
+
+
         mBaseLispContext = new LispContext(mContext, mTop, mData);
+
+        mBaseLispContext.setSpeechInterface(mSpeechInterface.setSpeechListener(mBaseLispContext));
+        mSpeechInterface.startup();
 
         retrieveCurrentWorkspace();
 
+    }
+
+    private void addStandardFunctions() throws IllegalAccessException, InstantiationException
+    {
+        NLispTools.addDefaultFunctionsAddMacros(mTop);
+        ExtendedFunctions.addExtendedFunctions(mTop);
+        NXTLispFunctions.addFunctions(mTop, NXTBluetoothManager.getInstance());
+
+        SpeechLispFunctions.addSpeechFunctions(mTop);
+        NeuralNetLispInterface.addNeuralNetFunctions(mTop);
+
+        mTop.mapFunction("println", getPrintln());
+        mTop.mapFunction("log", getLog());
+        mTop.mapFunction("global", evaluateGlobal());
+    }
+
+    SimpleFunctionTemplate getPrintln()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)getPrintln();
+            }
+
+            @Override
+            public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+
+                StringBuilder sBuilder = new StringBuilder();
+                for (int i = 0;i<evaluatedArgs.length;i++)
+                {
+                    sBuilder.append((evaluatedArgs[i].isString())?evaluatedArgs[i].getString():evaluatedArgs[i].toString());
+                }
+                String out = sBuilder.toString();
+
+                System.out.println(out);
+
+                return NLispTools.makeValue(out);
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate getLog()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)getLog();
+            }
+
+            @Override
+            public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                checkActualArguments(2, false, false);
+
+                String tag = evaluatedArgs[0].getString();
+                String message = evaluatedArgs[1].getString();
+
+                Log.i(tag, message);
+                return NLispTools.makeValue(message);
+            }
+        };
+    }
+
+
+    private FunctionTemplate evaluateGlobal()
+    {
+        return new FunctionTemplate() {
+
+
+            @Override
+            public Object clone()
+            {
+                return evaluateGlobal();
+            }
+
+
+            @Override
+            public Value evaluate(final Environment env, boolean resume)
+                    throws InstantiationException, IllegalAccessException
+            {
+
+                if (!resume)
+                {
+                    resetFunctionTemplate();
+                }
+
+                Value result = Environment.getNull();
+                for (; _instructionPointer < _actualParameters.length; _instructionPointer++)
+                {
+                    if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+                        result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(mTop, resume);
+                    else
+                        result = _lastFunctionReturn = mTop.evaluate(_actualParameters[_instructionPointer], false);
+
+                    if (result.isContinuation())
+                        return continuationReturn(result);
+                    if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+                        return resetReturn(result);
+                }
+
+                return resetReturn(result);
+
+            }
+        };
+    }
+
+
+    public boolean isSpeechSystemRunning()
+    {
+        return mSpeechInterface.isRunning();
+    }
+
+    public void restartSpeechSystem()
+    {
+        if (!isSpeechSystemRunning())
+        {
+            mSpeechInterface.startup();
+        }
     }
 
     public String[] getAllWorkspaceId()

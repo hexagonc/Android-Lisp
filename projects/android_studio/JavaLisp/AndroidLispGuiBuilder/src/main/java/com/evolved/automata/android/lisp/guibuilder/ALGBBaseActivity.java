@@ -74,7 +74,7 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
             mWorkspaceMap.put(workspaceId, frag);
         }
 
-
+        invalidateOptionsMenu();
 
         mCurrentWorkspaceFragment = frag;
         FragmentManager manager = getFragmentManager();
@@ -121,14 +121,16 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.v2_main, menu);
-        mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
+        if (mCurrentWorkspaceFragment != null)
+            mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
         return true;
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
-        mCurrentWorkspaceFragment.onPrepareOptionsMenu(menu);
+        if (mCurrentWorkspaceFragment != null)
+            mCurrentWorkspaceFragment.onPrepareOptionsMenu(menu);
         return true;
     }
 
@@ -151,10 +153,16 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         else
         {
 
-            if (mCurrentWorkspaceFragment.onOptionsItemSelected(item))
-                return true;
+            if (mCurrentWorkspaceFragment != null)
+            {
+                if (mCurrentWorkspaceFragment.onOptionsItemSelected(item))
+                    return true;
+                else
+                    return super.onOptionsItemSelected(item);
+            }
             else
                 return super.onOptionsItemSelected(item);
+
         }
 
     }

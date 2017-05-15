@@ -4,15 +4,18 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-
+import com.evolved.automata.android.speech.SpeechInterface.SpeechListener;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.views.ViewEvaluator;
 import com.evolved.automata.android.speech.SpeechInterface;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.LambdaValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.LinkedList;
 
@@ -25,12 +28,13 @@ import io.reactivex.Observer;
 import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
+import io.reactivex.disposables.Disposable;
 
 /**
  * Created by Evolved8 on 5/4/17.
  */
 
-public class LispContext {
+public class LispContext implements SpeechListener{
 
     static final String _DEFAULT_CONTEXT = "DEFAULT";
     Context mContext;
@@ -45,15 +49,30 @@ public class LispContext {
 
     AndroidLispInterpreter mAndroidInterpreter;
 
-    LispSpeechInterface mSpeechInterface;
+    SpeechInterface.SpeechControlInterface mSpeechInterface;
+
+
+    Observer<Value> mDefaultBackgroundResultHandler;
+
+    public void setDefaultResultHandler(Observer<Value> observer)
+    {
+        mDefaultBackgroundResultHandler = observer;
+    }
 
     Object mSynch = new Object();
+
+    boolean mTtsAvailableP = false;
+    boolean mAsrAvailableP = false;
+
+
 
     public static class Request
     {
         Observer<Value> rListener;
         Value result;
         String expr;
+        Value precompiledExpr;
+        Environment evaluationEnv;
     }
 
     LispSpeechInterface.ListeningStateListener mListeningStateHandler;
@@ -79,6 +98,7 @@ public class LispContext {
     public static final String _ASR_STATUS_STARTED = "ASR_STARTED";
     public static final String _ASR_STATUS_RECOGNITION_ERROR = "RECOGNITION_ERROR";
     public static final String _ASR_STATUS_RECOGNITION_COMPLETE = "RECOGNITION_COMPLETE";
+    public static final String _LAST_ASR_VARIABLE_NAME = "LAST-RECOGNITION";
 
 
     public LispContext(Context con, Environment base, LispDataAccessInterface dai)
@@ -137,6 +157,64 @@ public class LispContext {
         }
     }
 
+
+    SimpleFunctionTemplate getBreak()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)getBreak();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                if (evaluatedArgs.length > 0)
+                {
+                    String tag = evaluatedArgs[0].getString();
+                    breakEvaluation(tag);
+                }
+                else
+                    breakEvaluation();
+
+                return Environment.getNull();
+
+
+            }
+        };
+    }
+
+
+    public void evaluateMainThreadExpression(final Environment env, final Value preparsed, final Observer<Value> listener)
+    {
+        Observable<Value> out = Observable.create(new ObservableOnSubscribe<Value>() {
+            @Override
+            public void subscribe(final @NonNull ObservableEmitter<Value> subscriber) throws Exception
+            {
+                AndroidLispInterpreter.ResponseListener listener = new AndroidLispInterpreter.ResponseListener() {
+                    @Override
+                    public void onError(Exception e)
+                    {
+                        subscriber.onError(e);
+                    }
+
+                    @Override
+                    public void onResult(Value v)
+                    {
+                        subscriber.onNext(v);
+                        subscriber.onComplete();
+                    }
+                };
+                mAndroidInterpreter.setResponseListener(listener);
+                mAndroidInterpreter.evaluatePreParsedValue(env, preparsed, true);
+            }
+        }).subscribeOn(AndroidSchedulers.mainThread()).observeOn(AndroidSchedulers.mainThread());
+
+        out.subscribe(listener);
+
+    }
     public void evaluateMainThreadExpression(final String expression, final Observer<Value> listener)
     {
 
@@ -171,6 +249,41 @@ public class LispContext {
     public void evaluateExpression( String expression,  Observer<Value> resultListener)
     {
         evaluateExpression(expression, UUID.randomUUID().toString(), resultListener);
+    }
+
+    public void evaluateExpression(Value preCompiledValue, final String requestId, final Observer<Value> resultListener)
+    {
+
+        final Request r = new Request();
+        r.expr = null;
+        r.precompiledExpr = preCompiledValue;
+        r.result = null;
+        r.rListener = resultListener;
+
+        Observable<Value> out = Observable.create(new ObservableOnSubscribe<Value>() {
+            @Override
+            public void subscribe(@NonNull ObservableEmitter<Value> subscriber) throws Exception
+            {
+                synchronized (mSynch)
+                {
+                    if (mRequestMap.size() == 0)
+                    {
+                        mRequestMap.put(requestId, r);
+                        startWorkerThread();
+                    }
+                    else
+                        mRequestMap.put(requestId, r);
+                }
+
+            }
+        }).observeOn(AndroidSchedulers.mainThread());
+        out.subscribe(resultListener);
+    }
+
+
+    public void evaluateExpression(Value preCompiledValue,  Observer<Value> resultListener)
+    {
+        evaluateExpression(preCompiledValue, UUID.randomUUID().toString(), resultListener);
     }
 
     public void evaluateExpression(final String expression, final String requestId, final Observer<Value> resultListener)
@@ -221,23 +334,35 @@ public class LispContext {
                         try
                         {
                             Value response = null;
-                            if (request.expr != null)
+                            if (request.precompiledExpr != null)
+                            {
+                                if (request.evaluationEnv != null)
+                                    response = request.evaluationEnv.evaluate(request.precompiledExpr);
+                                else
+                                    response = mEnv.evaluate(request.precompiledExpr);
+                            }
+                            else if (request.expr != null)
                             {
                                 response  = mEnv.evaluate(request.expr, false);
+
                             }
                             else if (request.result != null)
                             {
-                                response = mEnv.evaluate(request.result, true);
+
+                                response = request.result.getContinuingFunction().evaluate(mEnv, true);
                             }
                             else
                             {
                                 request.rListener.onError(new IllegalStateException("Invalid data response"));
                                 toBeDeleted.add(key);
+                                continue;
                             }
 
                             if (response.isContinuation())
                             {
                                 request.result = response;
+                                request.expr = null;
+                                request.precompiledExpr = null;
                             }
                             else
                             {
@@ -262,6 +387,7 @@ public class LispContext {
                         {
                             mRequestMap.remove(key);
                         }
+                        toBeDeleted.clear();
                     }
 
                 }
@@ -273,28 +399,37 @@ public class LispContext {
 
     private void postResponse(final Value result, final Request request)
     {
-        Runnable r = new Runnable()
+        if (request.rListener != null)
         {
-            public void run()
+            Runnable r = new Runnable()
             {
-                request.rListener.onNext(result);
-                request.rListener.onComplete();
-            }
-        };
-        _mainHandler.post(r);
+                public void run()
+                {
+
+                    request.rListener.onNext(result);
+                    request.rListener.onComplete();
+                }
+            };
+            _mainHandler.post(r);
+        }
+
 
     }
 
     private void postResponse(final Exception e, final Request request)
     {
-        Runnable r = new Runnable()
+        if (request.rListener != null)
         {
-            public void run()
+            Runnable r = new Runnable()
             {
-                request.rListener.onError(e);
-            }
-        };
-        _mainHandler.post(r);
+                public void run()
+                {
+                    request.rListener.onError(e);
+                }
+            };
+            _mainHandler.post(r);
+        }
+
     }
 
     private void addDataFunctions()
@@ -321,6 +456,16 @@ public class LispContext {
         {
             ViewEvaluator.bindFunctions(mEnv, mActivity, null);
         }
+
+
+        addProcessingFunctions();
+    }
+
+    public void addProcessingFunctions()
+    {
+        mEnv.mapFunction("evaluate-background", evaluate_background());
+        mEnv.mapFunction("evaluate-foreground", evaluate_foreground());
+        mEnv.mapFunction("break", getBreak());
     }
 
     public Environment getEnvironment()
@@ -387,6 +532,7 @@ public class LispContext {
                 {
 
                     String serializedData = mDAI.getData(name, context, updateLastAccess);
+                    serializedData = StringUtils.replace(serializedData, "\\\\\"\\\"", "\\\"");
                     LinkedList<Value> out = env.parse(serializedData, true);
                     if (out.size() == 0)
                         return Environment.getNull();
@@ -608,6 +754,108 @@ public class LispContext {
      * Speech Functions
      */
 
+    @Override
+    public void onTTSComplete(SpeechInterface.TTS_STATUS status)
+    {
+        ttsComplete(status);
+        if (_ttsListenerLambda != null)
+        {
+            Value[] args =  new Value[]{NLispTools.makeValue(status.toString())};
+
+            FunctionTemplate actual=(FunctionTemplate)_ttsListenerLambda.clone();
+            actual.setActualParameters(args);
+            try
+            {
+                actual.evaluate(mEnv, false);
+            }
+            catch (Exception e)
+            {
+                log("Error calling on tts complete handler", e.toString());
+            }
+
+
+        }
+    }
+
+    @Override
+    public void onASRComplete(SpeechInterface.SPEECH_STATUS status, String speech, int errorCode)
+    {
+        asrCompleted(status);
+        if (status == SpeechInterface.SPEECH_STATUS.RECOGNITION_COMPLETE || status == SpeechInterface.SPEECH_STATUS.RECOGNITION_COMPLETE)
+            mEnv.mapValue(_LAST_ASR_VARIABLE_NAME, NLispTools.makeValue(speech));
+        else
+            mEnv.mapValue(_LAST_ASR_VARIABLE_NAME, Environment.getNull());
+        if (_asrListenerLambda != null)
+        {
+            Value[] args = new Value[]{(speech == null)?Environment.getNull():NLispTools.makeValue(speech), NLispTools.makeValue(status.toString()), (speech == null)?NLispTools.makeValue(SpeechInterface.mapSpeechErrorToResponse(errorCode)):Environment.getNull()};
+
+            FunctionTemplate actual= (FunctionTemplate)_asrListenerLambda.clone();
+            actual.setActualParameters(args);
+
+            try
+            {
+                actual.evaluate(mEnv, false);
+            }
+            catch (Exception e)
+            {
+                log("Error calling on asr complete handler", e.toString());
+            }
+
+        }
+    }
+
+    @Override
+    public void onInit(int ttsInitStatus, boolean asrAvailable)
+    {
+        mTtsAvailableP = ttsInitStatus == android.speech.tts.TextToSpeech.SUCCESS;
+        mAsrAvailableP = asrAvailable;
+        if (mAsrAvailableP)
+        {
+            try
+            {
+
+                mEnv.mapFunction("register-asr-listener", register_asr_listener());
+                mEnv.mapFunction("start-speech-recognition", startSpeechRecognition());
+            }
+            catch (Exception e)
+            {
+                mAsrAvailableP = false;
+            }
+            mEnv.mapValue(_ASR_AVAILABLE_VAR_NAME, NLispTools.makeValue(mAsrAvailableP));
+
+        }
+
+        setupTTS();
+    }
+
+    @Override
+    public void log(String tag, String message)
+    {
+
+    }
+
+    private void setupTTS()
+    {
+        mEnv.mapValue(_SPEECH_AVAILABLE_VAR_NAME, NLispTools.makeValue(mTtsAvailableP));
+        if (mTtsAvailableP)
+        {
+            mEnv.mapFunction("register-tts-listener", register_tts_listener());
+            mEnv.mapFunction("tts", tts());
+        }
+    }
+
+    public void setSpeechInterface(SpeechInterface.SpeechControlInterface sinterface)
+    {
+        mSpeechInterface = sinterface;
+
+        mEnv.mapValue(_ASR_STATUS_VAR_NAME, Environment.getNull());
+        mEnv.mapValue(_TTS_STATUS_VAR_NAME, Environment.getNull());
+        mEnv.mapValue(_LAST_ASR_VARIABLE_NAME, Environment.getNull());
+
+        onInit((mTtsAvailableP)?android.speech.tts.TextToSpeech.SUCCESS:android.speech.tts.TextToSpeech.ERROR , mAsrAvailableP);
+
+    }
+
     private String ttsRequested()
     {
         mEnv.mapValue(_TTS_STATUS_VAR_NAME, NLispTools.makeValue(_TTS_STATUS_STARTED_STATUS_VALUE));
@@ -694,14 +942,15 @@ public class LispContext {
                                       {
                                           public void run()
                                           {
-                                              mSpeechInterface.startListening(mListeningStateHandler);
+                                              mSpeechInterface.initiateListening();
+
                                           }
                                       }
                     );
                 }
                 else
                 {
-                    mSpeechInterface.startListening(mListeningStateHandler);
+                    mSpeechInterface.initiateListening();
 
                 }
                 return NLispTools.makeValue(asrRequested());
@@ -727,8 +976,244 @@ public class LispContext {
                 final String text = evaluatedArgs[0].getString();
 
 
-                mSpeechInterface.startSpeaking(text, mSpeechStateHandler);
+                mSpeechInterface.speakMessage(text);
+                ttsRequested();
                 return evaluatedArgs[0];
+            }
+
+        };
+    }
+
+
+
+    /**
+     * First argument is a string label for the background process.
+     * Second argument is a lambda function that receives the response.  Lambda shuld
+     * take two arguments, first argument is the result of computation.  Second
+     * argument is NULL if there was no error, otherwise, will be the string form of the error
+     *
+     * @return label of the process that can be used to break the computation in the background
+     */
+    private FunctionTemplate evaluate_background()
+    {
+        return new FunctionTemplate ()
+        {
+
+            public Object clone()
+            {
+                return evaluate_background();
+            }
+
+            @Override
+            public Value evaluate(final Environment env, boolean resume)
+                    throws InstantiationException, IllegalAccessException {
+
+                try
+                {
+                    Value name = env.evaluate(_actualParameters[0]);
+
+                    String tagName = name.getString();
+
+                    Value resultCallback = env.evaluate(_actualParameters[1]);
+
+                    if (resultCallback.isLambda())
+                    {
+                        final FunctionTemplate handlerFunction = resultCallback.getLambda();
+                        Observer<Value> resultHandler = new Observer<Value>() {
+
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d)
+                            {
+
+                            }
+
+                            @Override
+                            public void onNext(@NonNull Value value)
+                            {
+                                Value[] inputs = new Value[]{value, Environment.getNull()};
+                                try
+                                {
+                                    handlerFunction.setActualParameters(inputs);
+                                    handlerFunction.evaluate(env, false);
+                                }
+                                catch (Exception e)
+                                {
+                                    if (mDefaultBackgroundResultHandler!=null)
+                                    {
+                                        mDefaultBackgroundResultHandler.onError(e);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e)
+                            {
+                                Value[] inputs = new Value[]{Environment.getNull(), NLispTools.makeValue(e.toString())};
+                                try
+                                {
+                                    handlerFunction.setActualParameters(inputs);
+                                    handlerFunction.evaluate(env, false);
+                                }
+                                catch (Exception e2)
+                                {
+                                    if (mDefaultBackgroundResultHandler!=null)
+                                    {
+                                        mDefaultBackgroundResultHandler.onError(e2);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onComplete()
+                            {
+
+                            }
+                        };
+
+                        Value[] actualArguments = new Value[_actualParameters.length - 2];
+                        for (int i = 2;i < _actualParameters.length;i++)
+                            actualArguments[i - 2] = _actualParameters[i];
+                        Value raw = Environment.wrapValuesInProgn(actualArguments);
+
+                        evaluateExpression(raw, tagName, resultHandler);
+                    }
+                    else
+                    {
+
+                        Value[] actualArguments = new Value[_actualParameters.length - 2];
+                        for (int i = 2;i < _actualParameters.length;i++)
+                            actualArguments[i - 2] = _actualParameters[i];
+                        Value raw = Environment.wrapValuesInProgn(actualArguments);
+
+                        if (mDefaultBackgroundResultHandler != null)
+                            evaluateExpression(raw, tagName, mDefaultBackgroundResultHandler);
+                        else
+                            evaluateExpression(raw, tagName, null);
+                    }
+                    return _actualParameters[0];
+                }
+                catch (Exception e)
+                {
+                    return Environment.getNull();
+                }
+
+
+
+
+            }
+
+        };
+    }
+
+
+
+    /**
+     * First argument is a lambda function that receives the response.  Lambda shuld
+     * take two arguments, first argument is the result of computation.  Second
+     * argument is NULL if there was no error, otherwise, will be the string form of the error
+     *
+     * @return
+     */
+    private FunctionTemplate evaluate_foreground()
+    {
+        return new FunctionTemplate ()
+        {
+
+            public Object clone()
+            {
+                return evaluate_foreground();
+            }
+
+            @Override
+            public Value evaluate(final Environment env, boolean resume)
+                    throws InstantiationException, IllegalAccessException {
+
+                try
+                {
+
+                    Value resultCallback = env.evaluate(_actualParameters[0]);
+
+                    if (resultCallback.isLambda())
+                    {
+                        final FunctionTemplate handlerFunction = resultCallback.getLambda();
+                        Observer<Value> resultHandler = new Observer<Value>() {
+
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d)
+                            {
+
+                            }
+
+                            @Override
+                            public void onNext(@NonNull Value value)
+                            {
+                                Value[] inputs = new Value[]{value, Environment.getNull()};
+                                try
+                                {
+                                    handlerFunction.setActualParameters(inputs);
+                                    handlerFunction.evaluate(env, false);
+                                }
+                                catch (Exception e)
+                                {
+                                    if (mDefaultBackgroundResultHandler!=null)
+                                    {
+                                        mDefaultBackgroundResultHandler.onError(e);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e)
+                            {
+                                Value[] inputs = new Value[]{Environment.getNull(), NLispTools.makeValue(e.toString())};
+                                try
+                                {
+                                    handlerFunction.setActualParameters(inputs);
+                                    handlerFunction.evaluate(env, false);
+                                }
+                                catch (Exception e2)
+                                {
+                                    if (mDefaultBackgroundResultHandler!=null)
+                                    {
+                                        mDefaultBackgroundResultHandler.onError(e2);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onComplete()
+                            {
+
+                            }
+                        };
+
+                        Value[] actualArguments = new Value[_actualParameters.length - 1];
+                        for (int i = 1;i < _actualParameters.length;i++)
+                            actualArguments[i - 1] = _actualParameters[i];
+                        Value raw = Environment.wrapValuesInProgn(actualArguments);
+
+                        evaluateMainThreadExpression(env, raw, resultHandler);
+                    }
+                    else
+                    {
+
+                        Value[] actualArguments = new Value[_actualParameters.length - 1];
+                        for (int i = 1;i < _actualParameters.length;i++)
+                            actualArguments[i - 1] = _actualParameters[i];
+                        Value raw = Environment.wrapValuesInProgn(actualArguments);
+
+                        if (mDefaultBackgroundResultHandler != null)
+                            evaluateMainThreadExpression(env, raw,  mDefaultBackgroundResultHandler);
+                        else
+                            evaluateMainThreadExpression(env, raw,  null);
+                    }
+                    return _actualParameters[0];
+                }
+                catch (Exception e)
+                {
+                    return Environment.getNull();
+                }
+
             }
 
         };

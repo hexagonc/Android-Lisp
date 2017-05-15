@@ -13,6 +13,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.Value;
+
 /**
  * Created by Evolved8 on 5/8/17.
  */
@@ -43,7 +49,11 @@ public class PageFragment extends Fragment {
         mUIContext.setActivity(getActivity());
 
 
+
     }
+
+
+
 
     public void setPage(CodePage page)
     {

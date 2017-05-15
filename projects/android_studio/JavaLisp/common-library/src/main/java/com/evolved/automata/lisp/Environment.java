@@ -242,6 +242,16 @@ public class Environment
 		return result;
 	}
 
+
+	public static Value wrapValuesInProgn(Value[] unevaluatedArgs)
+	{
+		Value[] out = new Value[1 + unevaluatedArgs.length];
+		out[0] = new StringValue("progn", true);
+		for (int i = 0; i < unevaluatedArgs.length;i++)
+			out[i + 1] = unevaluatedArgs[i];
+		return new ListValue(out);
+	}
+
 	public Value evaluate(Value v, boolean resume) throws InstantiationException, IllegalAccessException
 	{
 		

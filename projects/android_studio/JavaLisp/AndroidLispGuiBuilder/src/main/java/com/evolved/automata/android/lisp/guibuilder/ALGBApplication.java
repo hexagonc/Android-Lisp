@@ -23,7 +23,6 @@ public class ALGBApplication extends Application
 		try
 		{
 
-
 			AndroidTools.initialize(null, this, null);
 			AppStateManager.create(this);
 			NXTBluetoothManager.create(this);
