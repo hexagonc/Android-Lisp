@@ -111,7 +111,7 @@ public class AndroidLispDAI implements LispDataAccessInterface {
 
                 if (lastAccess != null)
                 {
-                    Long rowid = rs.getLong(2);
+                    Long rowid = rs.getLong(1);
                     updateSpecificAccessStatement.bindLong(1, lastAccess.longValue());
                     updateSpecificAccessStatement.bindLong(2, rowid.longValue());
                     updateSpecificAccessStatement.executeUpdateDelete();

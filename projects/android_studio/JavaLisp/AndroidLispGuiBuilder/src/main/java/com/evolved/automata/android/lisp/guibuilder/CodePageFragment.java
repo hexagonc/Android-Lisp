@@ -75,11 +75,19 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                 {
                     sBuilder.append((evaluatedArgs[i].isString())?evaluatedArgs[i].getString():evaluatedArgs[i].toString());
                 }
-                String out = sBuilder.toString();
+                final String out = sBuilder.toString();
 
 
-                mResultController.setResult(out, false);
+                Runnable post = new Runnable()
+                {
+                    public void run()
+                    {
+                        mResultController.setResult(out, false);
+                    }
 
+                };
+
+                mCodePage.getApplication().getMainhandler().post(post);
 
                 return NLispTools.makeValue(out);
             }

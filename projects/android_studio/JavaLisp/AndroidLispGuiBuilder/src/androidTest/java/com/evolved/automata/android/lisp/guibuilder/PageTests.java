@@ -3,6 +3,8 @@ package com.evolved.automata.android.lisp.guibuilder;
 import android.app.Instrumentation;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
+import android.support.test.annotation.UiThreadTest;
+import android.support.test.rule.UiThreadTestRule;
 
 import com.evolved.automata.android.lisp.guibuilder.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.CodePage;
@@ -10,6 +12,7 @@ import com.evolved.automata.android.lisp.guibuilder.Page;
 import com.evolved.automata.android.lisp.guibuilder.Workspace;
 
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.InputStream;
@@ -24,6 +27,11 @@ public class PageTests {
 
 
     String pageKey;
+
+
+    @Rule
+    public UiThreadTestRule mUIThreadTestRule = new UiThreadTestRule();
+
 
 
     @Test
@@ -95,6 +103,7 @@ public class PageTests {
     }
 
 
+    @UiThreadTest
     @Test
     public void testSavedPages()
     {

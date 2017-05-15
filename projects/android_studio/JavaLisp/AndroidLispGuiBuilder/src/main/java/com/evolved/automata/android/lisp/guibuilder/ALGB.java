@@ -1,6 +1,8 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
@@ -48,11 +50,12 @@ public class ALGB {
 
     SpeechInterface mSpeechInterface;
 
-
+    Handler mMainHandler;
 
 
     public ALGB(Context con) throws IllegalAccessException, InstantiationException
     {
+        mMainHandler = new Handler(Looper.getMainLooper());
         mTop = new Environment();
         mPageCache = new HashMap<String, Page>();
         mWorkspaceCache = new HashMap<String, Workspace>();
@@ -85,6 +88,12 @@ public class ALGB {
         mTop.mapFunction("log", getLog());
         mTop.mapFunction("global", evaluateGlobal());
     }
+
+    public Handler getMainhandler()
+    {
+        return mMainHandler;
+    }
+
 
     SimpleFunctionTemplate getPrintln()
     {
@@ -431,6 +440,16 @@ public class ALGB {
         Value result = mBaseLispContext.getEnvironment().simpleEvaluateFunction("get-data-value", key, context);
 
         return result;
+    }
+
+    public String getRawData(String key, String context)
+    {
+        return mData.getData(key, context, false);
+    }
+
+    public void setRawData(String key, String context, String content)
+    {
+        mData.setData(key, context, content);
     }
 
     public void saveData(String key, String context, Object data)

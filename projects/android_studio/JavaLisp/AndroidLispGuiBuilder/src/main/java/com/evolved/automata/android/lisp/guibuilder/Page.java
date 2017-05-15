@@ -20,7 +20,9 @@ public abstract class Page {
 
     public static final String DEFAULT_TITLE = "default";
 
-    public static final String CONTEXT_KEY = "SCRIPTING_PAGE";
+    public static final String CONTEXT_KEY = "SCRIPTING_PAGE_DATA";
+
+    public static final String SCRIPT_CONTEXT_KEY = "SCRIPTING_PAGE_SCRIPT";
 
 
     final String TITLE_KEY;
@@ -43,7 +45,7 @@ public abstract class Page {
 
     HashMap<String, Value> mMyData;
 
-
+    String mScript;
     LispContext mBasePageLispContext;
 
     public Page(ALGB app)
@@ -146,7 +148,10 @@ public abstract class Page {
     public void savePage()
     {
         mMyEnvironment.simpleEvaluateFunction("set-data-value", mId, new StringHashtableValue(mMyData) , CONTEXT_KEY);
+        mApplication.setRawData(getPageId(), SCRIPT_CONTEXT_KEY, mScript);
     }
+
+
 
     public boolean restorePage()
     {
@@ -157,6 +162,10 @@ public abstract class Page {
             mMyData = stored.getStringHashtable();
             mMyEnvironment.setVariableValues(mMyData);
             mMyEnvironment.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, Environment.getNull());
+            if (mApplication.hasData(getPageId(), SCRIPT_CONTEXT_KEY))
+                mScript = mApplication.getRawData(getPageId(), SCRIPT_CONTEXT_KEY);
+            else
+                mScript = "";
             return true;
         }
         else

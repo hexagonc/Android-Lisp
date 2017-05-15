@@ -52,12 +52,12 @@ public class CodePage extends Page {
 
     public void setExpr(String expr)
     {
-        setStringDataValue(EXPR_KEY, expr);
+        mScript = expr;
     }
 
     public String getExpr()
     {
-        return getStringDataValue(EXPR_KEY);
+        return mScript;
     }
 
     public void setDropboxPath(String dropbox)

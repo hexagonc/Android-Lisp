@@ -532,6 +532,8 @@ public class LispContext implements SpeechListener{
                 {
 
                     String serializedData = mDAI.getData(name, context, updateLastAccess);
+                    if (serializedData == null)
+                        return Environment.getNull();
                     serializedData = StringUtils.replace(serializedData, "\\\\\"\\\"", "\\\"");
                     LinkedList<Value> out = env.parse(serializedData, true);
                     if (out.size() == 0)
