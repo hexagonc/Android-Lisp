@@ -210,7 +210,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     public boolean onTouchEvent(MotionEvent event)
     {
         Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
-        Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
+        //Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
 
         switch (event.getAction())
         {
@@ -224,7 +224,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
                 else
                 {
                     // Do nothing since we don't want to move the cursor if the screen was scrolled
-                    Log.d("Vo<>oVo<>oVo", "Skipping touch up event since scrolling: " + movementDistance);
+                    //Log.d("Vo<>oVo<>oVo", "Skipping touch up event since scrolling: " + movementDistance);
                     return true;
                 }
 
@@ -297,7 +297,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             public boolean onTouch(View v, MotionEvent event) {
                 mReadOnlyGestureDetector.onTouchEvent(event);
                 Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
-                Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
+                //Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                             mInitialPos = currentPos;

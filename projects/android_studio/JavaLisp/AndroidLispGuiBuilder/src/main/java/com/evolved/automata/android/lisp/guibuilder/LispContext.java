@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
+
 import com.evolved.automata.android.speech.SpeechInterface.SpeechListener;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.views.ViewEvaluator;
@@ -187,34 +189,38 @@ public class LispContext implements SpeechListener{
     }
 
 
-    public void evaluateMainThreadExpression(final Environment env, final Value preparsed, final Observer<Value> listener)
+    public void evaluateMainThreadExpression(final Environment env, final Value preparsed, final Observer<Value> xlistener)
     {
-        Observable<Value> out = Observable.create(new ObservableOnSubscribe<Value>() {
+        AndroidLispInterpreter.ResponseListener listener = new AndroidLispInterpreter.ResponseListener() {
             @Override
-            public void subscribe(final @NonNull ObservableEmitter<Value> subscriber) throws Exception
+            public void onError(Exception e)
             {
-                AndroidLispInterpreter.ResponseListener listener = new AndroidLispInterpreter.ResponseListener() {
-                    @Override
-                    public void onError(Exception e)
-                    {
-                        subscriber.onError(e);
-                    }
-
-                    @Override
-                    public void onResult(Value v)
-                    {
-                        subscriber.onNext(v);
-                        subscriber.onComplete();
-                    }
-                };
-                mAndroidInterpreter.setResponseListener(listener);
-                mAndroidInterpreter.evaluatePreParsedValue(env, preparsed, true);
+                if (xlistener != null)
+                    xlistener.onError(e);
+                else
+                    Log.e("<><<>", "Error in foreground process: " + e.toString());
             }
-        }).subscribeOn(AndroidSchedulers.mainThread()).observeOn(AndroidSchedulers.mainThread());
 
-        out.subscribe(listener);
+            @Override
+            public void onResult(Value v)
+            {
+                if (xlistener != null)
+                {
+                    xlistener.onNext(v);
+                    xlistener.onComplete();
+                }
+                else
+                {
+                    Log.i("<><<>", "Finished foreground process result:" + v.toString());
+                }
+            }
+        };
+
+        AndroidLispInterpreter interpreter = new AndroidLispInterpreter(mContext, env, listener);
+        interpreter.evaluatePreParsedValue(env, preparsed, true);
 
     }
+
     public void evaluateMainThreadExpression(final String expression, final Observer<Value> listener)
     {
 

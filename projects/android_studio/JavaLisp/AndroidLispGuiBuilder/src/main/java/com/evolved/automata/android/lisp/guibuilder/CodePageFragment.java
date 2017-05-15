@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
 import android.os.Bundle;
+import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -47,6 +48,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     LispContext mCodeContext;
 
+    static final boolean PRINT_ON_MAINTHREAD_P = false;
 
     @Override
     public void onAttach(Activity activity)
@@ -78,16 +80,22 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                 final String out = sBuilder.toString();
 
 
-                Runnable post = new Runnable()
+                if (PRINT_ON_MAINTHREAD_P && Looper.myLooper() != Looper.getMainLooper())
                 {
-                    public void run()
+                    Runnable post = new Runnable()
                     {
-                        mResultController.setResult(out, false);
-                    }
+                        public void run()
+                        {
+                            mResultController.setResult(out, false);
+                        }
 
-                };
+                    };
 
-                mCodePage.getApplication().getMainhandler().post(post);
+                    mCodePage.getApplication().getMainhandler().post(post);
+                }
+                else
+                    mResultController.setResult(out, false);
+
 
                 return NLispTools.makeValue(out);
             }
