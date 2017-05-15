@@ -1,6 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.text.Editable;
 import android.text.Layout;
@@ -15,9 +16,12 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 
+import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.lisp.editor.CompositeNode;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
@@ -72,6 +76,9 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     }
 
 
+    public static int SCROLL_THRESHOLD_DP = 10;
+    public float SCROLL_THRESHOLD_PX;
+    Pair<Float, Float> mInitialPos;
 
     StateListener mStateListener;
 
@@ -175,7 +182,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         }).observeOn(AndroidSchedulers.mainThread());
         mUpdateObservable.subscribe(this);
         addTextChangedListener(mUpdateListener);
-
+        SCROLL_THRESHOLD_PX = AndroidTools.convertDPtoPX(getContext(), SCROLL_THRESHOLD_DP);
 
     }
 
@@ -189,6 +196,42 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     {
         super(context, attrs);
         init();
+    }
+
+    private float distance(Pair<Float, Float> p1, Pair<Float, Float> p2)
+    {
+        float d1 = p1.getLeft() - p2.getLeft(), d2 = p1.getRight() - p2.getRight();
+        return (float)Math.sqrt(d1*d1 + d2*d2);
+    }
+
+
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event)
+    {
+        Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
+        Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
+
+        switch (event.getAction())
+        {
+            case MotionEvent.ACTION_DOWN:
+                mInitialPos = currentPos;
+                return super.onTouchEvent(event);
+            case MotionEvent.ACTION_UP:
+                float movementDistance = distance(mInitialPos, currentPos);
+                if (movementDistance < SCROLL_THRESHOLD_PX)
+                    return super.onTouchEvent(event);
+                else
+                {
+                    // Do nothing since we don't want to move the cursor if the screen was scrolled
+                    Log.d("Vo<>oVo<>oVo", "Skipping touch up event since scrolling: " + movementDistance);
+                    return true;
+                }
+
+        }
+
+
+        return super.onTouchEvent(event);
     }
 
     public LispEditText(Context context, AttributeSet attrs, int defStyle)
@@ -253,24 +296,32 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 mReadOnlyGestureDetector.onTouchEvent(event);
+                Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
+                Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
                 switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                            mInitialPos = currentPos;
+                            return true;
                     case MotionEvent.ACTION_UP:
-                        Layout layout = ((EditText) v).getLayout();
-                        float x = event.getX() + getScrollX();
-                        float y = event.getY() + getScrollY();
-                        int line = layout.getLineForVertical((int) y);
-
-                        // Here is what you wanted:
-
-                        final int offset = layout.getOffsetForHorizontal( line,  x);
-
-                        post(new Runnable()
+                        float movementDistance = distance(mInitialPos, currentPos);
+                        if (movementDistance < SCROLL_THRESHOLD_PX)
                         {
-                            public void run()
+                            Layout layout = ((EditText) v).getLayout();
+                            float x = event.getX() + getScrollX();
+                            float y = event.getY() + getScrollY();
+                            int line = layout.getLineForVertical((int) y);
+
+                            final int offset = layout.getOffsetForHorizontal( line,  x);
+
+                            post(new Runnable()
                             {
-                                setSelection(offset);
-                            }
-                        });
+                                public void run()
+                                {
+                                    setSelection(offset);
+                                }
+                            });
+                        }
+
 
                         break;
                 }
