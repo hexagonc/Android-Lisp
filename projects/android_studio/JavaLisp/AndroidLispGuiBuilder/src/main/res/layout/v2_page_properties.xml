@@ -98,15 +98,16 @@
                 android:text = "Linked File:"
                 style = "@style/page_properties_subheader"
                 />
-            <Button
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id = "@+id/v2_txt_dropbox_sync_filename"
-                style = "@style/page_properties_info"
+                android:hint="tap to set path"
                 android:text = ""
                 android:layout_marginTop="4dp"
                 android:textSize="18sp"
-                android:background="@drawable/v2_container_border_green"
+                android:padding="5dp"
+                android:clickable="true"
                 android:gravity="left|center_vertical"
                 />
             <LinearLayout
@@ -114,38 +115,13 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginBottom="10dp">
-                <LinearLayout
-                    android:layout_width="0px"
+                <Button
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity = "left">
-                    <Button
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text = "Set"
-                        android:id = "@+id/v2_but_set_dropbox_linked_file"
-                        android:enabled = "false"
-                        style = "@style/v2_page_properties_buttons"
-                        android:layout_gravity="left"/>
-
-                </LinearLayout>
-                <LinearLayout
-                    android:layout_width="0px"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity = "right">
-                    <Button
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text = "Clear"
-                        android:id = "@+id/v2_but_clear_dropbox_linked_file"
-                        style = "@style/v2_page_properties_buttons"
-                        />
-                </LinearLayout>
-
-
+                    android:text = "Clear"
+                    android:id = "@+id/v2_but_clear_dropbox_linked_file"
+                    style = "@style/v2_page_properties_buttons"
+                    />
 
             </LinearLayout>
             <View android:layout_width = "match_parent"

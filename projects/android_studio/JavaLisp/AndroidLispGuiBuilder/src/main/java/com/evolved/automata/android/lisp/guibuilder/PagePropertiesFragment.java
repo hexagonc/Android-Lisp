@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Dialog;
 import android.app.DialogFragment;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -12,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.HashMap;
 
@@ -125,12 +127,12 @@ public class PagePropertiesFragment extends DialogFragment {
 
     HashMap<CHANGE_TYPE, Change> mChanges = new HashMap<CHANGE_TYPE, Change>();
 
-    Button mSetNewPathButton;
+    Button mClearPathButton;
     Button mAcceptDialogButton;
     Button mCancelDialogButton;
     Button mSyncButton;
     EditText mPageTitleText;
-    Button mDropboxSyncPath;
+    TextView mDropboxSyncPath;
 
     CodePage mPage;
 
@@ -241,7 +243,7 @@ public class PagePropertiesFragment extends DialogFragment {
             }
         });
 
-        mDropboxSyncPath = (Button)top.findViewById(R.id.v2_txt_dropbox_sync_filename);
+        mDropboxSyncPath = (TextView)top.findViewById(R.id.v2_txt_dropbox_sync_filename);
         if (mPage.getDropboxPath() != null)
             mDropboxSyncPath.setText(mPage.getDropboxPath());
 
@@ -256,12 +258,12 @@ public class PagePropertiesFragment extends DialogFragment {
         });
 
 
-        mSetNewPathButton = (Button)top.findViewById(R.id.v2_but_set_dropbox_linked_file);
-        mSetNewPathButton.setOnClickListener(new View.OnClickListener() {
+        mClearPathButton = (Button)top.findViewById(R.id.v2_but_clear_dropbox_linked_file);
+        mClearPathButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v)
             {
-
+                mDropboxSyncPath.setText("");
             }
         });
 
@@ -273,32 +275,43 @@ public class PagePropertiesFragment extends DialogFragment {
             public void onClick(View v)
             {
                 String path = mDropboxSyncPath.getText().toString();
-                DropboxManager.get().getController().downloadFile(path, new Observer<DropboxManager.DropboxResponse>() {
-                    @Override
-                    public void onSubscribe(@NonNull Disposable d)
-                    {
 
-                    }
+                if (path.trim().length()>0)
+                {
+                    final ProgressDialog dialog = ProgressDialog.show(getActivity(), "Downloading...", "Downloading: " + path);
+                    DropboxManager.get().getController().downloadFile(path, new Observer<DropboxManager.DropboxResponse>() {
+                        @Override
+                        public void onSubscribe(@NonNull Disposable d)
+                        {
 
-                    @Override
-                    public void onNext(@NonNull DropboxManager.DropboxResponse dropboxResponse)
-                    {
-                        DropboxManager.DownloadTextResponse response = (DropboxManager.DownloadTextResponse)dropboxResponse;
-                        (new ChangeText(response.getContents())).fill(mChanges);
-                    }
+                        }
 
-                    @Override
-                    public void onError(@NonNull Throwable e)
-                    {
+                        @Override
+                        public void onNext(@NonNull DropboxManager.DropboxResponse dropboxResponse)
+                        {
+                            dialog.dismiss();
+                            DropboxManager.DownloadTextResponse response = (DropboxManager.DownloadTextResponse)dropboxResponse;
+                            (new ChangeText(response.getContents())).fill(mChanges);
+                        }
 
-                    }
+                        @Override
+                        public void onError(@NonNull Throwable e)
+                        {
+                            dialog.dismiss();
+                        }
 
-                    @Override
-                    public void onComplete()
-                    {
+                        @Override
+                        public void onComplete()
+                        {
 
-                    }
-                });
+                        }
+                    });
+                }
+                else
+                {
+                    Toast.makeText(getActivity(), "Nothing to download", Toast.LENGTH_LONG).show();
+                }
+
 
             }
         });
