@@ -10,6 +10,7 @@ import android.util.Log;
 import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
+import com.dropbox.core.DbxWebAuth;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.DbxUserFilesRequests;
 import com.dropbox.core.v2.files.FileMetadata;
@@ -301,7 +302,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
 
                 Observable<DropboxResponse> observable = Observable.create(new ObservableOnSubscribe<DropboxResponse>() {
                     @Override
-                    public void subscribe(@NonNull ObservableEmitter<DropboxResponse> subscriber) throws Exception
+                    public void subscribe(final @NonNull ObservableEmitter<DropboxResponse> subscriber) throws Exception
                     {
                         if (mClient == null)
                         {
@@ -313,31 +314,77 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
                             try
                             {
 
-                                DropboxChooserItem top;
+                                final DropboxChooserItem top;
                                 if (DropboxFileData.isRootFolderPath(basePath))
                                 {
                                     top = new DropboxChooserItem(DropboxFileData.createRootFolderData(), selectHandler);
+                                    FileChooserDialog fDialog = new FileChooserDialog(context, title, top);
+
+                                    subscriber.onNext(new FileDialogResponse(fDialog));
                                 }
                                 else
                                 {
-                                    Metadata base = _me.getMetaData(basePath);
-                                    top = new DropboxChooserItem(DropboxFileData.from(base), selectHandler);
+
+                                    Observable<DropboxChooserItem> getMetaData = Observable.create(new ObservableOnSubscribe<DropboxChooserItem>() {
+                                        @Override
+                                        public void subscribe(@NonNull ObservableEmitter<DropboxChooserItem> e) throws Exception
+                                        {
+                                            Metadata base = _me.getMetaData(basePath);
+                                            DropboxChooserItem item = new DropboxChooserItem(DropboxFileData.from(base), selectHandler);
+                                            e.onNext(item);
+                                            e.onComplete();
+
+
+                                        }
+                                    });
+
+                                    getMetaData.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Observer<DropboxChooserItem>() {
+                                        @Override
+                                        public void onSubscribe(@NonNull Disposable d)
+                                        {
+
+                                        }
+
+                                        @Override
+                                        public void onNext(@NonNull DropboxChooserItem item)
+                                        {
+                                            try
+                                            {
+                                                FileChooserDialog fDialog = new FileChooserDialog(context, title, item);
+                                                subscriber.onNext(new FileDialogResponse(fDialog));
+                                            }
+                                            catch (Exception e)
+                                            {
+                                                subscriber.onError(e);
+                                            }
+
+                                        }
+
+                                        @Override
+                                        public void onError(@NonNull Throwable e)
+                                        {
+                                            subscriber.onError(e);
+                                        }
+
+                                        @Override
+                                        public void onComplete()
+                                        {
+
+                                        }
+                                    });
+
+
                                 }
 
-                                FileChooserDialog fDialog = new FileChooserDialog(context, title, top);
 
-                                subscriber.onNext(new FileDialogResponse(fDialog));
                             }
-                            catch (DbxException de)
+                            catch (Exception de)
                             {
                                 subscriber.onError(de);
                             }
                         }
                     }
                 });
-
-
-
 
                 return observable.subscribeOn(AndroidSchedulers.mainThread()).observeOn(AndroidSchedulers.mainThread()).subscribe(onResponse, onError, onComplete);
             }

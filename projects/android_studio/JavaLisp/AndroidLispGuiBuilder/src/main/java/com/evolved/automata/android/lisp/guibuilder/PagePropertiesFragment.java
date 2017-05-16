@@ -351,8 +351,17 @@ public class PagePropertiesFragment extends DialogFragment {
 
     private void showDropboxDialog()
     {
+        String priorSync = mPage.getDropboxPath();
+        String basePath = "";
+        if (priorSync != null)
+        {
+            String parent = Tools.getParentFolder(priorSync);
+            if (parent.equals("/"))
+                parent = "";
+            basePath = parent;
+        }
         DropboxManager.Controller controller = DropboxManager.get().getController();
-        controller.getFileDialog(getActivity(), "Select file to Sync With", "", new DropboxChooserItem.FileItemSelectHandler() {
+        controller.getFileDialog(getActivity(), "Select file to Sync With", basePath, new DropboxChooserItem.FileItemSelectHandler() {
                     @Override
                     public void onSelected(String filename)
                     {
