@@ -444,7 +444,7 @@ public class CodeEditorFragment extends Fragment {
                                 mController.setText(text, cursor);
                                 StateChange change = new StateChange();
                                 change._text = mController.getText();
-                                change._cursorPos = mController.getCursorPos();
+                                change._cursorPos = cursor;
                                 change._readOnlyModeP = mController.isReadOnlyMode();
                                 change._changeType = new HashSet<CHANGE_TYPE>()
                                 {

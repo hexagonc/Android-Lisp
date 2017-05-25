@@ -370,12 +370,21 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onNext(@NonNull CodeEditorFragment.StateChange stateChange)
     {
 
-        String code = stateChange._text;
-        if (code != null)
+        if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.TEXT))
         {
-            mCodePage.setExpr(code);
+            String code = stateChange._text;
+            if (code != null)
+            {
+                mCodePage.setExpr(code);
+
+            }
+        }
+
+        if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.CURSOR))
+        {
             mCodePage.setCursorPosition(stateChange._cursorPos);
         }
+
 
         if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.READONLY))
         {

@@ -59,9 +59,12 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         boolean isReadOnlyMode();
         String getText();
         ParseNode getSelection();
+        TopParseNode getTopParseNode();
+
         int getCursorPos();
         void setText(String text);
         void setText(String text, int cursorPos);
+        void setText(String text, int cursorPos, TopParseNode topNode);
         void setCursorPos(int pos);
         void clearCurrentSelection();
         void insertTextAtCursor(String text);
@@ -435,6 +438,13 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
                 return mCurrentSelection;
             }
 
+
+            @Override
+            public TopParseNode getTopParseNode()
+            {
+                return mParseNode;
+            }
+
             @Override
             public int getCursorPos()
             {
@@ -451,15 +461,30 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             @Override
             public void setText(String text, int cursorPos)
             {
+                setText(text, cursorPos, null);
+            }
+
+            @Override
+            public void setText(String text, int cursorPos, TopParseNode top)
+            {
                 if (text == null)
                     text = "";
                 LispEditText.this.setText(text);
-                if (cursorPos <= 0 && cursorPos <= text.length())
+                if (0  <= cursorPos && cursorPos <= text.length())
                 {
+                    mCursorPosition = cursorPos;
                     setSelection(cursorPos, cursorPos);
                 }
                 else if (text.length() == 0)
+                {
+                    mCursorPosition = 0;
                     setSelection(0, 0);
+                }
+
+                if (top != null)
+                {
+                    mParseNode = top;
+                }
             }
 
             @Override
@@ -471,10 +496,14 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
                 setText(text);
                 if (cursorPos <= 0 && cursorPos <= text.length())
                 {
+                    mCursorPosition = cursorPos;
                     setSelection(cursorPos, cursorPos);
                 }
                 else if (text.length() == 0)
+                {
+                    mCursorPosition = 0;
                     setSelection(0, 0);
+                }
             }
 
             @Override
@@ -563,9 +592,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             
             if (mStateListener != null && selStart != mCursorPosition)
             {
+                mCursorPosition = selStart;
                 mStateListener.onCursorChange(mCursorPosition);
             }
-            mCursorPosition = selStart;
+
             mCurrentSelection = mParseNode.findNode(selStart);
             if (mCurrentSelection != null)
             {
