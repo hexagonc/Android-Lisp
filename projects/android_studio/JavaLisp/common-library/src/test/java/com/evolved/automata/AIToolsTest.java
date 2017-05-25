@@ -12,6 +12,10 @@ import com.evolved.automata.lisp.TestHarnessBase.AssertEvaluate;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 public class AIToolsTest {
+
+
+
+
 	
 	@Test
 	public void testOneCharCommentStripping()

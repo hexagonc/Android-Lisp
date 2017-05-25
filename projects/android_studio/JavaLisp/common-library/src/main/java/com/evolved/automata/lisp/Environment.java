@@ -52,6 +52,10 @@ public class Environment
 		return new Value()
 		{
 
+			{
+				_type = Type.NULL;
+			}
+
 			@Override
 			public boolean equals(Value v) {
 				

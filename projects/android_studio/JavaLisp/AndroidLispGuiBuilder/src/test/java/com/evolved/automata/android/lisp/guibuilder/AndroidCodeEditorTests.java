@@ -1,5 +1,8 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.ParseContext;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
@@ -7,6 +10,8 @@ import com.evolved.automata.lisp.editor.TopParseNode;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedReader;
+import java.io.StringReader;
 import java.util.HashSet;
 
 /**
@@ -79,6 +84,48 @@ public class AndroidCodeEditorTests {
         {
             e.printStackTrace();
             Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    public String stripComments(String expr)
+    {
+        BufferedReader breader = new BufferedReader(new StringReader(expr ));
+        StringBuilder builder = new StringBuilder();
+        String line = null;
+        try
+        {
+            while ((line = breader.readLine())!=null)
+            {
+                if (!line.trim().startsWith(";"))
+                    builder.append(line).append(' ');
+            }
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e.toString());
+        }
+        return builder.toString();
+    }
+
+
+    @Test
+    public void testStripComments()
+    {
+        String expression = "(setq x 12) \n ; (setq x 20)\n(* x 10)";
+
+        Environment env = new Environment();
+
+        try
+        {
+            NLispTools.addDefaultFunctionsAddMacros(env);
+            String stripped = stripComments(expression);
+            Value result = env.evaluate(stripped, false);
+            Assert.assertTrue("Failed to strip properly", result.getIntValue() == 120);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
     }
 }

@@ -19,6 +19,8 @@ import com.evolved.automata.lisp.Value;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.BufferedReader;
+import java.io.StringReader;
 import java.util.LinkedList;
 
 import java.util.UUID;
@@ -103,6 +105,8 @@ public class LispContext implements SpeechListener{
     public static final String _LAST_ASR_VARIABLE_NAME = "LAST-RECOGNITION";
 
 
+    boolean mRootContextP = false;
+
     public LispContext(Context con, Environment base, LispDataAccessInterface dai)
     {
         mContext = con;
@@ -110,9 +114,12 @@ public class LispContext implements SpeechListener{
         mDAI = dai;
         mAndroidInterpreter = new AndroidLispInterpreter(mContext, mEnv, null);
 
+        mRootContextP = true;
         resetEnvironment();
 
     }
+
+
 
     protected LispContext(LispContext parent, Context con)
     {
@@ -126,6 +133,14 @@ public class LispContext implements SpeechListener{
     {
         mDAI = dai;
         resetEnvironment();
+    }
+
+    public AndroidLispInterpreter getForegroundInterpreter()
+    {
+        if (mRootContextP || mParent == null)
+            return mAndroidInterpreter;
+        else
+            return getRootContext().getForegroundInterpreter();
     }
 
 
@@ -149,7 +164,7 @@ public class LispContext implements SpeechListener{
     {
         try
         {
-            return mEnv.evaluate(expression, false);
+            return mEnv.evaluate(stripComments(expression), false);
         } catch (InstantiationException e)
         {
             throw new RuntimeException(e);
@@ -292,11 +307,32 @@ public class LispContext implements SpeechListener{
         evaluateExpression(preCompiledValue, UUID.randomUUID().toString(), resultListener);
     }
 
+
+    private String stripComments(String expr)
+    {
+        BufferedReader breader = new BufferedReader(new StringReader(expr ));
+        StringBuilder builder = new StringBuilder();
+        String line = null;
+        try
+        {
+            while ((line = breader.readLine())!=null)
+            {
+                if (!line.trim().startsWith(";"))
+                    builder.append(line).append(' ');
+            }
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException(e.toString());
+        }
+        return builder.toString();
+    }
+
     public void evaluateExpression(final String expression, final String requestId, final Observer<Value> resultListener)
     {
 
         final Request r = new Request();
-        r.expr = expression;
+        r.expr = stripComments(expression);
         r.result = null;
         r.rListener = resultListener;
 
@@ -327,7 +363,7 @@ public class LispContext implements SpeechListener{
 
     private void startWorkerThread()
     {
-        new Thread()
+        Thread d = new Thread()
         {
             public void run()
             {
@@ -337,6 +373,7 @@ public class LispContext implements SpeechListener{
                     for (String key: mRequestMap.keySet())
                     {
                         Request request = mRequestMap.get(key);
+
                         try
                         {
                             Value response = null;
@@ -400,7 +437,9 @@ public class LispContext implements SpeechListener{
 
 
             }
-        }.start();
+        };
+        d.setDaemon(true);
+        d.start();
     }
 
     private void postResponse(final Value result, final Request request)
@@ -460,11 +499,54 @@ public class LispContext implements SpeechListener{
 
         if (mActivity != null)
         {
-            ViewEvaluator.bindFunctions(mEnv, mActivity, null);
+            ViewEvaluator.bindFunctions(mEnv, mActivity, getForegroundInterpreter());
         }
 
 
         addProcessingFunctions();
+    }
+
+    private FunctionTemplate evaluateGlobal()
+    {
+        return new FunctionTemplate() {
+
+
+            @Override
+            public Object clone()
+            {
+                return evaluateGlobal();
+            }
+
+
+            @Override
+            public Value evaluate(final Environment env, boolean resume)
+                    throws InstantiationException, IllegalAccessException
+            {
+
+                Environment runEnvironment = getRootEnvironment();
+                if (!resume)
+                {
+                    resetFunctionTemplate();
+                }
+
+                Value result = Environment.getNull();
+                for (; _instructionPointer < _actualParameters.length; _instructionPointer++)
+                {
+                    if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+                        result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(runEnvironment, resume);
+                    else
+                        result = _lastFunctionReturn = runEnvironment.evaluate(_actualParameters[_instructionPointer], false);
+
+                    if (result.isContinuation())
+                        return continuationReturn(result);
+                    if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+                        return resetReturn(result);
+                }
+
+                return resetReturn(result);
+
+            }
+        };
     }
 
     public void addProcessingFunctions()
@@ -472,11 +554,32 @@ public class LispContext implements SpeechListener{
         mEnv.mapFunction("evaluate-background", evaluate_background());
         mEnv.mapFunction("evaluate-foreground", evaluate_foreground());
         mEnv.mapFunction("break", getBreak());
+        mEnv.mapFunction("global", evaluateGlobal());
     }
 
     public Environment getEnvironment()
     {
         return mEnv;
+    }
+
+    public Environment getRootEnvironment()
+    {
+        if (mRootContextP)
+            return getEnvironment();
+        else
+            return getRootContext().getRootEnvironment();
+    }
+
+    public LispContext getRootContext()
+    {
+        if (mRootContextP)
+            return this;
+        else if (mParent != null)
+        {
+            return mParent.getRootContext();
+        }
+        else
+            return this;
     }
 
 

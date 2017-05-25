@@ -73,6 +73,7 @@ public class LispResultFragment extends Fragment {
     {
         ViewGroup top = (ViewGroup)inflater.inflate(R.layout.v2_result_pane, container, false);
         mResultPane = (TextView)top.findViewById(R.id.v2_txt_result);
+
         return top;
     }
 

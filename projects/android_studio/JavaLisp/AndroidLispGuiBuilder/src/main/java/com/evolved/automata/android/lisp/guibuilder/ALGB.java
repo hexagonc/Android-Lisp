@@ -73,6 +73,8 @@ public class ALGB {
 
         retrieveCurrentWorkspace();
 
+        NXTLispFunctions.setInterpreter(mBaseLispContext.getForegroundInterpreter());
+
     }
 
     private void addStandardFunctions() throws IllegalAccessException, InstantiationException
@@ -86,7 +88,7 @@ public class ALGB {
 
         mTop.mapFunction("println", getPrintln());
         mTop.mapFunction("log", getLog());
-        mTop.mapFunction("global", evaluateGlobal());
+
     }
 
     public Handler getMainhandler()
@@ -138,56 +140,26 @@ public class ALGB {
 
             @Override
             public Value evaluate(Environment env,Value[] evaluatedArgs) {
-                checkActualArguments(2, false, false);
+                checkActualArguments(2, true, true);
 
                 String tag = evaluatedArgs[0].getString();
-                String message = evaluatedArgs[1].getString();
+                StringBuilder message = new StringBuilder();
 
-                Log.i(tag, message);
-                return NLispTools.makeValue(message);
-            }
-        };
-    }
+                Value extra = null;
 
-
-    private FunctionTemplate evaluateGlobal()
-    {
-        return new FunctionTemplate() {
-
-
-            @Override
-            public Object clone()
-            {
-                return evaluateGlobal();
-            }
-
-
-            @Override
-            public Value evaluate(final Environment env, boolean resume)
-                    throws InstantiationException, IllegalAccessException
-            {
-
-                if (!resume)
+                for (int i = 1; i < evaluatedArgs.length;i++)
                 {
-                    resetFunctionTemplate();
-                }
-
-                Value result = Environment.getNull();
-                for (; _instructionPointer < _actualParameters.length; _instructionPointer++)
-                {
-                    if (resume && _lastFunctionReturn.getContinuingFunction() != null)
-                        result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(mTop, resume);
+                    extra = evaluatedArgs[i];
+                    if (i > 1)
+                        message.append(' ');
+                    if (extra.isString())
+                        message.append(extra.getString());
                     else
-                        result = _lastFunctionReturn = mTop.evaluate(_actualParameters[_instructionPointer], false);
-
-                    if (result.isContinuation())
-                        return continuationReturn(result);
-                    if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
-                        return resetReturn(result);
+                        message.append(extra.toString());
                 }
 
-                return resetReturn(result);
-
+                Log.i(tag, message.toString());
+                return NLispTools.makeValue(message.toString());
             }
         };
     }

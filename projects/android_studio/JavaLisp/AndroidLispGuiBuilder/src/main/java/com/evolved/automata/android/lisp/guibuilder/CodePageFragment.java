@@ -267,7 +267,16 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                 @Override
                 public void onNext(@NonNull Value value)
                 {
-                    mResultController.setResult(value.toString(), false);
+                    try
+                    {
+                        mResultController.setResult(value.toString(), false);
+                    }
+                    catch (Exception e)
+                    {
+                        CodePageFragment.this.onError(e);
+                    }
+
+
                 }
 
                 @Override

@@ -20,11 +20,12 @@ import com.evolved.automata.lisp.Value;
 
 public class NXTLispFunctions 
 {
-	
+
+	// TODO - created Trello card for this
 	/**
 	 * A lazy hack to avoid changing the signatures of a bunch of methods :-(
 	 */
-	public static AndroidLispInterpreter _lispInterpreter = null;
+	private static AndroidLispInterpreter _lispInterpreter = null;
 	
 	
 	public static void addFunctions(final Environment env, final NXTBluetoothManager manager)
@@ -55,6 +56,11 @@ public class NXTLispFunctions
 		env.mapFunction("get-battery-millivolts", get_battery_millivolts(manager));
 		env.mapFunction("set-bluetooth-debug-enable", set_bluetooth_debug_enable(manager));
 	}
+
+	public static void setInterpreter(AndroidLispInterpreter inter)
+    {
+        _lispInterpreter = inter;
+    }
 	
 	private static SimpleFunctionTemplate set_bluetooth_debug_enable(final NXTBluetoothManager manager)
 	{

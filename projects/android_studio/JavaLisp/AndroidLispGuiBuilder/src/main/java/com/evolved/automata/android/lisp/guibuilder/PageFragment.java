@@ -82,7 +82,7 @@ public class PageFragment extends Fragment {
         mCodeFragment = new CodePageFragment();
         mUIFragment = new RenderFragment();
 
-        mUIFragment.setEnvironment(mUIContext.getEnvironment());
+        mUIFragment.setEnvironment(mUIContext.getEnvironment(), mPage);
         mCodeFragment.setLispContext(mUIContext);
         mCodeFragment.setCodePage(mPage);
         if (mCurrrentPageType == Page.PAGE_TYPE.CODE)

@@ -23,6 +23,8 @@ public class RenderFragment extends Fragment {
     Environment mPageEnvironment;
     public static final String VIEW_PROXY_VAR_NAME = "VIEW_PROXY";
 
+    CodePage mPage;
+
 
     @Override
     public View onCreateView(LayoutInflater inflater,ViewGroup container, Bundle savedInstanceState)
@@ -36,6 +38,7 @@ public class RenderFragment extends Fragment {
             if (ovalue instanceof ViewProxy)
             {
                 ViewProxy vproxy = (ViewProxy)ovalue;
+                vproxy.setLispInterpreter(mPageEnvironment, mPage.mBasePageLispContext.getForegroundInterpreter());
                 View v = vproxy.createView(group, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
                 if (v != null)
@@ -107,8 +110,10 @@ public class RenderFragment extends Fragment {
         super.onDetach();
     }
 
-    public void setEnvironment(Environment pageEnvironment)
+    public void setEnvironment(Environment pageEnvironment, CodePage page)
     {
         mPageEnvironment = pageEnvironment;
+        mPage = page;
+
     }
 }
