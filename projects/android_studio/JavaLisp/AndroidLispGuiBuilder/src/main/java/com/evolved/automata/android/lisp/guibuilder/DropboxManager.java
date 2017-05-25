@@ -17,6 +17,8 @@ import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
 
+import org.greenrobot.eventbus.Subscribe;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -201,6 +203,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
         return mManager;
     }
 
+    @Subscribe
     public void onEvent(DropboxEvent external)
     {
         mInternalEventObserver.onNext(external);

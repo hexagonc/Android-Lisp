@@ -3,6 +3,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
+import android.app.ProgressDialog;
 import android.os.Bundle;
 import android.os.Looper;
 import android.support.annotation.Nullable;
@@ -21,7 +22,16 @@ import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.ParseNode;
 
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+
+import java.util.concurrent.TimeUnit;
+
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 
@@ -32,6 +42,7 @@ import io.reactivex.disposables.Disposable;
 public class CodePageFragment extends Fragment implements  Observer<CodeEditorFragment.StateChange> {
 
 
+    
 
     CodeEditorFragment mEditorFragment;
     CodeEditorFragment.EditorController mEditorController;
@@ -49,6 +60,9 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     LispContext mCodeContext;
 
     static final boolean PRINT_ON_MAINTHREAD_P = false;
+
+    long mLastProcessedHeightEventMilli = System.currentTimeMillis();
+    long mNewHeightEventDelayMilli = 1000;
 
     @Override
     public void onAttach(Activity activity)
@@ -118,7 +132,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onCreate(@Nullable Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-
+        
     }
 
 
@@ -153,11 +167,17 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         });
     }
 
+
+
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState)
     {
         ViewGroup parent = (ViewGroup)inflater.inflate(R.layout.v2_code_page, container, false);
+
+
+
         mEvalButton = (ShadowButton)parent.findViewById(R.id.v2_but_eval);
         mSaveButton = (ShadowButton)parent.findViewById(R.id.v2_but_save_page);
         mToggleReadOnlyButton = (ShadowButton)parent.findViewById(R.id.v2_but_toggle_readonly);
@@ -220,9 +240,49 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         transaction.add(R.id.v2_frag_code_editor, mEditorFragment);
         transaction.commit();
 
+
+
+
         Log.i("-+*+--+*+--+*+-", "CodePage onCreateView - inflated layout and set buttons. started child fragment transactions");
         return parent;
     }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onKeyboardVisibilityChange(ALGBBaseActivity.KeyboardVisibility event)
+    {
+        if (event.isVisible())
+        {
+            FragmentTransaction trans = getChildFragmentManager().beginTransaction();
+            trans.hide(mResultFragment);
+            trans.commit();
+        }
+        else
+        {
+            FragmentTransaction trans = getChildFragmentManager().beginTransaction();
+            trans.show(mResultFragment);
+            trans.commit();
+        }
+    }
+
+    
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onCodeEditorHeightEvent(LispEditText.HeightEvent heightEvent)
+    {
+        Log.d("____change___", "" + System.currentTimeMillis() + " heigh " + heightEvent.isLessThanMinimumEditableHeight());
+        if (heightEvent.isLessThanMinimumEditableHeight())
+        {
+            FragmentTransaction trans = getChildFragmentManager().beginTransaction();
+            trans.hide(mResultFragment);
+            trans.commit();
+        }
+        else
+        {
+            FragmentTransaction trans = getChildFragmentManager().beginTransaction();
+            trans.show(mResultFragment);
+            trans.commit();
+        }
+    }
+
 
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState)
@@ -340,13 +400,14 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onResume()
     {
         super.onResume();
-
+        Tools.registerEventHandler(this);
         Log.i("-+*+--+*+--+*+-", "CodePage onResume");
     }
 
     @Override
     public void onPause()
     {
+        Tools.unRegisterEventHandler(this);
         super.onPause();
         Log.i("-+*+--+*+--+*+-", "CodePage onPause");
     }
@@ -356,6 +417,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     {
         super.onStop();
         Log.i("-+*+--+*+--+*+-", "CodePage onStop");
+
     }
 
 
@@ -419,5 +481,20 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onComplete()
     {
 
+    }
+
+    ProgressDialog dialog;
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onParseUpdateEvent(LispEditText.ParseStateEvent event)
+    {
+        if (event.isStarting())
+        {
+            dialog = ProgressDialog.show(getActivity(), "Busy...", "Parsing text");
+        }
+        else
+        {
+            if (dialog != null)
+                dialog.dismiss();
+        }
     }
 }

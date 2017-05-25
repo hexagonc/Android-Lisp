@@ -2,9 +2,10 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import com.dropbox.core.v2.files.Metadata;
 
+import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
 
-import de.greenrobot.event.EventBus;
+
 
 /**
  * Created by Evolved8 on 5/11/17.
@@ -30,6 +31,7 @@ public class Tools {
 
     public static void registerEventHandler(Object o)
     {
+
         mMain.register(o);
     }
 

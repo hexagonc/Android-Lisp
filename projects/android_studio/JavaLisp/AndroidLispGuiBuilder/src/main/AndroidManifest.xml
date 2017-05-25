@@ -25,6 +25,7 @@
 			android:name="com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity"
 			android:label="ALGBBaseActivity"
 			android:screenOrientation="portrait"
+            android:windowSoftInputMode="stateUnchanged"
 			android:launchMode="singleTask" >
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />

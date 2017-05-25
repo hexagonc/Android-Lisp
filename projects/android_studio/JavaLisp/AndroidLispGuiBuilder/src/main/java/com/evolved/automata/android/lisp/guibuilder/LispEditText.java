@@ -41,6 +41,10 @@ import io.reactivex.functions.Function;
 
 public class LispEditText extends EditText implements Observer<ParseNode> {
 
+    public interface HeightEvent
+    {
+        boolean isLessThanMinimumEditableHeight();
+    }
 
     public interface StateListener
     {
@@ -79,6 +83,12 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     }
 
 
+    public interface ParseStateEvent
+    {
+        boolean isStarting();
+    }
+
+
     public static int SCROLL_THRESHOLD_DP = 10;
     public float SCROLL_THRESHOLD_PX;
     Pair<Float, Float> mInitialPos;
@@ -105,6 +115,17 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     GestureDetector mReadOnlyGestureDetector;
 
+
+    final int MINIMUM_EDITABLE_HEIGHT_DP = 100;
+    final int MINIMUM_EXPANDABLE_EDITABLE_HEIGHT_INCREASE_DP = 10;
+
+    int mMinimumExpandableHeightPx = 0;
+    int mMinimumEditableHeightPx = 100;
+
+
+
+
+    boolean mIsShorterThanMinimumEditableHeightP = false;
 
     public static class EditEvent
     {
@@ -165,6 +186,15 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     private void init()
     {
+
+        float d = getContext().getResources().getDimensionPixelSize(R.dimen.v2_result_pane_height);
+
+        int mineditablePx = AndroidTools.convertDPtoPX(getContext(), MINIMUM_EDITABLE_HEIGHT_DP);
+
+        mMinimumExpandableHeightPx = mineditablePx + (int)d;
+        mMinimumEditableHeightPx = mineditablePx;
+
+
         mReadOnlyGestureDetector = new GestureDetector(getContext(), getGestureListener());
         mAllowSelectionChangesP = true;
         mStateListener = null;
@@ -178,6 +208,13 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             public ParseNode apply(@NonNull EditEvent editEvent) throws Exception
             {
                 Log.d("<>< <>< <>< <>< <><", "Updating parser with new text");
+                Tools.postEvent(new ParseStateEvent() {
+                    @Override
+                    public boolean isStarting()
+                    {
+                        return true;
+                    }
+                });
                 TopParseNode top = new TopParseNode();
                 top.processAll(editEvent.getNewCodeText());
                 return top;
@@ -584,6 +621,51 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
     }
 
     @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
+    {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        Log.d("......", "Measured height " + getMeasuredHeight() + " max collapsable height " + mMinimumEditableHeightPx + " min expandable height " + mMinimumExpandableHeightPx);
+
+        if (getMeasuredHeight() <= mMinimumEditableHeightPx)
+        {
+            if (!mIsShorterThanMinimumEditableHeightP)
+            {
+                mIsShorterThanMinimumEditableHeightP = true;
+                Tools.postEvent(new HeightEvent() {
+                    @Override
+                    public boolean isLessThanMinimumEditableHeight()
+                    {
+                        return mIsShorterThanMinimumEditableHeightP;
+                    }
+                });
+            }
+
+        }
+        else if (getMeasuredHeight() >= mMinimumExpandableHeightPx)
+        {
+            if (mIsShorterThanMinimumEditableHeightP)
+            {
+                mIsShorterThanMinimumEditableHeightP = false;
+                Tools.postEvent(new HeightEvent() {
+                    @Override
+                    public boolean isLessThanMinimumEditableHeight()
+                    {
+                        return mIsShorterThanMinimumEditableHeightP;
+                    }
+                });
+            }
+
+        }
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom)
+    {
+        super.onLayout(changed, left, top, right, bottom);
+        Log.d("......", "Layout available height: " + Math.abs(top - bottom));
+    }
+
+    @Override
     protected void onSelectionChanged(int selStart, int selEnd)
     {
         super.onSelectionChanged(selStart, selEnd);
@@ -734,6 +816,13 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         }
         mTempSuppressHighlightingP = false;
         renderSelection(false);
+        Tools.postEvent(new ParseStateEvent() {
+            @Override
+            public boolean isStarting()
+            {
+                return false;
+            }
+        });
     }
 
     @Override

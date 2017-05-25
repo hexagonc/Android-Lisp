@@ -5,12 +5,21 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.Context;
+import android.graphics.Rect;
 import android.os.Bundle;
 
+import android.os.IBinder;
+import android.os.ResultReceiver;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.inputmethod.InputMethodManager;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -24,6 +33,10 @@ import io.reactivex.disposables.Disposable;
 
 public class ALGBBaseActivity extends Activity implements LogHandler {
 
+    public interface KeyboardVisibility
+    {
+        boolean isVisible();
+    }
 
     Runnable mOnTestComplete = null;
 
@@ -34,12 +47,18 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     WorkspaceFragment mCurrentWorkspaceFragment;
 
     HashMap<String, WorkspaceFragment> mWorkspaceMap;
+    InputMethodManager mIMM = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.v2_activity_main);
+        mIMM = (InputMethodManager)ALGBBaseActivity.this
+                .getSystemService(Context.INPUT_METHOD_SERVICE);
+
+
 
         mWorkspaceMap = new HashMap<String, WorkspaceFragment>();
 
@@ -60,6 +79,18 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         }
 
     }
+
+
+
+    private boolean showSoftKeyboardForMainCodeTextP()
+    {
+        View codeText = findViewById(R.id.v2_edit_main_code);
+        if (codeText == null)
+            return false;
+        return mIMM.showSoftInput(codeText, InputMethodManager.SHOW_IMPLICIT);
+    }
+
+
 
     private void changeToWorkspace(Workspace workspace)
     {
@@ -95,7 +126,7 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         super.onStart();
         System.out.println("<><><><<><"+getApplication().getClass().toString());
 
-
+        //startImeWatcher();
 
     }
 
@@ -114,6 +145,7 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     @Override
     protected void onStop()
     {
+        //mApplication.getMainhandler().removeCallbacks(mIMEWatcher);
         super.onStop();
     }
 
