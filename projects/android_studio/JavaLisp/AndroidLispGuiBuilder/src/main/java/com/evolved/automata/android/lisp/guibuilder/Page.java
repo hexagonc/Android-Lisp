@@ -1,5 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.app.Activity;
+
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.StringHashtableValue;
@@ -48,6 +50,8 @@ public abstract class Page {
     String mScript;
     LispContext mBasePageLispContext;
 
+    LispContext mTempUIContext = null;
+
     public Page(ALGB app)
     {
         initialize(app);
@@ -90,6 +94,18 @@ public abstract class Page {
             setPageType();
 
         }
+    }
+
+    public LispContext defineUIContext(Activity context)
+    {
+        mTempUIContext = new LispContext(getBasePageLispContext(), context);
+        mTempUIContext.setActivity(context);
+        return mTempUIContext;
+    }
+
+    public LispContext getUILispContext()
+    {
+        return mTempUIContext;
     }
 
     public ALGB getApplication()

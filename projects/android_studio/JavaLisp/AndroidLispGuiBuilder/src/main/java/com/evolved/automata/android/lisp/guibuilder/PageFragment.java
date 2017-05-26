@@ -32,7 +32,7 @@ public class PageFragment extends Fragment {
 
     CodePage mPage;
 
-    LispContext mUIContext;
+
 
     Page.PAGE_TYPE mCurrrentPageType = Page.PAGE_TYPE.CODE;
 
@@ -45,8 +45,6 @@ public class PageFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        mUIContext = new LispContext(mPage.getBasePageLispContext(), getActivity());
-        mUIContext.setActivity(getActivity());
 
 
 
@@ -82,8 +80,11 @@ public class PageFragment extends Fragment {
         mCodeFragment = new CodePageFragment();
         mUIFragment = new RenderFragment();
 
-        mUIFragment.setEnvironment(mUIContext.getEnvironment(), mPage);
-        mCodeFragment.setLispContext(mUIContext);
+        if (mPage.getUILispContext() == null)
+            mPage.defineUIContext(getActivity());
+
+        mUIFragment.setEnvironment(mPage.getUILispContext().getEnvironment(), mPage);
+        mCodeFragment.setLispContext(mPage.getUILispContext());
         mCodeFragment.setCodePage(mPage);
         if (mCurrrentPageType == Page.PAGE_TYPE.CODE)
         {
@@ -165,6 +166,20 @@ public class PageFragment extends Fragment {
     }
 
     @Override
+    public void onDestroyView()
+    {
+        Log.d("oooooo", "onDestroyView Page fragment: " + mPage.getTitle());
+        super.onDestroyView();
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        Log.d("oooooo", "onDestroy Page fragment: " + mPage.getTitle());
+        super.onDestroy();
+    }
+
+    @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
     {
         inflater.inflate(R.menu.v2_code_display, menu);
@@ -197,7 +212,7 @@ public class PageFragment extends Fragment {
         switch (item.getItemId())
         {
             case R.id.v2_menu_render:
-                if (mUIContext.getEnvironment().getVariableValue(RenderFragment.VIEW_PROXY_VAR_NAME) != null)
+                if (mPage.getUILispContext().getEnvironment().getVariableValue(RenderFragment.VIEW_PROXY_VAR_NAME) != null)
                 {
                     switchToRenderView();
                 }

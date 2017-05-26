@@ -61,8 +61,6 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     static final boolean PRINT_ON_MAINTHREAD_P = false;
 
-    long mLastProcessedHeightEventMilli = System.currentTimeMillis();
-    long mNewHeightEventDelayMilli = 1000;
 
     @Override
     public void onAttach(Activity activity)
