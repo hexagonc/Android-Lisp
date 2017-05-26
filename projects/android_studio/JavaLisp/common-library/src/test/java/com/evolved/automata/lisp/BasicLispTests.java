@@ -2,6 +2,7 @@ package com.evolved.automata.lisp;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.CountDownLatch;
@@ -10,16 +11,127 @@ import java.util.concurrent.TimeUnit;
 
 import junit.framework.Assert;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.junit.Test;
 
+import com.evolved.automata.AITools;
 import com.evolved.automata.lisp.LispInterpreter.LispInputListener;
 import com.evolved.automata.lisp.LispInterpreter.LispResponseListener;
 
 
 public class BasicLispTests extends TestHarnessBase
 {
-	
+
+	@Test
+	public void testSimpleDateFunctions()
+	{
+		String errorMessage = "failed to evaluate datetime function";
+		try
+		{
+			long time = System.currentTimeMillis();
+
+			LinkedList<Pair<String, Value>> testPairs = new LinkedList<Pair<String, Value>>();
+
+			Calendar calendar = Calendar.getInstance();
+			calendar.setTimeInMillis(time);
+
+
+
+			int year = calendar.get(Calendar.YEAR);
+			int month = calendar.get(Calendar.MONTH);
+			int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+			int dayOfYear = calendar.get(Calendar.DAY_OF_YEAR);
+			int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+			int hourAMPM = calendar.get(Calendar.HOUR);
+			int am_pm = calendar.get(Calendar.AM_PM);
+			String am_pm_label;
+			if (am_pm == Calendar.AM)
+				am_pm_label = "AM";
+			else
+				am_pm_label = "PM";
+			int minute = calendar.get(Calendar.MINUTE);
+			int second = calendar.get(Calendar.SECOND);
+			int millisecond = calendar.get(Calendar.MILLISECOND);
+            // Sunday is 1(!) instead of zero
+			int weekdayIndex = calendar.get(Calendar.DAY_OF_WEEK) - 1;
+			String weekdayNameShort = AITools.DAY_OF_WEEK_SHORT_NAME_MAP.get(weekdayIndex);
+			String weekdayNameLong = AITools.DAY_OF_WEEK_LONG_NAME_MAP.get(weekdayIndex);
+			int weekInMonth = calendar.get(Calendar.WEEK_OF_MONTH);
+			int weekInYear = calendar.get(Calendar.WEEK_OF_YEAR);
+			String monthNameLong = AITools.MONTH_NAME_LONG_MAP.get(month);
+			String monthNameShort= AITools.MONTH_NAME_SHORT_MAP.get(month);
+
+			testPairs.add(Pair.of("YEAR", NLispTools.makeValue(year)));
+
+			testPairs.add(Pair.of("MONTH", NLispTools.makeValue(month + 1)));
+			testPairs.add(Pair.of("MONTH_NAME_SHORT", NLispTools.makeValue(monthNameLong)));
+			testPairs.add(Pair.of("MONTH_NAME_LONG", NLispTools.makeValue(monthNameShort)));
+			testPairs.add(Pair.of("DAY_OF_MONTH", NLispTools.makeValue(dayOfMonth)));
+			testPairs.add(Pair.of("DAY_OF_YEAR", NLispTools.makeValue(dayOfYear)));
+			testPairs.add(Pair.of("HOUR_OF_DAY", NLispTools.makeValue(hourOfDay)));
+
+
+			testPairs.add(Pair.of("HOUR", NLispTools.makeValue((hourAMPM == 0)?12:hourAMPM)));
+
+			testPairs.add(Pair.of("AM_PM", NLispTools.makeValue(am_pm_label)));
+
+			testPairs.add(Pair.of("MINUTE", NLispTools.makeValue(minute)));
+			testPairs.add(Pair.of("SECOND", NLispTools.makeValue(second)));
+			testPairs.add(Pair.of("MILLISECONDS", NLispTools.makeValue(millisecond)));
+			testPairs.add(Pair.of("DAY_OF_WEEK_NAME_LONG", NLispTools.makeValue(weekdayNameLong)));
+			testPairs.add(Pair.of("DAY_OF_WEEK_NAME_SHORT", NLispTools.makeValue(weekdayNameShort)));
+			testPairs.add(Pair.of("DAY_OF_WEEK_INDEX", NLispTools.makeValue(weekdayIndex)));
+			testPairs.add(Pair.of("WEEK_IN_MONTH_INDEX", NLispTools.makeValue(weekInMonth)));
+			testPairs.add(Pair.of("WEEK_IN_YEAR_INDEX", NLispTools.makeValue(weekInYear)));
+
+
+			Environment env = new Environment();
+			NLispTools.addDefaultFunctionsAddMacros(env);
+			ExtendedFunctions.addExtendedFunctions(env);
+            env.mapValue("time", NLispTools.makeValue(time));
+			Value dateStats = env.evaluate("(get-datetime-parts time)", true);
+
+
+			errorMessage = "Failed to match date date type";
+			assertTrue(errorMessage, dateStats.isStringHashtable());
+			HashMap<String, Value> lispData = dateStats.getStringHashtable();
+			for (Pair<String, Value> pair: testPairs)
+			{
+				String key = pair.getKey();
+				Value data = pair.getValue();
+
+				errorMessage = "Failed to store test data";
+				assertTrue(errorMessage, data != null && !data.isNull());
+
+				Value returnedData = lispData.get(key);
+				errorMessage = "Failed to find date data for key: " + key;
+				assertTrue(errorMessage, returnedData!=null && !returnedData.isNull());
+
+				errorMessage = String.format("Failed to match date data types:Expected to %1$s but found %2$s", data.getType().toString(), returnedData.getType().toString());
+				assertTrue(errorMessage, returnedData.getType() == data.getType());
+				errorMessage = String.format("Failed to match date data: %1$s.  Expected to %2$s but found %3$s", key, data.toString(), returnedData.toString());
+
+				boolean valueMatch;
+				if (NLispTools.isNumericType(data))
+					valueMatch = data.getFloatValue() == returnedData.getFloatValue();
+				else
+					valueMatch = data.equals(returnedData);
+
+				assertTrue(errorMessage, valueMatch);
+			}
+
+			System.out.println(dateStats);
+
+
+		}
+		catch (Throwable e)
+		{
+			e.printStackTrace();
+			assertTrue(errorMessage, false);
+		}
+	}
+
 	@Test
 	public void testNumericCalculations()
 	{

@@ -6,9 +6,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Calendar;
 import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -21,7 +25,7 @@ import java.util.NavigableSet;
 import java.util.TreeSet;
 
 
-
+import com.evolved.automata.AITools;
 import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.PatternMap;
 
@@ -44,6 +48,8 @@ public class ExtendedFunctions
 	private static MessageDigest _sha1digest = null;
 	private static MessageDigest _md5digest = null;
 	static Object _globalSynch = new Object();
+
+	static Calendar _globalCalendar = Calendar.getInstance();
 	
 	static
 	{
@@ -51,7 +57,11 @@ public class ExtendedFunctions
 		BufferedReader breader =  null;
 		try
 		{
-			InputStream istream = ExtendedFunctions.class.getResourceAsStream("/com/evolved/automata/parser/math/basic_number_general_grammar.txt");
+
+            ClassLoader loader = ExtendedFunctions.class.getClassLoader();
+            // Note that resource name can't start with / when calling ClassLoader.getResourceAsStream(..) as
+            // opposed to calling Class.getResourceAsStream(..)
+			InputStream istream = loader.getResourceAsStream("com/evolved/automata/parser/math/basic_number_general_grammar.txt");
 			
 			reader = new InputStreamReader(istream);
 			breader =  new BufferedReader(reader);
@@ -1329,7 +1339,92 @@ public class ExtendedFunctions
 		);
 		
 		env.mapFunction("async-for", new AsyncFor());
+
+		env.mapFunction("get-datetime-parts", getDateParts());
+
+
 	}
+
+
+	public static SimpleFunctionTemplate getDateParts()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(0, true, true);
+
+				Long time = System.currentTimeMillis();
+
+
+				try
+				{
+                    if (evaluatedArgs.length > 0)
+                        time = evaluatedArgs[0].getIntValue();
+
+					Calendar calendar = _globalCalendar;
+					calendar.setTimeInMillis(time);
+
+					HashMap<String, Value> data = new HashMap<String, Value>();
+
+
+					int year = calendar.get(Calendar.YEAR);
+					int month = calendar.get(Calendar.MONTH);
+					int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+					int dayOfYear = calendar.get(Calendar.DAY_OF_YEAR);
+					int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+					int hourAMPM = calendar.get(Calendar.HOUR);
+					int am_pm = calendar.get(Calendar.AM_PM);
+					String am_pm_label;
+					if (am_pm == Calendar.AM)
+						am_pm_label = "AM";
+					else
+						am_pm_label = "PM";
+					int minute = calendar.get(Calendar.MINUTE);
+					int second = calendar.get(Calendar.SECOND);
+					int millisecond = calendar.get(Calendar.MILLISECOND);
+					int weekdayIndex = calendar.get(Calendar.DAY_OF_WEEK) - 1; // Sunday is 1 (!) instead of 0
+					String weekdayNameShort = AITools.DAY_OF_WEEK_SHORT_NAME_MAP.get(weekdayIndex);
+					String weekdayNameLong = AITools.DAY_OF_WEEK_LONG_NAME_MAP.get(weekdayIndex);
+					int weekInMonth = calendar.get(Calendar.WEEK_OF_MONTH);
+					int weekInYear = calendar.get(Calendar.WEEK_OF_YEAR);
+					String monthNameLong = AITools.MONTH_NAME_LONG_MAP.get(month);
+					String monthNameShort= AITools.MONTH_NAME_SHORT_MAP.get(month);
+
+					data.put("YEAR", NLispTools.makeValue(year));
+					data.put("MONTH", NLispTools.makeValue(month + 1));
+					data.put("MONTH_NAME_SHORT", NLispTools.makeValue(monthNameLong));
+					data.put("MONTH_NAME_LONG", NLispTools.makeValue(monthNameShort));
+					data.put("DAY_OF_MONTH", NLispTools.makeValue(dayOfMonth));
+					data.put("DAY_OF_YEAR", NLispTools.makeValue(dayOfYear));
+					data.put("HOUR_OF_DAY", NLispTools.makeValue(hourOfDay));
+
+
+					data.put("HOUR", NLispTools.makeValue((hourAMPM == 0)?12:hourAMPM));
+
+					data.put("AM_PM", NLispTools.makeValue(am_pm_label));
+
+					data.put("MINUTE", NLispTools.makeValue(minute));
+					data.put("SECOND", NLispTools.makeValue(second));
+					data.put("MILLISECONDS", NLispTools.makeValue(millisecond));
+					data.put("DAY_OF_WEEK_NAME_LONG", NLispTools.makeValue(weekdayNameLong));
+					data.put("DAY_OF_WEEK_NAME_SHORT", NLispTools.makeValue(weekdayNameShort));
+					data.put("DAY_OF_WEEK_INDEX", NLispTools.makeValue(weekdayIndex));
+					data.put("WEEK_IN_MONTH_INDEX", NLispTools.makeValue(weekInMonth));
+					data.put("WEEK_IN_YEAR_INDEX", NLispTools.makeValue(weekInYear));
+
+					return new StringHashtableValue(data);
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+
+		};
+	}
+
 	
 	/* Taken from: http://docs.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html#AppA
      * Converts a byte to hex digit and writes to the supplied buffer

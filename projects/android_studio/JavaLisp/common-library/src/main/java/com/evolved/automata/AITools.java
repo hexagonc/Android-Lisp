@@ -12,6 +12,79 @@ import org.apache.commons.math3.random.RandomGenerator;
 public class AITools {
 
 
+	public static final String[] DAY_OF_WEEK_LONG_NAMES = new String[]{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+	public static final String[] DAY_OF_WEEK_SHORT_NAMES = new String[]{"Sun", "Mon", "Tues", "Wed", "Thu", "Fri", "Sat"};
+	public static final String[] MONTH_NAMES_SHORT = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Dec"};
+	public static final String[] MONTH_NAMES_LONG = new String[]{"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "December"};
+
+
+	public static final HashMap<Integer, String> DAY_OF_WEEK_LONG_NAME_MAP = new HashMap<Integer, String>()
+	{
+		{
+
+			for (int i = 0;i < DAY_OF_WEEK_LONG_NAMES.length; i++)
+			{
+				put(Integer.valueOf(i), DAY_OF_WEEK_LONG_NAMES[i]);
+			}
+		}
+	};
+
+	public static final HashMap<Integer, String> DAY_OF_WEEK_SHORT_NAME_MAP = new HashMap<Integer, String>()
+	{
+		{
+
+			for (int i = 0;i < DAY_OF_WEEK_SHORT_NAMES.length; i++)
+			{
+				put(Integer.valueOf(i), DAY_OF_WEEK_SHORT_NAMES[i]);
+			}
+		}
+	};
+
+	public static final HashMap<String, Integer> DAY_OF_WEEK_SIMPLE_TO_INDEX_MAP = new HashMap<String, Integer>()
+	{
+		{
+
+			for (int i = 0;i < DAY_OF_WEEK_SHORT_NAMES.length; i++)
+			{
+				put(DAY_OF_WEEK_SHORT_NAMES[i].toLowerCase(), Integer.valueOf(i));
+			}
+		}
+	};
+
+	public static final HashMap<String, Integer> MONTH_NAME_SIMPLE_TO_INDEX_MAP = new HashMap<String, Integer>()
+	{
+		{
+
+			for (int i = 0;i < MONTH_NAMES_SHORT.length; i++)
+			{
+				put(MONTH_NAMES_SHORT[i].toLowerCase(), Integer.valueOf(i));
+			}
+		}
+	};
+
+
+
+	public static final HashMap<Integer, String> MONTH_NAME_LONG_MAP = new HashMap<Integer, String>()
+	{
+		{
+
+			for (int i = 0;i < MONTH_NAMES_LONG.length; i++)
+			{
+				put(Integer.valueOf(i), MONTH_NAMES_LONG[i]);
+			}
+		}
+	};
+
+	public static final HashMap<Integer, String> MONTH_NAME_SHORT_MAP = new HashMap<Integer, String>()
+	{
+		{
+
+			for (int i = 0;i < MONTH_NAMES_SHORT.length; i++)
+			{
+				put(Integer.valueOf(i), MONTH_NAMES_SHORT[i]);
+			}
+		}
+	};
 
 
 	/**
