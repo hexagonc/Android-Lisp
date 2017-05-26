@@ -10,6 +10,8 @@ import com.evolved.automata.android.lisp.guibuilder.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.CodePage;
 import com.evolved.automata.android.lisp.guibuilder.Page;
 import com.evolved.automata.android.lisp.guibuilder.Workspace;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.Value;
 
 import org.junit.Assert;
 import org.junit.Rule;
@@ -161,6 +163,108 @@ public class PageTests {
             Assert.assertTrue(errorMessage, false);
         }
     }
+
+    @UiThreadTest
+    @Test
+    public void testSavingLocalPageData()
+    {
+        String errorMessage = "Failed to create app";
+        boolean resetWorkspaceDataP = false;
+        boolean testingDataDefineP = false;
+        String dataTestWorkspaceId;
+        String testWorkspaceContext = "test";
+        String testWorkspaceKey = "TEST-WORKSPACE";
+        String testDataKey = "test-key";
+        Value testPageData = NLispTools.makeValue("Test data");
+        try
+        {
+
+            Instrumentation instrumentation =  InstrumentationRegistry.getInstrumentation();
+            Context context = instrumentation.getTargetContext();
+            Workspace w;
+            ALGB app = new ALGB(context),app2;
+            Page p;
+            if (resetWorkspaceDataP && app.hasData(testWorkspaceKey, testWorkspaceContext))
+            {
+
+                dataTestWorkspaceId = app.getRawData(testWorkspaceKey, testWorkspaceContext);
+                errorMessage = "Failed to retrieve prior test Workspace";
+                w = app.getWorkspace(dataTestWorkspaceId);
+
+                if (w == null)
+                {
+                    w = app.createNewWorkspace();
+                    app.setRawData(testWorkspaceKey,testWorkspaceContext, w.getWorkspaceId());
+                    p = w.getCurrentPage();
+                    errorMessage = "Failed to create new test workspace";
+                    Assert.assertTrue(errorMessage, app.getWorkspace(w.getWorkspaceId()) != null);
+                }
+                else
+                {
+                    p = w.getCurrentPage();
+                    errorMessage = "Failed to get current test page";
+                    Assert.assertTrue(errorMessage, p != null);
+                    errorMessage = "Failed to delete current test page";
+                    app.deletePage(p.getPageId());
+                    Assert.assertTrue(errorMessage, app.retrievePage(p.getPageId()) == null);
+                    p = w.getCurrentPage();
+
+                }
+                app.saveAll();
+
+
+            }
+            else if (app.hasRawData(testWorkspaceKey, testWorkspaceContext))
+            {
+                dataTestWorkspaceId = app.getRawData(testWorkspaceKey, testWorkspaceContext);
+                errorMessage = "Failed to retrieve prior Workspace";
+                w = app.getWorkspace(dataTestWorkspaceId);
+                Assert.assertTrue(errorMessage, w != null);
+                p = w.getCurrentPage();
+            }
+            else
+            {
+                errorMessage = "Failed to create default Workspace";
+                w = app.createNewWorkspace();
+                app.setRawData(testWorkspaceKey,testWorkspaceContext, w.getWorkspaceId());
+                p = w.getCurrentPage();
+                errorMessage = "Failed to save test workspace meta data";
+                Assert.assertTrue(errorMessage, app.hasRawData(testWorkspaceKey,testWorkspaceContext));
+                app.saveAll();
+            }
+
+            errorMessage = "Failed to create initial test page";
+            Assert.assertTrue(errorMessage, p != null);
+
+            if (testingDataDefineP)
+            {
+                errorMessage = "Failed to set page data";
+                p.setPageData(testDataKey, testPageData);
+                p.savePage();
+            }
+
+            errorMessage = "Failed to retrieve page data";
+            Value prior = p.getPageData(testDataKey);
+
+            Assert.assertTrue(errorMessage, p.hasPageData(testDataKey));
+
+            errorMessage = "Failed to match page data type";
+            Assert.assertTrue(errorMessage, prior.getType() ==  testPageData.getType());
+
+            errorMessage = "Failed to match page data value";
+            if (NLispTools.isNumericType(prior))
+                Assert.assertTrue(errorMessage, prior.getFloatValue() == testPageData.getFloatValue());
+            else
+                Assert.assertTrue(errorMessage, prior.equals(testPageData));
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
 
 
 

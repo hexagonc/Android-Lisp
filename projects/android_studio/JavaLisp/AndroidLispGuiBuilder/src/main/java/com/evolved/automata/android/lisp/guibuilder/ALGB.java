@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import io.reactivex.Observer;
 import io.reactivex.annotations.NonNull;
@@ -31,6 +32,15 @@ import io.reactivex.disposables.Disposable;
  */
 
 public class ALGB {
+
+    public static class DeletePageEvent extends PageStateEvent
+    {
+        public DeletePageEvent(String id)
+        {
+            super(id, PageStateEventType.DELETE);
+        }
+    }
+
 
     public static final String _SPEECH_LOG_LABEL = "GUI-BUILDER-SPEECH";
     HashSet<String> _expectedWords = new HashSet<String>();
@@ -229,9 +239,6 @@ public class ALGB {
         }
     }
 
-
-
-
     public void save(boolean saveWorkspace)
     {
         mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, mCurrentWorkspace.getWorkspaceId());
@@ -239,11 +246,40 @@ public class ALGB {
             mCurrentWorkspace.save(true);
     }
 
+    public void saveAll()
+    {
+        mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, mCurrentWorkspace.getWorkspaceId());
+        for (Map.Entry<String, Workspace> entry:mWorkspaceCache.entrySet())
+        {
+            entry.getValue().save(true);
+        }
+
+    }
+
     public void deleteAllData() throws IllegalAccessException, InstantiationException
     {
         mData.deleteAllData();
         mCurrentWorkspace = createNewWorkspace();
     }
+
+    public boolean deletePage(String pageid)
+    {
+        if (mPageCache.containsKey(pageid))
+        {
+            mPageCache.remove(pageid);
+        }
+
+        if (hasData(pageid, Page.CONTEXT_KEY))
+        {
+            deleteData(pageid, Page.CONTEXT_KEY);
+            Tools.postEvent(new DeletePageEvent(pageid));
+            return true;
+        }
+        else
+            return false;
+
+    }
+
 
     public Context getContext()
     {
@@ -325,8 +361,9 @@ public class ALGB {
         Workspace w = mWorkspaceCache.get(workspaceId);
         if (w == null)
         {
-            Value work = getData(workspaceId, Workspace.CONTEXT_KEY);
-            if (work != null)
+
+
+            if (hasData(workspaceId, Workspace.CONTEXT_KEY))
             {
                 try
                 {
@@ -422,6 +459,11 @@ public class ALGB {
     public void setRawData(String key, String context, String content)
     {
         mData.setData(key, context, content);
+    }
+
+    public boolean hasRawData(String key, String context)
+    {
+        return mData.hasData(key, context);
     }
 
     public void saveData(String key, String context, Object data)

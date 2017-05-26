@@ -16,6 +16,28 @@ import java.util.UUID;
 
 public abstract class Page {
 
+
+
+    public static class ProcessingStartPageEvent extends PageStateEvent
+    {
+        public ProcessingStartPageEvent(String id)
+        {
+            super(id, PageStateEventType.PROCESSING_START);
+        }
+    }
+
+    public static class ProcessingStopPageEvent extends PageStateEvent
+    {
+        public ProcessingStopPageEvent(String id)
+        {
+            super(id, PageStateEventType.PROCESSING_STOP);
+        }
+    }
+
+
+
+
+
     public enum PAGE_TYPE {
         CODE, UI
     }
@@ -102,6 +124,12 @@ public abstract class Page {
         }
     }
 
+
+    public String getDataKey(String data)
+    {
+        return mId + "-" + data;
+    }
+
     public LispContext defineUIContext(Activity context)
     {
         mTempUIContext = new LispContext(getBasePageLispContext(), context);
@@ -129,7 +157,7 @@ public abstract class Page {
         mMyData = new HashMap<String, Value>();
 
         mBasePageLispContext = new LispContext(app.getBaseContext(), app.getContext());
-
+        mBasePageLispContext.setPage(this);
         mMyEnvironment = mBasePageLispContext.getEnvironment();
         mMyEnvironment.setVariableValues(mMyData);
         mMyEnvironment.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, Environment.getNull());
@@ -214,6 +242,35 @@ public abstract class Page {
         }
         else
             return false;
+    }
+
+
+    public void setPageData(String key, Value value)
+    {
+        if (value == null || !value.isSerializable())
+            throw new IllegalArgumentException("Can't save non-serializable data to page: " + mId);
+        mMyData.put(getDataKey(key), value);
+    }
+
+    public Value getPageData(String key)
+    {
+        return mMyData.get(getDataKey(key));
+    }
+
+    public boolean hasPageData(String key)
+    {
+        return mMyData.containsKey(getDataKey(key));
+    }
+
+
+    public boolean removePageData(String key)
+    {
+        if (mMyData.containsKey(getDataKey(key)))
+        {
+            mMyData.remove(getDataKey(key));
+            return true;
+        }
+        return false;
     }
 
     public void setStringDataValue(String key, String value)

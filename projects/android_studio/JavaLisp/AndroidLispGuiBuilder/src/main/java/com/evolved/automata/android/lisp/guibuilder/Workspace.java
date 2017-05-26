@@ -4,6 +4,8 @@ import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 
+import org.greenrobot.eventbus.Subscribe;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.UUID;
@@ -41,8 +43,7 @@ public class Workspace {
         mMyData = new HashMap<String, Value>();
         mApplication = app;
         mPages = new LinkedList<String>();
-        Page current = mApplication.createNewCodePage();
-        mPages.add(current.getPageId());
+        addDefaultPage();
 
         mId = UUID.randomUUID().toString();
 
@@ -55,6 +56,7 @@ public class Workspace {
         setCurrentPageIndex(0);
         setWorkspaceId(mId);
         setPageList(mPages);
+        Tools.registerEventHandler(this);
     }
 
     public Workspace(ALGB app, String id) throws IllegalAccessException, InstantiationException
@@ -69,8 +71,56 @@ public class Workspace {
 
         mMyData = app.getData(mId, CONTEXT_KEY).getStringHashtable();
 
-        mPages = getChildPageIds();
+        mPages = new LinkedList<String>();
+        LinkedList<String> pageIds = getChildPageIds();
+        for (String pid:pageIds)
+        {
+            if (mApplication.hasData(pid, Page.CONTEXT_KEY))
+                mPages.add(pid);
+        }
+        if (mPages.size() == 0)
+        {
+            addDefaultPage();
+            setCurrentPageIndex(0);
+        }
+        if (getCurrentPageIndex() >= mPages.size())
+            setCurrentPageIndex(mPages.size()-1);
+        Tools.registerEventHandler(this);
+    }
 
+    private void addDefaultPage()
+    {
+        Page current = mApplication.createNewCodePage();
+        mPages.add(current.getPageId());
+    }
+
+    /**
+     * Unexpected page deletion
+     * @param event
+     */
+    @Subscribe
+    public void onPageEvent(PageStateEvent event)
+    {
+        switch (event.getType())
+        {
+            case DELETE:
+            {
+
+                mPages.remove(event.getId());
+                if (mPages.size() == 0)
+                {
+                    setCurrentPageIndex(0);
+                    addDefaultPage();
+                }
+                else if (getCurrentPageIndex() == mPages.size())
+                {
+                    setCurrentPageIndex(mPages.size() - 1);
+                }
+                setPageList(mPages);
+                save(false);
+                break;
+            }
+        }
     }
 
     public ALGB getApplication()
@@ -95,6 +145,11 @@ public class Workspace {
 
     }
 
+    /**
+     * Manual deletion
+     * @param index
+     * @return
+     */
     public boolean deletePage(int index)
     {
         if (mPages.size() > 1 && index < mPages.size() && index >= 0)

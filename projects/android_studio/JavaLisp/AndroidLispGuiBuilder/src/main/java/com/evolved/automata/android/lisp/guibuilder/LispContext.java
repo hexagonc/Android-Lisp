@@ -55,6 +55,7 @@ public class LispContext implements SpeechListener{
 
     SpeechInterface.SpeechControlInterface mSpeechInterface;
 
+    Page mPage = null;
 
     Observer<Value> mDefaultBackgroundResultHandler;
 
@@ -129,6 +130,19 @@ public class LispContext implements SpeechListener{
         mEnv = new Environment(mBaseEnvironment);
     }
 
+    public String[] getActiveProcesses()
+    {
+        synchronized (mSynch)
+        {
+            return mRequestMap.keySet().toArray(new String[0]);
+        }
+    }
+
+    public void setPage(Page page)
+    {
+        mPage = page;
+    }
+
     public void setDataAccessInterface(LispDataAccessInterface dai)
     {
         mDAI = dai;
@@ -172,6 +186,182 @@ public class LispContext implements SpeechListener{
         {
             throw new RuntimeException(e);
         }
+    }
+
+
+
+    private void addPageFunctions()
+    {
+        mEnv.mapFunction("get-page-data", getPageData());
+        mEnv.mapFunction("set-page-data", setPageData());
+        mEnv.mapFunction("has-page-data", hasPageData());
+        mEnv.mapFunction("delete-page-data", deletePageData());
+        mEnv.mapFunction("get-page-active-processes", getActivePageProcesses());
+    }
+
+
+    SimpleFunctionTemplate getActivePageProcesses()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)getActivePageProcesses();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                String pageKey = mPage.getPageId();
+                if (evaluatedArgs.length>0)
+                {
+                    pageKey = evaluatedArgs[0].getString();
+                }
+
+                ALGB app = mPage.getApplication();
+                Page actualPage = app.retrievePage(pageKey);
+
+                String[] processes = actualPage.getBasePageLispContext().getActiveProcesses();
+                Value[] v= new Value[processes.length];
+                for (int i = 0;i < v.length; i++)
+                    v[i] = NLispTools.makeValue(processes[i]);
+                return NLispTools.makeValue(v);
+
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate getPageData()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)getPageData();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, false);
+
+                String name = evaluatedArgs[0].getString();
+                String pageKey = mPage.getPageId();
+                if (evaluatedArgs.length>1)
+                {
+                    pageKey = evaluatedArgs[1].getString();
+                }
+
+                ALGB app = mPage.getApplication();
+                Page actualPage = app.retrievePage(pageKey);
+                return actualPage.getPageData(name);
+
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate setPageData()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)setPageData();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(2, true, false);
+
+                String name = evaluatedArgs[0].getString();
+                Value data = evaluatedArgs[1];
+                String pageKey = mPage.getPageId();
+                if (evaluatedArgs.length>2)
+                {
+                    pageKey = evaluatedArgs[2].getString();
+                }
+
+                ALGB app = mPage.getApplication();
+                Page actualPage = app.retrievePage(pageKey);
+                actualPage.setPageData(name, data);
+                return data;
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate hasPageData()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)hasPageData();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, false);
+
+                String name = evaluatedArgs[0].getString();
+                String pageKey = mPage.getPageId();
+                if (evaluatedArgs.length>1)
+                {
+                    pageKey = evaluatedArgs[1].getString();
+                }
+
+                ALGB app = mPage.getApplication();
+                Page actualPage = app.retrievePage(pageKey);
+                Value v = actualPage.getPageData(name);
+                if (v == null)
+                    return Environment.getNull();
+                else
+                    return v;
+
+            }
+        };
+    }
+
+    SimpleFunctionTemplate deletePageData()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)deletePageData();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, false);
+
+                String name = evaluatedArgs[0].getString();
+                String pageKey = mPage.getPageId();
+                if (evaluatedArgs.length>1)
+                {
+                    pageKey = evaluatedArgs[1].getString();
+                }
+
+                ALGB app = mPage.getApplication();
+                Page actualPage = app.retrievePage(pageKey);
+                return NLispTools.makeValue(actualPage.removePageData(pageKey));
+
+            }
+        };
     }
 
 
@@ -502,7 +692,8 @@ public class LispContext implements SpeechListener{
             ViewEvaluator.bindFunctions(mEnv, mActivity, getForegroundInterpreter());
         }
 
-
+        if (mPage != null)
+            addPageFunctions();
         addProcessingFunctions();
     }
 
