@@ -9,6 +9,13 @@ repositories {
 
 
 
+// Workaround to deal with Android Studio issue: https://issuetracker.google.com/issues/36988115#c13
+// as provided by https://stackoverflow.com/questions/25513788/intellij-cant-find-classpath-test-resource
+task copyTestResources(type: Copy) {
+	from "${projectDir}/src/test/resources"
+	into "${buildDir}/classes/test"
+}
+processTestResources.dependsOn copyTestResources
 
 dependencies {
 	compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.4'
