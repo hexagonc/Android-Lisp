@@ -30,10 +30,12 @@ public abstract class Page {
     final String TITLE_KEY;
     final String ID_KEY;
     final String IS_READ_ONLY_KEY;
+    final String RESULT_HISTORY_KEY;
 
     final String TITLE_KEY_PREFIX = "TITLE";
     final String ID_KEY_PREFIX = "ID";
     final String IS_READ_ONLY_KEY_PREFIX = "-IS-READ-ONLY";
+    final String RESULT_HISTORY_KEY_PREFIX = "-RESULT-HISTORY";
 
     final String TYPE_KEY;
     public static final String TYPE_KEY_PREFIX = "-TYPE-KEY";
@@ -61,12 +63,15 @@ public abstract class Page {
         TITLE_KEY = mId + "-" + TITLE_KEY_PREFIX;
         ID_KEY = mId + "-" + ID_KEY_PREFIX;
         IS_READ_ONLY_KEY = mId + IS_READ_ONLY_KEY_PREFIX;
+        RESULT_HISTORY_KEY = mId + RESULT_HISTORY_KEY_PREFIX;
         mMyData.put(TITLE_KEY, NLispTools.makeValue(getPageType().toString()));
         setTitle(DEFAULT_TITLE);
         setStringDataValue(ID_KEY, mId);
         setPageType();
         setReadOnlyMode(false);
     }
+
+
 
     public static String getPageTypeKey(String pageId)
     {
@@ -83,6 +88,7 @@ public abstract class Page {
         ID_KEY = mId + "-" + ID_KEY_PREFIX;
         TYPE_KEY = mId + TYPE_KEY_PREFIX;
         IS_READ_ONLY_KEY = mId + IS_READ_ONLY_KEY_PREFIX;
+        RESULT_HISTORY_KEY = mId + RESULT_HISTORY_KEY_PREFIX;
         mMyData.put(TITLE_KEY, NLispTools.makeValue(getPageType().toString()));
 
         if (!restorePage())
@@ -167,6 +173,28 @@ public abstract class Page {
         mApplication.setRawData(getPageId(), SCRIPT_CONTEXT_KEY, mScript);
     }
 
+    public void setResultHistory(String[] history)
+    {
+        Value[] v = new Value[history.length];
+        for (int i = 0;i < v.length;i++)
+        {
+            v[i] = NLispTools.makeValue(history[i]);
+        }
+
+        mMyData.put(RESULT_HISTORY_KEY, NLispTools.makeValue(v));
+    }
+
+    public String[] getResultHistory()
+    {
+        Value v = mMyData.get(RESULT_HISTORY_KEY);
+        if (v == null)
+            return new String[0];
+        Value[] vList = v.getList();
+        String[] out = new String[vList.length];
+        for (int i = 0;i < out.length;i++)
+            out[i] = vList[i].getString();
+        return out;
+    }
 
 
     public boolean restorePage()

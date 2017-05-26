@@ -215,6 +215,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             @Override
             public void onClick(View v)
             {
+
                 mCodePage.savePage();
             }
         });
@@ -232,6 +233,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
         mEditorFragment = new CodeEditorFragment();
         mResultFragment = new LispResultFragment();
+
 
         FragmentTransaction transaction = getChildFragmentManager().beginTransaction();
         transaction.add(R.id.v2_result_fragment, mResultFragment);
@@ -298,7 +300,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         mEditorController = mEditorFragment.getEditorController();
         mEditorController.setStateObserver(this);
         mResultController = mResultFragment.getController();
-
+        mResultController.setResults(mCodePage.getResultHistory(), true);
 
     }
 
@@ -327,7 +329,9 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                 {
                     try
                     {
+
                         mResultController.setResult(value.toString(), false);
+                        mCodePage.setResultHistory(mResultController.getResults());
                     }
                     catch (Exception e)
                     {
@@ -341,6 +345,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                 public void onError(@NonNull Throwable e)
                 {
                     mResultController.setResult(e.toString(), false);
+                    mCodePage.setResultHistory(mResultController.getResults());
                 }
 
                 @Override
@@ -413,6 +418,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     @Override
     public void onStop()
     {
+        mCodePage.setResultHistory(mResultController.getResults());
         super.onStop();
         Log.i("-+*+--+*+--+*+-", "CodePage onStop");
 

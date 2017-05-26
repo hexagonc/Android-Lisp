@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.util.LinkedList;
+
 /**
  * Created by Evolved8 on 5/7/17.
  */
@@ -18,6 +20,8 @@ public class LispResultFragment extends Fragment {
 
     public interface Controller
     {
+        void setResults(String[] results, boolean updateDisplay);
+        String[] getResults();
         void setResult(String text, boolean suppressUpdate);
         boolean showPreviousResult();
         boolean showNextResult();
@@ -53,6 +57,7 @@ public class LispResultFragment extends Fragment {
             prev.next = this;
             next = prevNext;
             mTotalHistory++;
+            result = data;
         }
 
 
@@ -77,9 +82,76 @@ public class LispResultFragment extends Fragment {
         return top;
     }
 
+    private void setResults(String[] results)
+    {
+        mLast = mFirst = mCurrent = null;
+        mTotalHistory = 0;
+        for (String value:results)
+        {
+            appendResult(value);
+        }
+    }
+
+    private String[] getResults()
+    {
+        LinkedList<String> results = new LinkedList<String>();
+        ResultCursor current = mFirst;
+        while (current != null)
+        {
+            results.add(current.result);
+            current = current.next;
+        }
+        return results.toArray(new String[0]);
+    }
+
+    private void appendResult(String value)
+    {
+        if (mLast == mFirst && mLast == null)
+        {
+            mLast = mFirst = mCurrent = new ResultCursor(value);
+
+        }
+        else
+        {
+            if (mCurrent == mLast)
+            {
+                mCurrent = mLast = new ResultCursor(mLast, value);
+
+            }
+            else
+            {
+                mCurrent = mLast = new ResultCursor(mLast, value);
+
+            }
+            while (mTotalHistory > mMaxHistory)
+            {
+                if (mCurrent == mFirst)
+                    mCurrent = mFirst.next;
+                mFirst = mFirst.next;
+                mTotalHistory--;
+            }
+
+        }
+    }
+
     public Controller getController()
     {
         return new Controller() {
+            @Override
+            public void setResults(String[] results, boolean updateDisplay)
+            {
+                LispResultFragment.this.setResults(results);
+                if (updateDisplay && mCurrent != null)
+                {
+                    mResultPane.setText(mCurrent.result);
+                }
+            }
+
+            @Override
+            public String[] getResults()
+            {
+                return LispResultFragment.this.getResults();
+            }
 
             @Override
             public void setHistoryLength(int max)
