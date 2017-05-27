@@ -25,17 +25,21 @@ public class RadioButtonProxy extends CheckboxViewProxy
 	{
 		super.applyAttribures(keywords);
 		processChecked();
-		if (encapsulated!=null)
-			((RadioButton)encapsulated).setChecked(_isChecked);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			((RadioButton)actual).setChecked(_isChecked);
 	}
 	
 	@Override
 	public boolean isChecked()
 	{
-		if (encapsulated == null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			return _isChecked = ((RadioButton)actual).isChecked();
+		else
 			return _isChecked;
 		
-		return _isChecked = ((RadioButton)encapsulated).isChecked();
+
 	}
 	
 	public void processChecked()

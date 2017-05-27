@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp.views;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -43,7 +44,7 @@ import com.nostra13.universalimageloader.core.assist.ImageLoadingListener;
 public abstract class ViewProxy 
 {
 	AndroidLispInterpreter _lispInterpreter;
-	View encapsulated;
+	WeakReference<View> encapsulated;
 	static int TOP_ID = 100;
 	int id = 0;
 	
@@ -112,30 +113,9 @@ public abstract class ViewProxy
 		}
 	}
 	
-	public static void clearDetachedViewProxies()
-	{
-		synchronized (_proxyCache)
-		{
-			
-			LinkedList<ViewProxy> newProxy = new LinkedList<ViewProxy>();
-			for (ViewProxy v:_proxyCache)
-			{
-				if (v.hasDetachedViewP())
-					v.clearView();
-				else
-					newProxy.add(v);
-			}
-			_proxyCache = newProxy;
-		}
-	}
+
 	
-	private boolean hasDetachedViewP()
-	{
-		if (encapsulated == null)
-			return false;
-		ViewParent parent = encapsulated.getParent();
-		return parent == null;
-	}
+
 	
 	private void clearView()
 	{
@@ -145,8 +125,9 @@ public abstract class ViewProxy
 	public void setEnabled(boolean enabled)
 	{
 		_enabledP = enabled;
-		if (encapsulated != null)
-			encapsulated.setEnabled(_enabledP);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			actual.setEnabled(_enabledP);
 	}
 	
 	protected LinearLayout.LayoutParams processKeywords(LinearLayout parent, HashMap<String, Value> keys)
@@ -223,17 +204,19 @@ public abstract class ViewProxy
 	
 	public void setVisiblity(int visibility)
 	{
-		this.visibility= visibility;  
-		if (encapsulated!=null)
-			encapsulated.setVisibility(visibility);
+		this.visibility= visibility;
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			actual.setVisibility(visibility);
 	}
 	
 	public void setBackgroundColor(String color)
 	{
 		backgroundColor = Color.parseColor(color);
 		backgroundColorDefinedP = true;
-		if (encapsulated!=null)
-			encapsulated.setBackgroundColor(backgroundColor);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			actual.setBackgroundColor(backgroundColor);
 	}
 	
 	public void setBackgroundImageUrl(String url)
@@ -243,7 +226,11 @@ public abstract class ViewProxy
 	
 	public View getView()
 	{
-		return encapsulated;
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			return actual;
+		else
+			return null;
 	}
 	
 	protected void processOnClickListenerKeys(HashMap<String, Value> keys)
@@ -931,7 +918,7 @@ public abstract class ViewProxy
 	
 	public void setView(View v)
 	{
-		encapsulated = v;
+		encapsulated = new WeakReference<View>(v);
 	}
 	
 	public abstract View createBaseView();
@@ -939,8 +926,9 @@ public abstract class ViewProxy
 	
 	public View createView(ViewGroup parent)
 	{
-		View base = encapsulated = createBaseView();
-		encapsulated.setEnabled(_enabledP);
+		View base = createBaseView();
+		encapsulated = new WeakReference<View>(base);
+		base.setEnabled(_enabledP);
 		ViewGroup.LayoutParams params = null;
 		if (parent instanceof LinearLayout)
 		{
@@ -963,7 +951,8 @@ public abstract class ViewProxy
 	
 	public View createView(ViewGroup parent, ViewGroup.LayoutParams topParams)
 	{
-		View base = encapsulated = createBaseView();
+		View base = createBaseView();
+		encapsulated = new WeakReference<View>(base);
 		
 		ViewGroup.LayoutParams params = topParams;
 		if (parent instanceof LinearLayout)
@@ -1075,25 +1064,28 @@ public abstract class ViewProxy
 		{
 			_keys.put(key, keywords.get(key));
 		}
-		
-		if (encapsulated!=null)
+
+		View actual;
+
+
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			ViewGroup.LayoutParams baseParams = encapsulated.getLayoutParams();
+			ViewGroup.LayoutParams baseParams = actual.getLayoutParams();
 			
-			if (encapsulated.getParent() instanceof FrameLayout)
+			if (actual.getParent() instanceof FrameLayout)
 			{
-				processWidth((FrameLayout.LayoutParams)baseParams, (FrameLayout)encapsulated.getParent(), _keys);
-				processHeight((FrameLayout.LayoutParams)baseParams, (FrameLayout)encapsulated.getParent(), _keys);
+				processWidth((FrameLayout.LayoutParams)baseParams, (FrameLayout)actual.getParent(), _keys);
+				processHeight((FrameLayout.LayoutParams)baseParams, (FrameLayout)actual.getParent(), _keys);
 			}
-			else if (encapsulated.getParent() instanceof LinearLayout)
+			else if (actual.getParent() instanceof LinearLayout)
 			{
-				processWidth((LinearLayout.LayoutParams)baseParams, (LinearLayout)encapsulated.getParent(), _keys);
-				processHeight((LinearLayout.LayoutParams)baseParams, (LinearLayout)encapsulated.getParent(), _keys);
+				processWidth((LinearLayout.LayoutParams)baseParams, (LinearLayout)actual.getParent(), _keys);
+				processHeight((LinearLayout.LayoutParams)baseParams, (LinearLayout)actual.getParent(), _keys);
 			}
-			else if (encapsulated.getParent() instanceof RelativeLayout)
+			else if (actual.getParent() instanceof RelativeLayout)
 			{
-				processWidth((RelativeLayout.LayoutParams)baseParams, (RelativeLayout)encapsulated.getParent(), _keys);
-				processHeight((RelativeLayout.LayoutParams)baseParams, (RelativeLayout)encapsulated.getParent(), _keys);
+				processWidth((RelativeLayout.LayoutParams)baseParams, (RelativeLayout)actual.getParent(), _keys);
+				processHeight((RelativeLayout.LayoutParams)baseParams, (RelativeLayout)actual.getParent(), _keys);
 			}
 			
 			processBaseKeywords(_keys);
@@ -1121,7 +1113,7 @@ public abstract class ViewProxy
 			}
 			else
 				processParentAlignment((FrameLayout.LayoutParams)baseParams, _keys);
-			baseUpdate(encapsulated);
+			baseUpdate(actual);
 			
 		}
 	}

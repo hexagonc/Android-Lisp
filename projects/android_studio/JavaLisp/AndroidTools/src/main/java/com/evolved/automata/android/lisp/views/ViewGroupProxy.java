@@ -27,10 +27,11 @@ public abstract class ViewGroupProxy extends ViewProxy
 				return null;
 		}
 		children.add(proxy);
-		if (encapsulated!=null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			View out = proxy.createView((ViewGroup)encapsulated);
-			((ViewGroup)encapsulated).addView(out);
+			View out = proxy.createView((ViewGroup)actual);
+			((ViewGroup)actual).addView(out);
 		}
 		return proxy;
 	}
@@ -38,9 +39,10 @@ public abstract class ViewGroupProxy extends ViewProxy
 	public void removeAllViews()
 	{
 		children.clear();
-		if (encapsulated!=null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			((ViewGroup)encapsulated).removeAllViews();
+			((ViewGroup)actual).removeAllViews();
 		}
 	}
 	
@@ -57,12 +59,13 @@ public abstract class ViewGroupProxy extends ViewProxy
 		}
 		if (remove)
 			children.remove(proxy);
-		
-		if (encapsulated!=null && remove)
+
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null && remove)
 		{
 			View out = proxy.getView();
 			if (out != null)
-				((ViewGroup)encapsulated).removeView(out);
+				((ViewGroup)actual).removeView(out);
 		}
 		return proxy;
 	}

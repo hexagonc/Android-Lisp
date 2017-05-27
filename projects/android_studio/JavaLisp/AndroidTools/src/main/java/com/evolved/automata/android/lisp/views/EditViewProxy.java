@@ -44,7 +44,8 @@ public class EditViewProxy extends TextViewProxy
 	public void applyAttribures(HashMap<String, Value> keywords)
 	{
 		super.applyAttribures(keywords);
-		if (encapsulated != null)
-			processHintTextFromKeywords(_keys, (EditText)encapsulated);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			processHintTextFromKeywords(_keys, (EditText)actual);
 	}
 }

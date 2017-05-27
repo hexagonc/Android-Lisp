@@ -29,18 +29,22 @@ public class CheckboxViewProxy extends TextViewProxy
 	
 	public boolean isChecked()
 	{
-		if (encapsulated == null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			return _isChecked = ((CheckBox)actual).isChecked();
+		else
 			return _isChecked;
-		
-		return _isChecked = ((CheckBox)encapsulated).isChecked();
+
 	}
 	
 	public void setChecked(boolean checked)
 	{
 		_isChecked = checked;
-		if (encapsulated != null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+
 		{
-			CompoundButton cb = (CompoundButton)encapsulated;
+			CompoundButton cb = (CompoundButton)actual;
 			cb.setChecked(_isChecked);
 		}
 	}
@@ -57,9 +61,10 @@ public class CheckboxViewProxy extends TextViewProxy
 				_lispInterpreter.evaluateExpression(containlet, true);
 			}
 		};
-		if (encapsulated!=null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			((CheckBox)encapsulated).setOnCheckedChangeListener(_changeListener);
+			((CheckBox)actual).setOnCheckedChangeListener(_changeListener);
 		}
 	}
 	
@@ -69,8 +74,9 @@ public class CheckboxViewProxy extends TextViewProxy
 	{
 		super.applyAttribures(keywords);
 		processChecked();
-		if (encapsulated!=null)
-			((CheckBox)encapsulated).setChecked(_isChecked);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			((CheckBox)actual).setChecked(_isChecked);
 	}
 	public void processCheckChangedListener()
 	{
@@ -87,8 +93,9 @@ public class CheckboxViewProxy extends TextViewProxy
 				}
 			};
 		}
-		if (encapsulated!=null)
-			((CompoundButton)encapsulated).setOnCheckedChangeListener(_changeListener);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			((CompoundButton)actual).setOnCheckedChangeListener(_changeListener);
 	}
 	
 	public void processChecked()

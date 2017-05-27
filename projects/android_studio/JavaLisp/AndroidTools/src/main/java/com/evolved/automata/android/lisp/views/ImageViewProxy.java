@@ -48,8 +48,9 @@ public class ImageViewProxy extends ViewProxy
 	public void applyAttribures(HashMap<String, Value> keywords)
 	{
 		super.applyAttribures(keywords);
-		if (encapsulated!=null)
-			processImageSourceKeyword(_keys, (ImageView)encapsulated);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+			processImageSourceKeyword(_keys, (ImageView)actual);
 	}
 	
 }

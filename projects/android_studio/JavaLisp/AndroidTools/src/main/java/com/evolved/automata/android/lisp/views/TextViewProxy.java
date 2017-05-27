@@ -39,18 +39,20 @@ public class TextViewProxy extends ViewProxy
 	public TextViewProxy setText(String text)
 	{
 		this.text = text;
-		if (encapsulated!=null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			((TextView)encapsulated).setText(text);
+			((TextView)actual).setText(text);
 		}
 		return this;
 	}
 	
 	public String getText()
 	{
-		if (encapsulated!=null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			return text = ((TextView)encapsulated).getText().toString();
+			return text = ((TextView)actual).getText().toString();
 		}
 		else
 			return text;
@@ -95,7 +97,7 @@ public class TextViewProxy extends ViewProxy
 	
 	public void setTextColor(Value color)
 	{
-		setTextColor(color, (TextView)encapsulated);
+		setTextColor(color, (encapsulated != null)? (TextView)encapsulated.get():null);
 	}
 	
 	
@@ -226,9 +228,10 @@ public class TextViewProxy extends ViewProxy
 	public void applyAttribures(HashMap<String, Value> keywords)
 	{
 		super.applyAttribures(keywords);
-		if (encapsulated != null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			processKeywords(keywords, (TextView)encapsulated);
+			processKeywords(keywords, (TextView)actual);
 		}
 	}
 	

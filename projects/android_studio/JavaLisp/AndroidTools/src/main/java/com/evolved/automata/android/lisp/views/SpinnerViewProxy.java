@@ -95,8 +95,10 @@ public class SpinnerViewProxy extends ViewProxy
 	public void setSelected(int i)
 	{
 		_selection = i;
-		if (encapsulated != null)
-			((Spinner)encapsulated).setSelection(_selection);
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
+
+			((Spinner)actual).setSelection(_selection);
 	}
 	
 	public void updateSpec(ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>> spinnerSpecList)

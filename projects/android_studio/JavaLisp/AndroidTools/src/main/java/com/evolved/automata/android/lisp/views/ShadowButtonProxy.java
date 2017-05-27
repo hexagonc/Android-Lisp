@@ -37,9 +37,10 @@ public class ShadowButtonProxy extends ViewProxy
 	public ShadowButtonProxy setText(String text)
 	{
 		this.text = text;
-		if (encapsulated!=null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			((ShadowButton)encapsulated).setText(text);
+			((ShadowButton)actual).setText(text);
 		}
 		return this;
 	}
@@ -87,7 +88,7 @@ public class ShadowButtonProxy extends ViewProxy
 	
 	public void setTextColor(Value color)
 	{
-		setTextColor(color, (ShadowButton)encapsulated);
+		setTextColor(color, (encapsulated != null)?(ShadowButton)encapsulated.get():null);
 	}
 	
 	

@@ -71,9 +71,10 @@ public class SeekBarViewProxy extends ViewProxy
 	
 	private void updateCurrentValue()
 	{
-		if (encapsulated != null)
+		View actual;
+		if (encapsulated != null && (actual = encapsulated.get())!= null)
 		{
-			SeekBar bar = (SeekBar)encapsulated;
+			SeekBar bar = (SeekBar)actual;
 			int progressValue = Math.max(0, Math.min(100, (int)((_currentValue - _minValue)/(_maxValue - _minValue)*100)));
 			bar.setProgress(progressValue);
 		}
