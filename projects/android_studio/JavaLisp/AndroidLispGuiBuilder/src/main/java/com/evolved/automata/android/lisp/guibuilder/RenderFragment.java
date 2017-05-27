@@ -32,7 +32,7 @@ public class RenderFragment extends Fragment {
 
         ViewGroup group = (ViewGroup)inflater.inflate(R.layout.v2_render_pane, container, false);
         Value proxy = mPageEnvironment.getVariableValue(VIEW_PROXY_VAR_NAME);
-        if (proxy != null && !proxy.isNull())
+        if (proxy != null && proxy.isUserObject())
         {
             Object ovalue = proxy.getObjectValue();
             if (ovalue instanceof ViewProxy)
@@ -43,6 +43,7 @@ public class RenderFragment extends Fragment {
 
                 if (v != null)
                 {
+                    group.removeAllViews();
                     group.addView(v);
                     Log.i("-+*+--+*+--+*+-", "RenderFragment onCreateView - added new proxy to fragment");
                 }

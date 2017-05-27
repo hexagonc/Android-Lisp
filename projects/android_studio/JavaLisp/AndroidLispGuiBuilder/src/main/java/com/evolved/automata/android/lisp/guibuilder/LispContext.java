@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.android.speech.SpeechInterface.SpeechListener;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
 import com.evolved.automata.android.lisp.views.ViewEvaluator;
@@ -23,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.StringReader;
 import java.util.LinkedList;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -78,6 +80,7 @@ public class LispContext implements SpeechListener{
         String expr;
         Value precompiledExpr;
         Environment evaluationEnv;
+        boolean deletedP = false;
     }
 
     LispSpeechInterface.ListeningStateListener mListeningStateHandler;
@@ -141,6 +144,7 @@ public class LispContext implements SpeechListener{
     public void setPage(Page page)
     {
         mPage = page;
+        resetEnvironment();
     }
 
     public void setDataAccessInterface(LispDataAccessInterface dai)
@@ -166,12 +170,20 @@ public class LispContext implements SpeechListener{
 
     public void breakEvaluation()
     {
-        mRequestMap.clear();
+        synchronized (mSynch)
+        {
+            mRequestMap.clear();
+        }
+
     }
 
     public void breakEvaluation(String id)
     {
-        mRequestMap.remove(id);
+        synchronized (mSynch)
+        {
+            mRequestMap.remove(id);
+        }
+
     }
 
     public Value evaluateSynchronous(String expression)
@@ -197,6 +209,7 @@ public class LispContext implements SpeechListener{
         mEnv.mapFunction("has-page-data", hasPageData());
         mEnv.mapFunction("delete-page-data", deletePageData());
         mEnv.mapFunction("get-page-active-processes", getActivePageProcesses());
+        mEnv.mapFunction("set-top-view", setTopView());
     }
 
 
@@ -223,11 +236,47 @@ public class LispContext implements SpeechListener{
                 ALGB app = mPage.getApplication();
                 Page actualPage = app.retrievePage(pageKey);
 
-                String[] processes = actualPage.getBasePageLispContext().getActiveProcesses();
+                LispContext con;
+                if (actualPage.getUILispContext() != null)
+                {
+                    con = actualPage.getUILispContext();
+                }
+                else
+                    con = actualPage.getBasePageLispContext();
+
+                String[] processes = con.getActiveProcesses();
                 Value[] v= new Value[processes.length];
                 for (int i = 0;i < v.length; i++)
                     v[i] = NLispTools.makeValue(processes[i]);
                 return NLispTools.makeValue(v);
+
+
+            }
+        };
+    }
+
+    SimpleFunctionTemplate setTopView()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)setTopView();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, false, false);
+
+                Value viewproxy = evaluatedArgs[0];
+                if (!viewproxy.isUserObject() ||
+                        (!(viewproxy.getObjectValue() instanceof ViewProxy)))
+                    throw new IllegalArgumentException("set-top-view requires view proxy argument");
+
+                mEnv.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, viewproxy);
+                return viewproxy;
 
 
             }
@@ -558,12 +607,25 @@ public class LispContext implements SpeechListener{
             public void run()
             {
                 LinkedList<String> toBeDeleted = new LinkedList<String>();
-                while (mRequestMap.size() > 0)
+                Set<String> keys;
+                boolean cont;
+                synchronized (mSynch)
                 {
-                    for (String key: mRequestMap.keySet())
+                    cont = mRequestMap.size() > 0;
+                }
+
+                while (cont)
+                {
+
+                    synchronized (mSynch)
+                    {
+                        keys = mRequestMap.keySet();
+                    }
+                    for (String key: keys)
                     {
                         Request request = mRequestMap.get(key);
-
+                        if (request == null)
+                            continue;
                         try
                         {
                             Value response = null;
@@ -621,6 +683,7 @@ public class LispContext implements SpeechListener{
                             mRequestMap.remove(key);
                         }
                         toBeDeleted.clear();
+                        cont = mRequestMap.size() > 0;
                     }
 
                 }
@@ -742,6 +805,7 @@ public class LispContext implements SpeechListener{
 
     public void addProcessingFunctions()
     {
+        mEnv.mapFunction("on-main-thread-p", onMainThread());
         mEnv.mapFunction("evaluate-background", evaluate_background());
         mEnv.mapFunction("evaluate-foreground", evaluate_foreground());
         mEnv.mapFunction("break", getBreak());
@@ -771,6 +835,24 @@ public class LispContext implements SpeechListener{
         }
         else
             return this;
+    }
+
+    SimpleFunctionTemplate onMainThread()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)onMainThread();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                return NLispTools.makeValue(Looper.getMainLooper() == Looper.myLooper());
+            }
+        };
     }
 
 
