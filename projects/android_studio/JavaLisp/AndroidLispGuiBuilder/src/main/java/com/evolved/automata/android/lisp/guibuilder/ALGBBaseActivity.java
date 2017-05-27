@@ -181,6 +181,12 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
             showWorkspaceManager();
             return true;
 
+        }else if (item.getItemId() == R.id.v2_menu_send_test_status_event)
+        {
+            Tools.postEvent(new NewErrorLogEntriesEvent());
+            //Tools.postEvent(new NewBackgroundResultEvent());
+            //Tools.postEvent(new NewInfoLogEntriesEvent());
+            return true;
         }
         else
         {

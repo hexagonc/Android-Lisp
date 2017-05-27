@@ -29,7 +29,7 @@
             android:layout_height = 'wrap_content'
             android:layout_weight = '0'
             android:text = '@string/workspace_management_selected_label_title'
-            android:textSize="@dimen/workspace_management_button_text_size"/>
+            android:textSize="@dimen/workspace_management_selected_workspace_text_size"/>
         <EditText
             android:layout_width = '0px'
             android:layout_height = 'wrap_content'

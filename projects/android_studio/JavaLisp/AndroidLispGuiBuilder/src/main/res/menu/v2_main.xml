@@ -22,4 +22,7 @@
     <item android:id = "@+id/v2_menu_post_test_login"
           android:title = "Test Dropbox Login"
           android:showAsAction="never"/>
+    <item android:id = "@+id/v2_menu_send_test_status_event"
+        android:title = "Show info alert"
+        android:showAsAction="never"/>
 </menu>

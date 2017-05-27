@@ -9,8 +9,7 @@
         android:layout_height="wrap_content"
         android:gravity = "center_vertical"
         android:orientation="horizontal"
-        android:id = "@+id/v2_lin_page_navigation"
-        android:layout_marginBottom = '@dimen/v2_workspace_fragment_status_area_margin_bottom'>
+        android:id = "@+id/v2_lin_page_navigation">
         <FrameLayout
             android:layout_width = '0px'
             android:layout_height = 'wrap_content'
@@ -48,7 +47,7 @@
             android:layout_weight = '1'
             android:orientation="horizontal"
             android:gravity = "right|center_vertical"
-            >
+            android:layout_marginRight="10dp">
             <com.evolved.automata.android.widgets.ShadowButton
                 custom:text = '@string/v2_more_info_label'
                 custom:textSize = '@dimen/v2_more_info_text_size'
@@ -56,16 +55,19 @@
                 android:layout_gravity = "right"
                 android:layout_width="wrap_content"
                 android:layout_height='wrap_content'
+
                 android:id = '@+id/v2_but_status_more_info'
                 android:visibility="invisible"
                 />
             <ImageButton
+                android:layout_marginRight="10dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_add_black_24dp"
                 android:id = "@+id/v2_but_add_page"
                 android:background="@drawable/v2_code_editor_toolbar_button_background"/>
             <com.evolved.automata.android.widgets.ShadowButton
+
                 custom:text = '@string/v2_workspace_fragment_next_page_label'
                 custom:textSize = '@dimen/v2_workspace_fragment_nav_button_text_size'
                 custom:textColor = '#000'

@@ -4,4 +4,8 @@
     <color name = "v2_floating_background_shadow">#575757</color>
     <color name = "v2_selected_workspace_bullet">#030093</color>
     <color name = "v2_workspace_list_divider">#c6c5f1</color>
+
+    <color name = "new_error_status_alert">#ea0c0c</color>
+    <color name = "new_info_status_alert">#000000</color>
+    <color name = "new_background_result_status_alert">#03c993</color>
 </resources>

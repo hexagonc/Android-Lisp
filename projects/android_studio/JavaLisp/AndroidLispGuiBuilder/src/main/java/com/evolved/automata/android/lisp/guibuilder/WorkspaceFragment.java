@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -11,10 +12,15 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.evolved.automata.android.widgets.ShadowButton;
+
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -24,6 +30,13 @@ import java.util.LinkedList;
  */
 
 public class WorkspaceFragment extends Fragment {
+
+
+    Animation mFlashAnimation = null;
+    Animation mHideAnimation = null;
+
+    ShadowButton mStatusAlertsButton;
+
 
     Workspace mWorkspace;
 
@@ -71,10 +84,22 @@ public class WorkspaceFragment extends Fragment {
     {
         ViewGroup group = (ViewGroup)inflater.inflate(R.layout.v2_workspace_fragment, container, false);
 
+        mFlashAnimation = AnimationUtils.loadAnimation(getActivity(), R.anim.v2_flash_alert);
+        mHideAnimation = AnimationUtils.loadAnimation(getActivity(), R.anim.hide_flash_alert);
+
         mNavigatePreviousButton = (ShadowButton)group.findViewById(R.id.v2_but_history_back);
         mNavigateNextButton = (ShadowButton)group.findViewById(R.id.v2_but_history_forward);
         mAddPageButton = (ImageButton)group.findViewById(R.id.v2_but_add_page);
         mPageTitleView = (TextView)group.findViewById(R.id.v2_txt_page_title);
+        mStatusAlertsButton = (ShadowButton)group.findViewById(R.id.v2_but_status_more_info);
+        mStatusAlertsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+
+                handleStatusAlertClick();
+            }
+        });
 
 
         mNavigatePreviousButton.setOnClickListener(new View.OnClickListener(){
@@ -117,7 +142,113 @@ public class WorkspaceFragment extends Fragment {
         return group;
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onNewStatusEvent(GlobalStatusAlertEvent event)
+    {
+        toggleAlertFlash(true);
+        switch (event.getType())
+        {
+            case NEW_ERROR_ENTRIES:
+                showNewErrorAlertStatus((NewErrorLogEntriesEvent)event);
+                break;
+            case NEW_INFO_ENTRIES:
+                showNewInfoAlertStatus((NewInfoLogEntriesEvent)event);
+                break;
+            case NEW_BACKGROUND_RESULT:
+                showNewBackgroundAlertStatus((NewBackgroundResultEvent)event);
+                break;
+        }
+    }
 
+    private void toggleAlertFlash(boolean enabledP)
+    {
+        if (enabledP)
+        {
+            mStatusAlertsButton.clearAnimation();
+            mStatusAlertsButton.setAnimation(mFlashAnimation);
+            mFlashAnimation.start();
+        }
+        else
+        {
+            mStatusAlertsButton.clearAnimation();
+            mStatusAlertsButton.setAnimation(mHideAnimation);
+        }
+    }
+
+
+    private void showNewErrorAlertStatus(NewErrorLogEntriesEvent event)
+    {
+        mStatusAlertsButton.setVisibility(View.VISIBLE);
+        mStatusAlertsButton.setTextColor(getResources().getColor(R.color.new_error_status_alert));
+        mStatusAlertsButton.setOnClickListener(getErrorStatusClickListener(event));
+    }
+
+    private void showNewInfoAlertStatus(NewInfoLogEntriesEvent event)
+    {
+        mStatusAlertsButton.setVisibility(View.VISIBLE);
+        mStatusAlertsButton.setTextColor(getResources().getColor(R.color.new_info_status_alert));
+        mStatusAlertsButton.setOnClickListener(getInfoStatusClickListener(event));
+    }
+
+    private void showNewBackgroundAlertStatus(NewBackgroundResultEvent event)
+    {
+        mStatusAlertsButton.setVisibility(View.VISIBLE);
+        mStatusAlertsButton.setTextColor(getResources().getColor(R.color.new_background_result_status_alert));
+        mStatusAlertsButton.setOnClickListener(getBackgroundResultClickListener(event));
+    }
+
+    private void hideAlertStatus()
+    {
+        toggleAlertFlash(false);
+        mStatusAlertsButton.setTextColor(getResources().getColor(android.R.color.black));
+        mStatusAlertsButton.setVisibility(View.INVISIBLE);
+
+    }
+
+
+    View.OnClickListener getErrorStatusClickListener(final NewErrorLogEntriesEvent event)
+    {
+        return new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                hideAlertStatus();
+                // TODO: make this show the status log dialog filtered according to the errors
+            }
+        };
+    }
+
+    View.OnClickListener getInfoStatusClickListener(final NewInfoLogEntriesEvent event)
+    {
+        return new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                hideAlertStatus();
+                // TODO: make this show the status log dialog filtered according to the errors
+            }
+        };
+    }
+
+    View.OnClickListener getBackgroundResultClickListener(final NewBackgroundResultEvent event)
+    {
+        return new View.OnClickListener() {
+            @Override
+            public void onClick(View v)
+            {
+                hideAlertStatus();
+                // TODO: make this show the status log dialog filtered according to the errors
+            }
+        };
+    }
+
+
+    private void handleStatusAlertClick()
+    {
+        hideAlertStatus();
+    }
+
+    @Deprecated
     boolean deleteCurrentPage()
     {
         boolean success = mWorkspace.deletePage(mWorkspace.getCurrentPageIndex());
@@ -224,6 +355,7 @@ public class WorkspaceFragment extends Fragment {
     public void onStart()
     {
         super.onStart();
+        Tools.registerEventHandler(this);
     }
 
     @Override
@@ -241,6 +373,7 @@ public class WorkspaceFragment extends Fragment {
     @Override
     public void onStop()
     {
+        Tools.unRegisterEventHandler(this);
         super.onStop();
     }
 
