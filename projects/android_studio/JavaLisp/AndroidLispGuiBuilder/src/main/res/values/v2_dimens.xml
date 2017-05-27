@@ -15,4 +15,16 @@
     <dimen name = "v2_workspace_list_item_textsize">15sp</dimen>
     <dimen name = "v2_workspace_list_item_bullet_size">10dp</dimen>
     <dimen name = "v2_workspace_list_divider_width">2dp</dimen>
+
+    <dimen name = "v2_workspace_fragment_nav_button_text_size">20sp</dimen>
+    <dimen name = "v2_workspace_fragment_status_area_margin_bottom">20dp</dimen>
+    <dimen name = "v2_workspace_fragment_status_area_title_text_size">20sp</dimen>
+    <dimen name="v2_more_info_text_size">30sp</dimen>
+    <dimen name = "file_chooser_button_text_size">20sp</dimen>
+    <dimen name = "file_chooser_filename_label_text_size">17sp</dimen>
+    <dimen name = "file_chooser_filename_edit_text_size">20sp</dimen>
+    <dimen name = "workspace_management_page_left_right_padding_size">20dp</dimen>
+    <dimen name = "workspace_management_page_top_bottom_padding_size">20dp</dimen>
+    <dimen name = "workspace_management_button_text_size">20sp</dimen>
+
 </resources>

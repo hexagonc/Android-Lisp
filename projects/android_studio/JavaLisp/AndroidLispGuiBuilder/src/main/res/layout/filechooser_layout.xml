@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+				xmlns:custom = 'http://schemas.android.com/apk/res-auto'
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="10dp" >
@@ -69,25 +70,33 @@
         android:layout_height = 'wrap_content'
         android:orientation = 'horizontal'
         android:layout_below = '@id/edit_filename'>
-        
-    <Button
-        android:id = '@+id/but_ok'
-        android:text = '@string/file_chooser_file_select_text'
-        android:layout_width = '0px'
-        android:layout_weight = '1'
-        android:layout_height = 'wrap_content'/>
-     <Button
-        android:id = '@+id/but_create_folder'
-        android:text = '@string/file_chooser_folder_create_text'
-        android:layout_width = '0px'
-        android:layout_weight = '1'
-        android:layout_height = 'wrap_content'/>
-     <Button
-        android:id = '@+id/but_cancel'
-        android:text = '@string/file_chooser_cancel_text'
-        android:layout_width = '0px'
-        android:layout_weight = '1'
-        android:layout_height = 'wrap_content'/>
+		<com.evolved.automata.android.widgets.ShadowButton
+			custom:text = '@string/file_chooser_file_select_text'
+			custom:textSize = '@dimen/file_chooser_button_text_size'
+			custom:textColor = '#000'
+			android:layout_gravity = 'left'
+			android:layout_width = '0px'
+			android:layout_weight = '1'
+			android:layout_height = 'wrap_content'
+			android:id = '@+id/but_ok'/>
+		<com.evolved.automata.android.widgets.ShadowButton
+			custom:text = '@string/file_chooser_folder_create_text'
+			custom:textSize = '@dimen/file_chooser_button_text_size'
+			custom:textColor = '#000'
+			android:layout_gravity = 'left'
+			android:layout_width = '0px'
+			android:layout_weight = '1'
+			android:layout_height = 'wrap_content'
+			android:id = '@+id/but_create_folder'/>
+		<com.evolved.automata.android.widgets.ShadowButton
+			custom:text = '@string/file_chooser_cancel_text'
+			custom:textSize = '@dimen/file_chooser_button_text_size'
+			custom:textColor = '#000'
+			android:layout_gravity = 'left'
+			android:layout_width = '0px'
+			android:layout_weight = '1'
+			android:layout_height = 'wrap_content'
+			android:id = '@+id/but_cancel'/>
     </LinearLayout>
 
 </RelativeLayout>

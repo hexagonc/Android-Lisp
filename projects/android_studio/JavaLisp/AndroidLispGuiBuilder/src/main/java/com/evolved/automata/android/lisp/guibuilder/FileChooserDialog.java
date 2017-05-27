@@ -18,6 +18,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.evolved.automata.android.widgets.ShadowButton;
+
 import java.util.ArrayList;
 
 public class FileChooserDialog extends Dialog implements OnChildFilesRequestedListener
@@ -33,9 +35,9 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 	ListView _fileList;
 	TextView _upButton;
 
-	Button _createFolderButton;
-	Button _selectFileButton;
-	Button _cancelButton;
+	ShadowButton _createFolderButton;
+	ShadowButton _selectFileButton;
+	ShadowButton _cancelButton;
 	EditText _selectedFileEdit;
 
 	ArrayAdapter<FileChooserItem> _fileAdapter = null;
@@ -88,7 +90,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.filechooser_layout);
 		_selectedFileEdit = (EditText)findViewById(R.id.edit_filename);
-		_createFolderButton = (Button)findViewById(R.id.but_create_folder);
+		_createFolderButton = (ShadowButton)findViewById(R.id.but_create_folder);
 		final FileChooserItem.OnCreateChildFileListener folderListener = new FileChooserItem.OnCreateChildFileListener()
 		{
 
@@ -122,7 +124,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 		});
 
 
-		_selectFileButton = (Button)findViewById(R.id.but_ok);
+		_selectFileButton = (ShadowButton)findViewById(R.id.but_ok);
 		_selectFileButton.setOnClickListener(new View.OnClickListener() {
 
 			@Override
@@ -148,7 +150,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 			}
 		});
 
-		_cancelButton = (Button)findViewById(R.id.but_cancel);
+		_cancelButton = (ShadowButton)findViewById(R.id.but_cancel);
 		_cancelButton.setOnClickListener(new View.OnClickListener() {
 
 			@Override

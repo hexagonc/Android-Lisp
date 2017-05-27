@@ -4,10 +4,10 @@
               android:layout_width="match_parent"
               android:layout_height="wrap_content"
               android:orientation="vertical"
-              android:paddingLeft="@dimen/project_management_page_left_right_padding_size"
-              android:paddingRight="@dimen/project_management_page_left_right_padding_size"
-              android:paddingTop="@dimen/project_management_page_top_right_padding_size"
-              android:paddingBottom="@dimen/project_management_page_top_right_padding_size" >
+              android:paddingLeft="@dimen/workspace_management_page_left_right_padding_size"
+              android:paddingRight="@dimen/workspace_management_page_left_right_padding_size"
+              android:paddingTop="@dimen/workspace_management_page_top_bottom_padding_size"
+              android:paddingBottom="@dimen/workspace_management_page_top_bottom_padding_size" >
     <TextView
         android:layout_width="wrap_content"
         android:layout_height='wrap_content'
@@ -28,14 +28,14 @@
             android:layout_width = 'wrap_content'
             android:layout_height = 'wrap_content'
             android:layout_weight = '0'
-            android:text = '@string/project_selected_label_title'
-            android:textSize="@dimen/project_selected_label_text_size"/>
+            android:text = '@string/workspace_management_selected_label_title'
+            android:textSize="@dimen/workspace_management_button_text_size"/>
         <EditText
             android:layout_width = '0px'
             android:layout_height = 'wrap_content'
             android:layout_weight = '1'
             android:singleLine="true"
-            android:hint = '@string/project_name_hint_text'
+            android:hint = '@string/workspace_management_workspace_name_edit_hint'
             android:id = '@+id/v2_edit_workspace_name'
             />
     </LinearLayout>
@@ -50,8 +50,8 @@
             android:gravity = 'center'
             android:orientation="vertical">
             <com.evolved.automata.android.widgets.ShadowButton
-                custom:text = '@string/project_create_button_label'
-                custom:textSize = '@dimen/project_management_button_label_size'
+                custom:text = '@string/workspace_management_create_button_label'
+                custom:textSize = '@dimen/workspace_management_button_text_size'
                 custom:textColor = '#000'
                 android:layout_width="wrap_content"
                 android:layout_height='wrap_content'
@@ -59,7 +59,7 @@
                 android:id = '@+id/v2_sdw_but_workspace_create'/>
             <com.evolved.automata.android.widgets.ShadowButton
                 custom:text = '@string/v2_workspace_management_accept_label'
-                custom:textSize = '@dimen/project_management_button_label_size'
+                custom:textSize = '@dimen/workspace_management_button_text_size'
                 custom:textColor = '#000'
                 android:layout_width="wrap_content"
                 android:tag="select"
@@ -74,8 +74,8 @@
             android:gravity = 'center'
             android:orientation="vertical">
             <com.evolved.automata.android.widgets.ShadowButton
-                custom:text = '@string/project_rename_button_label'
-                custom:textSize = '@dimen/project_management_button_label_size'
+                custom:text = '@string/workspace_management_rename_button_label'
+                custom:textSize = '@dimen/workspace_management_button_text_size'
                 custom:textColor = '#000'
                 android:layout_width="wrap_content"
                 android:layout_height='wrap_content'
@@ -90,16 +90,16 @@
             android:gravity = 'center'
             android:orientation="vertical">
             <com.evolved.automata.android.widgets.ShadowButton
-                custom:text = '@string/project_delete_button_label'
-                custom:textSize = '@dimen/project_management_button_label_size'
+                custom:text = '@string/workspace_management_delete_button_label'
+                custom:textSize = '@dimen/workspace_management_button_text_size'
                 custom:textColor = '#000'
                 android:layout_width="wrap_content"
                 android:layout_height='wrap_content'
                 android:tag="delete"
                 android:id = '@+id/v2_sdw_but_workspace_delete'/>
             <com.evolved.automata.android.widgets.ShadowButton
-                custom:text = '@string/project_management_cancel_label'
-                custom:textSize = '@dimen/project_management_button_label_size'
+                custom:text = '@string/workspace_management_cancel_button_label'
+                custom:textSize = '@dimen/workspace_management_button_text_size'
                 custom:textColor = '#000'
                 android:tag="cancel"
                 android:layout_width="wrap_content"

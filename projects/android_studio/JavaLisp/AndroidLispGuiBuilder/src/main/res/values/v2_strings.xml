@@ -3,5 +3,19 @@
     <string name = "v2_workspace_management_title">Manage Workspaces</string>
     <string name = "v2_workspace_management_accept_label">Ok</string>
     <string name = "v2_page_properties_title">Page Properties</string>
+    <string name = "v2_workspace_fragment_prev_page_label">&lt;</string>
+    <string name = "v2_workspace_fragment_next_page_label">&gt;</string>
+    <string name = "v2_page_title_default_name">default</string>
+    <string name = "v2_more_info_label">!</string>
+    <string name = "file_chooser_file_select_text">Select</string>
+    <string name = "file_chooser_folder_create_text">Create</string>
+    <string name = "file_chooser_cancel_text">Cancel</string>
+    <string name = "workspace_management_cancel_button_label">Cancel</string>
+    <string name = "workspace_management_delete_button_label">Delete</string>
+    <string name = "workspace_management_create_button_label">Create</string>
+    <string name = "workspace_management_rename_button_label">Rename</string>
+    <string name = "workspace_management_accept_button_label">Ok</string>
+    <string name = "workspace_management_workspace_name_edit_hint">new name</string>
+    <string name = "workspace_management_selected_label_title">Workspace</string>
 
 </resources>

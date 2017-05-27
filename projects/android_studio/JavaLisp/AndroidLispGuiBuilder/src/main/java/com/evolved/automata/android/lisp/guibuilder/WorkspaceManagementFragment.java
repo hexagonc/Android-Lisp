@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.app.Dialog;
 import android.app.DialogFragment;
 import android.content.DialogInterface;
 import android.os.Bundle;
@@ -243,6 +244,13 @@ public class WorkspaceManagementFragment extends DialogFragment {
         super.onCreate(savedInstanceState);
     }
 
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState)
+    {
+
+        return super.onCreateDialog(savedInstanceState);
+    }
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState)
@@ -257,6 +265,19 @@ public class WorkspaceManagementFragment extends DialogFragment {
         mDeleteWorkspaceButton = (ShadowButton)top.findViewById(R.id.v2_sdw_but_workspace_delete);
         mSelectedWorkspaceText = (EditText)top.findViewById(R.id.v2_edit_workspace_name);
 
+        /* Use conditional logic to remove or hide this depending on dialog style as
+        is done for the PagePropertiesFragment.  Currently, we are not accepting
+        different styles for this dialog fragment
+         */
+        if (mStyle !=  DialogFragment.STYLE_NO_TITLE)
+        {
+            TextView title = (TextView)top.findViewById(R.id.v2_txt_workspace_manager_header);
+            title.setVisibility(View.GONE);
+        }
+
+
+
+        getDialog().setTitle(R.string.v2_workspace_management_title);
         configureUI();
 
         return top;
