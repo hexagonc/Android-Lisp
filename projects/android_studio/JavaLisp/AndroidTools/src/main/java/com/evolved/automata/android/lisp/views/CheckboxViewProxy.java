@@ -89,7 +89,7 @@ public class CheckboxViewProxy extends TextViewProxy
 				@Override
 				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 					String total = String.format("(let ((is-checked %1$s)) %2$s)", (isChecked)?"1":"F", base); 
-					_lispInterpreter.evaluateExpression(total, true);
+					_lispInterpreter.evaluateExpression(_currentEnv, total, true);
 				}
 			};
 		}

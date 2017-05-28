@@ -361,7 +361,7 @@ public class NXTLispFunctions
 			
 
 			@Override
-			public Value evaluate(Environment env, Value[] evaluatedArgs) 
+			public Value evaluate(final Environment env, Value[] evaluatedArgs)
 			{
 				NXTBluetoothInterface binterface = (NXTBluetoothInterface)evaluatedArgs[0].getObjectValue();
 				
@@ -373,7 +373,7 @@ public class NXTLispFunctions
 					public void onConnectionChange(boolean isConnected) {
 						Value[] args = new Value[]{NLispTools.makeValue(isConnected)};
 						listenerLambda.setActualParameters(args);
-						_lispInterpreter.evaluateFunction(listenerLambda);
+						_lispInterpreter.evaluateFunction(listenerLambda, env);
 					}
 				};
 				boolean notifyCurrentStatusImmediately = !evaluatedArgs[2].isNull();		

@@ -178,7 +178,7 @@ public class AndroidLispInterpreter
 				_runningProcessP = true;
 				try
 				{
-					
+
 					Value out = function.evaluate(_env, false);
 					synchronized (_breakSynch)
 					{
@@ -236,6 +236,76 @@ public class AndroidLispInterpreter
 		
 		
 		
+	}
+
+	public Value evaluateFunction(final FunctionTemplate function, final Environment env)
+	{
+		try
+		{
+
+			if (Looper.myLooper() == Looper.getMainLooper())
+			{
+				_runningProcessP = true;
+				try
+				{
+
+					Value out = function.evaluate(env, false);
+					synchronized (_breakSynch)
+					{
+						_runningProcessP = false;
+						if (_breakRequestedP && out.isContinuation())
+						{
+							_breakRequestedP = false;
+							return null;
+						}
+
+						if (out.isContinuation())
+						{
+							if (!_breakRequestedP)
+								_mainThreadHandler.post(getEvaluationSlice(env, out, new LinkedList<Value>()));
+							else
+								_breakRequestedP = false;
+							return null;
+						}
+						else
+							return out;
+					}
+
+				}
+				catch (Exception e)
+				{
+					notifyError(e);
+				}
+				return null;
+			}
+			else
+			{
+				synchronized (_breakSynch)
+				{
+					if (!_breakRequestedP)
+					{
+						_mainThreadHandler.post(new Runnable()
+						{
+							public void run()
+							{
+								evaluateFunction(function, env);
+							}
+						});
+					}
+					else
+						_breakRequestedP = false;
+				}
+
+				return null;
+			}
+		}
+		finally
+		{
+			_runningProcessP = false;
+		}
+
+
+
 	}
 	
 	private Runnable getEvaluationSlice(final Environment env, final Value input, final LinkedList<Value> remaining)

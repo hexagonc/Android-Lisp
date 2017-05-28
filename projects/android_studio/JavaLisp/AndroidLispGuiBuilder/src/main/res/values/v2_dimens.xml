@@ -25,7 +25,7 @@
     <dimen name = "file_chooser_filename_edit_text_size">20sp</dimen>
     <dimen name = "workspace_management_page_left_right_padding_size">20dp</dimen>
     <dimen name = "workspace_management_page_top_bottom_padding_size">20dp</dimen>
-    <dimen name = "workspace_management_button_text_size">20sp</dimen>
+    <dimen name = "workspace_management_button_text_size">14sp</dimen>
     <dimen name = "workspace_management_selected_workspace_text_size">15sp</dimen>
 
 </resources>

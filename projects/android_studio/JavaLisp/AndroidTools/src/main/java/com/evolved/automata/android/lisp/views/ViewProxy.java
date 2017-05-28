@@ -246,7 +246,7 @@ public abstract class ViewProxy
 
 				@Override
 				public void onClick(View v) {
-					_lispInterpreter.evaluateExpression(codeContinuation, true);
+					_lispInterpreter.evaluateExpression(_currentEnv, codeContinuation, true);
 				}
 				
 			};
@@ -296,7 +296,7 @@ public abstract class ViewProxy
 
 				@Override
 				public boolean onLongClick(View v) {
-					Value out = _lispInterpreter.evaluateExpression(codeContinuation, false);
+					Value out = _lispInterpreter.evaluateExpression(_currentEnv, codeContinuation, false);
 					return out!=null&&!out.isNull();
 				}
 
