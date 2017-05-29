@@ -142,6 +142,14 @@ public class WorkspaceFragment extends Fragment {
         return group;
     }
 
+    private void showAppStatusDialog()
+    {
+
+        final String fragTag = "app_status_log";
+        AppStatusLogDialogFragment frag = AppStatusLogDialogFragment.create();
+        frag.show(getFragmentManager(), fragTag);
+    }
+
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onNewStatusEvent(GlobalStatusAlertEvent event)
     {
@@ -213,7 +221,7 @@ public class WorkspaceFragment extends Fragment {
             public void onClick(View v)
             {
                 hideAlertStatus();
-                // TODO: make this show the status log dialog filtered according to the errors
+                showAppStatusDialog();
             }
         };
     }
@@ -225,7 +233,7 @@ public class WorkspaceFragment extends Fragment {
             public void onClick(View v)
             {
                 hideAlertStatus();
-                // TODO: make this show the status log dialog filtered according to the errors
+                showAppStatusDialog();
             }
         };
     }
@@ -237,7 +245,7 @@ public class WorkspaceFragment extends Fragment {
             public void onClick(View v)
             {
                 hideAlertStatus();
-                // TODO: make this show the status log dialog filtered according to the errors
+                showAppStatusDialog();
             }
         };
     }

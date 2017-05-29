@@ -8,4 +8,5 @@
     <color name = "new_error_status_alert">#ea0c0c</color>
     <color name = "new_info_status_alert">#000000</color>
     <color name = "new_background_result_status_alert">#03c993</color>
+    <color name = "app_status_log_entry_listview_summary">#0004a0</color>
 </resources>

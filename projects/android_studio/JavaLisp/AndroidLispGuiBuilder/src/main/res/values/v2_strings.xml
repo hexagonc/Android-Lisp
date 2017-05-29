@@ -17,5 +17,6 @@
     <string name = "workspace_management_accept_button_label">Ok</string>
     <string name = "workspace_management_workspace_name_edit_hint">new name</string>
     <string name = "workspace_management_selected_label_title">Workspace</string>
-
+    <string name = "app_status_log_details_label">Details:</string>
+    <string name = "app_status_log_title">Application Status Log</string>
 </resources>

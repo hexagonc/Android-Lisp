@@ -2,7 +2,10 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import com.evolved.automata.lisp.Value;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
+import java.util.Calendar;
 
 /**
  * Created by Evolved8 on 5/28/17.
@@ -160,11 +163,15 @@ public class EventLog {
 
     public static class LogEntry
     {
+
         final long _time;
         final EntryType _type;
         final EventSource _source;
         final String _summary;
         final String _detail;
+
+        final String _timeString;
+        final String _datetimeString;
 
         public LogEntry(EventSource source, long createTime, EntryType type, String summary, String detail)
         {
@@ -173,6 +180,28 @@ public class EventLog {
             _source = source;
             _summary = summary;
             _detail = detail;
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(_time);
+
+            int month = cal.get(Calendar.MONTH) + 1;
+            int day = cal.get(Calendar.DAY_OF_MONTH);
+            int hour = cal.get(Calendar.HOUR_OF_DAY);
+            int minute = cal.get(Calendar.MINUTE);
+            int seconds = cal.get(Calendar.SECOND);
+            int milli = cal.get(Calendar.MILLISECOND);
+
+            String smonth = "" + month;
+            String sday =  StringUtils.right( "0" + day, 2);
+            String shour = StringUtils.right("0" + hour, 2);
+            String sminute = StringUtils.right("0" + minute, 2);
+            String sseconds = StringUtils.right("0" + seconds, 2);
+            String smilli = ""+ milli;
+
+
+
+            _timeString = StringUtils.join(new String[]{shour, sminute, sseconds, smilli}, ':');
+            _datetimeString = String.format("%1$s/%2$s ", sday, smonth) + _timeString;
         }
 
 
@@ -194,6 +223,16 @@ public class EventLog {
         public long getCreationTime()
         {
             return _time;
+        }
+
+        public String getDateTime()
+        {
+            return _datetimeString;
+        }
+
+        public String getTime()
+        {
+            return _timeString;
         }
 
     }

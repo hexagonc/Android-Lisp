@@ -28,4 +28,16 @@
     <dimen name = "workspace_management_button_text_size">14sp</dimen>
     <dimen name = "workspace_management_selected_workspace_text_size">15sp</dimen>
 
+    <dimen name = "app_status_log_listview_height">200dp</dimen>
+
+    <dimen name = "app_status_log_padding">10dp</dimen>
+    <dimen name = "app_status_log_detail_label_text_sizes">17dp</dimen>
+    <dimen name = "app_status_log_details_text_sizes">17dp</dimen>
+    <dimen name = "app_status_log_button_text_sizes">15dp</dimen>
+    <dimen name = "app_status_log_details_edit_height">60dp</dimen>
+
+    <dimen name = "app_status_log_listview_item_text_size">15sp</dimen>
+    <dimen name = "app_status_log_listview_item_height">20dp</dimen>
+    <dimen name = "app_status_log_listview_item_date_summary_sep">15dp</dimen>
+
 </resources>
