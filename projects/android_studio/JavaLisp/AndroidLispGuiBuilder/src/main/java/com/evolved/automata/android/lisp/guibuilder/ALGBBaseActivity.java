@@ -68,14 +68,15 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
 
         try
         {
-            mApplication = new ALGB(getApplicationContext());
 
+            mApplication = ((ALGBApplication)getApplication()).getALGB();
             changeToWorkspace(mApplication.getCurrentWorkspace());
 
         }
         catch (Exception e)
         {
             logError("Failed creating", e.toString());
+            EventLog.get().logSystemError(e);
         }
 
     }

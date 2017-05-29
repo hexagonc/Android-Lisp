@@ -12,25 +12,24 @@ public class ALGBApplication extends Application
 {
 
 
+	ALGB mApplication= null;
 	
 	
 	@Override
 	public void onCreate() {
 		
 		super.onCreate();
-		
-		
 		try
 		{
 
+			mApplication = new ALGB(getApplicationContext());
 			AndroidTools.initialize(null, this, null);
 			AppStateManager.create(this);
 			NXTBluetoothManager.create(this);
 			DeviceInfo.create(this);
-
-
 			DropboxManager.create(getApplicationContext());
 
+			EventLog.create(mApplication);
 
 		}
 		catch (Exception e)
@@ -41,6 +40,11 @@ public class ALGBApplication extends Application
 		
 	}
 	
+
+	public ALGB getALGB()
+	{
+		return mApplication;
+	}
 
 	
 }

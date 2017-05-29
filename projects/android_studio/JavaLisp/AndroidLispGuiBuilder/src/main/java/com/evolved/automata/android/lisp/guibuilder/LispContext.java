@@ -210,8 +210,219 @@ public class LispContext implements SpeechListener{
         mEnv.mapFunction("delete-page-data", deletePageData());
         mEnv.mapFunction("get-page-active-processes", getActivePageProcesses());
         mEnv.mapFunction("set-top-view", setTopView());
+
+        mEnv.mapFunction("log-error", logError());
+        mEnv.mapFunction("log-info", logInfo());
+        mEnv.mapFunction("log-result", logResult());
     }
 
+
+    SimpleFunctionTemplate logError()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)logError();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String summary = evaluatedArgs[0].getString();
+                String detail = summary;
+                if (evaluatedArgs.length > 1)
+                {
+                    detail = evaluatedArgs[1].getString();
+                }
+
+                boolean isForegroundP = Looper.getMainLooper() == Looper.myLooper();
+                EventLog.LispSourceType ltype;
+
+                if (isForegroundP)
+                    ltype = EventLog.LispSourceType.FOREGROUND;
+                else
+                    ltype = EventLog.LispSourceType.BACKGROUND;
+
+                EventLog.EventSource source = new EventLog.LispPageSource(ltype, mPage);
+                EventLog.get().logEvent(source, EventLog.EntryType.ERROR, summary, detail);
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    SimpleFunctionTemplate logInfo()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)logInfo();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String summary = evaluatedArgs[0].getString();
+                String detail = summary;
+                if (evaluatedArgs.length > 1)
+                {
+                    detail = evaluatedArgs[1].getString();
+                }
+
+                boolean isForegroundP = Looper.getMainLooper() == Looper.myLooper();
+                EventLog.LispSourceType ltype;
+
+                if (isForegroundP)
+                    ltype = EventLog.LispSourceType.FOREGROUND;
+                else
+                    ltype = EventLog.LispSourceType.BACKGROUND;
+
+                EventLog.EventSource source = new EventLog.LispPageSource(ltype, mPage);
+                EventLog.get().logEvent(source, EventLog.EntryType.INFO, summary, detail);
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate logResult()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)logResult();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String summary = evaluatedArgs[0].toString();
+                String detail = summary;
+                if (evaluatedArgs.length > 1)
+                {
+                    detail = evaluatedArgs[1].getString();
+                }
+
+                boolean isForegroundP = Looper.getMainLooper() == Looper.myLooper();
+                EventLog.LispSourceType ltype;
+
+                if (isForegroundP)
+                    ltype = EventLog.LispSourceType.FOREGROUND;
+                else
+                    ltype = EventLog.LispSourceType.BACKGROUND;
+
+                EventLog.EventSource source = new EventLog.LispPageSource(ltype, mPage);
+                EventLog.get().logEvent(source, EventLog.EntryType.RESULT, summary, detail);
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    SimpleFunctionTemplate logGlobalError()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)logGlobalError();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String summary = evaluatedArgs[0].getString();
+                String detail = summary;
+                if (evaluatedArgs.length > 1)
+                {
+                    detail = evaluatedArgs[1].getString();
+                }
+
+                EventLog.EventSource source = new EventLog.LispGlobalSource();
+                EventLog.get().logEvent(source, EventLog.EntryType.ERROR, summary, detail);
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+    SimpleFunctionTemplate logGlobalInfo()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)logGlobalInfo();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String summary = evaluatedArgs[0].getString();
+                String detail = summary;
+                if (evaluatedArgs.length > 1)
+                {
+                    detail = evaluatedArgs[1].getString();
+                }
+
+
+                EventLog.EventSource source = new EventLog.LispGlobalSource();
+                EventLog.get().logEvent(source, EventLog.EntryType.INFO, summary, detail);
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate logGlobalResult()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)logGlobalResult();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String summary = evaluatedArgs[0].toString();
+                String detail = summary;
+                if (evaluatedArgs.length > 1)
+                {
+                    detail = evaluatedArgs[1].getString();
+                }
+
+                EventLog.EventSource source = new EventLog.LispGlobalSource();
+                EventLog.get().logEvent(source, EventLog.EntryType.RESULT, summary, detail);
+
+                return evaluatedArgs[0];
+
+            }
+        };
+    }
 
     SimpleFunctionTemplate getActivePageProcesses()
     {
@@ -537,7 +748,7 @@ public class LispContext implements SpeechListener{
 
             }
         }).observeOn(AndroidSchedulers.mainThread());
-        out.subscribe(resultListener);
+        out.subscribe();
     }
 
 
@@ -648,7 +859,8 @@ public class LispContext implements SpeechListener{
                             }
                             else
                             {
-                                request.rListener.onError(new IllegalStateException("Invalid data response"));
+                                if (request.rListener != null)
+                                    request.rListener.onError(new IllegalStateException("Invalid data response"));
                                 toBeDeleted.add(key);
                                 continue;
                             }
@@ -744,7 +956,13 @@ public class LispContext implements SpeechListener{
 
     public void resetEnvironment()
     {
+
         mEnv = new Environment(mBaseEnvironment);
+
+        if (mRootContextP)
+        {
+            addGlobalOnlyFunctions();
+        }
         if (mDAI != null)
         {
             addDataFunctions();
@@ -758,6 +976,13 @@ public class LispContext implements SpeechListener{
         if (mPage != null)
             addPageFunctions();
         addProcessingFunctions();
+    }
+
+    private void addGlobalOnlyFunctions()
+    {
+        mEnv.mapFunction("log-error", logGlobalError());
+        mEnv.mapFunction("log-info", logGlobalInfo());
+        mEnv.mapFunction("log-result", logGlobalResult());
     }
 
     private FunctionTemplate evaluateGlobal()

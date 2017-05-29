@@ -27,6 +27,7 @@ public class AndroidLispDAI implements LispDataAccessInterface {
 
 
     static String _SELECT_ALL_AGED_KEY = "select name, value from objects where context=? and last_access<?";
+    static String _SELECT_ALL_NEW_KEY = "select name, value from objects where context=? and last_access>=?";
 
 
     static String _DELETE_DATA_KEY = "delete from objects where name = ? and context=?";
@@ -230,6 +231,25 @@ public class AndroidLispDAI implements LispDataAccessInterface {
     public String[] selectOldDataNames(String context, long cutoffTime)
     {
         Cursor rs = appDB.rawQuery(_SELECT_ALL_AGED_KEY, new String[]{context, "" + cutoffTime});
+
+        LinkedList<String> out = new LinkedList<String>();
+
+        try
+        {
+            while (rs.moveToNext())
+            {
+                out.add(rs.getString(0));
+            }
+            return out.toArray(new String[0]);
+        }
+        finally{
+            rs.close();
+        }
+    }
+
+    public String[] selectNewDataNames(String context, long startTime)
+    {
+        Cursor rs = appDB.rawQuery(_SELECT_ALL_NEW_KEY, new String[]{context, "" + startTime});
 
         LinkedList<String> out = new LinkedList<String>();
 
