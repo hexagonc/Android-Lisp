@@ -5,6 +5,8 @@ import java.util.HashMap;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.Lambda;
+import com.evolved.automata.lisp.LambdaValue;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
@@ -64,6 +66,7 @@ public class SpeechLispFunctions
 				Value stringArraySpeechArgumentConverterFunctionName = null;
 				Value patternStringTokenizeFunctionName = null;
 				Value ambiguityHandlerLambda = null;
+				Environment targetEnv = env;
 				if (evaluatedArgs.length > 4)
 				{
 					speechFunctionResultToStringConverterFunctionName = evaluatedArgs[4];
@@ -71,19 +74,27 @@ public class SpeechLispFunctions
 					{
 						stringArraySpeechArgumentConverterFunctionName = evaluatedArgs[5];
 					}
+
 					if (evaluatedArgs.length > 6 && !evaluatedArgs[6].isNull())
 					{
 						patternStringTokenizeFunctionName = evaluatedArgs[6];
 					}
-					
-					if (evaluatedArgs.length > 7 && !evaluatedArgs[7].isNull())
+
+                    if (evaluatedArgs.length > 7 && evaluatedArgs[7].isLambda())
+                    {
+                        targetEnv = ((Lambda)(evaluatedArgs[7]).getLambda()).getInnerEnvironment();
+                    }
+
+					if (evaluatedArgs.length > 8 && !evaluatedArgs[8].isNull())
 					{
-						ambiguityHandlerLambda = evaluatedArgs[7];
+						ambiguityHandlerLambda = evaluatedArgs[8];
 					}
+
+
 				}
 				
 				SpeechWrapper wrapper = new SpeechWrapper(
-						env, 
+						targetEnv,
 						speechMap, 
 						typeMap, 
 						defaultPrecedence, 
