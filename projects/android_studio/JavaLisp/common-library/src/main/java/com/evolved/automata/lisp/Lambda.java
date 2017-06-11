@@ -109,7 +109,7 @@ public class Lambda extends FunctionTemplate {
         if (isObject())
         {
             local = getLocalVariableValues();
-            sBuilder = new StringBuilder("(with* (_make-serialized-base-object_) ");
+            sBuilder = new StringBuilder("(with* (funcall (lambda () this )) ");
             sBuilder.append("\n");
             sBuilder.append(innerfunctions);
             if (innerfunctions.length()>0)
@@ -260,7 +260,7 @@ public class Lambda extends FunctionTemplate {
 		return sBuilder.toString();
 	}
 	
-	Environment getInnerEnvironment()
+	public Environment getInnerEnvironment()
 	{
 		return _innerEnvironment;
 	}
@@ -438,7 +438,10 @@ public class Lambda extends FunctionTemplate {
 		
 		_argEnv.mapValue("this", new LambdaValue(this));
 		if (hasNameP())
-			_argEnv.mapValue("this-name", NLispTools.makeValue(getName()));
+        {
+            String nname  = getName();
+            _argEnv.mapValue("this-name", NLispTools.makeValue(nname));
+        }
 		else
 			_argEnv.mapValue("this-name", Environment.getNull());
 		
@@ -471,6 +474,8 @@ public class Lambda extends FunctionTemplate {
 			result.setBreak(false);
 		return resetReturn(result);
 	}
+
+
 	
 	
 }
