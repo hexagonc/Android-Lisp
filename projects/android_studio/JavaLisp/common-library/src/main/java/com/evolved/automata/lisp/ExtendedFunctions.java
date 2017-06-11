@@ -1394,8 +1394,8 @@ public class ExtendedFunctions
 
 					data.put("YEAR", NLispTools.makeValue(year));
 					data.put("MONTH", NLispTools.makeValue(month + 1));
-					data.put("MONTH_NAME_SHORT", NLispTools.makeValue(monthNameLong));
-					data.put("MONTH_NAME_LONG", NLispTools.makeValue(monthNameShort));
+					data.put("MONTH_NAME_SHORT", NLispTools.makeValue(monthNameShort));
+					data.put("MONTH_NAME_LONG", NLispTools.makeValue(monthNameLong));
 					data.put("DAY_OF_MONTH", NLispTools.makeValue(dayOfMonth));
 					data.put("DAY_OF_YEAR", NLispTools.makeValue(dayOfYear));
 					data.put("HOUR_OF_DAY", NLispTools.makeValue(hourOfDay));
