@@ -198,7 +198,7 @@ public class SpeechWrapper
 	
 	/**
 	 * 
-	 * @param policy - a string
+	 * @param policyString - a string
 	 * @return
 	 */
 	public Value setAmbiguousPhraseNotificationPolicy(Value policyString)
@@ -365,7 +365,7 @@ public class SpeechWrapper
 	/**
 	 * Converts the string array from a ScoredValue representing an unstructured group into a Value to used
  	 * for the speech functions
-	 * @param string array from an unstructured text group
+	 * @param stringArray array from an unstructured text group
 	 * @return
 	 */
 	Value convertRawStringTokens(Value stringArray)
@@ -490,6 +490,11 @@ public class SpeechWrapper
 			out.put(key, LispUtilities.convertToScoredValue(map.get(key)));
 		}
 		return out;
+	}
+
+	public void enableExperimentalFeatures(boolean enable)
+	{
+		_internalConfig.setUseExperimentalOptimization(enable);
 	}
 	
 	

@@ -69,6 +69,7 @@ public class SpeechConfig {
 	double _resultSignificanceThreshold = 0.01;
 	private String _canonicalPhraseArgumentKey = "*canonical*";
 	double _ambiguityThresholdFraction = 0.8;
+	boolean _useExperimentalOptimizationsP = true;
     HashMap<String, LinkedList<String>> canonicalPatterns;
 	PATTERN_WIDTH_SEARCH_METHOD _patternWidthSearchMethod = PATTERN_WIDTH_SEARCH_METHOD.LINEAR;
 	
@@ -86,6 +87,15 @@ public class SpeechConfig {
 		_intrinsicallyAmbiguousFunctions = new HashSet<String>(); 
 				 
 	}
+
+	String[] getDisjunctiveParts(String nonTerminalName)
+    {
+        String[] o = _simpleGrammarParser.getSubDefinitions(nonTerminalName);
+        if (o == null)
+            return new String[0];
+        else
+            return o;
+    }
 
     private void convertPatternSpecToMetaPhone()
     {
@@ -153,7 +163,16 @@ public class SpeechConfig {
 	}
 
 
-	
+
+	public void setUseExperimentalOptimization(boolean enable)
+	{
+		_useExperimentalOptimizationsP = enable;
+	}
+
+	public boolean useExperimentalOptimizations()
+	{
+		return _useExperimentalOptimizationsP;
+	}
 	
 	public PRECEDENCE_ADHERENCE_POLICY getTypePrecedencePolicy(String typename)
 	{

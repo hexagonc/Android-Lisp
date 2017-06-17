@@ -1006,7 +1006,17 @@ public class SpeechMap {
 	
 	private boolean purelySemanticPattern(String[] tokenizedPattern)
 	{
-		return (tokenizedPattern.length == 1 && isUnstructuredTextGroup(tokenizedPattern[0]));
+		if (tokenizedPattern.length == 1)
+		{
+            String groupName = isGroup(tokenizedPattern[0]);
+
+			return groupName != null && isUnstructuredTextGroup(groupName);
+
+		}
+		else
+			return false;
+
+
 	}
 	
 	// TODO: Need to improve strategy for finding optimal input size for matching group
@@ -1330,7 +1340,7 @@ public class SpeechMap {
 		boolean purelySemanticPattern = purelySemanticPattern(tokenizedPattern);
 		// Purely semantic patterns can't be assessed based on their grammatical structure; instead, they must be evaluated by a 
 		// function
-		if (_cache.isSpeechFunctionIndexed(pinfo.speechFunction) && !purelySemanticPattern && !_cache.getViableSpeechFunctions(transformedInput).contains(pinfo.speechFunction))
+		if (_speechConfig.useExperimentalOptimizations() && _cache.isSpeechFunctionIndexed(pinfo.speechFunction) && !purelySemanticPattern && !_cache.getViableSpeechFunctions(transformedInput).contains(pinfo.speechFunction))
 		{
 			return new FunctionApplicabilityData(0, new HashMap<String, ScoredValue>()).setFailureMissingTokens();
 		}

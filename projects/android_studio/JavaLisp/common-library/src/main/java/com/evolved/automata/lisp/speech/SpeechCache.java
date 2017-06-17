@@ -132,12 +132,50 @@ public class SpeechCache {
 	
 	public void addSpeechFunctionMarker(String speechFunction, String marker)
 	{
-		HashSet<String> functions = _markerSpeechFunctionIndexMap.get(marker);
-		if (functions == null)
+
+		String nonTerminalName = SpeechMap.isNonTerminal(marker);
+		LinkedList<String> markerList = new LinkedList<String>();
+		if (nonTerminalName != null)
 		{
-			_markerSpeechFunctionIndexMap.put(marker, functions = new HashSet<String>());
+			String[] parts = _config.getDisjunctiveParts(nonTerminalName);
+
+			// TODO: Long-term, change this to full extrusion of the non-terminal to
+			// terminals instead of this stopgap method
+			if (parts.length > 0)
+			{
+				LinkedList<String> literalTokenList = new LinkedList<String>();
+				for (String grammar: parts)
+				{
+					if (grammar.startsWith("[") && grammar.endsWith("]"))
+					{
+						literalTokenList.add( (grammar.substring(0, grammar.length()-1)).substring(1));
+					}
+				}
+
+				if (literalTokenList.size() == parts.length)
+				{
+					markerList.addAll(literalTokenList);
+
+				}
+			}
+			markerList.add(marker);
+
+
 		}
-		functions.add(speechFunction);
+		else
+			markerList.add(marker);
+
+		for (String structuredLiteral: markerList)
+		{
+			HashSet<String> functions = _markerSpeechFunctionIndexMap.get(structuredLiteral);
+			if (functions == null)
+			{
+				_markerSpeechFunctionIndexMap.put(structuredLiteral, functions = new HashSet<String>());
+			}
+			functions.add(speechFunction);
+		}
+
+
 	}
 	
 	public void addSpeechFunctionToCompletionIndex(String speechFunction)

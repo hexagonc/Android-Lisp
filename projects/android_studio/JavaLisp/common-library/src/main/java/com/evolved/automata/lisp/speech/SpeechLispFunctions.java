@@ -26,7 +26,11 @@ public class SpeechLispFunctions
 		env.mapFunction("set-type-prec-policy", set_type_prec_policy()); 
 		env.mapFunction("clear-speech-sub-cache", clear_speech_cache_subtype());
 		env.mapFunction("flex-evaluate", flex_evaluate());
-		
+
+        env.mapFunction("enable-experimental-optimizations", enable_experimental_optimizations());
+        env.mapFunction("disable-experimental-optimizations", disable_experimental_optimizations());
+
+
 		// 
 		env.mapFunction("get-pattern-index-cache", get_pattern_index_cache());
 		env.mapFunction("get-function-list-cache", get_function_list_cache());
@@ -134,7 +138,57 @@ public class SpeechLispFunctions
 			}
 		};
 	}
-	
+
+    private static SimpleFunctionTemplate enable_experimental_optimizations()
+    {
+        return new SimpleFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)enable_experimental_optimizations();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, false, true);
+
+                SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+                wrapper.enableExperimentalFeatures(true);
+                return evaluatedArgs[0];
+
+
+            }
+        };
+    }
+
+    private static SimpleFunctionTemplate disable_experimental_optimizations()
+    {
+        return new SimpleFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)disable_experimental_optimizations();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, false, true);
+
+                SpeechWrapper wrapper = (SpeechWrapper)evaluatedArgs[0].getObjectValue();
+                wrapper.enableExperimentalFeatures(false);
+                return evaluatedArgs[0];
+
+
+            }
+        };
+    }
+
 	
 	private static SimpleFunctionTemplate clear_speech_cache_subtype()
 	{

@@ -1181,7 +1181,7 @@ public class PatternParser
 			}
 			return nt.toArray(new String[0]);
 		}
-		else if (alter instanceof NonTerminalMatcher)
+		else if ((alter instanceof NonTerminalMatcher) || (alter instanceof TerminalMatcher))
 			return new String[]{alter.getPatternToMatch()};
 		
 		return null;
