@@ -16,12 +16,15 @@ import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.LambdaValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import java.util.Set;
@@ -133,11 +136,16 @@ public class LispContext implements SpeechListener{
         mEnv = new Environment(mBaseEnvironment);
     }
 
-    public String[] getActiveProcesses()
+    public HashSet<String> getActiveProcesses()
     {
+        HashSet<String> active = new HashSet<String>();
         synchronized (mSynch)
         {
-            return mRequestMap.keySet().toArray(new String[0]);
+            for (String name:mRequestMap.keySet())
+            {
+                active.add(name);
+            }
+            return active;
         }
     }
 
@@ -455,11 +463,20 @@ public class LispContext implements SpeechListener{
                 else
                     con = actualPage.getBasePageLispContext();
 
-                String[] processes = con.getActiveProcesses();
-                Value[] v= new Value[processes.length];
-                for (int i = 0;i < v.length; i++)
-                    v[i] = NLispTools.makeValue(processes[i]);
-                return NLispTools.makeValue(v);
+                HashSet<String> processes = con.getActiveProcesses();
+                while (con.mParent != null)
+                {
+                    con = con.mParent;
+                    processes.addAll(con.getActiveProcesses());
+                }
+
+                HashMap<String, Value> processMap = new HashMap<String, Value>();
+                for (String n:processes)
+                {
+                    processMap.put(n, NLispTools.makeValue(1));
+                }
+
+                return new StringHashtableValue(processMap);
 
 
             }
