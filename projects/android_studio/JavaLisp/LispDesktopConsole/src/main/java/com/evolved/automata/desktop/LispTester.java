@@ -58,32 +58,7 @@ public class LispTester {
 			}
 		};
 	}
-	
-	
-	
-	
-//	public static Runnable getWorkItem(final AIInfoDisplay display, final Environment top, final FunctionTemplate function)
-//	{
-//		return new Runnable(){
-//			public void run()
-//			{
-//				try {
-//					Value result = function.evaluate(top, true);
-//					
-//					if (result.isContinuation())
-//					{
-//						getWorkItem(display, top, result.getContinuingFunction(), null);
-//					}
-//					else {
-//						displayValue(display, result);
-//					}
-//					
-//				} catch (Exception e){
-//					System.out.println(e.toString());
-//				}
-//			}
-//		};
-//	}
+
 	
 	public static Runnable getWorkItem(final AIInfoDisplay display, final Environment top, final FunctionTemplate function, final LinkedList<Value> remaining)
 	{
@@ -153,6 +128,49 @@ public class LispTester {
 				display.DisplayMessageLine(out, true);
 				
 				return NLispTools.makeValue(out);
+			}
+		};
+	}
+
+	private static FunctionTemplate evaluateGlobal(final Environment globalEnv)
+	{
+		return new FunctionTemplate() {
+
+
+			@Override
+			public Object clone()
+			{
+				return evaluateGlobal(globalEnv);
+			}
+
+
+			@Override
+			public Value evaluate(final Environment env, boolean resume)
+					throws InstantiationException, IllegalAccessException
+			{
+
+				Environment runEnvironment = globalEnv;
+				if (!resume)
+				{
+					resetFunctionTemplate();
+				}
+
+				Value result = Environment.getNull();
+				for (; _instructionPointer < _actualParameters.length; _instructionPointer++)
+				{
+					if (resume && _lastFunctionReturn.getContinuingFunction() != null)
+						result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(runEnvironment, resume);
+					else
+						result = _lastFunctionReturn = runEnvironment.evaluate(_actualParameters[_instructionPointer], false);
+
+					if (result.isContinuation())
+						return continuationReturn(result);
+					if (result.isBreak() || result.isReturn() || result.isSignal() || result.isSignalOut())
+						return resetReturn(result);
+				}
+
+				return resetReturn(result);
+
 			}
 		};
 	}
@@ -675,6 +693,7 @@ public class LispTester {
 			NeuralNetLispInterface.addNeuralNetFunctions(top);
 			FileFunctions.addFunctions(top);
 			top.mapFunction("println",getPrintln(display));
+			top.mapFunction("global", evaluateGlobal(top));
 			top.mapFunction("set-data-value", setObjectDataValue(testStatement, insertStatement, updateSpecificStatement));
 			top.mapFunction("get-data-value", getObjectDataValue(selectStatement, updateSpecificAccessStatement));
 			top.mapFunction("delete-all-data", deleteAllData(deleteStatement));
