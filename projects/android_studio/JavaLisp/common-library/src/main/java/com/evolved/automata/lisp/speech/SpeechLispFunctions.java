@@ -1,15 +1,19 @@
 package com.evolved.automata.lisp.speech;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.Lambda;
 import com.evolved.automata.lisp.LambdaValue;
+import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.speech.SpeechMap.FunctionApplicabilityData;
+
 
 public class SpeechLispFunctions 
 {
@@ -42,6 +46,11 @@ public class SpeechLispFunctions
 		env.mapFunction("set-function-list-cache", set_function_list_cache());
 		env.mapFunction("set-function-result-cache", set_function_result_cache());
 		env.mapFunction("set-pattern-assessment-cache", set_pattern_assessment_cache());
+
+
+        env.mapFunction("load-default-verb-metadata", load_default_verb_metadata());
+        env.mapFunction("get-verb-conjugations", get_verb_conjugations());
+        env.mapFunction("get-verb-tenses", get_verb_tenses());
 		
 		
 		return env;
@@ -114,6 +123,104 @@ public class SpeechLispFunctions
 			}
 		};
 	}
+
+    private static SimpleFunctionTemplate load_default_verb_metadata()
+    {
+        return new SimpleFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)load_default_verb_metadata();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                try
+                {
+                    WordMetadata.loadDefaultVerbConjugations();
+                    return NLispTools.makeValue(1);
+                }
+                catch (Exception e)
+                {
+                    return Environment.getNull();
+                }
+            }
+        };
+    }
+
+
+    private static SimpleFunctionTemplate get_verb_conjugations()
+    {
+        return new SimpleFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)get_verb_conjugations();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, false, true);
+
+                String verb = evaluatedArgs[0].getString();
+
+                HashMap<WordMetadata.VerbTense, String> map = WordMetadata.getConjugations(verb);
+
+                if (map != null)
+                {
+                    HashMap<String, Value> resultMap = new HashMap<String, Value>();
+                    for (WordMetadata.VerbTense key:map.keySet())
+                    {
+                        String conjugation = map.get(key);
+                        resultMap.put(key.name(), NLispTools.makeValue(conjugation));
+                    }
+                    return new StringHashtableValue(resultMap);
+                }
+                else
+                    return Environment.getNull();
+
+            }
+        };
+    }
+
+    private static SimpleFunctionTemplate get_verb_tenses()
+    {
+        return new SimpleFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)get_verb_tenses();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, false, true);
+
+                String verb = evaluatedArgs[0].getString();
+
+                LinkedList<WordMetadata.VerbTense> tenses = WordMetadata.getVerbTense(verb);
+
+                HashMap<String, Value> resultSet = new HashMap<String, Value>();
+
+
+                for (WordMetadata.VerbTense tense: tenses)
+                {
+                    resultSet.put(tense.name(), NLispTools.makeValue(1));
+
+                }
+                return new StringHashtableValue(resultSet);
+            }
+        };
+    }
 	
 	private static SimpleFunctionTemplate evaluate_speech_fast()
 	{
