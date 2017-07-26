@@ -39,8 +39,15 @@ public class RenderFragment extends Fragment {
             {
                 ViewProxy vproxy = (ViewProxy)ovalue;
                 vproxy.setLispInterpreter(mPageEnvironment, mPage.mBasePageLispContext.getForegroundInterpreter());
-                View v = vproxy.createView(group, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
+                View v = null;
+                try
+                {
+                     v = vproxy.createView(group, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                }
+                catch (Exception e)
+                {
+                    EventLog.get().logSystemError(e, "Failed to render page");
+                }
                 if (v != null)
                 {
                     group.removeAllViews();
