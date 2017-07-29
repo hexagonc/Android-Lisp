@@ -222,6 +222,8 @@ public class WordMetadata {
     public static HashMap<VerbTense, String> getConjugations(String verb)
     {
         LinkedList<ConjugationInfo> infoList = mVerbConjugationIndex.get(verb);
+        if (infoList == null)
+            return null;
 
         LinkedList<String> infinitiveList = new LinkedList<String>();
         for (ConjugationInfo info:infoList)
