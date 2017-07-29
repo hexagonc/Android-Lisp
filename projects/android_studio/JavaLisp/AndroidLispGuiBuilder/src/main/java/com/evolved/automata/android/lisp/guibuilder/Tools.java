@@ -1,10 +1,16 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import com.dropbox.core.v2.files.Metadata;
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.Value;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
 
+import java.util.HashMap;
 
 
 /**
@@ -12,6 +18,88 @@ import org.json.JSONObject;
  */
 
 public class Tools {
+
+
+
+
+    public static final HashMap<String, Integer> DRAWABLE_RESOURCE_MAP = new HashMap<String, Integer>()
+    {
+        {
+
+
+            put("dropbox_logos_dropbox_glyph_blue", R.drawable.dropbox_logos_dropbox_glyph_blue);
+            put("ic_add_black_24dp", R.drawable.ic_add_black_24dp);
+            put("ic_arrow_back_black_24dp", R.drawable.ic_arrow_back_black_24dp);
+            put("ic_arrow_downward_black_24dp", R.drawable.ic_arrow_downward_black_24dp);
+            put("ic_arrow_forward_black_24dp", R.drawable.ic_arrow_forward_black_24dp);
+            put("ic_call_merge_black_24dp", R.drawable.ic_call_merge_black_24dp);
+            put("ic_chevron_left_black_24dp", R.drawable.ic_chevron_left_black_24dp);
+            put("ic_chevron_right_black_24dp", R.drawable.ic_chevron_right_black_24dp);
+            put("ic_clear_black_24dp", R.drawable.ic_clear_black_24dp);
+            put("ic_code_snippet_cut_black_36dp", R.drawable.ic_code_snippet_cut_black_36dp);
+            put("ic_content_copy_black_24dp", R.drawable.ic_content_copy_black_24dp);
+            put("ic_content_cut_black_24dp", R.drawable.ic_content_cut_black_24dp);
+            put("ic_content_cut_black_36dp", R.drawable.ic_content_cut_black_36dp);
+            put("ic_content_paste_black_24dp", R.drawable.ic_content_paste_black_24dp);
+            put("ic_create_new_folder_black_24dp", R.drawable.ic_create_new_folder_black_24dp);
+            put("ic_expand_less_black_24dp", R.drawable.ic_expand_less_black_24dp);
+            put("ic_expand_more_black_24dp", R.drawable.ic_expand_more_black_24dp);
+            put("ic_file_download_black_24dp", R.drawable.ic_file_download_black_24dp);
+            put("ic_file_upload_black_24dp", R.drawable.ic_file_upload_black_24dp);
+            put("ic_folder_open_black_24dp", R.drawable.ic_folder_open_black_24dp);
+            put("ic_insert_link_black_24dp", R.drawable.ic_insert_link_black_24dp);
+            put("ic_launcher", R.drawable.ic_launcher);
+            put("ic_navigate_before_black_24dp", R.drawable.ic_navigate_before_black_24dp);
+            put("ic_navigate_next_black_24dp", R.drawable.ic_navigate_next_black_24dp);
+            put("ic_refresh_black_24dp", R.drawable.ic_refresh_black_24dp);
+            put("ic_save_black_24dp", R.drawable.ic_save_black_24dp);
+            put("ic_sd_storage_black_24dp", R.drawable.ic_sd_storage_black_24dp);
+            put("ic_sd_storage_black_36dp", R.drawable.ic_sd_storage_black_36dp);
+            put("ic_sd_storage_black_48dp", R.drawable.ic_sd_storage_black_48dp);
+            put("ic_share_black_24dp", R.drawable.ic_share_black_24dp);
+            put("ic_skip_next_black_24dp", R.drawable.ic_skip_next_black_24dp);
+            put("ic_skip_previous_black_24dp", R.drawable.ic_skip_previous_black_24dp);
+            put("ic_sync_black_24dp", R.drawable.ic_sync_black_24dp);
+            put("v2_container_border_1", R.drawable.v2_container_border_1);
+            put("v2_container_border_green", R.drawable.v2_container_border_green);
+            put("v2_divider_bottom_container", R.drawable.v2_divider_bottom_container);
+            put("v2_floating_background_blue", R.drawable.v2_floating_background_blue);
+            put("v2_floating_background_green", R.drawable.v2_floating_background_green);
+            put("v2_workspace_item_selected", R.drawable.v2_workspace_item_selected);
+        }
+    };
+
+    public static Environment addAndroidToolFunctions(Environment env)
+    {
+        env.mapFunction("get-drawable-resource-id", getDrawableResourceId());
+        return env;
+    }
+
+    public static SimpleFunctionTemplate getDrawableResourceId()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)getDrawableResourceId();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+                String resourceName = evaluatedArgs[0].getString();
+
+                Integer resourceId = DRAWABLE_RESOURCE_MAP.get(resourceName);
+                if (resourceId != null)
+                    return NLispTools.makeValue(resourceId.intValue());
+                else
+                    return Environment.getNull();
+
+            }
+        };
+    }
 
 
     static EventBus mMain = EventBus.getDefault();

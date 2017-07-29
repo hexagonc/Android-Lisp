@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.evolved.automata.android.lisp.guibuilder.media.MediaEvaluator;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.android.mindstorms.lisp.NXTLispFunctions;
 import com.evolved.automata.android.speech.SpeechInterface;
@@ -16,6 +17,7 @@ import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
+import com.evolved.automata.lisp.vision.google.GoogleVisionEvaluator;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -95,11 +97,17 @@ public class ALGB {
 
         SpeechLispFunctions.addSpeechFunctions(mTop);
         NeuralNetLispInterface.addNeuralNetFunctions(mTop);
-
+        NAOLispEvaluator.addFunctions(mTop);
+        GoogleVisionEvaluator.addVisionFunctions(mTop);
+        MediaEvaluator.addVisionFunctions(mTop);
+        Tools.addAndroidToolFunctions(mTop);
         mTop.mapFunction("println", getPrintln());
         mTop.mapFunction("log", getLog());
 
     }
+
+
+
 
     public Handler getMainhandler()
     {
@@ -132,6 +140,43 @@ public class ALGB {
                 System.out.println(out);
 
                 return NLispTools.makeValue(out);
+            }
+        };
+    }
+
+    SimpleFunctionTemplate getGetDrawableResourceId()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)getGetDrawableResourceId();
+            }
+
+            @Override
+            public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                checkActualArguments(2, true, true);
+
+                String tag = evaluatedArgs[0].getString();
+                StringBuilder message = new StringBuilder();
+
+                Value extra = null;
+
+                for (int i = 1; i < evaluatedArgs.length;i++)
+                {
+                    extra = evaluatedArgs[i];
+                    if (i > 1)
+                        message.append(' ');
+                    if (extra.isString())
+                        message.append(extra.getString());
+                    else
+                        message.append(extra.toString());
+                }
+
+                Log.i(tag, message.toString());
+                return NLispTools.makeValue(message.toString());
             }
         };
     }

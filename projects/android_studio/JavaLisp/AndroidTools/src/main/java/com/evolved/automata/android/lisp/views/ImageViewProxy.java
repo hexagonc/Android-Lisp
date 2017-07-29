@@ -32,6 +32,11 @@ public class ImageViewProxy extends ViewProxy
 			String surl = url.getString();
 			ImageLoader.getInstance().displayImage(surl, vw);
 		}
+		else if (!url.isNull() && url.isInteger())
+		{
+			int imageDrawable = (int)url.getIntValue();
+			vw.setImageResource(imageDrawable);
+		}
 	}
 	
 	
