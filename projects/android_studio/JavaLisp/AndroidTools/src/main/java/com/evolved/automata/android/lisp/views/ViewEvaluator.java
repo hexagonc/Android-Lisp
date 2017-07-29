@@ -9,6 +9,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Activity;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
@@ -18,11 +19,13 @@ import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.StateSet;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -187,7 +190,88 @@ public class ViewEvaluator  {
 		env.mapFunction("set-batch-ui-updates", set_batch_ui_updates());
 		
 		env.mapFunction("set-seek-value", setSeekValue());
+		env.mapFunction("get-view-height", get_view_height(activity));
+		env.mapFunction("get-view-width", get_view_width(activity));
 	}
+
+	private static int convertPixelsToDP(Context con, int pixels)
+	{
+		DisplayMetrics dm = new DisplayMetrics();
+		WindowManager m = (WindowManager)con.getSystemService(Context.WINDOW_SERVICE);
+		m.getDefaultDisplay().getMetrics(dm);
+
+		double dpi = dm.densityDpi;
+		int dp = (int)(pixels*160/dpi);
+		return dp;
+	}
+
+
+	public static SimpleFunctionTemplate get_view_height(final Context con)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_view_height(con);
+			}
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+
+				ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
+				View actualView = proxy.getView();
+				if (actualView != null)
+				{
+					int pixelHeight = actualView.getHeight();
+
+					return NLispTools.makeValue(convertPixelsToDP(con, pixelHeight)) ;
+				}
+				else
+					return Environment.getNull();
+
+			}
+
+		};
+	}
+
+	public static SimpleFunctionTemplate get_view_width(final Context con)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_view_width(con);
+			}
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+
+				ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
+				View actualView = proxy.getView();
+				if (actualView != null)
+				{
+					int pixelWidth = actualView.getWidth();
+
+					return NLispTools.makeValue(convertPixelsToDP(con, pixelWidth)) ;
+				}
+				else
+					return Environment.getNull();
+
+			}
+
+		};
+	}
+
 	
 	public static SimpleFunctionTemplate set_batch_ui_updates()
 	{
