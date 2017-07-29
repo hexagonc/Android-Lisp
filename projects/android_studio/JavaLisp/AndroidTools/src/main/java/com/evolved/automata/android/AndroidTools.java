@@ -601,21 +601,33 @@ public class AndroidTools
 //		return resultData.getPath();
 		return camera_media_path;
 	}
-	
+
+
+	/*
+	Tnis doesn't work at all since Notification.setLatestEventInfo was removed from API ~ API 24
 	public static void showStatusBarNotification(Context context, int notificationId, 
 			String statusBarRollingMessage, String title, 
 			String text, int iconResourceId,  Intent returnIntent)
 	{
-		NotificationManager nmanager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
-		Notification notification = new Notification(iconResourceId, statusBarRollingMessage,0);
-		
-		PendingIntent pIntent = PendingIntent.getActivity(context, 0, null, 0);
-		notification.setLatestEventInfo(context, title, text, pIntent);
-		notification.flags|=Notification.FLAG_AUTO_CANCEL;
-		notification.defaults|=Notification.DEFAULT_LIGHTS;
-		nmanager.notify(notificationId, notification);
+		if (Build.VERSION.SDK_INT < 17)
+		{
+			NotificationManager nmanager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+			Notification notification = new Notification(iconResourceId, statusBarRollingMessage,0);
+
+			PendingIntent pIntent = PendingIntent.getActivity(context, 0, null, 0);
+
+			//notification.setLatestEventInfo(context, title, text, pIntent);
+			notification.flags|=Notification.FLAG_AUTO_CANCEL;
+			notification.defaults|=Notification.DEFAULT_LIGHTS;
+			nmanager.notify(notificationId, notification);
+		}
+		else
+		{
+			Toast.makeText(context, "AndroidTools.showStatusBarNotification is deprecated", Toast.LENGTH_LONG).show();
+		}
+
 	}
-	
+	*/
 	public static String makeSQLiteDateString(Calendar cal)
 	{
 
