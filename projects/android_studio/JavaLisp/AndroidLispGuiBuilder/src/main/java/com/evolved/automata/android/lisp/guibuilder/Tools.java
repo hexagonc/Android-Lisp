@@ -25,47 +25,62 @@ public class Tools {
     public static final HashMap<String, Integer> DRAWABLE_RESOURCE_MAP = new HashMap<String, Integer>()
     {
         {
-
-
             put("dropbox_logos_dropbox_glyph_blue", R.drawable.dropbox_logos_dropbox_glyph_blue);
             put("ic_add_black_24dp", R.drawable.ic_add_black_24dp);
             put("ic_arrow_back_black_24dp", R.drawable.ic_arrow_back_black_24dp);
             put("ic_arrow_downward_black_24dp", R.drawable.ic_arrow_downward_black_24dp);
             put("ic_arrow_forward_black_24dp", R.drawable.ic_arrow_forward_black_24dp);
+            put("ic_build_black_24dp", R.drawable.ic_build_black_24dp);
             put("ic_call_merge_black_24dp", R.drawable.ic_call_merge_black_24dp);
             put("ic_chevron_left_black_24dp", R.drawable.ic_chevron_left_black_24dp);
             put("ic_chevron_right_black_24dp", R.drawable.ic_chevron_right_black_24dp);
             put("ic_clear_black_24dp", R.drawable.ic_clear_black_24dp);
+            put("ic_close_black_24dp", R.drawable.ic_close_black_24dp);
             put("ic_code_snippet_cut_black_36dp", R.drawable.ic_code_snippet_cut_black_36dp);
             put("ic_content_copy_black_24dp", R.drawable.ic_content_copy_black_24dp);
             put("ic_content_cut_black_24dp", R.drawable.ic_content_cut_black_24dp);
             put("ic_content_cut_black_36dp", R.drawable.ic_content_cut_black_36dp);
             put("ic_content_paste_black_24dp", R.drawable.ic_content_paste_black_24dp);
             put("ic_create_new_folder_black_24dp", R.drawable.ic_create_new_folder_black_24dp);
+            put("ic_delete_black_24dp", R.drawable.ic_delete_black_24dp);
+            put("ic_done_black_24dp", R.drawable.ic_done_black_24dp);
             put("ic_expand_less_black_24dp", R.drawable.ic_expand_less_black_24dp);
             put("ic_expand_more_black_24dp", R.drawable.ic_expand_more_black_24dp);
             put("ic_file_download_black_24dp", R.drawable.ic_file_download_black_24dp);
             put("ic_file_upload_black_24dp", R.drawable.ic_file_upload_black_24dp);
             put("ic_folder_open_black_24dp", R.drawable.ic_folder_open_black_24dp);
+            put("ic_format_align_left_black_24dp", R.drawable.ic_format_align_left_black_24dp);
+            put("ic_format_list_bulleted_black_24dp", R.drawable.ic_format_list_bulleted_black_24dp);
+            put("ic_gps_fixed_black_24dp", R.drawable.ic_gps_fixed_black_24dp);
+            put("ic_home_black_24dp", R.drawable.ic_home_black_24dp);
             put("ic_insert_link_black_24dp", R.drawable.ic_insert_link_black_24dp);
             put("ic_launcher", R.drawable.ic_launcher);
+            put("ic_lightbulb_outline_black_24dp", R.drawable.ic_lightbulb_outline_black_24dp);
+            put("ic_mic_black_24dp", R.drawable.ic_mic_black_24dp);
+            put("ic_my_location_black_24dp", R.drawable.ic_my_location_black_24dp);
             put("ic_navigate_before_black_24dp", R.drawable.ic_navigate_before_black_24dp);
             put("ic_navigate_next_black_24dp", R.drawable.ic_navigate_next_black_24dp);
+            put("ic_note_black_24dp", R.drawable.ic_note_black_24dp);
+            put("ic_person_black_24dp", R.drawable.ic_person_black_24dp);
+            put("ic_photo_camera_black_24dp", R.drawable.ic_photo_camera_black_24dp);
+            put("ic_place_black_24dp", R.drawable.ic_place_black_24dp);
+            put("ic_play_arrow_black_24dp", R.drawable.ic_play_arrow_black_24dp);
             put("ic_refresh_black_24dp", R.drawable.ic_refresh_black_24dp);
             put("ic_save_black_24dp", R.drawable.ic_save_black_24dp);
             put("ic_sd_storage_black_24dp", R.drawable.ic_sd_storage_black_24dp);
             put("ic_sd_storage_black_36dp", R.drawable.ic_sd_storage_black_36dp);
             put("ic_sd_storage_black_48dp", R.drawable.ic_sd_storage_black_48dp);
+            put("ic_search_black_24dp", R.drawable.ic_search_black_24dp);
+            put("ic_settings_black_24dp", R.drawable.ic_settings_black_24dp);
             put("ic_share_black_24dp", R.drawable.ic_share_black_24dp);
             put("ic_skip_next_black_24dp", R.drawable.ic_skip_next_black_24dp);
             put("ic_skip_previous_black_24dp", R.drawable.ic_skip_previous_black_24dp);
+            put("ic_stop_black_24dp", R.drawable.ic_stop_black_24dp);
             put("ic_sync_black_24dp", R.drawable.ic_sync_black_24dp);
-            put("v2_container_border_1", R.drawable.v2_container_border_1);
-            put("v2_container_border_green", R.drawable.v2_container_border_green);
-            put("v2_divider_bottom_container", R.drawable.v2_divider_bottom_container);
-            put("v2_floating_background_blue", R.drawable.v2_floating_background_blue);
-            put("v2_floating_background_green", R.drawable.v2_floating_background_green);
-            put("v2_workspace_item_selected", R.drawable.v2_workspace_item_selected);
+            put("ic_today_black_24dp", R.drawable.ic_today_black_24dp);
+            put("ic_undo_black_24dp", R.drawable.ic_undo_black_24dp);
+            put("ic_volume_mute_black_24dp", R.drawable.ic_volume_mute_black_24dp);
+            put("ic_volume_off_black_24dp", R.drawable.ic_volume_off_black_24dp);
         }
     };
 
