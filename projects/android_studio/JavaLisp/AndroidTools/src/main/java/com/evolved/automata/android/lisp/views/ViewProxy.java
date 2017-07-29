@@ -755,6 +755,7 @@ public abstract class ViewProxy
 			{
 				actualValue = Double.valueOf(width.getFloatValue()).intValue();
 				layout.width = AndroidTools.convertDPtoPX(context, actualValue);
+				layout.weight = 0;
 				return;
 			}
 			throw new EvaluateException("Invalid width: " + width);
@@ -859,7 +860,7 @@ public abstract class ViewProxy
 			{
 				actualValue = Double.valueOf(height.getFloatValue()).intValue();
 				layout.height = AndroidTools.convertDPtoPX(context, actualValue);
-				
+				layout.weight = 0;
 			}
 			else
 				throw new EvaluateException("Invalid height: " + height);
