@@ -119,7 +119,22 @@ public class LispContext implements SpeechListener{
         mContext = con;
         mBaseEnvironment  = base;
         mDAI = dai;
-        mAndroidInterpreter = new AndroidLispInterpreter(mContext, mEnv, null);
+        mAndroidInterpreter = new AndroidLispInterpreter(mContext, mEnv, new AndroidLispInterpreter.ResponseListener()
+        {
+
+            @Override
+            public void onError(Exception e)
+            {
+                EventLog.EventSource source = new EventLog.LispPageSource(EventLog.LispSourceType.FOREGROUND, mPage);
+                EventLog.get().logEvent(source, EventLog.EntryType.ERROR, "Internal error", e.toString());
+            }
+
+            @Override
+            public void onResult(Value v)
+            {
+
+            }
+        });
 
         mRootContextP = true;
         resetEnvironment();
