@@ -2,10 +2,13 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Rect;
 import android.os.Bundle;
 
@@ -148,6 +151,39 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     {
         //mApplication.getMainhandler().removeCallbacks(mIMEWatcher);
         super.onStop();
+    }
+
+    @Override
+    public void onBackPressed()
+    {
+
+        AlertDialog.Builder aBuilder = new AlertDialog.Builder(this);
+        aBuilder.setTitle("Exit Android Lisp GuiBuilder?");
+        aBuilder.setMessage("Any unsaved changes will be lost.").setPositiveButton("Ok", new DialogInterface.OnClickListener()
+        {
+
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i)
+            {
+                dialogInterface.dismiss();
+                superOnBack();
+            }
+        }).setNegativeButton("Cancel", new DialogInterface.OnClickListener()
+        {
+
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i)
+            {
+                dialogInterface.dismiss();
+            }
+        });
+        aBuilder.create().show();;
+
+    }
+
+    private void superOnBack()
+    {
+        super.onBackPressed();
     }
 
     @Override
