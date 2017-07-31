@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp.views;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 import android.content.Context;
@@ -65,6 +66,7 @@ public class RadioButtonProxy extends CheckboxViewProxy
 	public View createBaseView()
 	{
 		RadioButton rb = new RadioButton(context);
+		encapsulated = new WeakReference<View>(rb);
 		createBaseView(rb);
 		processChecked();
 		processCheckChangedListener();

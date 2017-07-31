@@ -27,6 +27,10 @@ public class Tools {
         {
             put("dropbox_logos_dropbox_glyph_blue", R.drawable.dropbox_logos_dropbox_glyph_blue);
             put("ic_add_black_24dp", R.drawable.ic_add_black_24dp);
+            put("ic_alarm_add_black_24dp", R.drawable.ic_alarm_add_black_24dp);
+            put("ic_alarm_black_24dp", R.drawable.ic_alarm_black_24dp);
+            put("ic_alarm_off_black_24dp", R.drawable.ic_alarm_off_black_24dp);
+            put("ic_alarm_on_black_24dp", R.drawable.ic_alarm_on_black_24dp);
             put("ic_arrow_back_black_24dp", R.drawable.ic_arrow_back_black_24dp);
             put("ic_arrow_downward_black_24dp", R.drawable.ic_arrow_downward_black_24dp);
             put("ic_arrow_forward_black_24dp", R.drawable.ic_arrow_forward_black_24dp);
@@ -37,12 +41,14 @@ public class Tools {
             put("ic_clear_black_24dp", R.drawable.ic_clear_black_24dp);
             put("ic_close_black_24dp", R.drawable.ic_close_black_24dp);
             put("ic_code_snippet_cut_black_36dp", R.drawable.ic_code_snippet_cut_black_36dp);
+            put("ic_compare_arrows_black_24dp", R.drawable.ic_compare_arrows_black_24dp);
             put("ic_content_copy_black_24dp", R.drawable.ic_content_copy_black_24dp);
             put("ic_content_cut_black_24dp", R.drawable.ic_content_cut_black_24dp);
             put("ic_content_cut_black_36dp", R.drawable.ic_content_cut_black_36dp);
             put("ic_content_paste_black_24dp", R.drawable.ic_content_paste_black_24dp);
             put("ic_create_new_folder_black_24dp", R.drawable.ic_create_new_folder_black_24dp);
             put("ic_delete_black_24dp", R.drawable.ic_delete_black_24dp);
+            put("ic_description_black_24dp", R.drawable.ic_description_black_24dp);
             put("ic_done_black_24dp", R.drawable.ic_done_black_24dp);
             put("ic_expand_less_black_24dp", R.drawable.ic_expand_less_black_24dp);
             put("ic_expand_more_black_24dp", R.drawable.ic_expand_more_black_24dp);
@@ -60,6 +66,8 @@ public class Tools {
             put("ic_my_location_black_24dp", R.drawable.ic_my_location_black_24dp);
             put("ic_navigate_before_black_24dp", R.drawable.ic_navigate_before_black_24dp);
             put("ic_navigate_next_black_24dp", R.drawable.ic_navigate_next_black_24dp);
+            put("ic_not_interested_black_24dp", R.drawable.ic_not_interested_black_24dp);
+            put("ic_note_add_black_24dp", R.drawable.ic_note_add_black_24dp);
             put("ic_note_black_24dp", R.drawable.ic_note_black_24dp);
             put("ic_person_black_24dp", R.drawable.ic_person_black_24dp);
             put("ic_photo_camera_black_24dp", R.drawable.ic_photo_camera_black_24dp);
@@ -76,7 +84,10 @@ public class Tools {
             put("ic_skip_next_black_24dp", R.drawable.ic_skip_next_black_24dp);
             put("ic_skip_previous_black_24dp", R.drawable.ic_skip_previous_black_24dp);
             put("ic_stop_black_24dp", R.drawable.ic_stop_black_24dp);
+            put("ic_swap_vert_black_24dp", R.drawable.ic_swap_vert_black_24dp);
             put("ic_sync_black_24dp", R.drawable.ic_sync_black_24dp);
+            put("ic_timer_black_24dp", R.drawable.ic_timer_black_24dp);
+            put("ic_timer_off_black_24dp", R.drawable.ic_timer_off_black_24dp);
             put("ic_today_black_24dp", R.drawable.ic_today_black_24dp);
             put("ic_undo_black_24dp", R.drawable.ic_undo_black_24dp);
             put("ic_volume_mute_black_24dp", R.drawable.ic_volume_mute_black_24dp);

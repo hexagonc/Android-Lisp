@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp.views;
 
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 import android.view.View;
@@ -8,6 +9,10 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 
 
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.Lambda;
+import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 import android.content.Context;
 import com.evolved.automata.android.EvaluateException;
@@ -51,21 +56,27 @@ public class CheckboxViewProxy extends TextViewProxy
 	
 	
 	
-	public void setOnCheckChangedListener(final String containlet)
+	public void setOnCheckChangedListener(final Value lambdaValue)
 	{
-		_changeListener = new CompoundButton.OnCheckedChangeListener() {
-			
-			@Override
-			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-				
-				_lispInterpreter.evaluateExpression(containlet, true);
-			}
-		};
-		View actual;
-		if (encapsulated != null && (actual = encapsulated.get())!= null)
-		{
-			((CheckBox)actual).setOnCheckedChangeListener(_changeListener);
-		}
+        if (!lambdaValue.isLambda())
+            return;
+
+        _changeListener = new CompoundButton.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+
+                Lambda function = (Lambda) lambdaValue.getLambda();
+                function.setActualParameters(new Value[]{NLispTools.makeValue(isChecked)});
+
+                _lispInterpreter.evaluateFunction(function, _currentEnv);
+            }
+        };
+
+        View actual;
+        if (encapsulated != null && (actual = encapsulated.get())!= null)
+            ((CompoundButton)actual).setOnCheckedChangeListener(_changeListener);
 	}
 	
 	
@@ -80,19 +91,22 @@ public class CheckboxViewProxy extends TextViewProxy
 	}
 	public void processCheckChangedListener()
 	{
-		Value listener = getMapValue(_keys, CHECK_CHECKED_LISTENER);
-		if (!listener.isNull() && listener.isString())
-		{
-			final String base = listener.getString();
-			_changeListener = new CompoundButton.OnCheckedChangeListener() {
-				
-				@Override
-				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-					String total = String.format("(let ((is-checked %1$s)) %2$s)", (isChecked)?"1":"F", base); 
-					_lispInterpreter.evaluateExpression(_currentEnv, total, true);
-				}
-			};
-		}
+
+		final Value code = getMapValue(_keys, CHECK_CHECKED_LISTENER);
+		if (code.isNull())
+			return;
+		final Value transformed = NLispTools.getMinimalEnvironment(_currentEnv, code);
+        _changeListener = new CompoundButton.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+                Environment evaluatedEnvironment = new Environment(_currentEnv);
+                evaluatedEnvironment.mapValue("is-checked-p", NLispTools.makeValue(isChecked));
+                _lispInterpreter.evaluatePreParsedValue(evaluatedEnvironment, transformed, true);
+            }
+        };
+
 		View actual;
 		if (encapsulated != null && (actual = encapsulated.get())!= null)
 			((CompoundButton)actual).setOnCheckedChangeListener(_changeListener);
@@ -121,6 +135,7 @@ public class CheckboxViewProxy extends TextViewProxy
 	public View createBaseView()
 	{
 		CheckBox tv = new CheckBox(context);
+        encapsulated = new WeakReference<View>(tv);
 		createBaseView(tv);
 		processChecked();
 		processCheckChangedListener();

@@ -881,8 +881,8 @@ public class ViewEvaluator  {
 				
 				
 				CheckboxViewProxy proxy = (CheckboxViewProxy)evaluatedArgs[0].getObjectValue();
-				String listener = evaluatedArgs[1].getString();
-				proxy.setOnCheckChangedListener(listener);
+				Value onChangeLambda = evaluatedArgs[1];
+				proxy.setOnCheckChangedListener(onChangeLambda);
 				return evaluatedArgs[1];
 			}
 			
