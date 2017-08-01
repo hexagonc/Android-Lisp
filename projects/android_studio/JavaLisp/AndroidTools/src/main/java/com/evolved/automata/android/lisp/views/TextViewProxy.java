@@ -1,11 +1,14 @@
 package com.evolved.automata.android.lisp.views;
 
 import java.util.HashMap;
+import java.util.HashSet;
 
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.text.Layout;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -18,6 +21,8 @@ import com.evolved.automata.android.EvaluateException;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 
+import org.apache.commons.lang3.tuple.Pair;
+
 
 public class TextViewProxy extends ViewProxy
 {
@@ -26,6 +31,46 @@ public class TextViewProxy extends ViewProxy
 	public static final String FONT_FACE = ":typeface"; // "normal" | "sans" | "serif" | "monospaced"
 	public static final String TEXT_ALIGNMENT = ":text-align"; // string combination of "top" or "left" or "right" or "bottom" or "center" joined buy pipe '|' character if necessary
 	public static final String TEXT_COLOR = ":text-color"; // raw color decimal number | android string color spec, such as #000 or @android:color/white
+
+
+
+    public enum BOOLEAN_KEY
+    {
+        SINGLE_LINE(":singleline"), EDITABLE(":editable");
+        String key;
+        BOOLEAN_KEY(String keyname)
+        {
+            key = keyname;
+        }
+
+        @Override
+        public String toString()
+        {
+            return key;
+        }
+
+        public static BOOLEAN_KEY fromKeyword(String word)
+        {
+            for (BOOLEAN_KEY k:values())
+            {
+                if (k.toString().equals(word))
+                    return k;
+            }
+            return null;
+        }
+    }
+
+	public static final HashSet<String> BOOLEAN_KEY_MAP = new HashSet<String>(){
+		{
+            for (BOOLEAN_KEY key: BOOLEAN_KEY.values())
+            {
+                add(key.toString());
+            }
+
+		}
+
+	}; // boolean values can be: true | false
+
 	
 	String text = null;
 	int textColor;
@@ -64,7 +109,62 @@ public class TextViewProxy extends ViewProxy
 		processFontFaceAndStyle(keys, tview);
 		processTextAlignment(keys, tview);
 		processTextColor(keys, tview);
+        processBooleanKeys(keys, tview);
 	}
+
+    protected void processBooleanKeys(HashMap<String, Value> keys, TextView tview)
+    {
+
+        for (String key:keys.keySet())
+        {
+            if (BOOLEAN_KEY_MAP.contains(key))
+            {
+                BOOLEAN_KEY enumKey = BOOLEAN_KEY.fromKeyword(key);
+                String svalue = keys.get(key).getString();
+                boolean bvalue = (svalue.equals("true"));
+                switch (enumKey)
+                {
+                    case SINGLE_LINE:
+                        tview.setSingleLine(bvalue);
+                        break;
+                    case EDITABLE:
+                        if (bvalue)
+                        {
+                            // TODO: Finish this later
+                            tview.setOnTouchListener(new View.OnTouchListener() {
+
+                                @Override
+                                public boolean onTouch(View v, MotionEvent event) {
+
+                                    Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
+                                    //Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
+                                    switch (event.getAction()) {
+                                        case MotionEvent.ACTION_DOWN:
+
+                                            return true;
+                                        case MotionEvent.ACTION_UP:
+
+                                            break;
+                                    }
+                                    return true;
+                                }
+
+                            });
+                        }
+                        else
+                        {
+                            tview.setOnTouchListener(null);
+                        }
+
+                        break;
+                }
+            }
+
+        }
+
+
+    }
+
 	
 	protected void processTextColor(HashMap<String, Value> keys, TextView tview)
 	{
