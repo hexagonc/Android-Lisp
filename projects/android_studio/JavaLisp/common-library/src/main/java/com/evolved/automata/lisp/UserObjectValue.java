@@ -18,8 +18,13 @@ public class UserObjectValue extends Value
 
 	@Override
 	public boolean equals(Value v) {
+		if (v != null && v.isUserObject())
+		{
+			return _obj.equals(v.getObjectValue());
+		}
+		else
+			return false;
 
-		return _obj.equals(v);
 	}
 
 	@Override
