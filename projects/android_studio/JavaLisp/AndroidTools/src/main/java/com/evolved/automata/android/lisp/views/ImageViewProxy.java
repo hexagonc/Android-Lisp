@@ -17,6 +17,9 @@ import com.nostra13.universalimageloader.core.ImageLoader;
 public class ImageViewProxy extends ViewProxy
 {
 	public static final String SOURCE = ":src"; // string url for image
+    public static final String SCALE_TYPE = ":scaleType";
+
+
 	
 	
 	public ImageViewProxy(Context con, HashMap<String, Value> keymap)
@@ -38,7 +41,21 @@ public class ImageViewProxy extends ViewProxy
 			vw.setImageResource(imageDrawable);
 		}
 	}
-	
+
+    protected void processImageScaleTypeKeyword(HashMap<String, Value> keymap, ImageView vw)
+    {
+        Value scaleTypeValue = getMapValue(keymap, SCALE_TYPE);
+        ImageView.ScaleType scale = ScaleType.FIT_XY;
+        if (!scaleTypeValue.isNull() && scaleTypeValue.isString())
+        {
+            if ( ScaleType.valueOf(scaleTypeValue.getString().toUpperCase())!=null)
+            {
+                scale = ScaleType.valueOf(scaleTypeValue.getString().toUpperCase());
+            }
+        }
+
+        vw.setScaleType(scale);
+    }
 	
 	public View createBaseView()
 	{
@@ -46,6 +63,7 @@ public class ImageViewProxy extends ViewProxy
 		tv.setScaleType(ScaleType.FIT_XY);
 		tv.setAdjustViewBounds(false);
 		processImageSourceKeyword(_keys, tv);
+        processImageScaleTypeKeyword(_keys, tv);
 		return tv;
 	}
 	
