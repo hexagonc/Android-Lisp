@@ -5,6 +5,8 @@ import java.util.HashMap;
 import com.evolved.automata.lisp.Value;
 
 import android.content.Context;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -16,7 +18,8 @@ import android.widget.TextView;
 public class EditViewProxy extends TextViewProxy
 {
 	public static final String HINT_TEXT = ":hint"; // text hint
-	
+
+
 	public EditViewProxy(Context con, HashMap<String, Value> keymap, String text)
 	{
 		super(con, keymap, text);
@@ -37,6 +40,26 @@ public class EditViewProxy extends TextViewProxy
 		EditText tv = new EditText(context);
 		createBaseView(tv);
 		processHintTextFromKeywords(_keys, tv);
+
+		tv.addTextChangedListener(new TextWatcher() {
+			@Override
+			public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2)
+			{
+
+			}
+
+			@Override
+			public void onTextChanged(CharSequence charSequence, int i, int i1, int i2)
+			{
+
+			}
+
+			@Override
+			public void afterTextChanged(Editable editable)
+			{
+				text = editable.toString();
+			}
+		});
 		return tv;
 	}
 	
