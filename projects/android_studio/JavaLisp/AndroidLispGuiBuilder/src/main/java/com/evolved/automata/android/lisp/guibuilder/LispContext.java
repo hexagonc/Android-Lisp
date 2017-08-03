@@ -1065,7 +1065,7 @@ public class LispContext implements SpeechListener{
         mEnv.mapFunction("on-main-thread-p", onMainThread());
         mEnv.mapFunction("evaluate-background", evaluate_background());
         mEnv.mapFunction("evaluate-foreground", evaluate_foreground());
-        mEnv.mapFunction("break", getBreak());
+        mEnv.mapFunction("break-process", getBreak());
         mEnv.mapFunction("global", evaluateGlobal());
     }
 
