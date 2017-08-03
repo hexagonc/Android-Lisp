@@ -98,7 +98,7 @@ public class ViewEvaluator  {
 			_imageConfiguredP = true;
 		}
 		
-		env.mapFunction("remove-view", remove_view(env, activity, interpreter));
+
 		
 		env.mapFunction("show-view", show_view(env, activity, interpreter));
 		
@@ -171,7 +171,7 @@ public class ViewEvaluator  {
 		env.mapFunction("add-view", add_view(env, activity, interpreter));
 		
 		env.mapFunction("dialog", dialog(env, activity, interpreter));
-		env.mapFunction("dismiss-dialog", dialog(env, activity, interpreter));
+		env.mapFunction("dismiss-dialog", dismiss_dialog(env, activity, interpreter));
 		
 		env.mapFunction("get-id", get_id(env, activity, interpreter));
 		
@@ -618,9 +618,9 @@ public class ViewEvaluator  {
 				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
 				
 				Value proxyArg = evaluatedArgs[0];
-				final ViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
-				tv.setVisiblity(View.VISIBLE);
-				if (tv.getView()!=null  && !getBatchUIUpdates(env))
+				final ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+                vp.setVisiblity(View.VISIBLE);
+				if (vp.getView()!=null  && !getBatchUIUpdates(env))
 					return continuationReturn(proxyArg);
 				else
 					return proxyArg;
@@ -679,7 +679,8 @@ public class ViewEvaluator  {
 				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
 				
 				Value proxyArg = evaluatedArgs[0];
-				boolean shouldBeGoneP = !evaluatedArgs[1].isNull();
+
+				boolean shouldBeGoneP = (evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull());
 				final ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
 				
 				if (shouldBeGoneP)

@@ -16,6 +16,9 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 					add(ViewProxy.ON_LONG_CLICK);
 					add(SeekBarViewProxy.SEEK_CHANGE_LISTENER_KEY);
 					add(CheckboxViewProxy.CHECK_CHECKED_LISTENER);
+					add(ViewEvaluator.ON_POSITIVE_BUTTON_CLICK_KEY);
+					add(ViewEvaluator.ON_CANCEL_BUTTON_CLICK_KEY);
+                    add(ViewProxy.ON_FOCUS_CHANGED);
 				}
 			};
 			
