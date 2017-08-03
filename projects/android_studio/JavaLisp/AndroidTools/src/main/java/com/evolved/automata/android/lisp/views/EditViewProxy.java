@@ -7,6 +7,7 @@ import com.evolved.automata.lisp.Value;
 import android.content.Context;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -37,7 +38,33 @@ public class EditViewProxy extends TextViewProxy
 	@Override
 	public View createBaseView()
 	{
-		EditText tv = new EditText(context);
+		EditText tv =
+        new EditText(context) {
+            OnEditorActionListener _listener = new OnEditorActionListener() {
+                @Override
+                public boolean onEditorAction(TextView textView, int i, KeyEvent keyEvent)
+                {
+                    if (keyEvent.getKeyCode() == KeyEvent.KEYCODE_BACK){
+                        clearFocus();
+                    }
+                    return false;
+                }
+            };
+
+            {
+                setOnEditorActionListener(_listener);
+            }
+
+            @Override
+            public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+                if (event.getKeyCode() == KeyEvent.KEYCODE_BACK){
+                    clearFocus();
+                }
+                return super.onKeyPreIme(keyCode, event);
+            }
+
+
+        };
 		createBaseView(tv);
 		processHintTextFromKeywords(_keys, tv);
 

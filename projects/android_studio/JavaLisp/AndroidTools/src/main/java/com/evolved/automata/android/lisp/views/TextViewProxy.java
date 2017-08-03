@@ -72,7 +72,7 @@ public class TextViewProxy extends ViewProxy
 	}; // boolean values can be: true | false
 
 	
-	String text = null;
+	protected String text = null;
 	int textColor;
 	
 	public TextViewProxy(Context con, HashMap<String, Value> keymap, String text)

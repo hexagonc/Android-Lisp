@@ -85,6 +85,9 @@ public abstract class ViewProxy
 	public static final String PARENT_ALIGN = ":parent-align"; // combination of "top" | "bottom" | "center" | "left" | "right" joined by pipe '|' character
 	public static final String ON_CLICK = ":on-click"; // a string expression to be evaluated
 	public static final String ON_LONG_CLICK = ":on-long-click"; // a string expression to be evaluated that can return a boolean result
+    public static final String ON_FOCUS_CHANGED = ":on-focus-changed"; // a expression to be evaluated when the focus changes.  Binds the variable has-focus
+    public static final String FOCUSABLE_IN_TOUCH_MODE = ":focusable-in-touch-mode"; // boolean parameter.  Set to "true" or "false"
+    public static final String FOCUSABLE = ":focusable"; // boolean parameter.  Set to "true" or "false"
 	
 	int topPadding = -1;
 	int bottomPadding = -1;
@@ -95,6 +98,7 @@ public abstract class ViewProxy
 	
 	View.OnClickListener _onClickListener = null;
 	View.OnLongClickListener _onLongClickListener = null;
+    View.OnFocusChangeListener _onFocusChangedListener = null;
 	Drawable _backgroundDrawable = null;
 	protected HashMap<String, Value> _keys = null;
 	boolean _enabledP= true;
@@ -297,7 +301,7 @@ public abstract class ViewProxy
 				@Override
 				public boolean onLongClick(View v) {
 					Value out = _lispInterpreter.evaluateExpression(_currentEnv, codeContinuation, false);
-					return out!=null&&!out.isNull();
+					return true;
 				}
 
 			};
@@ -313,13 +317,40 @@ public abstract class ViewProxy
 				@Override
 				public boolean onLongClick(View v) {
 					Value out = _lispInterpreter.evaluatePreParsedValue(_currentEnv, transformed, false);
-					return out!=null&&!out.isNull();
+					return true;
 				}
 
 			};
 			
 		}
 	}
+
+    protected void processOnFocusChangedListenerKeys(View vw)
+    {
+        if (vw != null && _onFocusChangedListener != null)
+            vw.setOnFocusChangeListener(_onFocusChangedListener);
+    }
+
+    protected void processOnFocusChangedListenerKeys(HashMap<String, Value> keys)
+    {
+        final Value code = getMapValue(keys, ON_FOCUS_CHANGED);
+        if (code.isNull())
+            return;
+        final Value transformed = NLispTools.getMinimalEnvironment(_currentEnv, code);
+
+        _onFocusChangedListener = new View.OnFocusChangeListener()
+        {
+
+
+            @Override
+            public void onFocusChange(View view, boolean hasFocus)
+            {
+                Environment evaluatedEnvironment = new Environment(_currentEnv);
+                evaluatedEnvironment.mapValue("has-focus", NLispTools.makeValue(hasFocus));
+                _lispInterpreter.evaluatePreParsedValue(evaluatedEnvironment, transformed, true);
+            }
+        };
+    }
 	
 	protected void processParentAlignment(RelativeLayout.LayoutParams params, HashMap<String, Value> keys)
 	{
@@ -915,11 +946,13 @@ public abstract class ViewProxy
 		_currentEnv = env;
 		processOnLongClickListenerKeys(_keys);
 		processOnClickListenerKeys(_keys);
+        processOnFocusChangedListenerKeys(_keys);
 	}
 	
 	public void setView(View v)
 	{
 		encapsulated = new WeakReference<View>(v);
+        baseUpdate(v);
 	}
 	
 	public abstract View createBaseView();
@@ -1057,7 +1090,25 @@ public abstract class ViewProxy
 		}
 		processOnClickListenerKeys(view, _keys);
 		processOnLongClickListenerKeys(view, _keys);
+        processOnFocusChangedListenerKeys(view);
+        processFocusablekeys(view, _keys);
 	}
+
+	public void processFocusablekeys(View view, HashMap<String, Value> keywords)
+    {
+        Value focusableValue = keywords.get(FOCUSABLE);
+        Value focusableInTouchValue = keywords.get(FOCUSABLE_IN_TOUCH_MODE);
+
+        if (focusableInTouchValue!= null && focusableInTouchValue.isString())
+        {
+            view.setFocusableInTouchMode("true".equalsIgnoreCase(focusableInTouchValue.getString()));
+        }
+
+        if (focusableValue!=null && focusableValue.isString())
+        {
+            view.setFocusable("true".equalsIgnoreCase(focusableValue.getString()));
+        }
+    }
 	
 	public void applyAttribures(HashMap<String, Value> keywords)
 	{
