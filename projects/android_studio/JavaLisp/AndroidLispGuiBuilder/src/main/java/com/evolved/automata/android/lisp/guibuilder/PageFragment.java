@@ -62,7 +62,11 @@ public class PageFragment extends Fragment {
     public void updatePage()
     {
         mCodeFragment.setCodePage(mPage);
-        mCodeFragment.updatePage();
+        if (mCurrrentPageType == Page.PAGE_TYPE.CODE)
+        {
+            mCodeFragment.updatePage();
+        }
+
     }
 
     public CodePage getPage()
