@@ -16,9 +16,8 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.view.View.OnScrollChangeListener;
 import android.view.ViewGroup;
-import android.view.ViewGroup.MarginLayoutParams;
-import android.view.ViewParent;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
@@ -28,7 +27,6 @@ import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 
 
-import com.evolved.automata.KeyValuePair;
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.DeviceBehaviorOverrides;
 import com.evolved.automata.android.EvaluateException;
@@ -41,7 +39,7 @@ import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.assist.ImageLoadingListener;
 
-public abstract class ViewProxy 
+public abstract class ViewProxy
 {
 	AndroidLispInterpreter _lispInterpreter;
 	WeakReference<View> encapsulated;
@@ -88,6 +86,7 @@ public abstract class ViewProxy
     public static final String ON_FOCUS_CHANGED = ":on-focus-changed"; // a expression to be evaluated when the focus changes.  Binds the variable has-focus
     public static final String FOCUSABLE_IN_TOUCH_MODE = ":focusable-in-touch-mode"; // boolean parameter.  Set to "true" or "false"
     public static final String FOCUSABLE = ":focusable"; // boolean parameter.  Set to "true" or "false"
+    public static final String SCROLLABLE_CONTENT = ":isScrollContainer"; // boolean parameter.  Set to "true" or "false"
 	
 	int topPadding = -1;
 	int bottomPadding = -1;
@@ -1091,11 +1090,15 @@ public abstract class ViewProxy
 		processOnClickListenerKeys(view, _keys);
 		processOnLongClickListenerKeys(view, _keys);
         processOnFocusChangedListenerKeys(view);
-        processFocusablekeys(view, _keys);
+        processBooleankeys(view, _keys);
+        view.setScrollX(scrollTargetX);
+        view.setScrollY(scrollTargetY);
+
 	}
 
-	public void processFocusablekeys(View view, HashMap<String, Value> keywords)
+	public void processBooleankeys(View view, HashMap<String, Value> keywords)
     {
+
         Value focusableValue = keywords.get(FOCUSABLE);
         Value focusableInTouchValue = keywords.get(FOCUSABLE_IN_TOUCH_MODE);
 
@@ -1107,6 +1110,12 @@ public abstract class ViewProxy
         if (focusableValue!=null && focusableValue.isString())
         {
             view.setFocusable("true".equalsIgnoreCase(focusableValue.getString()));
+        }
+
+        Value scrollabalValue = keywords.get(SCROLLABLE_CONTENT);
+        if (scrollabalValue!=null && scrollabalValue.isString())
+        {
+            view.setScrollContainer("true".equalsIgnoreCase(scrollabalValue.getString()));
         }
     }
 	
@@ -1183,4 +1192,65 @@ public abstract class ViewProxy
 	{
 		return id;
 	}
+
+	public void setId(int id)
+    {
+        this.id = id;
+    }
+
+
+    int scrollTargetX=0;
+    int scrollTargetY = 0;
+
+    public void setScrollTargetX(int target, boolean smooth)
+    {
+        scrollTargetX = target;
+        View actual = encapsulated.get();
+        if (actual !=null)
+        {
+            scrollTargetY = getView().getScrollY();
+            actual.scrollTo(scrollTargetX, scrollTargetY);
+
+        }
+
+    }
+
+    public void scrollByX(int amount, boolean smooth)
+    {
+        View actual = encapsulated.get();
+        if (actual !=null)
+        {
+
+            actual.scrollBy(amount, 0);
+
+        }
+
+    }
+
+    public void setScrollTargetY(int target, boolean smooth)
+    {
+        scrollTargetY = target;
+        View actual = encapsulated.get();
+        if (actual !=null)
+        {
+            scrollTargetX = getView().getScrollX();
+            actual.scrollTo(scrollTargetX, scrollTargetY);
+
+        }
+
+    }
+
+    public void scrollByY(int amount, boolean smooth)
+    {
+
+        View actual = encapsulated.get();
+        if (actual !=null)
+        {
+
+            actual.scrollBy(0, amount);
+
+        }
+    }
+
+
 }

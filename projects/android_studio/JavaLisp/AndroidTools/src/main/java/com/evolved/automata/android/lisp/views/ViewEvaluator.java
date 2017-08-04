@@ -192,6 +192,12 @@ public class ViewEvaluator  {
 		env.mapFunction("set-seek-value", setSeekValue());
 		env.mapFunction("get-view-height", get_view_height(activity));
 		env.mapFunction("get-view-width", get_view_width(activity));
+
+
+        env.mapFunction("scroll-to-x", scroll_to_x(env));
+        env.mapFunction("scroll-to-y", scroll_to_y(env));
+        env.mapFunction("scroll-by-x", scroll_by_x(env));
+        env.mapFunction("scroll-by-y", scroll_by_y(env));
 	}
 
 	private static int convertPixelsToDP(Context con, int pixels)
@@ -599,7 +605,10 @@ public class ViewEvaluator  {
 			
 		};
 	}
-	
+
+
+
+
 	
 	public static ViewFunctionTemplate show_view(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
@@ -2016,5 +2025,127 @@ public class ViewEvaluator  {
 			}
 		};
 	}
+
+
+    public static ViewFunctionTemplate scroll_to_x(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)scroll_to_x(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = kv.GetKey();
+
+                Value proxyArg = evaluatedArgs[0];
+
+                ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+                Value nValue = evaluatedArgs[1];
+                boolean smooth = (evaluatedArgs.length > 2)&&!evaluatedArgs[2].isNull();
+
+                int number = (int)nValue.getIntValue();
+                vp.setScrollTargetX(number, smooth);
+                return proxyArg;
+            }
+
+        };
+    }
+
+    public static ViewFunctionTemplate scroll_by_x(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)scroll_by_x(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = kv.GetKey();
+
+                Value proxyArg = evaluatedArgs[0];
+
+                ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+                Value nValue = evaluatedArgs[1];
+                boolean smooth = (evaluatedArgs.length > 2)&&!evaluatedArgs[2].isNull();
+
+                int number = (int)nValue.getIntValue();
+                vp.scrollByX(number, smooth);
+                return proxyArg;
+            }
+
+        };
+    }
+
+
+    public static ViewFunctionTemplate scroll_to_y(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)scroll_to_y(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = kv.GetKey();
+
+                Value proxyArg = evaluatedArgs[0];
+
+                ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+                Value nValue = evaluatedArgs[1];
+                boolean smooth = (evaluatedArgs.length > 2)&&!evaluatedArgs[2].isNull();
+
+                int number = (int)nValue.getIntValue();
+                vp.setScrollTargetY(number, smooth);
+                return proxyArg;
+            }
+
+        };
+    }
+
+    public static ViewFunctionTemplate scroll_by_y(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)scroll_by_y(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = kv.GetKey();
+
+                Value proxyArg = evaluatedArgs[0];
+
+                ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+                Value nValue = evaluatedArgs[1];
+                boolean smooth = (evaluatedArgs.length > 2)&&!evaluatedArgs[2].isNull();
+
+                int number = (int)nValue.getIntValue();
+                vp.scrollByY(number, smooth);
+                return proxyArg;
+            }
+
+        };
+    }
 	
 }
