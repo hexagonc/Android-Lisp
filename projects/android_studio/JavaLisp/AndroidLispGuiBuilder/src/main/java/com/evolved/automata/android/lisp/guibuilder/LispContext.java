@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -29,6 +30,7 @@ import java.util.LinkedList;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.reactivex.ObservableEmitter;
@@ -94,6 +96,8 @@ public class LispContext implements SpeechListener{
 
 
     ConcurrentHashMap<String, Request> mRequestMap = new ConcurrentHashMap<String, Request>();
+
+    WeakHashMap<String, Request> mServiceRequestMap = new WeakHashMap<String, Request>();
 
     static Handler  _mainHandler = new Handler(Looper.getMainLooper());
 
@@ -205,6 +209,10 @@ public class LispContext implements SpeechListener{
         synchronized (mSynch)
         {
             mRequestMap.remove(id);
+            Request r = mServiceRequestMap.get(id);
+            if (r != null)
+                r.deletedP = true;
+            mServiceRequestMap.remove(id);
         }
 
     }
@@ -718,6 +726,24 @@ public class LispContext implements SpeechListener{
 
     }
 
+    public void evaluateBackgroundServiceExpression(final Environment env, String tagName, final Value preparsed, final Observer<Value> xlistener, boolean startService)
+    {
+        Request request = new Request();
+        request.rListener = xlistener;
+        request.evaluationEnv = env;
+        request.precompiledExpr = preparsed;
+
+        BackgroundLispService.addRequest(request);
+        mServiceRequestMap.put(tagName, request);
+
+        if (startService)
+        {
+            Intent intent = new Intent(mContext, BackgroundLispService.class);
+            mContext.startService(intent);
+        }
+
+    }
+
     public void evaluateMainThreadExpression(final String expression, final Observer<Value> listener)
     {
 
@@ -1065,6 +1091,8 @@ public class LispContext implements SpeechListener{
         mEnv.mapFunction("on-main-thread-p", onMainThread());
         mEnv.mapFunction("evaluate-background", evaluate_background());
         mEnv.mapFunction("evaluate-foreground", evaluate_foreground());
+        mEnv.mapFunction("evaluate-background-service", evaluate_background_service());
+        mEnv.mapFunction("stop-background-service", stop_background_service());
         mEnv.mapFunction("break-process", getBreak());
         mEnv.mapFunction("global", evaluateGlobal());
     }
@@ -1747,6 +1775,158 @@ public class LispContext implements SpeechListener{
     }
 
 
+
+    /**
+     * Stops background lisp service
+     *
+     * @return label of the process that can be used to break the computation in the background
+     */
+    private FunctionTemplate stop_background_service()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)stop_background_service();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                Intent intent = new Intent(mContext, BackgroundLispService.class);
+                mContext.stopService(intent);
+                return NLispTools.makeValue(1);
+
+            }
+
+        };
+    }
+
+    /**
+     * First argument is a string label for the background process.
+     * Second argument is a boolean parameter indicating whether to start the background service
+     * Third argument is a lambda function that receives the response.  Lambda shuld
+     * take two arguments, first argument is the result of computation.  Second
+     * argument is NULL if there was no error, otherwise, will be the string form of the error
+     *
+     * @return label of the process that can be used to break the computation in the background
+     */
+    private FunctionTemplate evaluate_background_service()
+    {
+        return new FunctionTemplate ()
+        {
+
+            public Object clone()
+            {
+                return evaluate_background_service();
+            }
+
+            @Override
+            public Value evaluate(final Environment env, boolean resume)
+                    throws InstantiationException, IllegalAccessException {
+
+                try
+                {
+                    Value name = env.evaluate(_actualParameters[0]);
+
+                    String tagName = name.getString();
+
+                    boolean startService = !env.evaluate(_actualParameters[1]).isNull();
+
+                    Value resultCallback = env.evaluate(_actualParameters[2]);
+
+                    if (resultCallback.isLambda())
+                    {
+                        final FunctionTemplate handlerFunction = resultCallback.getLambda();
+                        Observer<Value> resultHandler = new Observer<Value>() {
+
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d)
+                            {
+
+                            }
+
+                            @Override
+                            public void onNext(@NonNull Value value)
+                            {
+                                Value[] inputs = new Value[]{value, Environment.getNull()};
+                                try
+                                {
+                                    handlerFunction.setActualParameters(inputs);
+                                    handlerFunction.evaluate(env, false);
+                                }
+                                catch (Exception e)
+                                {
+                                    if (mDefaultBackgroundResultHandler!=null)
+                                    {
+                                        mDefaultBackgroundResultHandler.onError(e);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e)
+                            {
+                                Value[] inputs = new Value[]{Environment.getNull(), NLispTools.makeValue(e.toString())};
+                                try
+                                {
+                                    handlerFunction.setActualParameters(inputs);
+                                    handlerFunction.evaluate(env, false);
+                                }
+                                catch (Exception e2)
+                                {
+                                    if (mDefaultBackgroundResultHandler!=null)
+                                    {
+                                        mDefaultBackgroundResultHandler.onError(e2);
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onComplete()
+                            {
+
+                            }
+                        };
+
+                        Value[] actualArguments = new Value[_actualParameters.length - 3];
+                        for (int i = 3;i < _actualParameters.length;i++)
+                            actualArguments[i - 3] = _actualParameters[i];
+                        Value raw = Environment.wrapValuesInProgn(actualArguments);
+
+
+                        evaluateBackgroundServiceExpression(env, tagName, raw, resultHandler, startService);
+                    }
+                    else
+                    {
+
+                        Value[] actualArguments = new Value[_actualParameters.length - 3];
+                        for (int i = 3;i < _actualParameters.length;i++)
+                            actualArguments[i - 3] = _actualParameters[i];
+                        Value raw = Environment.wrapValuesInProgn(actualArguments);
+
+                        if (mDefaultBackgroundResultHandler != null)
+                            evaluateBackgroundServiceExpression(env, tagName, raw, mDefaultBackgroundResultHandler, startService);
+
+                        else
+                            evaluateBackgroundServiceExpression(env, tagName, raw, null, startService);
+                    }
+                    return _actualParameters[0];
+                }
+                catch (Exception e)
+                {
+                    return Environment.getNull();
+                }
+
+
+
+
+            }
+
+        };
+    }
 
     /**
      * First argument is a lambda function that receives the response.  Lambda shuld
