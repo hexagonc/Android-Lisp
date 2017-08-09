@@ -17,13 +17,16 @@ repositories {
 }
 
 android {
-	compileSdkVersion 19
+	compileSdkVersion 24
 	buildToolsVersion '25.0.0'
 }
 
 
 dependencies {
 	compile project(':common-library')
-	compile 'com.google.android:support-v4:r7'
+    compile 'com.android.support:support-core-ui:24.2.0'
+	compile 'com.android.support:support-core-utils:24.2.0'
+
+
 	compile group: 'com.nostra13.universalimageloader', name: 'universal-image-loader', version: '1.9.1'
 }

@@ -16,7 +16,8 @@ repositories {
 }
 
 android {
-	compileSdkVersion 19
+	compileSdkVersion 24
+
 	buildToolsVersion '25.0.0'
 	compileOptions {
 		sourceCompatibility JavaVersion.VERSION_1_7
@@ -80,17 +81,17 @@ dependencies {
 	compile project(':common-library')
 	compile project(':AndroidTools')
 	compile fileTree(dir: 'libs', include: ['*.jar'])
-	compile 'com.android.support:support-annotations:24.0.0'
-	compile "com.fasterxml.jackson.core:jackson-databind:2.6.0"
+
+	//compile "com.fasterxml.jackson.core:jackson-databind:2.6.0"
 	compile "org.greenrobot:eventbus:3.0.0"
-	compile 'io.reactivex.rxjava2:rxjava:2.1.0'
+    compile 'io.reactivex.rxjava2:rxjava:2.1.0'
     compile 'io.reactivex.rxjava2:rxandroid:2.0.1'
 	compile 'com.dropbox.core:dropbox-core-sdk:3.0.2'
 
 	testCompile 'junit:junit:4.12'
     // Optional -- Mockito framework
     testCompile 'org.mockito:mockito-core:1.10.19'
-	androidTestCompile 'com.android.support:support-annotations:24.0.0'
+	androidTestCompile 'com.android.support:support-annotations:24.2.0'
     androidTestCompile 'com.android.support.test:runner:0.5'
     androidTestCompile 'com.android.support.test:rules:0.5'
     // Optional -- Hamcrest library
