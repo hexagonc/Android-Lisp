@@ -59,6 +59,41 @@ public class VisionTools {
             return b + 256;
     }
 
+    public static ARGB[] convertRGBBytesToColor(byte[] input, int height, int width,  ByteOrder sourceByteOrder)
+    {
+        int totalLength = input.length;
+        int srOffset = 2, sgOffset = 1, sbOffset = 0;
+
+        ARGB[] rgb = new ARGB[height*width];
+
+        int alpha = 255;
+        switch (sourceByteOrder)
+        {
+            case RGB_8888:
+            case RGB_888:
+                sbOffset = 0;
+                sgOffset = 1;
+                srOffset = 2;
+                break;
+            case BGR_8888:
+            case BGR_888:
+                srOffset = 0;
+                sgOffset = 1;
+                sbOffset = 2;
+                break;
+        }
+
+
+        int rgbIndex = 0;
+        for (int i = 0; i < totalLength;i+=3)
+        {
+            rgb[rgbIndex] = new ARGB(alpha, byteToUnsignedInt(input[i + srOffset]), byteToUnsignedInt(input[i + sgOffset]), byteToUnsignedInt(input[i + sbOffset]));
+            rgbIndex++;
+        }
+        return rgb;
+    }
+
+
     public static int[] convertRGBBytesToInts(byte[] input, int height, int width,  ByteOrder sourceByteOrder, ByteOrder targetByteOrder)
     {
         int totalLength = input.length;
@@ -139,6 +174,7 @@ public class VisionTools {
         }
         return rgb;
     }
+
 
 
     public static int[] convertYUV422BytesToInts(byte[] input, int height, int width,  ByteOrder targetByteOrder)
