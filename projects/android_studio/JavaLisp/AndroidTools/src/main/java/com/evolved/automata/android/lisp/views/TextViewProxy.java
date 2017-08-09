@@ -128,9 +128,9 @@ public class TextViewProxy extends ViewProxy
                         tview.setSingleLine(bvalue);
                         break;
                     case EDITABLE:
-                        if (bvalue)
+                        if (!bvalue)
                         {
-                            // TODO: Finish this later
+                            // TODO: Finish this later to allow scrolling
                             tview.setOnTouchListener(new View.OnTouchListener() {
 
                                 @Override
@@ -144,9 +144,9 @@ public class TextViewProxy extends ViewProxy
                                             return true;
                                         case MotionEvent.ACTION_UP:
 
-                                            break;
+                                            return true;
                                     }
-                                    return true;
+                                    return false;
                                 }
 
                             });
