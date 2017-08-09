@@ -3195,6 +3195,47 @@ public class NLispTools
 			
 		}
 		);
+
+		env.mapFunction("left", new SimpleFunctionTemplate()
+				{
+
+					@Override
+					public Value evaluate(Environment env,Value[] evaluatedArgs) {
+						checkActualArguments(2, false, true);
+
+
+						String base = evaluatedArgs[0].getString();
+						int length = (int)evaluatedArgs[1].getIntValue();
+
+
+
+
+
+						return makeValue(base.substring(0, length));
+
+					}
+
+				}
+		);
+
+		env.mapFunction("right", new SimpleFunctionTemplate()
+				{
+
+					@Override
+					public Value evaluate(Environment env,Value[] evaluatedArgs) {
+						checkActualArguments(2, false, true);
+
+
+						String base = evaluatedArgs[0].getString();
+						int num = (int)evaluatedArgs[1].getIntValue();
+
+						int sLength = base.length();
+						return makeValue(base.substring(Math.max(0, sLength  - num ) , sLength));
+
+					}
+
+				}
+		);
 		
 		
 		
