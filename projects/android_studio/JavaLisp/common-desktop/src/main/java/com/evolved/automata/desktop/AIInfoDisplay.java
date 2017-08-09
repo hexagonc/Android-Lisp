@@ -61,6 +61,16 @@ public class AIInfoDisplay {
 		if (popupP)
 		{
 			TextFrame.setAlwaysOnTop(true);
+            TextFrame.setAutoRequestFocus(true);
+            try
+			{
+				Thread.sleep(50); // need to wait until screen moves to front.
+                //                   will need to tune this
+			}
+			catch (InterruptedException ie)
+			{
+
+			}
 			TextFrame.setAlwaysOnTop(false);
 		}
 		JScrollBar sbar =  ScrollPane.getVerticalScrollBar();
