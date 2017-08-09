@@ -9,8 +9,10 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -506,7 +508,7 @@ public class ExtendedFunctions
 				String charValue = evaluatedArgs[0].getString();
 				boolean isStringToken = (evaluatedArgs.length == 1 || evaluatedArgs[1].isNull());
 				
-				return makeValue(new TextCharacter(charValue, isStringToken));
+				return makeValue(new TextCharacter(charValue, !isStringToken));
 				
 			}
 			
@@ -692,7 +694,7 @@ public class ExtendedFunctions
 				checkActualArguments(2, false, true);
 				PatternParser.MatcherController controller = (PatternParser.MatcherController)evaluatedArgs[0].getObjectValue();
 				GeneralizedCharacter gchar = (GeneralizedCharacter)evaluatedArgs[1].getObjectValue();
-				return NLispTools.makeValue(!controller.update(gchar));
+				return NLispTools.makeValue(controller.update(gchar));
 				
 			}
 			
@@ -1342,6 +1344,8 @@ public class ExtendedFunctions
 
 		env.mapFunction("get-datetime-parts", getDateParts());
 
+        env.mapFunction("parse-datetime-string", parseDateTime());
+
 
 	}
 
@@ -1424,6 +1428,42 @@ public class ExtendedFunctions
 
 		};
 	}
+
+	// parse date string to get epoch time using DateFormat.
+    // See https://docs.oracle.com/javase/7/docs/api/index.html?javax/imageio/IIOImage.html
+
+	public static SimpleFunctionTemplate parseDateTime()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, true, true);
+
+				try
+				{
+					String datetime = evaluatedArgs[0].getString();
+
+
+					String format = "MM/dd/yyyy kk:mm" ;
+                    if (evaluatedArgs.length > 1)
+                        format = evaluatedArgs[1].getString();
+                    SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+
+                    Date date = dateFormat.parse(datetime);
+                    long time =date.getTime();
+					return NLispTools.makeValue(time);
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+
+		};
+	}
+
 
 	
 	/* Taken from: http://docs.oracle.com/javase/6/docs/technotes/guides/security/crypto/CryptoSpec.html#AppA
