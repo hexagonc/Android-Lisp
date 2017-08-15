@@ -2,12 +2,16 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 
 import android.app.IntentService;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 
 import android.os.Handler;
 import android.os.PowerManager;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
@@ -24,6 +28,7 @@ import io.reactivex.Observable;
 public class BackgroundLispService extends IntentService {
 
     final String _LOCK_TIMEOUT_SECS = "LOCK TIMEOUT SECONDS";
+    final int _BACKGROUND_LISP_SERVICE_ID = 0;
 
     static LinkedBlockingQueue<LispContext.Request> mRequestQueue = new LinkedBlockingQueue<LispContext.Request>();
     private static PowerManager.WakeLock mLispLock = null;
@@ -36,6 +41,8 @@ public class BackgroundLispService extends IntentService {
 
     Handler mMainHandler;
 
+
+    final String _BACKGROUND_LISP_NOTIFICATION_TITLE = "Background Lisp Process Executing";
     public BackgroundLispService()
     {
         super("ALGB Lisp Processing");
@@ -43,6 +50,32 @@ public class BackgroundLispService extends IntentService {
         mMainHandler = new Handler();
     }
 
+    void showNotification()
+    {
+        NotificationCompat.Builder nBuilder = new NotificationCompat.Builder(this);
+        nBuilder.setOngoing(true);
+        nBuilder.setContentTitle(_BACKGROUND_LISP_NOTIFICATION_TITLE);
+        nBuilder.setSmallIcon(R.drawable.ic_launcher);
+
+        Intent targetIntent = new Intent(this, ALGBBaseActivity.class);
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
+        stackBuilder.addParentStack(ALGBBaseActivity.class);
+        stackBuilder.addNextIntent(targetIntent);
+
+        PendingIntent pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+        nBuilder.setContentIntent(pendingIntent);
+        nBuilder.setContentText("Executing background process");
+
+        NotificationManager notificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+
+        notificationManager.notify(_BACKGROUND_LISP_SERVICE_ID, nBuilder.build());
+    }
+
+    void stopNotification()
+    {
+        NotificationManager notificationManager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(_BACKGROUND_LISP_SERVICE_ID);
+    }
 
 
     public static void addRequest(LispContext.Request request)
@@ -101,6 +134,21 @@ public class BackgroundLispService extends IntentService {
         }
     }
 
+
+    @Override
+    public void onCreate()
+    {
+        super.onCreate();
+        showNotification();
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        stopNotification();
+        super.onDestroy();
+
+    }
 
     @Override
     protected void onHandleIntent(@Nullable Intent intent)
