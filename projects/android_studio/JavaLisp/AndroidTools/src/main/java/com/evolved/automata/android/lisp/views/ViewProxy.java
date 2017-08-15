@@ -655,11 +655,20 @@ public abstract class ViewProxy
 			{
 				String name = vis.getString();
 				if (name.toLowerCase().equals("visible"))
+                {
 					visibility = View.VISIBLE;
+                    return;
+                }
 				else if (name.toLowerCase().equals("invisible"))
-					visibility = View.INVISIBLE;
+                {
+                    visibility = View.INVISIBLE;
+                    return;
+                }
 				else if (name.toLowerCase().equals("gone"))
-					visibility = View.GONE;
+                {
+                    visibility = View.GONE;
+                    return;
+                }
 			}
 			throw new EvaluateException("Invalid visibility value: " + vis.toString());
 		}
