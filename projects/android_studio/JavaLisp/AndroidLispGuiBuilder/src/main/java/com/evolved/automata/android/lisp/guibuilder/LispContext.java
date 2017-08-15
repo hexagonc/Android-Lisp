@@ -1,10 +1,18 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
 import com.evolved.automata.android.lisp.views.ViewProxy;
@@ -14,13 +22,13 @@ import com.evolved.automata.android.lisp.views.ViewEvaluator;
 import com.evolved.automata.android.speech.SpeechInterface;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
-import com.evolved.automata.lisp.LambdaValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.BufferedReader;
 import java.io.StringReader;
@@ -40,6 +48,7 @@ import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by Evolved8 on 5/4/17.
@@ -47,6 +56,7 @@ import io.reactivex.disposables.Disposable;
 
 public class LispContext implements SpeechListener{
 
+    static final int DEFAULT_NOTIFICATION_ID = 1;
     static final String _DEFAULT_CONTEXT = "DEFAULT";
     Context mContext;
 
@@ -97,7 +107,7 @@ public class LispContext implements SpeechListener{
 
     ConcurrentHashMap<String, Request> mRequestMap = new ConcurrentHashMap<String, Request>();
 
-    WeakHashMap<String, Request> mServiceRequestMap = new WeakHashMap<String, Request>();
+    WeakHashMap<Request, String> mServiceRequestMap = new WeakHashMap<Request, String>();
 
     static Handler  _mainHandler = new Handler(Looper.getMainLooper());
 
@@ -117,6 +127,8 @@ public class LispContext implements SpeechListener{
 
 
     boolean mRootContextP = false;
+
+    RingtoneManager mRingtoneManager;
 
     public LispContext(Context con, Environment base, LispDataAccessInterface dai)
     {
@@ -140,6 +152,7 @@ public class LispContext implements SpeechListener{
             }
         });
 
+        mRingtoneManager = new RingtoneManager(con);
         mRootContextP = true;
         resetEnvironment();
 
@@ -153,6 +166,101 @@ public class LispContext implements SpeechListener{
         mParent = parent;
         mBaseEnvironment = mParent.getEnvironment();
         mEnv = new Environment(mBaseEnvironment);
+    }
+
+    RingtoneManager getRingtoneManager()
+    {
+        if (mRingtoneManager == null && mParent != null)
+            return mParent.getRingtoneManager();
+        return mRingtoneManager; // this shouldn't happen
+    }
+
+    private Ringtone getRingtoneByIndex(int index)
+    {
+        int count = 0;
+        RingtoneManager rmanager = getRingtoneManager();
+
+        Cursor ringtoneCursor = rmanager.getCursor();
+        Ringtone ringtone = null;
+        if (ringtoneCursor.moveToFirst())
+        {
+            if (count == index)
+            {
+                ringtone = rmanager.getRingtone(count);
+                return ringtone;
+            }
+            count++;
+            while (ringtoneCursor.moveToNext())
+            {
+                if (count == index)
+                {
+                    ringtone = rmanager.getRingtone(count);
+                    return ringtone;
+                }
+                count++;
+            }
+        }
+        return ringtone;
+    }
+
+    public LinkedList<Pair<String, String>> getSupportedRingtones()
+    {
+        RingtoneManager rmanager = getRingtoneManager();
+        LinkedList<Pair<String, String>> ringtones = new LinkedList<Pair<String, String>>();
+
+        Cursor ringtoneCursor = rmanager.getCursor();
+        if (ringtoneCursor.moveToFirst())
+        {
+            String uriName =ringtoneCursor.getString(RingtoneManager.URI_COLUMN_INDEX);
+            String title = ringtoneCursor.getString(RingtoneManager.TITLE_COLUMN_INDEX);
+
+            ringtones.add(Pair.of(uriName, title));
+            while (ringtoneCursor.moveToNext())
+            {
+                uriName = ringtoneCursor.getString(RingtoneManager.URI_COLUMN_INDEX);
+                title = ringtoneCursor.getString(RingtoneManager.TITLE_COLUMN_INDEX);
+                ringtones.add(Pair.of(uriName, title));
+            }
+        }
+        return ringtones;
+    }
+
+    public Ringtone getRingtone(String uri)
+    {
+        RingtoneManager rmanager = getRingtoneManager();
+        return rmanager.getRingtone(mContext, Uri.parse(uri));
+    }
+
+
+
+    public void playRingtone(Ringtone ringtone, int numRepetitions, int repeatDelayMilli, int maxDurationMilli)
+    {
+        RingtoneManager ringtoneManager= getRingtoneManager();
+        ringtoneManager.stopPreviousRingtone();
+        try
+        {
+            long stopTime = System.currentTimeMillis() + maxDurationMilli;
+            for (int i = 0; i< numRepetitions;i++)
+            {
+                ringtone.play();
+                while (ringtone.isPlaying())
+                {
+                    if (stopTime < System.currentTimeMillis())
+                    {
+                        ringtone.stop();
+                        return;
+                    }
+                    Thread.sleep(100);
+
+                }
+                Thread.sleep(repeatDelayMilli);
+            }
+            ringtone.stop();
+        }
+        catch (InterruptedException e)
+        {
+
+        }
     }
 
     public HashSet<String> getActiveProcesses()
@@ -188,6 +296,15 @@ public class LispContext implements SpeechListener{
             return getRootContext().getForegroundInterpreter();
     }
 
+    public Page getCurrentPage()
+    {
+        if (mPage == null && mParent != null)
+        {
+            return mParent.getCurrentPage();
+        }
+        return mPage;
+    }
+
 
     public void setActivity(Activity activity)
     {
@@ -209,10 +326,15 @@ public class LispContext implements SpeechListener{
         synchronized (mSynch)
         {
             mRequestMap.remove(id);
-            Request r = mServiceRequestMap.get(id);
-            if (r != null)
-                r.deletedP = true;
-            mServiceRequestMap.remove(id);
+
+            for (Request r:mServiceRequestMap.keySet())
+            {
+                if (mServiceRequestMap.get(r).equals(id))
+                {
+                    r.deletedP = true;
+                }
+            }
+
         }
 
     }
@@ -664,6 +786,35 @@ public class LispContext implements SpeechListener{
         };
     }
 
+    SimpleFunctionTemplate isBackgroundServiceProcessRunningP()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)isBackgroundServiceProcessRunningP();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+                String tagName = evaluatedArgs[0].getString();
+
+
+                for (Request r:mServiceRequestMap.keySet())
+                {
+                    if (mServiceRequestMap.get(r).equals(tagName))
+                    {
+                        return NLispTools.makeValue(true);
+                    }
+                }
+
+                return NLispTools.makeValue(false);
+            }
+        };
+    }
+
 
     SimpleFunctionTemplate getBreak()
     {
@@ -734,7 +885,7 @@ public class LispContext implements SpeechListener{
         request.precompiledExpr = preparsed;
 
         BackgroundLispService.addRequest(request);
-        mServiceRequestMap.put(tagName, request);
+        mServiceRequestMap.put(request, tagName);
 
         if (startService)
         {
@@ -1094,7 +1245,16 @@ public class LispContext implements SpeechListener{
         mEnv.mapFunction("evaluate-background-service", evaluate_background_service());
         mEnv.mapFunction("stop-background-service", stop_background_service());
         mEnv.mapFunction("break-process", getBreak());
+        mEnv.mapFunction("is-background-service-process-running-p", isBackgroundServiceProcessRunningP());
         mEnv.mapFunction("global", evaluateGlobal());
+        mEnv.mapFunction("get-ringtones", get_ringtones());
+
+        mEnv.mapFunction("repeat-ringtone-by-index", repeat_ringtone_by_index());
+        mEnv.mapFunction("is-playing-ringtone", playing_ringtone());
+        mEnv.mapFunction("get-ringtone-name-by-index", get_ringtone_by_index() );
+
+        mEnv.mapFunction("show-notificaton", show_notification() );
+        mEnv.mapFunction("load-page-by-title", load_page_by_title());
     }
 
     public Environment getEnvironment()
@@ -1766,6 +1926,334 @@ public class LispContext implements SpeechListener{
                     return Environment.getNull();
                 }
 
+            }
+
+        };
+    }
+
+
+    SimpleFunctionTemplate load_page_by_title()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T) load_page_by_title();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                String title = evaluatedArgs[0].getString();
+                Page thisPage = getCurrentPage();
+                if (thisPage != null)
+                {
+                    String contents = thisPage.getApplication().readPageByName(title);
+                    if (contents != null)
+                    {
+                        return env.loadFromFileLines(StringUtils.split(contents, '\n'));
+                    }
+                }
+                return Environment.getNull();
+
+            }
+        };
+    }
+
+
+
+
+    SimpleFunctionTemplate show_notification()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)show_notification();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                int small_icon_resource_id = (int)evaluatedArgs[0].getIntValue();
+                String mainTitle = evaluatedArgs[1].getString();
+                Value items = evaluatedArgs[2];
+
+                int notificationId = DEFAULT_NOTIFICATION_ID;
+                if (evaluatedArgs.length > 3)
+                {
+                    notificationId = (int)evaluatedArgs[3].getIntValue();
+                }
+
+
+                NotificationCompat.Builder nBuilder = new NotificationCompat.Builder(mContext);
+                nBuilder.setContentTitle(mainTitle);
+                nBuilder.setSmallIcon(small_icon_resource_id);
+
+                Intent targetIntent = new Intent(mContext, ALGBBaseActivity.class);
+                TaskStackBuilder stackBuilder = TaskStackBuilder.create(mContext);
+                stackBuilder.addParentStack(ALGBBaseActivity.class);
+                stackBuilder.addNextIntent(targetIntent);
+
+                PendingIntent pendingIntent = stackBuilder.getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT);
+                nBuilder.setContentIntent(pendingIntent);
+                if (items.isList() && items.getList().length>1)
+                {
+                    NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
+                    inboxStyle.setBigContentTitle(mainTitle);
+
+
+                    Value[] itemValues = items.getList();
+                    String[] itemNames = new String[itemValues.length];
+                    for (int i = 0; i < itemNames.length;i++)
+                    {
+
+                        inboxStyle.addLine(itemValues[i].getString());
+                    }
+                    nBuilder.setStyle(inboxStyle);
+
+                }
+                else if (items.isString() || items.getList().length == 1)
+                {
+                    String message = null;
+                    if (items.isString())
+                        message = items.getString();
+                    else
+                        message = items.getList()[0].getString();
+                    nBuilder.setContentText(message);
+
+                }
+                else
+                {
+                    return Environment.getNull();
+                }
+
+                NotificationManager mNotificationManager = (NotificationManager)mContext.getSystemService(Context.NOTIFICATION_SERVICE);
+
+                mNotificationManager.notify(notificationId, nBuilder.build());
+                return NLispTools.makeValue(mainTitle);
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate get_ringtones()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)get_ringtones();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                LinkedList<Pair<String, String>> ringtones = getSupportedRingtones();
+                Value[] uValues = new Value[ringtones.size()];
+                Value[] uriTitlePair = null;
+                int i = 0;
+                for (Pair<String, String> pair:ringtones)
+                {
+                    uriTitlePair = new Value[2];
+                    uriTitlePair[0] = NLispTools.makeValue(pair.getLeft());
+                    uriTitlePair[1] = NLispTools.makeValue(pair.getRight());
+                    uValues[i++] = NLispTools.makeValue(uriTitlePair);
+                }
+                return NLispTools.makeValue(uValues);
+
+            }
+        };
+    }
+
+    SimpleFunctionTemplate get_ringtone_by_index()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T) get_ringtone_by_index();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                int index  = (int)evaluatedArgs[0].getIntValue();
+                LinkedList<Pair<String, String>> ringtones = getSupportedRingtones();
+
+                if (ringtones.size() > index)
+                {
+                    Pair<String, String> pair = ringtones.get(index);
+                    return NLispTools.makeValue(pair.getRight());
+                }
+
+                return Environment.getNull();
+
+            }
+        };
+    }
+
+
+    SimpleFunctionTemplate playing_ringtone()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)playing_ringtone();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                if (evaluatedArgs.length > 0)
+                {
+                    int index = (int)evaluatedArgs[0].getIntValue();
+                    Ringtone rtone = getRingtoneByIndex(index);
+                    return NLispTools.makeValue(rtone.isPlaying());
+                }
+
+                return Environment.getNull();
+
+            }
+        };
+    }
+
+
+
+
+
+    /**
+     * Use this as a template for accessing Android services that need to be executed
+     * First argument is the ringtone index
+     * Second argument is the number of repeations of the tone
+     * Third argument is the delay between repetitions
+     * Fourth argument is a result callback function
+     * @return false if there is no ringtone by this index
+     */
+    private SimpleFunctionTemplate repeat_ringtone_by_index()
+    {
+        return new SimpleFunctionTemplate ()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws java.lang.InstantiationException, IllegalAccessException
+            {
+                return (T)repeat_ringtone_by_index();
+            }
+
+            @Override
+            public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+
+                try
+                {
+                    final int index = (int)evaluatedArgs[0].getIntValue();
+
+                    final int repeatCount = (int)evaluatedArgs[1].getIntValue();
+
+                    final int pauseMilli = (int)evaluatedArgs[2].getIntValue();
+
+                    final int maxDurationMilli = (int)evaluatedArgs[3].getIntValue();
+
+                    Value resultCallback = evaluatedArgs[4];
+
+                    final Ringtone ringtone = getRingtoneByIndex(index);
+
+                    if (ringtone == null)
+                        return Environment.getNull();
+
+                    final FunctionTemplate handlerFunction = resultCallback.getLambda();
+                    Observer<Value> resultHandler = new Observer<Value>() {
+
+                        @Override
+                        public void onSubscribe(@NonNull Disposable d)
+                        {
+
+                        }
+
+                        @Override
+                        public void onNext(@NonNull Value value)
+                        {
+                            Value[] inputs = new Value[]{value, Environment.getNull()};
+                            try
+                            {
+                                handlerFunction.setActualParameters(inputs);
+                                handlerFunction.evaluate(env, false);
+
+                            }
+                            catch (Exception e)
+                            {
+                                if (mDefaultBackgroundResultHandler!=null)
+                                {
+                                    mDefaultBackgroundResultHandler.onError(e);
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onError(@NonNull Throwable e)
+                        {
+                            Value[] inputs = new Value[]{Environment.getNull(), NLispTools.makeValue(e.toString())};
+                            try
+                            {
+                                handlerFunction.setActualParameters(inputs);
+                                handlerFunction.evaluate(env, false);
+                            }
+                            catch (Exception e2)
+                            {
+                                if (mDefaultBackgroundResultHandler!=null)
+                                {
+                                    mDefaultBackgroundResultHandler.onError(e2);
+                                }
+                            }
+                        }
+
+                        @Override
+                        public void onComplete()
+                        {
+
+                        }
+                    };
+
+                    ObservableOnSubscribe<Value> worker = new ObservableOnSubscribe<Value>() {
+                        @Override
+                        public void subscribe(@NonNull ObservableEmitter<Value> resultHandler) throws Exception
+                        {
+
+                            try
+                            {
+
+                                playRingtone(ringtone, repeatCount, pauseMilli, maxDurationMilli);
+                                resultHandler.onNext(NLispTools.makeValue(index));
+                            }
+                            catch (Throwable er)
+                            {
+                                resultHandler.onError(er);
+                            }
+                        }
+                    };
+
+                    Observable.create(worker).subscribeOn(Schedulers.computation()).observeOn(AndroidSchedulers.mainThread()).subscribe(resultHandler);
+
+                    return evaluatedArgs[0];
+                }
+                catch (Exception e)
+                {
+                    return Environment.getNull();
+                }
+
 
 
 
@@ -1775,13 +2263,12 @@ public class LispContext implements SpeechListener{
     }
 
 
-
     /**
      * Stops background lisp service
      *
      * @return label of the process that can be used to break the computation in the background
      */
-    private FunctionTemplate stop_background_service()
+    private SimpleFunctionTemplate stop_background_service()
     {
         return new SimpleFunctionTemplate()
         {
@@ -1803,6 +2290,8 @@ public class LispContext implements SpeechListener{
 
         };
     }
+
+
 
     /**
      * First argument is a string label for the background process.

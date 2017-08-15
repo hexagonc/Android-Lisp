@@ -54,10 +54,10 @@ public abstract class Page {
     final String IS_READ_ONLY_KEY;
     final String RESULT_HISTORY_KEY;
 
-    final String TITLE_KEY_PREFIX = "TITLE";
-    final String ID_KEY_PREFIX = "ID";
-    final String IS_READ_ONLY_KEY_PREFIX = "-IS-READ-ONLY";
-    final String RESULT_HISTORY_KEY_PREFIX = "-RESULT-HISTORY";
+    static final String TITLE_KEY_PREFIX = "TITLE";
+    static final String ID_KEY_PREFIX = "ID";
+    static final String IS_READ_ONLY_KEY_PREFIX = "-IS-READ-ONLY";
+    static final String RESULT_HISTORY_KEY_PREFIX = "-RESULT-HISTORY";
 
     final String TYPE_KEY;
     public static final String TYPE_KEY_PREFIX = "-TYPE-KEY";

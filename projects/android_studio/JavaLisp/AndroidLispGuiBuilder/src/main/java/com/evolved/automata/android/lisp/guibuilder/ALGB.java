@@ -1,10 +1,12 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.dropbox.core.util.StringUtil;
 import com.evolved.automata.android.lisp.guibuilder.media.MediaEvaluator;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.android.mindstorms.lisp.NXTLispFunctions;
@@ -14,10 +16,13 @@ import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 import com.evolved.automata.lisp.vision.google.GoogleVisionEvaluator;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -28,6 +33,8 @@ import java.util.Map;
 import io.reactivex.Observer;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
+
+import static com.evolved.automata.android.lisp.guibuilder.Page.SCRIPT_CONTEXT_KEY;
 
 /**
  * Created by Evolved8 on 5/3/17.
@@ -103,7 +110,9 @@ public class ALGB {
         Tools.addAndroidToolFunctions(mTop);
         mTop.mapFunction("println", getPrintln());
         mTop.mapFunction("log", getLog());
-
+        mTop.mapFunction("find-page-by-name", find_page_by_name());
+        mTop.mapFunction("get-page-by-id", find_page_by_id());
+        mTop.mapFunction("get-page-meta-data-by-id", get_page_meta_by_id());
     }
 
 
@@ -112,6 +121,149 @@ public class ALGB {
     public Handler getMainhandler()
     {
         return mMainHandler;
+    }
+
+
+
+    String readPageByKey(String pagekey)
+    {
+        if (mData.hasData(pagekey, SCRIPT_CONTEXT_KEY))
+        {
+            return mData.getData(pagekey, SCRIPT_CONTEXT_KEY);
+        }
+        else
+            return null;
+    }
+
+    String[] getAllPageKeys()
+    {
+        return mData.getAllKeys(Page.SCRIPT_CONTEXT_KEY);
+    }
+
+    HashMap<String, Value> getPageMetaDataByKey(String pageKey)
+    {
+
+        Value data = mBaseLispContext.getEnvironment().simpleEvaluateFunction("get-data-value", pageKey, Page.CONTEXT_KEY);
+        return data.getStringHashtable();
+
+    }
+
+    String readPageByName(String pageName)
+    {
+        for (String key:getAllPageKeys())
+        {
+            HashMap<String, Value> meta = getPageMetaDataByKey(key);
+            Value titleValue = meta.get(key + "-" + Page.TITLE_KEY_PREFIX);
+            if (titleValue != null && titleValue.isString())
+            {
+                String title = titleValue.getString();
+                if (title.equalsIgnoreCase(pageName))
+                    return readPageByKey(key);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds the contents of a code page by its title
+     *
+     * @return
+     */
+    private SimpleFunctionTemplate find_page_by_name()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)find_page_by_name();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                String name = evaluatedArgs[0].getString();
+                String contents = readPageByName(name);
+                if (contents != null)
+                    return NLispTools.makeValue(contents);
+                else
+                    return Environment.getNull();
+
+            }
+
+        };
+    }
+
+
+    /**
+     * Finds the contents of a code page by its id
+     *
+     * @return
+     */
+    private SimpleFunctionTemplate find_page_by_id()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)find_page_by_id();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                String id = evaluatedArgs[0].getString();
+                String contents = readPageByKey(id);
+                if (contents != null)
+                    return NLispTools.makeValue(contents);
+                else
+                    return Environment.getNull();
+
+            }
+
+        };
+    }
+
+    /**
+     * Finds the contents of a code page by its id
+     *
+     * @return
+     */
+    private SimpleFunctionTemplate get_page_meta_by_id()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)get_page_meta_by_id();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs) {
+
+                String id = evaluatedArgs[0].getString();
+                HashMap<String, Value> meta = getPageMetaDataByKey(id);
+                if (meta != null)
+                {
+                    HashMap<String, Value> normalizedMap = new HashMap<String, Value>();
+                    for (String key:meta.keySet())
+                    {
+                        String[] parts = StringUtils.split(key, '-');
+                        normalizedMap.put(parts[1], meta.get(key));
+                    }
+                    return new StringHashtableValue(normalizedMap);
+                }
+                else
+                    return Environment.getNull();
+
+            }
+
+        };
     }
 
 
