@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.views;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 import org.apache.commons.lang3.tuple.Triple;
 
@@ -141,10 +142,7 @@ public class ViewEvaluator  {
 		env.mapFunction("horizontal-radio-group", horizontal_radio_group(env, activity, interpreter));
 		
 		env.mapFunction("vertical-radio-group", vertical_radio_group(env, activity, interpreter));
-		
-		
-		
-		
+
 		env.mapFunction("vertical-layout", vertical_layout(env, activity, interpreter));
 		
 		env.mapFunction("relative", relative(env, activity, interpreter));
@@ -198,6 +196,13 @@ public class ViewEvaluator  {
         env.mapFunction("scroll-to-y", scroll_to_y(env));
         env.mapFunction("scroll-by-x", scroll_by_x(env));
         env.mapFunction("scroll-by-y", scroll_by_y(env));
+
+
+        env.mapFunction("auto-complete-edit", auto_complete(env, activity, interpreter));
+        env.mapFunction("set-option-items", set_option_items(env));
+        env.mapFunction("set-selected-item", set_selected_item(env));
+        env.mapFunction("set-completion-threshold", set_completion_threshold(env));
+        env.mapFunction("set-selection-lambda", set_selection_listener(env));
 	}
 
 	private static int convertPixelsToDP(Context con, int pixels)
@@ -1067,8 +1072,191 @@ public class ViewEvaluator  {
 			
 		};
 	}
-	
-	
+
+
+    public static ViewFunctionTemplate auto_complete(final Environment env, final Context con, final AndroidLispInterpreter interpreter)
+    {
+        return new ViewFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)auto_complete(env, con, interpreter);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+                HashMap<String, Value> keys = kv.GetValue();
+
+
+                Value text = NLispTools.makeValue("");
+                text = evaluatedArgs[0];
+                Value optionValueList = evaluatedArgs[1];
+                LinkedList<String> optionList = new LinkedList<String>();
+                if (optionValueList != null && optionValueList.isList())
+                {
+                    Value optionValue = null;
+                    Value[] list = optionValueList.getList();
+                    for (int i = 0; i < list.length;i++)
+                    {
+                        optionValue = list[i];
+                        if (optionValue.isString())
+                        {
+                            optionList.add(optionValue.getString());
+                        }
+                        else
+                        {
+                            optionList.add(optionValue.toString());
+                        }
+                    }
+                }
+
+                AutoCompleteTextViewProxy proxy = new AutoCompleteTextViewProxy(con, keys, text.getString(), optionList.toArray(new String[0]));
+                proxy.setLispInterpreter(env, interpreter);
+
+                return ExtendedFunctions.makeValue(proxy);
+            }
+
+        };
+    }
+
+    public static ViewFunctionTemplate set_selection_listener(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)set_selection_listener(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+                AutoCompleteTextViewProxy proxy = (AutoCompleteTextViewProxy)evaluatedArgs[0].getObjectValue();
+
+                Value listenerLambda = evaluatedArgs[1];
+
+                proxy.setOnSelectionChangedListener(listenerLambda );
+
+                return ExtendedFunctions.makeValue(proxy);
+            }
+
+        };
+    }
+
+
+    public static ViewFunctionTemplate set_completion_threshold(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)set_completion_threshold(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+                AutoCompleteTextViewProxy proxy = (AutoCompleteTextViewProxy)evaluatedArgs[0].getObjectValue();
+
+                Value completionThreshold = evaluatedArgs[1];
+
+                proxy.setCompletionThreshold( (int)completionThreshold.getIntValue());
+
+                return ExtendedFunctions.makeValue(proxy);
+            }
+
+        };
+    }
+
+
+    public static ViewFunctionTemplate set_selected_item(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)set_selected_item(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+                AutoCompleteTextViewProxy proxy = (AutoCompleteTextViewProxy)evaluatedArgs[0].getObjectValue();
+
+                Value selectedOption = evaluatedArgs[1];
+
+                proxy.setSelection( (int)selectedOption.getIntValue());
+
+                return ExtendedFunctions.makeValue(proxy);
+            }
+
+        };
+    }
+
+    public static ViewFunctionTemplate set_option_items(final Environment env)
+    {
+        return new ViewFunctionTemplate()
+        {
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)set_option_items(env);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+                AutoCompleteTextViewProxy proxy = (AutoCompleteTextViewProxy)evaluatedArgs[0].getObjectValue();
+                LinkedList<String> optionList = new LinkedList<String>();
+
+                Value[] optionListValue = evaluatedArgs[1].getList();
+
+                Value optionValue = null;
+                for (int i = 0; i < optionListValue.length;i++)
+                {
+                    optionValue = optionListValue[i];
+                    if (optionValue.isString())
+                    {
+                        optionList.add(optionValue.getString());
+                    }
+                    else
+                    {
+                        optionList.add(optionValue.toString());
+                    }
+                }
+
+                proxy.updateOptionList(optionList.toArray(new String[0]));
+
+                return ExtendedFunctions.makeValue(proxy);
+            }
+
+        };
+    }
+
 	public static ViewFunctionTemplate edit(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
 		return new ViewFunctionTemplate()

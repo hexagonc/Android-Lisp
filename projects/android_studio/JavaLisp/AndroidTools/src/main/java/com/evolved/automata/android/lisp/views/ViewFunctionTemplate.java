@@ -19,6 +19,7 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 					add(ViewEvaluator.ON_POSITIVE_BUTTON_CLICK_KEY);
 					add(ViewEvaluator.ON_CANCEL_BUTTON_CLICK_KEY);
                     add(ViewProxy.ON_FOCUS_CHANGED);
+                    add(AutoCompleteTextViewProxy._ON_SELECTION_CHANGED);
 				}
 			};
 			
