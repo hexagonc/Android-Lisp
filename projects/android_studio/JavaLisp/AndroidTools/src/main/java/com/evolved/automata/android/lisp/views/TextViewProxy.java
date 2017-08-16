@@ -319,6 +319,8 @@ public class TextViewProxy extends ViewProxy
 	{
 		TextView tv = new TextView(context);
 		tv.setText(text);
+        tv.setHorizontallyScrolling(true);
+        tv.setTextIsSelectable(true);
 		processKeywords(_keys, tv);
 		return tv;
 	}
