@@ -961,6 +961,37 @@ public class LispContext implements SpeechListener{
     }
 
 
+    public void evaluateExpression(Value preCompiledValue, final String requestId, final Observer<Value> resultListener, Environment runtimeEnvironment)
+    {
+
+        final Request r = new Request();
+        r.expr = null;
+        r.precompiledExpr = preCompiledValue;
+        r.result = null;
+        r.rListener = resultListener;
+        r.evaluationEnv = runtimeEnvironment;
+
+        Observable<Value> out = Observable.create(new ObservableOnSubscribe<Value>() {
+            @Override
+            public void subscribe(@NonNull ObservableEmitter<Value> subscriber) throws Exception
+            {
+                synchronized (mSynch)
+                {
+                    if (mRequestMap.size() == 0)
+                    {
+                        mRequestMap.put(requestId, r);
+                        startWorkerThread();
+                    }
+                    else
+                        mRequestMap.put(requestId, r);
+                }
+
+            }
+        }).observeOn(AndroidSchedulers.mainThread());
+        out.subscribe();
+    }
+
+
     public void evaluateExpression(Value preCompiledValue,  Observer<Value> resultListener)
     {
         evaluateExpression(preCompiledValue, UUID.randomUUID().toString(), resultListener);
@@ -1904,7 +1935,7 @@ public class LispContext implements SpeechListener{
                             actualArguments[i - 2] = _actualParameters[i];
                         Value raw = Environment.wrapValuesInProgn(actualArguments);
 
-                        evaluateExpression(raw, tagName, resultHandler);
+                        evaluateExpression(raw, tagName, resultHandler, env);
                     }
                     else
                     {
@@ -1915,9 +1946,9 @@ public class LispContext implements SpeechListener{
                         Value raw = Environment.wrapValuesInProgn(actualArguments);
 
                         if (mDefaultBackgroundResultHandler != null)
-                            evaluateExpression(raw, tagName, mDefaultBackgroundResultHandler);
+                            evaluateExpression(raw, tagName, mDefaultBackgroundResultHandler, env);
                         else
-                            evaluateExpression(raw, tagName, null);
+                            evaluateExpression(raw, tagName, null, env);
                     }
                     return _actualParameters[0];
                 }
