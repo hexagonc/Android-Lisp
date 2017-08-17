@@ -36,7 +36,7 @@ public class TextViewProxy extends ViewProxy
 
     public enum BOOLEAN_KEY
     {
-        SINGLE_LINE(":singleline"), EDITABLE(":editable");
+        SINGLE_LINE(":singleline"), EDITABLE(":editable"), SELECTABLE(":textIsSelectable"), SCROLLS_HORIZONTALLY(":scrollHorizontally");
         String key;
         BOOLEAN_KEY(String keyname)
         {
@@ -156,6 +156,12 @@ public class TextViewProxy extends ViewProxy
                             tview.setOnTouchListener(null);
                         }
 
+                        break;
+                    case SCROLLS_HORIZONTALLY:
+                        tview.setHorizontallyScrolling(bvalue);
+                        break;
+                    case SELECTABLE:
+                        tview.setTextIsSelectable(bvalue);
                         break;
                 }
             }
@@ -319,8 +325,6 @@ public class TextViewProxy extends ViewProxy
 	{
 		TextView tv = new TextView(context);
 		tv.setText(text);
-        tv.setHorizontallyScrolling(true);
-        tv.setTextIsSelectable(true);
 		processKeywords(_keys, tv);
 		return tv;
 	}
