@@ -35,6 +35,17 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+		<activity android:name="com.dropbox.core.android.AuthActivity"
+				  android:screenOrientation="portrait"
+                  android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="@string/manifest_key"/>
+            </intent-filter>
+
+		</activity>
         <activity android:name = '.GuiBuilderSettings'></activity>
         <service android:name = 'com.evolved.automata.android.mindstorms.NXTBluetoothService'></service>
 		<service android:name=".BackgroundLispService"/>

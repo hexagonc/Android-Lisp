@@ -9,6 +9,7 @@ import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.os.Bundle;
 
@@ -21,6 +22,14 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Toast;
+
+import com.dropbox.core.DbxRequestConfig;
+import com.dropbox.core.android.Auth;
+import com.dropbox.core.android.AuthActivity;
+import com.dropbox.core.v2.DbxClientV2;
+import com.evolved.automata.android.AndroidTools;
+import com.evolved.automata.events.EventManager;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -138,6 +147,30 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     protected void onResume()
     {
         super.onResume();
+
+        String token = AndroidTools.getStringPreferenceSetting(DROPBOX_ACCESS_TOKEN_KEY, null);
+
+        if (token == null)
+        {
+            token = Auth.getOAuth2Token();
+            AndroidTools.setStringPreferenceSetting(DROPBOX_ACCESS_TOKEN_KEY, token);
+            String uId = Auth.getUid();
+        }
+
+        if (token != null)
+        {
+            DbxRequestConfig.Builder builder = DbxRequestConfig.newBuilder("AndroidLispGUIBuilder");
+            DbxRequestConfig config = builder.build();
+
+            AndroidTools.setStringPreferenceSetting(DROPBOX_ACCESS_TOKEN_KEY, token);
+            DbxClientV2 client = new DbxClientV2(config, token);
+            Tools.postEvent(new DropboxManager.LoginEvent(client));
+        }
+        else
+        {
+            EventLog.get().logSystemInfo("Not logged into Dropbox");
+        }
+
     }
 
     @Override
@@ -203,17 +236,38 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         return true;
     }
 
+    static final int DROBOX_AUTHENTICATION = 312456;
+
+    static final String DROPBOX_ACCESS_TOKEN_KEY = "DROPBOX-ACCESS-TOKEN";
+    private void startDropboxAuthentication()
+    {
+
+        String accessToken = Auth.getOAuth2Token();
+        if (accessToken == null)
+        {
+            Auth.startOAuth2Authentication(this, getResources().getString(R.string.enc_dropbox_app_key));
+        }
+        else
+        {
+            Toast.makeText(this, "Retrieved Dropbox", Toast.LENGTH_LONG).show();
+        }
+
+    }
+
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item)
     {
 
-        if (item.getItemId() == R.id.v2_menu_post_test_login)
-        {
-            Tools.postEvent(new DropboxManager.LoginEvent(DropboxManager.get().getTestClient()));
-            return true;
-        }
-        else if (item.getItemId() == R.id.v2_menu_workspace_management)
+
+//        if (item.getItemId() == R.id.v2_menu_post_test_login)
+//        {
+//
+//            Tools.postEvent(new DropboxManager.LoginEvent(DropboxManager.get().getTestClient()));
+//            return true;
+//        }
+//        else
+        if (item.getItemId() == R.id.v2_menu_workspace_management)
         {
             showWorkspaceManager();
             return true;
@@ -221,8 +275,12 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         }else if (item.getItemId() == R.id.v2_menu_send_test_status_event)
         {
             Tools.postEvent(new NewErrorLogEntriesEvent());
-            //Tools.postEvent(new NewBackgroundResultEvent());
-            //Tools.postEvent(new NewInfoLogEntriesEvent());
+            return true;
+        }
+        else if (item.getItemId() == R.id.v2_start_dropbox_authentication)
+        {
+
+            startDropboxAuthentication();
             return true;
         }
         else

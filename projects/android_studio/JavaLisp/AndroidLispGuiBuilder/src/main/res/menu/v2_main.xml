@@ -19,10 +19,15 @@
           android:title = "Manage Workspaces"
           android:showAsAction="never"/>
 
+    <!--
     <item android:id = "@+id/v2_menu_post_test_login"
           android:title = "Test Dropbox Login"
           android:showAsAction="never"/>
+          -->
     <item android:id = "@+id/v2_menu_send_test_status_event"
         android:title = "Show info alert"
         android:showAsAction="never"/>
+    <item android:id = "@+id/v2_start_dropbox_authentication"
+          android:title = "Log into Dropbox"
+          android:showAsAction="never"/>
 </menu>

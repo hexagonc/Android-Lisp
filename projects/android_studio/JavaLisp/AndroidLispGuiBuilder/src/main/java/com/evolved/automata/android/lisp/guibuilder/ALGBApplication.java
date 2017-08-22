@@ -7,13 +7,14 @@ import com.evolved.automata.android.DeviceInfo;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 
 import android.app.Application;
+import android.content.SharedPreferences;
 
 public class ALGBApplication extends Application
 {
 
 
 	ALGB mApplication= null;
-	
+	static final String _USER_ACCESS_TOKEN_PREF_KEY = "ACCESS-TOKEN-PREF-KEY";
 	
 	@Override
 	public void onCreate() {
@@ -36,8 +37,17 @@ public class ALGBApplication extends Application
 		{
 			throw new RuntimeException(e);
 		}
-		
-		
+
+	}
+
+	public static String getAccessToken()
+	{
+		return AndroidTools.getStringPreferenceSetting(_USER_ACCESS_TOKEN_PREF_KEY, null);
+	}
+
+	public static void saveAccessToken(String token)
+	{
+		AndroidTools.setStringPreferenceSetting(_USER_ACCESS_TOKEN_PREF_KEY, token);
 	}
 	
 

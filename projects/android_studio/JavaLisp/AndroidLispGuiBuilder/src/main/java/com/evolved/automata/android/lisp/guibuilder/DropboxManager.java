@@ -10,18 +10,30 @@ import android.util.Log;
 import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
-import com.dropbox.core.DbxWebAuth;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.DbxUserFilesRequests;
 import com.dropbox.core.v2.files.FileMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
+import com.dropbox.core.v2.files.UploadBuilder;
+import com.dropbox.core.v2.files.UploadUploader;
+import com.dropbox.core.v2.files.WriteMode;
+import com.evolved.automata.android.lisp.AndroidLispInterpreter;
+import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.Lambda;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.SimpleFunctionTemplate;
+import com.evolved.automata.lisp.Value;
 
 import org.greenrobot.eventbus.Subscribe;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.lang.ref.WeakReference;
+import java.nio.charset.Charset;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -38,6 +50,7 @@ import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
 import static com.evolved.automata.android.lisp.guibuilder.DropboxManager.DROPBOX_RESPONSE_TYPE.DOWNLOAD_TEXT_FILE;
+import static com.evolved.automata.android.lisp.guibuilder.DropboxManager.DROPBOX_RESPONSE_TYPE.UPLOAD_FILE;
 
 /**
  * Created by Evolved8 on 5/11/17.
@@ -49,7 +62,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
 
     public enum DROPBOX_RESPONSE_TYPE
     {
-        GET_FILE_DIALOG, GET_FOLDER_CHILDREN, UPLOAD_FILE, DOWNLOAD_TEXT_FILE
+        SHOW_FILE_DOWNLOAD_DIALOG, GET_FOLDER_CHILDREN, UPLOAD_FILE, DOWNLOAD_TEXT_FILE
     }
 
     public static abstract class DropboxResponse
@@ -68,7 +81,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
 
         public FileDialogResponse(FileChooserDialog dialog)
         {
-            _type = DROPBOX_RESPONSE_TYPE.GET_FILE_DIALOG;
+            _type = DROPBOX_RESPONSE_TYPE.SHOW_FILE_DOWNLOAD_DIALOG;
             mDialog = dialog;
         }
 
@@ -92,6 +105,23 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
         public String getContents()
         {
             return mFileContents;
+        }
+    }
+
+
+    public static class UploadTextResponse extends DropboxResponse
+    {
+        String mTargetFileName;
+
+        public UploadTextResponse(String filename)
+        {
+            _type = UPLOAD_FILE;
+            mTargetFileName = filename;
+        }
+
+        public String getTargetFilename()
+        {
+            return mTargetFileName;
         }
     }
 
@@ -157,8 +187,12 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
         Disposable downloadFile(String filePath, Observer<DropboxResponse> responseObserver);
         Disposable setEventWatcher(Observer<DropboxEvent> eventObserver);
         Metadata getMetaData(String name) throws DbxException, DropboxException;
-
+        Disposable uploadTextFile(String filePath, String contents, boolean overwriteIfExists, Observer<DropboxResponse> responseObserver);
     }
+
+
+
+
 
 
     private static DropboxManager mManager;
@@ -185,6 +219,406 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
 
         Tools.registerEventHandler(this);
 
+    }
+
+    public void addDropboxLispFunctions(Environment env, Activity activity, LispContext lisp)
+    {
+
+        env.mapFunction("show-dropbox-download-dialog", showDropboxDownloadDialog(new WeakReference<Activity>(activity), lisp));
+        env.mapFunction("download-dropbox-file", downloadDropboxFile(lisp));
+        env.mapFunction("upload-dropbox-file", uploadDropboxFile(lisp));
+        env.mapFunction("show-dropbox-file-chooser", showDropboxFileChooserDialog(new WeakReference<Activity>(activity), lisp));
+    }
+
+    public SimpleFunctionTemplate uploadDropboxFile(final LispContext lisp)
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)uploadDropboxFile(lisp);
+            }
+
+            @Override
+            public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(4, false, false);
+
+                final String fileName = evaluatedArgs[0].getString();
+                final String textContents = evaluatedArgs[1].getString();
+                boolean overwriteIfExists = !evaluatedArgs[2].isNull();
+                Value onResultLambda = evaluatedArgs[3];
+                final Lambda lambda = (Lambda) onResultLambda.getLambda();
+
+
+                Observer<DropboxResponse> uploadHandler = new Observer<DropboxResponse>()
+                {
+
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull DropboxResponse dropboxResponse)
+                    {
+                        UploadTextResponse uploadResult = (UploadTextResponse)dropboxResponse;
+                        String targetFilename = uploadResult.getTargetFilename();
+                        Value[] args = new Value[]{NLispTools.makeValue(targetFilename)};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e)
+                    {
+                        Value[] args = new Value[]{Environment.getNull(), NLispTools.makeValue(e.toString())};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                };
+
+                if (mClient == null)
+                {
+                    Value[] args = new Value[]{Environment.getNull(), NLispTools.makeValue("Can't access dropbox until user logs in")};
+                    try
+                    {
+                        lambda.setActualParameters(args);
+                        lambda.evaluate(env, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        EventLog.get().logSystemError(ex, "Error evaluating dropbox upload error handler");
+                    }
+                    return Environment.getNull();
+                }
+                else
+                {
+                    getController().uploadTextFile(fileName, textContents, overwriteIfExists,uploadHandler);
+                    return evaluatedArgs[0];
+                }
+
+            }
+        };
+    }
+
+
+    public SimpleFunctionTemplate downloadDropboxFile(final LispContext lisp)
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)downloadDropboxFile(lisp);
+            }
+
+            @Override
+            public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+
+                final String fileName = evaluatedArgs[0].getString();
+                Value onResultLambda = evaluatedArgs[1];
+                final Lambda lambda = (Lambda) onResultLambda.getLambda();
+
+
+                Observer<DropboxResponse> downloadHandler = new Observer<DropboxResponse>()
+                {
+
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull DropboxResponse dropboxResponse)
+                    {
+                        DownloadTextResponse downloadResult = (DownloadTextResponse)dropboxResponse;
+                        String contents = downloadResult.getContents();
+                        Value[] args = new Value[]{NLispTools.makeValue(contents), NLispTools.makeValue(fileName)};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e)
+                    {
+                        Value[] args = new Value[]{Environment.getNull(), Environment.getNull(), NLispTools.makeValue(e.toString())};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                };
+
+                if (mClient == null)
+                {
+                    Value[] args = new Value[]{Environment.getNull(), Environment.getNull(), NLispTools.makeValue("Can't access dropbox until user logs in")};
+                    try
+                    {
+                        lambda.setActualParameters(args);
+                        lambda.evaluate(env, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        EventLog.get().logSystemError(ex, "Error evaluating dropbox download error handler");
+                    }
+                    return Environment.getNull();
+                }
+                else
+                {
+                    getController().downloadFile(fileName, downloadHandler);
+                    return evaluatedArgs[0];
+                }
+
+            }
+        };
+    }
+
+
+
+    public SimpleFunctionTemplate showDropboxFileChooserDialog(final WeakReference<Activity> activityRef, final LispContext lisp)
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) showDropboxFileChooserDialog(activityRef, lisp);
+            }
+
+            @Override
+            public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(2, true, true);
+
+                String basePath = evaluatedArgs[0].getString();
+                Value onResultLambda = evaluatedArgs[1];
+                final Lambda lambda = (Lambda) onResultLambda.getLambda();
+
+
+                DropboxChooserItem.FileItemSelectHandler fileSelectedHandler = new DropboxChooserItem.FileItemSelectHandler() {
+                    @Override
+                    public void onSelected(final String filename)
+                    {
+                        Value[] args = new Value[]{NLispTools.makeValue(filename)};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+                    }
+                };
+
+                Observer<DropboxResponse> dialogResponseObserver = new Observer<DropboxResponse>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull DropboxResponse dropboxResponse)
+                    {
+                        FileDialogResponse dialogResponse = (FileDialogResponse)dropboxResponse;
+                        FileChooserDialog chooserDialog = dialogResponse.getDialog();
+                        chooserDialog.show();
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e)
+                    {
+                        Value[] args = new Value[]{Environment.getNull(), NLispTools.makeValue(e.toString())};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                };
+
+                Activity activity = activityRef.get();
+                if (mClient == null)
+                {
+                    Value[] args = new Value[]{Environment.getNull(), NLispTools.makeValue("Can't access dropbox until user logs in")};
+                    try
+                    {
+                        lambda.setActualParameters(args);
+                        lambda.evaluate(env, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        EventLog.get().logSystemError(ex, "Error evaluating dropbox file dialog error handler");
+                    }
+                    return Environment.getNull();
+                }
+
+                if (activity != null)
+                {
+                    getController().getFileDialog(activity, "Select File to Download", basePath, fileSelectedHandler, dialogResponseObserver);
+                    return evaluatedArgs[0];
+                }
+                else
+                {
+
+
+                    EventLog.get().logSystemError("Can't display dropbox dialog with invalid Activity context");
+                    return Environment.getNull();
+                }
+
+
+            }
+        };
+    }
+
+    public SimpleFunctionTemplate showDropboxDownloadDialog(final WeakReference<Activity> activityRef, final LispContext lisp)
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) showDropboxDownloadDialog(activityRef, lisp);
+            }
+
+            @Override
+            public Value evaluate(final Environment env, Value[] evaluatedArgs) {
+                checkActualArguments(2, true, true);
+
+                String basePath = evaluatedArgs[0].getString();
+                 Value onResultLambda = evaluatedArgs[1];
+                final Lambda lambda = (Lambda) onResultLambda.getLambda();
+
+
+                DropboxChooserItem.FileItemSelectHandler fileSelectedHandler = new DropboxChooserItem.FileItemSelectHandler() {
+                    @Override
+                    public void onSelected(final String filename)
+                    {
+                        Observer<DropboxResponse> downloadResponse = new Observer<DropboxResponse>()
+                        {
+
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d)
+                            {
+
+                            }
+
+                            @Override
+                            public void onNext(@NonNull DropboxResponse dropboxResponse)
+                            {
+                                DownloadTextResponse downloadResult = (DownloadTextResponse)dropboxResponse;
+                                String contents = downloadResult.getContents();
+                                Value[] args = new Value[]{NLispTools.makeValue(contents), NLispTools.makeValue(filename)};
+                                lambda.setActualParameters(args);
+                                AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                                interpreter.evaluateFunction(lambda, env);
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e)
+                            {
+                                Value[] args = new Value[]{Environment.getNull(), Environment.getNull(), NLispTools.makeValue(e.toString())};
+                                lambda.setActualParameters(args);
+                                AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                                interpreter.evaluateFunction(lambda, env);
+                            }
+
+                            @Override
+                            public void onComplete()
+                            {
+
+                            }
+                        };
+
+                        getController().downloadFile(filename, downloadResponse);
+                    }
+                };
+
+                Observer<DropboxResponse> dialogResponseObserver = new Observer<DropboxResponse>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull DropboxResponse dropboxResponse)
+                    {
+                        FileDialogResponse dialogResponse = (FileDialogResponse)dropboxResponse;
+                        FileChooserDialog chooserDialog = dialogResponse.getDialog();
+                        chooserDialog.show();
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e)
+                    {
+                        Value[] args = new Value[]{Environment.getNull(), Environment.getNull(), NLispTools.makeValue(e.toString())};
+                        lambda.setActualParameters(args);
+                        AndroidLispInterpreter interpreter = lisp.getForegroundInterpreter();
+                        interpreter.evaluateFunction(lambda, env);
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+
+                    }
+                };
+
+                Activity activity = activityRef.get();
+                if (mClient == null)
+                {
+                    Value[] args = new Value[]{Environment.getNull(), Environment.getNull(), NLispTools.makeValue("Can't access dropbox until user logs in")};
+                    try
+                    {
+                        lambda.setActualParameters(args);
+                        lambda.evaluate(env, false);
+                    }
+                    catch (Exception ex)
+                    {
+                        EventLog.get().logSystemError(ex, "Error evaluating dropbox download error handler");
+                    }
+                    return Environment.getNull();
+                }
+
+                if (activity != null)
+                {
+                    getController().getFileDialog(activity, "Select File to Download", basePath, fileSelectedHandler, dialogResponseObserver);
+                    return evaluatedArgs[0];
+                }
+                else
+                {
+
+
+                    EventLog.get().logSystemError("Can't display dropbox dialog with invalid Activity context");
+                    return Environment.getNull();
+                }
+
+
+            }
+        };
     }
 
     public static DropboxManager create(Context con)
@@ -467,6 +901,91 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
             }
 
             @Override
+            public Disposable uploadTextFile(final String filePath, final String contents, final boolean overwriteIfExists, final Observer<DropboxResponse> responseObserver)
+            {
+                Consumer<DropboxResponse> onResponse = new Consumer<DropboxResponse>() {
+                    @Override
+                    public void accept(@NonNull DropboxResponse dropboxResponse) throws Exception
+                    {
+                        responseObserver.onNext(dropboxResponse);
+                    }
+                };
+
+                Consumer<Throwable> onError = new Consumer<Throwable>() {
+                    @Override
+                    public void accept(@NonNull Throwable throwable) throws Exception
+                    {
+                        responseObserver.onError(throwable);
+                    }
+                };
+
+
+                Action onComplete = new Action()
+                {
+                    public void run()
+                    {
+                        responseObserver.onComplete();
+                    }
+
+                };
+
+
+
+                Observable<DropboxResponse> observable = Observable.create(new ObservableOnSubscribe<DropboxResponse>() {
+                    @Override
+                    public void subscribe(@NonNull ObservableEmitter<DropboxResponse> subscriber) throws Exception
+                    {
+                        if (mClient == null)
+                        {
+                            subscriber.onError(new DropboxException("Cannot upload file if not logged in", DropboxException.EXCEPTION_TYPE.NOT_LOGGED_IN));
+                        }
+                        else
+                        {
+
+                            DbxUserFilesRequests request = mClient.files();
+                            UploadUploader uploader = null;
+                            OutputStream os = null;
+                            try
+                            {
+                                UploadBuilder builder = request.uploadBuilder(filePath);
+                                if (overwriteIfExists)
+                                    builder.withMode(WriteMode.OVERWRITE);
+                                uploader = builder.start();
+                                os = uploader.getOutputStream();
+
+                                byte[] data = contents.getBytes(Charset.forName("utf-8"));
+
+                                os.write(data);
+                                uploader.finish();
+                                subscriber.onNext(new UploadTextResponse(contents));
+
+                            }
+                            catch (DbxException de)
+                            {
+                                subscriber.onError(de);
+                            }
+                            finally
+                            {
+                                try
+                                {
+
+                                    if (uploader != null)
+                                        uploader.close();
+                                }
+                                catch (Exception io)
+                                {
+
+                                }
+                            }
+
+                        }
+                    }
+                });
+
+                return observable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(onResponse, onError, onComplete);
+            }
+
+            @Override
             public Disposable downloadFile(final String filePath, final Observer<DropboxResponse> responseObserver)
             {
                 Consumer<DropboxResponse> onResponse = new Consumer<DropboxResponse>() {
@@ -524,7 +1043,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
                                 {
                                     sbuilder.appendCodePoint(data);
                                 }
-
+                                downloader.close();
                                 subscriber.onNext(new DownloadTextResponse(sbuilder.toString()));
 
                             }
