@@ -31,8 +31,11 @@ public class TextViewProxy extends ViewProxy
 	public static final String FONT_FACE = ":typeface"; // "normal" | "sans" | "serif" | "monospaced"
 	public static final String TEXT_ALIGNMENT = ":text-align"; // string combination of "top" or "left" or "right" or "bottom" or "center" joined buy pipe '|' character if necessary
 	public static final String TEXT_COLOR = ":text-color"; // raw color decimal number | android string color spec, such as #000 or @android:color/white
+    public static final String NUM_LINES = ":lines"; // number of lines for the textview
 
 
+
+    int numLines = -1;
 
     public enum BOOLEAN_KEY
     {
@@ -110,7 +113,18 @@ public class TextViewProxy extends ViewProxy
 		processTextAlignment(keys, tview);
 		processTextColor(keys, tview);
         processBooleanKeys(keys, tview);
+        processNumLine(keys, tview);
 	}
+
+	protected void processNumLine(HashMap<String, Value> keys, TextView tview)
+    {
+        Value numLinesValues = keys.get(NUM_LINES);
+        if (numLinesValues != null && NLispTools.isNumericType(numLinesValues))
+        {
+            numLines = (int)numLinesValues.getIntValue();
+            tview.setLines(numLines);
+        }
+    }
 
     protected void processBooleanKeys(HashMap<String, Value> keys, TextView tview)
     {
