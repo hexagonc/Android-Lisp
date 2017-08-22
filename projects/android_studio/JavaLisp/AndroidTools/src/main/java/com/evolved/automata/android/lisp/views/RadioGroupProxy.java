@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 
 import android.content.Context;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
@@ -39,7 +40,11 @@ public class RadioGroupProxy extends LinearLayoutViewProxy
 				}
 				
 			};
-					
+			View actual = null; ;
+			if (encapsulated != null && ((actual = encapsulated.get()) != null))
+			{
+				((RadioGroup)actual).setOnCheckedChangeListener(_changeListener);
+			}
 		}
 	}
 	
@@ -50,7 +55,8 @@ public class RadioGroupProxy extends LinearLayoutViewProxy
 		processChildAlignment(_keys);
 		layout.setOrientation(orientation);
 		layout.setGravity(gravity);
-		
+		if (_changeListener != null)
+			layout.setOnCheckedChangeListener(_changeListener);
 		return layout;
 	}
 	
