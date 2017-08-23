@@ -312,6 +312,13 @@ public class LispContext implements SpeechListener{
         resetEnvironment();
     }
 
+    public void updateActivity(Activity activity)
+    {
+        mActivity = activity;
+        setActivityFunctions();
+    }
+
+
     public void breakEvaluation()
     {
         synchronized (mSynch)
@@ -1210,13 +1217,22 @@ public class LispContext implements SpeechListener{
 
         if (mActivity != null)
         {
-            ViewEvaluator.bindFunctions(mEnv, mActivity, getForegroundInterpreter());
+            setActivityFunctions();
         }
 
         if (mPage != null)
             addPageFunctions();
         addProcessingFunctions();
     }
+
+    private void setActivityFunctions()
+    {
+        ViewEvaluator.bindFunctions(mEnv, mActivity, getForegroundInterpreter());
+        DropboxManager.get().addDropboxLispFunctions(mEnv, mActivity, this);
+    }
+
+
+
 
     private void addGlobalOnlyFunctions()
     {

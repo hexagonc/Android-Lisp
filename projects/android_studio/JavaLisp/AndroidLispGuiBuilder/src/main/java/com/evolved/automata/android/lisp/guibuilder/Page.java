@@ -137,6 +137,11 @@ public abstract class Page {
         return mTempUIContext;
     }
 
+    public void updateActivity(Activity activity)
+    {
+        mTempUIContext.updateActivity(activity);
+    }
+
     public LispContext getUILispContext()
     {
         return mTempUIContext;

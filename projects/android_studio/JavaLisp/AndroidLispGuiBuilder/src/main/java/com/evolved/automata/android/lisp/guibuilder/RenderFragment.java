@@ -1,5 +1,6 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.os.Bundle;
 
@@ -87,6 +88,9 @@ public class RenderFragment extends Fragment {
     public void onResume()
     {
         super.onResume();
+        Activity a = getActivity();
+        if (mPage != null && a != null)
+            mPage.updateActivity(a);
         Log.i("-+*+--+*+--+*+-", "RenderFragment onREsume");
     }
 

@@ -969,6 +969,7 @@ public abstract class ViewProxy
 	public View createView(ViewGroup parent)
 	{
 		View base = createBaseView();
+		base.setId(id);
 		encapsulated = new WeakReference<View>(base);
 		base.setEnabled(_enabledP);
 		ViewGroup.LayoutParams params = null;
@@ -995,7 +996,7 @@ public abstract class ViewProxy
 	{
 		View base = createBaseView();
 		encapsulated = new WeakReference<View>(base);
-		
+		base.setId(id);
 		ViewGroup.LayoutParams params = topParams;
 		if (parent instanceof LinearLayout)
 		{
@@ -1205,6 +1206,12 @@ public abstract class ViewProxy
 	public void setId(int id)
     {
         this.id = id;
+
+		View actual;
+		if (encapsulated != null && ((actual = encapsulated.get()) != null))
+		{
+			actual.setId(id);
+		}
     }
 
 

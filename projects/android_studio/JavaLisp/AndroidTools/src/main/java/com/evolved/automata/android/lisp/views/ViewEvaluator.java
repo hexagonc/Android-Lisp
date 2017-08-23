@@ -99,8 +99,6 @@ public class ViewEvaluator  {
 			_imageConfiguredP = true;
 		}
 		
-
-		
 		env.mapFunction("show-view", show_view(env, activity, interpreter));
 		
 		env.mapFunction("hide-view", hide_view(env, activity, interpreter));
@@ -172,6 +170,8 @@ public class ViewEvaluator  {
 		env.mapFunction("dismiss-dialog", dismiss_dialog(env, activity, interpreter));
 		
 		env.mapFunction("get-id", get_id(env, activity, interpreter));
+
+		env.mapFunction("set-id", set_id());
 		
 		env.mapFunction("log", log(env, activity, interpreter));
 		
@@ -611,7 +611,31 @@ public class ViewEvaluator  {
 		};
 	}
 
+	public static ViewFunctionTemplate set_id()
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)set_id();
+			}
 
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = kv.GetKey();
+
+				Value proxyArg = evaluatedArgs[0];
+				int id = (int)evaluatedArgs[1].getIntValue();
+				final ViewProxy vp = (ViewProxy)proxyArg.getObjectValue();
+				vp.setId(id);
+				return proxyArg;
+			}
+
+		};
+	}
 
 
 	
