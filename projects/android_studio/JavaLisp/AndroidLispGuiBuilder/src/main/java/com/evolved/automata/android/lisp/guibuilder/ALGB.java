@@ -104,7 +104,6 @@ public class ALGB {
 
         SpeechLispFunctions.addSpeechFunctions(mTop);
         NeuralNetLispInterface.addNeuralNetFunctions(mTop);
-        NAOLispEvaluator.addFunctions(mTop);
         GoogleVisionEvaluator.addVisionFunctions(mTop);
         MediaEvaluator.addVisionFunctions(mTop);
         Tools.addAndroidToolFunctions(mTop);
