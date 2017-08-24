@@ -203,6 +203,8 @@ public class ViewEvaluator  {
         env.mapFunction("set-selected-item", set_selected_item(env));
         env.mapFunction("set-completion-threshold", set_completion_threshold(env));
         env.mapFunction("set-selection-lambda", set_selection_listener(env));
+
+        env.mapFunction("listview", listview(env, activity, interpreter));
 	}
 
 	private static int convertPixelsToDP(Context con, int pixels)
@@ -1310,7 +1312,51 @@ public class ViewEvaluator  {
 			
 		};
 	}
-	
+
+    public static ViewFunctionTemplate listview(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
+    {
+        return new ViewFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)listview(env, con, interpreter);
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] args) {
+                KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+                Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+                HashMap<String, Value> keys = kv.GetValue();
+
+                ArrayList<ViewProxy> items = new ArrayList<ViewProxy>();
+
+                for (Value input:evaluatedArgs)
+                {
+                    if (input.isUserObject() && input.getObjectValue() instanceof ViewProxy)
+                    {
+                        items.add((ViewProxy)input.getObjectValue());
+                    }
+                    else if (input.isList())
+                    {
+                        for (Value sub:input.getList())
+                        {
+                            if (sub.isUserObject() && sub.getObjectValue() instanceof ViewProxy)
+                            {
+                                items.add((ViewProxy)sub.getObjectValue());
+                            }
+                        }
+                    }
+                }
+                ListViewProxy proxy = new ListViewProxy(con, keys, items);
+                proxy.setLispInterpreter(env, interpreter);
+                return ExtendedFunctions.makeValue(proxy);
+            }
+
+        };
+    }
+
 	public static ViewFunctionTemplate vertical_layout(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
 		return new ViewFunctionTemplate()

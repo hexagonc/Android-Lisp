@@ -20,6 +20,9 @@ public abstract class ViewFunctionTemplate extends FunctionTemplate
 					add(ViewEvaluator.ON_CANCEL_BUTTON_CLICK_KEY);
                     add(ViewProxy.ON_FOCUS_CHANGED);
                     add(AutoCompleteTextViewProxy._ON_SELECTION_CHANGED);
+					add(ListViewProxy._ON_ITEM_CLICK_LISTENER);
+                    add(ListViewProxy._ON_ITEM_SELECT_LISTENER);
+                    add(ListViewProxy._ON_ITEM_LONG_CLICK_LISTENER);
 				}
 			};
 			
