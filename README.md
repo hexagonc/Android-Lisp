@@ -18,8 +18,8 @@ NOTE! There are classes in the package "com.evolved.automata.nn" package that re
 ## Dropbox Configuration
 If you want your users to be able to load source files into the code editor of AndroidLispGUIBuilder from their Dropbox accounts, you'll need to sign up for and get an app key from Dropbox.  Your application will need at least "App Folder" level of permissions.  Once you have an app key, there are two string resource values, "enc_dropbox_app_key" and "manifest_key", that you have to set in the [dropbox_config.xml](https://github.com/hexagonc/Android-Lisp/blob/starting_v2/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/res/values/dropbox_config.xml).  The first string resource, "enc_dropbox_app_key" is the literal value of the Dropbox app key.  You should set "manifest_key" to the literal value of your app key prefixed by "db-".  This is used for the OAuth2 authentication provided by the Dropbox SDK.  The other Dropbox resource string, "dropbox_app_client_name", is the name of your application as defined in the Dropbox developer console.
 
-##Program Behavior
-#Basics
+## Program Behavior
+# Basics
 AndroidLispGUIBuilder is organized into "CodePages".  A CodePage is defined by the source code that you want to execute as well as a [lexical environment](http://www.lispworks.com/documentation/HyperSpec/Body/03_aac.htm) that is specific to that Page.  The lexical environment of a CodePage is nested in a global environment that is shared by all CodePages.  I am still tweaking the CodePage user interface but right now the design is optimized for evaluating and navigating blocks of Lisp code, called [S-expressions](https://en.wikipedia.org/wiki/S-expression).  Each time you move the cursor in the source code, the system automatically highlights the innermost parent s-expression.  The user interface makes it easy to navigate to the parent expression, first child expression, next or previous sibling s-expressions.  Thus, it should be fairly simple to drill down into any particular portion of the source code in order to evaluate the selected block within the lexical scope of the CodePage.  For example, if you type into a CodePage:
 ```
 (+ 12 454)
@@ -49,7 +49,7 @@ then _x_ is a global variable that is visible to all CodePages.  However, variab
 
 If you evaluate this whole code list, _x_ will be bound to 10 in the CodePage environment, but _x_ in the "for" loop is bound to values in a child lexical environment, specific to the "for" loop.  If you select and evaluate the expression _(concat "Value: " x)_, the value returned will be 10, even though the last value bound to _x_ in the "for" loop was 4.
 
-#Simple User-Interfaces
+# Simple User-Interfaces
 There are Lisp functions for creating most of the basic Android widget classes.  The overall paradigm is somewhat similiar to [ReactJS](https://facebook.github.io/react/) in that the user-interface is generated in a functional manner.  Instead of defining user-interfaces using xml, with the Android Lisp GUI Builder, the user interface is defined by nested function calls.  For example, an xml approach to building a simple colored block with a text label in the middle would be done something like this:
 ```
 <LinearLayout android:orientation="vertical"
