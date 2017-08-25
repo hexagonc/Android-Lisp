@@ -147,5 +147,5 @@ Basic user interface polish is an overall area for improvement with too many are
 * Prevent the user from loading binary files into the code editor
 * Add support for landscape mode and changes in screen orientation.  Currently, the app only works in portrait mode.  This is to allow as much space as possible for the code editor when shown on a small smartphone screen.  For tablets, it makes sense to allow the user to run the app in landscape mode.  In order to do this, however, I'd have to change the policy around generating Views with Lisp.  The current policy is that the last Lisp expression evaluated in the code editor determines the View that is displayed in the "Render" tab.  Probably, users will have to return a list of views, one for portrait mode and one for landscape in order to make orientation changes work properly.
 
-##License
+## License
 All of this code is MIT licensed, which is described [here](license.txt).
