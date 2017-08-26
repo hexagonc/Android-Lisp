@@ -10,6 +10,10 @@ public class CommentNode extends AtomNode {
         super(parent, TYPE.COMMENT);
     }
 
+    public CommentNode()
+    {
+        super(TYPE.COMMENT);
+    }
 
     @Override
     public boolean possibleFirstCharP(char firstChar)

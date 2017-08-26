@@ -1,5 +1,7 @@
 package com.evolved.automata.lisp.editor;
 
+import java.util.HashMap;
+
 /**
  * Created by Evolved8 on 4/23/17.
  */
@@ -11,6 +13,30 @@ public class VarNameNode extends AtomNode {
     public VarNameNode(ParseNode parent)
     {
         super(parent, TYPE.VAR_NAME);
+    }
+
+    public VarNameNode()
+    {
+        super(TYPE.VAR_NAME);
+    }
+
+    @Override
+    protected void fill(String[] fields, HashMap<Integer, ParseNode> inverseMap)
+    {
+        super.fill(fields, inverseMap);
+        startsWithHyphenP = toBoolean(fields[BASE_EXTRA_DATA_INDEX]);
+        previousHyphenP = toBoolean(fields[BASE_EXTRA_DATA_INDEX+1]);
+    }
+
+    @Override
+    protected String serialize(HashMap<ParseNode, Integer> nodeIndex)
+    {
+        StringBuilder baseSerialize = new StringBuilder(super.serialize(nodeIndex));
+        baseSerialize.append(STANDARD_FIELD_SEPARATOR).append(serialize(startsWithHyphenP))
+                .append(STANDARD_FIELD_SEPARATOR).append(serialize(previousHyphenP));
+
+        return baseSerialize.toString();
+
     }
 
 

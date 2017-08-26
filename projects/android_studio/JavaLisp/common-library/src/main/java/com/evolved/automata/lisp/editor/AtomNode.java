@@ -10,6 +10,11 @@ public abstract class AtomNode extends ParseNode {
         super(parent, type);
     }
 
+    protected AtomNode(TYPE type)
+    {
+        super(type);
+    }
+
     @Override
     public int getChildOffset()
     {

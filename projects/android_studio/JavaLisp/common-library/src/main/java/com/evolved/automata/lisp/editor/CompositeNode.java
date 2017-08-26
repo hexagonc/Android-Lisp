@@ -2,6 +2,7 @@ package com.evolved.automata.lisp.editor;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 
@@ -32,6 +33,12 @@ public abstract class CompositeNode extends ParseNode {
     public CompositeNode(ParseNode parent, ParseNode.TYPE type)
     {
         super(parent, type);
+
+    }
+
+    public CompositeNode(ParseNode.TYPE type)
+    {
+        super(type);
 
     }
 
@@ -320,5 +327,26 @@ public abstract class CompositeNode extends ParseNode {
         return appendChild(new Link(node));
     }
 
+    @Override
+    public void sort(HashMap<ParseNode, Integer> nodeIndex, HashMap<Integer, ParseNode> inverseIndex)
+    {
+
+        for (ParseNode child:getChildren())
+        {
+            child.sort(nodeIndex, inverseIndex);
+        }
+
+        if (mPossibleNextChild != null)
+        {
+            for (ParseNode child:mPossibleNextChild)
+            {
+                child.sort(nodeIndex, inverseIndex);
+            }
+        }
+
+        Integer length = nodeIndex.size();
+        nodeIndex.put(this, length);
+        inverseIndex.put(length, this);
+    }
 
 }

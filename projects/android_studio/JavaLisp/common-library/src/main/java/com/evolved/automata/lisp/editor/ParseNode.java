@@ -1,5 +1,12 @@
 package com.evolved.automata.lisp.editor;
 
+
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Stack;
 
@@ -9,6 +16,16 @@ import java.util.Stack;
 
 public abstract class ParseNode {
 
+    protected static final String SERIALIZED_ITEM_SEPARATOR ="æ";
+    protected static final String STANDARD_FIELD_SEPARATOR = "å";
+    protected static final String CHILD_NODE_SEPARATOR = "Â";
+
+    protected static final int BASE_SERIALIZED_TYPE_INDEX = 0;
+    protected static final int BASE_SERIALIZED_STATUS_INDEX = BASE_SERIALIZED_TYPE_INDEX + 1;
+    protected static final int BASE_SERIALIZED_CHAR_DATA_INDEX = BASE_SERIALIZED_STATUS_INDEX + 1;
+    protected static final int BASE_SERIALIZED_CHILDREN_INDEX = BASE_SERIALIZED_CHAR_DATA_INDEX + 1;
+    protected static final int BASE_EXTRA_DATA_INDEX = BASE_SERIALIZED_CHILDREN_INDEX + 1;
+
     public enum TYPE
     {
         LIST, NUMBER, VAR_NAME, TOP, WHITE_SPACE, STRING, COMMENT, INVALID_CHARS
@@ -17,7 +34,12 @@ public abstract class ParseNode {
 
     public enum ParseStatus
     {
-        INITIAL(false, true), BUILDING(true, true), ERROR(false, false), FINISHED(true, true), COMPLETE_BOUNDARY(true, false), COMPLETE_ABSORB(true, true);
+        INITIAL(false, true),
+        BUILDING(true, true),
+        ERROR(false, false),
+        FINISHED(true, true),
+        COMPLETE_BOUNDARY(true, false),
+        COMPLETE_ABSORB(true, true);
 
         boolean isProgressStatus = false;
         boolean consumedInputCharP = false;
@@ -74,7 +96,23 @@ public abstract class ParseNode {
         mStatus = ParseStatus.INITIAL;
     }
 
+    protected ParseNode(TYPE type)
+    {
+        mParent = null;
+        mValue = new StringBuilder();
+        this.mType = type;
+        mFirstChildLink = null;
+        mStatus = ParseStatus.INITIAL;
+    }
 
+
+    public ParseNode setParent(ParseNode parent)
+    {
+        mParent = parent;
+        if (mParent != null)
+            mContext = parent.getParseContext();
+        return this;
+    }
 
 
 
@@ -519,5 +557,213 @@ public abstract class ParseNode {
 
     public abstract String getValue();
 
+    protected String serialize(boolean bool)
+    {
+        if (bool)
+            return "1";
+        else
+            return "0";
+    }
+
+    protected void fill(String[] fields, HashMap<Integer, ParseNode> inverseMap)
+    {
+        mStatus = getStatus(fields);
+        mValue = new StringBuilder(getValue(fields));
+        String[] serializedChildren = getSerializedChildIndices(fields);
+        mFirstChildLink = mLastChildLink = null;
+        Link prevLink = null;
+        for (String serializedChildIndex:serializedChildren)
+        {
+            Integer index = Integer.valueOf(Integer.parseInt(serializedChildIndex));
+            ParseNode node = inverseMap.get(index);
+            node.setParent(this);
+            if (prevLink == null)
+            {
+                mLastChildLink = mFirstChildLink = prevLink = new Link(node);
+            }
+            else
+            {
+                prevLink = mLastChildLink;
+                mLastChildLink = new Link(node);
+                prevLink.nextChild = mLastChildLink;
+                mLastChildLink.prevChild = prevLink;
+            }
+        }
+
+    }
+
+    protected String serialize(HashMap<ParseNode, Integer> nodeIndex)
+    {
+        ArrayList<String> serializedFields =  serializeFields(nodeIndex);
+        StringBuilder builder = new StringBuilder();
+        for (String field:serializedFields)
+        {
+            if (builder.length() > 0 )
+                builder.append(STANDARD_FIELD_SEPARATOR);
+            builder.append(field);
+        }
+        return builder.toString();
+    }
+
+    protected ArrayList<String> serializeFields(HashMap<ParseNode, Integer> nodeIndex)
+    {
+
+        ArrayList<String> list = new ArrayList<String>();
+        list.add(mType.name());
+        list.add(mStatus.name());
+        list.add((mValue == null)?"":mValue.toString());
+        list.add(serializedChildren(nodeIndex));
+
+        return list;
+
+    }
+
+    protected String serializedChildren(HashMap<ParseNode, Integer> nodeIndex)
+    {
+        StringBuilder builder = new StringBuilder();
+        Link currentChild = mFirstChildLink;
+        while (currentChild != null)
+        {
+            if (currentChild != mFirstChildLink)
+                builder.append(CHILD_NODE_SEPARATOR);
+            builder.append(nodeIndex.get(currentChild.node));
+            currentChild = currentChild.nextChild;
+        }
+        return builder.toString();
+    }
+
+    protected boolean toBoolean(String serialized)
+    {
+        return ("1".equalsIgnoreCase(serialized));
+
+    }
+
+    protected static String[] getSerializedFields(String serialized)
+    {
+        return StringUtils.splitByWholeSeparatorPreserveAllTokens(serialized, STANDARD_FIELD_SEPARATOR);
+    }
+
+
+
+    protected static TYPE getType(String[] serializedFields)
+    {
+        String typeValue = serializedFields[BASE_SERIALIZED_TYPE_INDEX];
+        TYPE type = TYPE.valueOf(typeValue);
+        return type;
+    }
+
+    protected static ParseStatus getStatus(String[] serializedFields)
+    {
+        String statusValue = serializedFields[BASE_SERIALIZED_STATUS_INDEX];
+        ParseStatus status = ParseStatus.valueOf(statusValue);
+        return status;
+    }
+
+
+    protected String[] getSerializedChildIndices(String[] serializedFields)
+    {
+        String children = serializedFields[BASE_SERIALIZED_CHILDREN_INDEX];
+        if (children.length()>0)
+            return StringUtils.splitByWholeSeparatorPreserveAllTokens(children, CHILD_NODE_SEPARATOR);
+        else
+            return new String[0];
+    }
+
+    protected String getValue(String[] serializedFields)
+    {
+        return serializedFields[BASE_SERIALIZED_CHAR_DATA_INDEX];
+    }
+
+    protected static ParseNode getBaseInstance(TYPE type)
+    {
+        switch (type)
+        {
+            case INVALID_CHARS:
+                return new ErrorTextNode();
+            case NUMBER:
+                return new NumberNode();
+            case VAR_NAME:
+                return new VarNameNode();
+            case LIST:
+                return new ListNode();
+            case TOP:
+                return new TopParseNode();
+            case WHITE_SPACE:
+                return new WhiteSpaceNode();
+            case STRING:
+                return new StringNode();
+            case COMMENT:
+                return new CommentNode();
+
+        }
+        return null;
+    }
+
+
+    public void sort(HashMap<ParseNode, Integer> nodeIndex, HashMap<Integer, ParseNode> inverseIndex)
+    {
+        Integer length = nodeIndex.size();
+        nodeIndex.put(this, length);
+        inverseIndex.put(length, this);
+    }
+
+
+
+
+    public static ParseNode deserialize(String serialized, HashMap<Integer, ParseNode> inverseMap)
+    {
+        String[] fields = getSerializedFields(serialized);
+        TYPE baseType = getType(fields);
+        ParseNode baseNode = getBaseInstance(baseType);
+        baseNode.fill(fields, inverseMap);
+
+        int myIndex = inverseMap.size();
+        return baseNode;
+    }
+
+    public String serialize()
+    {
+        HashMap<ParseNode, Integer> nodeIndex = new HashMap<ParseNode, Integer>();
+        HashMap<Integer, ParseNode> inverseIndex = new HashMap<Integer, ParseNode>();
+
+        sort(nodeIndex, inverseIndex);
+        StringBuilder result = new StringBuilder();
+        Integer serializeOrderIndex;
+        ParseNode targetNode;
+        String serializedNode;
+        for (int i = 0;i < nodeIndex.size();i++)
+        {
+            serializeOrderIndex = Integer.valueOf(i);
+            targetNode = inverseIndex.get(serializeOrderIndex);
+            if (i > 0)
+            {
+                result.append(ParseNode.SERIALIZED_ITEM_SEPARATOR);
+            }
+            serializedNode = targetNode.serialize(nodeIndex);
+            result.append(serializedNode);
+        }
+        return result.toString();
+    }
+
+    public static ParseNode deserialize(String serializedTree)
+    {
+        String[] serializedNodes = StringUtils.splitByWholeSeparatorPreserveAllTokens(serializedTree,SERIALIZED_ITEM_SEPARATOR);
+        HashMap<Integer, ParseNode> inverseIndex = new HashMap<Integer, ParseNode>();
+        Integer index;
+        int topIndex = serializedNodes.length - 1;
+        ParseNode node;
+        String serializedNode;
+
+        for (int i = 0;i < serializedNodes.length;i++)
+        {
+            index = Integer.valueOf(i);
+            serializedNode = serializedNodes[i];
+            node = deserialize(serializedNode, inverseIndex);
+
+            inverseIndex.put(index, node);
+        }
+
+        return inverseIndex.get(topIndex);
+    }
 
 }

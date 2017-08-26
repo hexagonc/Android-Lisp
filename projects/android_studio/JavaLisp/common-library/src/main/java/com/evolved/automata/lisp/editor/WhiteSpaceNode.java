@@ -10,7 +10,10 @@ public class WhiteSpaceNode extends AtomNode {
         super(parent, TYPE.WHITE_SPACE);
     }
 
-
+    public WhiteSpaceNode()
+    {
+        super(TYPE.WHITE_SPACE);
+    }
 
     @Override
     public boolean possibleFirstCharP(char firstChar)

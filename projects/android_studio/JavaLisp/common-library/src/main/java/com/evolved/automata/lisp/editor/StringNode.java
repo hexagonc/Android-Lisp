@@ -1,5 +1,7 @@
 package com.evolved.automata.lisp.editor;
 
+import java.util.HashMap;
+
 /**
  * Created by Evolved8 on 4/23/17.
  */
@@ -12,6 +14,10 @@ public class StringNode extends AtomNode {
         super(parent, TYPE.STRING);
     }
 
+    public StringNode()
+    {
+        super(TYPE.STRING);
+    }
 
     @Override
     public boolean possibleFirstCharP(char firstChar)
@@ -49,5 +55,17 @@ public class StringNode extends AtomNode {
             setStatus(ParseStatus.ERROR);
         }
         return mStatus;
+    }
+
+    protected void fill(String[] fields, HashMap<Integer, ParseNode> inverseMap)
+    {
+        super.fill(fields, inverseMap);
+        mPreviousDelimiterP = toBoolean(fields[4]);
+    }
+
+    protected String serialize(HashMap<ParseNode, Integer> nodeIndex)
+    {
+        return new StringBuilder(super.serialize(nodeIndex)).append(STANDARD_FIELD_SEPARATOR).append(serialize(mPreviousDelimiterP)).toString();
+
     }
 }

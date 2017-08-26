@@ -12,14 +12,14 @@ public interface ParseContext {
 
 
 
-    public interface OnVariableAppendListener
+     interface OnVariableAppendListener
     {
-        public void onAppend(StringBuilder currentVariableName, char nextCharacter);
+         void onAppend(StringBuilder currentVariableName, char nextCharacter);
     }
 
-    public interface OnFunctionAppendListener
+     interface OnFunctionAppendListener
     {
-        public void onAppend(StringBuilder currentFunctionName, char nextCharacter);
+         void onAppend(StringBuilder currentFunctionName, char nextCharacter);
     }
 
 
@@ -31,7 +31,7 @@ public interface ParseContext {
      * @param nextCharacter
      * @return
      */
-    public ParseContext onVariableCharacterAppend(StringBuilder wholeName, char nextCharacter);
+     ParseContext onVariableCharacterAppend(StringBuilder wholeName, char nextCharacter);
 
 
     /**
@@ -41,17 +41,17 @@ public interface ParseContext {
      * @param nextCharacter
      * @return
      */
-    public ParseContext onFunctionCharacterAppend(StringBuilder wholeName, char nextCharacter);
+     ParseContext onFunctionCharacterAppend(StringBuilder wholeName, char nextCharacter);
 
     /**
      * Called by the Parse
      * @param name
      * @return
      */
-    public ParseContext onVariableNameComplete(String name);
+     ParseContext onVariableNameComplete(String name);
 
 
-    public ParseContext onFunctionNameComplete(String name);
+     ParseContext onFunctionNameComplete(String name);
 
     ParseContext setErrorNode(ParseNode errorNode);
 

@@ -816,7 +816,234 @@ public class NodeParsingTests {
 
     }
 
+    @Test
+    public void testSimpleSerializingOfParseNodes()
+    {
+        String errorMessage = "";
+        String originalExpression = "122";
+        String serializedValue = null;
+        String recoveredExpressionFromSerialization = null;
+        try
+        {
+            errorMessage = "Failed to parse expression into node";
+            TopParseNode topNode = new TopParseNode();
+            topNode.processAll(originalExpression);
+            System.out.println("Processed expression: " + originalExpression);
+            errorMessage = "Failed to serialize node";
+            serializedValue = topNode.serialize();
+            Assert.assertTrue(errorMessage, serializedValue!=null);
+            System.out.println("Serialized value: " + serializedValue);
 
+            errorMessage = "Failed to deserialize node";
+            ParseNode recovered = ParseNode.deserialize(serializedValue);
+
+            Assert.assertTrue(errorMessage, recovered!=null);
+
+            errorMessage = "Failed to obtain valid node value";
+            recoveredExpressionFromSerialization = recovered.toString();
+            Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization!=null);
+            errorMessage = String.format("Failed to match original expression to expression recovered from serialized form.  Expected \"%1$s\" but found \"%2$s\"", originalExpression, recoveredExpressionFromSerialization);
+            Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization.equals(originalExpression));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testSerializingMultipleSimpleParseNodes()
+    {
+        String errorMessage = "";
+
+        String serializedValue = null;
+        String recoveredExpressionFromSerialization = null;
+        String[] originals = new String[]{"32", "", "    \n   ", "\"this is a string\"", "; comment", "variable"};
+        try
+        {
+            int step = 0;
+            for (String originalExpression:originals)
+            {
+                System.out.println("Testing: " + step + ") \"" + originalExpression+ "\"");
+
+                errorMessage = "Failed to parse expression into node";
+                TopParseNode topNode = new TopParseNode();
+                topNode.processAll(originalExpression);
+                System.out.println("Processed expression: " + originalExpression);
+                errorMessage = "Failed to serialize node";
+                serializedValue = topNode.serialize();
+                Assert.assertTrue(errorMessage, serializedValue!=null);
+                System.out.println("Serialized value: " + serializedValue);
+
+                errorMessage = "Failed to deserialize node";
+                ParseNode recovered = ParseNode.deserialize(serializedValue);
+
+                Assert.assertTrue(errorMessage, recovered!=null);
+
+                errorMessage = "Failed to obtain valid node value";
+                recoveredExpressionFromSerialization = recovered.toString();
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization!=null);
+                errorMessage = String.format("Failed to match original expression to expression recovered from serialized form.  Expected \"%1$s\" but found \"%2$s\"", originalExpression, recoveredExpressionFromSerialization);
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization.equals(originalExpression));
+                step++;
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testSerializingMultipleComplexParseNodes()
+    {
+        String errorMessage = "";
+
+        String serializedValue = null;
+        String recoveredExpressionFromSerialization = null;
+        String[] originals = new String[]{"()", "(list 1 2 43)", "(for x (1 2 3) (println \"nested finished\") (println (concat \"value: \" x)))", "; Comment line one\n(+ x (/ 12 34))\n; final comment"};
+        try
+        {
+            int step = 0;
+            for (String originalExpression:originals)
+            {
+                System.out.println("Testing: " + step + ") \"" + originalExpression+ "\"");
+
+                errorMessage = "Failed to parse expression into node";
+                TopParseNode topNode = new TopParseNode();
+                topNode.processAll(originalExpression);
+                System.out.println("Processed expression: " + originalExpression);
+                errorMessage = "Failed to serialize node";
+                serializedValue = topNode.serialize();
+                Assert.assertTrue(errorMessage, serializedValue!=null);
+                System.out.println("Serialized value: " + serializedValue);
+
+                errorMessage = "Failed to deserialize node";
+                ParseNode recovered = ParseNode.deserialize(serializedValue);
+
+                Assert.assertTrue(errorMessage, recovered!=null);
+
+                errorMessage = "Failed to obtain valid node value";
+                recoveredExpressionFromSerialization = recovered.toString();
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization!=null);
+                errorMessage = String.format("Failed to match original expression to expression recovered from serialized form.  Expected \"%1$s\" but found \"%2$s\"", originalExpression, recoveredExpressionFromSerialization);
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization.equals(originalExpression));
+                step++;
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testSerializingMultipleIncompleteParseNodes()
+    {
+        String errorMessage = "";
+
+        String serializedValue = null;
+        String recoveredExpressionFromSerialization = null;
+        String[] originals = new String[]{"(", "(list 1 ", "(for x (1 2 3) (println \"nested finished\") (println (concat \"value: \" x))"};
+        try
+        {
+            int step = 0;
+            for (String originalExpression:originals)
+            {
+                System.out.println("Testing: " + step + ") \"" + originalExpression+ "\"");
+
+                errorMessage = "Failed to parse expression into node";
+                TopParseNode topNode = new TopParseNode();
+                topNode.processAll(originalExpression);
+                System.out.println("Processed expression: " + originalExpression);
+                errorMessage = "Failed to serialize node";
+                serializedValue = topNode.serialize();
+                Assert.assertTrue(errorMessage, serializedValue!=null);
+                System.out.println("Serialized value: " + serializedValue);
+
+                errorMessage = "Failed to deserialize node";
+                ParseNode recovered = ParseNode.deserialize(serializedValue);
+
+                Assert.assertTrue(errorMessage, recovered!=null);
+
+                errorMessage = "Failed to obtain valid node value";
+                recoveredExpressionFromSerialization = recovered.toString();
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization!=null);
+                errorMessage = String.format("Failed to match original expression to expression recovered from serialized form.  Expected \"%1$s\" but found \"%2$s\"", originalExpression, recoveredExpressionFromSerialization);
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization.equals(originalExpression));
+                step++;
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testSerializingMultipleIncompleteParseNodesAndContinuation()
+    {
+        String errorMessage = "";
+
+        String serializedValue = null;
+        String recoveredExpressionFromSerialization = null;
+        String[] originals = new String[]{"()", "(list 1 2 43)", "(for x (1 2 3) (println \"nested finished\") (println (concat \"value: \" x)))", "; Comment line one\n(+ x (/ 12 34))\n; final comment"};
+        String incompleteExpression, remainingExpression;
+        try
+        {
+            int step = 0;
+            for (String originalExpression:originals)
+            {
+
+                int partition = (int)(Math.random()*originalExpression.length());
+                incompleteExpression = originalExpression.substring(0, partition);
+                remainingExpression = originalExpression.substring(partition);
+                System.out.println("Testing: " + step + ") \"" + originalExpression+ "\"");
+
+                errorMessage = "Failed to parse incomplete expression into node";
+                TopParseNode topNode = new TopParseNode();
+                topNode.processAll(incompleteExpression);
+                System.out.println("Processed incomplete expression: " + incompleteExpression);
+                errorMessage = "Failed to serialize node";
+                serializedValue = topNode.serialize();
+                Assert.assertTrue(errorMessage, serializedValue!=null);
+                System.out.println("Serialized value: " + serializedValue);
+
+                errorMessage = "Failed to deserialize node";
+
+                ParseNode recovered = ParseNode.deserialize(serializedValue);
+
+                Assert.assertTrue(errorMessage, recovered!=null);
+
+                errorMessage = "Failed to append remaining chars";
+
+                for (char c:remainingExpression.toCharArray())
+                {
+                    recovered.appendChar(c);
+                }
+                errorMessage = "Failed to obtain valid recovered node value";
+                recoveredExpressionFromSerialization = recovered.toString();
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization!=null);
+                errorMessage = String.format("Failed to match original expression to expression constructed from parts.  Expected \"%1$s\" but found \"%2$s\"", originalExpression, recoveredExpressionFromSerialization);
+                Assert.assertTrue(errorMessage, recoveredExpressionFromSerialization.equals(originalExpression));
+                step++;
+            }
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
 
     @Ignore("Need to dork around with gradle to get the test resource to be readable")
     @Test
@@ -878,5 +1105,7 @@ public class NodeParsingTests {
         String startDelimited = insertText(baseInput, "|", startIndex);
         return insertText(startDelimited, "|", startIndex + length + 1);
     }
+
+
 
 }
