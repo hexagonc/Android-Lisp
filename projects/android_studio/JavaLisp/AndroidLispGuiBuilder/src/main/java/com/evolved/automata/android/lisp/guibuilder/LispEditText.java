@@ -449,12 +449,15 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             public void setReadOnly()
             {
                 setReadOnlyState();
+                enableSelectionEffects();
+
             }
 
             @Override
             public void disableReadOnly()
             {
                 removeReadOnlyState();
+                disableSelectionEffects();
             }
 
             @Override
