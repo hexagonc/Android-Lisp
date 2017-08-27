@@ -44,7 +44,8 @@ public class EditViewProxy extends TextViewProxy
                 @Override
                 public boolean onEditorAction(TextView textView, int i, KeyEvent keyEvent)
                 {
-                    if (keyEvent.getKeyCode() == KeyEvent.KEYCODE_BACK){
+					
+                    if (keyEvent != null && keyEvent.getKeyCode() == KeyEvent.KEYCODE_BACK){
                         clearFocus();
                     }
                     return false;
