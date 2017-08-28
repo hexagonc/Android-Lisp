@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.View.OnScrollChangeListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.AbsListView;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
@@ -175,7 +176,26 @@ public abstract class ViewProxy
 		processParentAlignment(params, keys);
 		return params;
 	}
-	
+
+
+
+
+    protected <T extends AbsListView> AbsListView.LayoutParams  processKeywords(T parent, HashMap<String, Value> keys)
+    {
+
+        AbsListView.LayoutParams params = new AbsListView.LayoutParams(defaultWidth, defaultHeight);
+        processBaseKeywords(keys);
+        processWidth(params, parent, keys);
+        processHeight(params, parent, keys);
+        processPaddingLeft(keys);
+        processPaddingRight(keys);
+        processPaddingTop(keys);
+        processPaddingBottom(keys);
+        processPadding(keys);
+
+        return params;
+    }
+
 	protected <T extends FrameLayout> FrameLayout.LayoutParams  processKeywords(T parent, HashMap<String, Value> keys)
 	{
 		
@@ -732,7 +752,22 @@ public abstract class ViewProxy
 			
 		}
 	}
-	
+
+
+	public void processWidth(AbsListView.LayoutParams layout, ViewGroup parent, HashMap<String, Value> key)
+	{
+		Value width = getMapValue(key, WIDTH_KEYWORD);
+		if (!width.isNull() && processWidthDimensionString(width, layout))
+			return;
+		Integer value = getInteger(key, WIDTH_KEYWORD);
+
+		int actualValue = defaultWidth;
+		if (value != null)
+			actualValue = AndroidTools.convertDPtoPX(context, value.intValue());
+
+		layout.width = actualValue;
+	}
+
 	
 	public void processWidth(ViewGroup.MarginLayoutParams layout, ViewGroup parent, HashMap<String, Value> key)
 	{
@@ -837,7 +872,22 @@ public abstract class ViewProxy
 		}
 		return false;
 	}
-	
+
+	public void processHeight(AbsListView.LayoutParams layout, ViewGroup parent, HashMap<String, Value> key)
+	{
+		Value height = getMapValue(key, HEIGHT_KEYWORD);
+		if (!height.isNull() && processHeightDimensionString(height, layout))
+			return;
+		Integer value = getInteger(key, HEIGHT_KEYWORD);
+
+
+		int actualValue = defaultHeight;
+		if (value != null)
+			actualValue = AndroidTools.convertDPtoPX(context, value.intValue());
+
+		layout.height = actualValue;
+	}
+
 	public void processHeight(ViewGroup.MarginLayoutParams layout, ViewGroup parent, HashMap<String, Value> key)
 	{
 		Value height = getMapValue(key, HEIGHT_KEYWORD);
@@ -986,6 +1036,10 @@ public abstract class ViewProxy
 		{
 			params = processKeywords((FrameLayout)parent, _keys);
 		}
+		else if (parent instanceof  AbsListView)
+        {
+            params = processKeywords((AbsListView)parent, _keys);
+        }
 		
 		base.setLayoutParams(params);
 		baseUpdate(base);
@@ -1011,6 +1065,10 @@ public abstract class ViewProxy
 		{
 			params = processKeywords((FrameLayout)parent, _keys);
 		}
+		else if (parent instanceof  AbsListView)
+        {
+            params = processKeywords((AbsListView)parent, _keys);
+        }
 		if (topParams!=null)
 		{
 			base.setLayoutParams(params);
@@ -1158,6 +1216,11 @@ public abstract class ViewProxy
 				processWidth((RelativeLayout.LayoutParams)baseParams, (RelativeLayout)actual.getParent(), _keys);
 				processHeight((RelativeLayout.LayoutParams)baseParams, (RelativeLayout)actual.getParent(), _keys);
 			}
+			else if (actual.getParent() instanceof AbsListView)
+			{
+                processWidth((AbsListView.LayoutParams)baseParams, (AbsListView)actual.getParent(), _keys);
+                processHeight((AbsListView.LayoutParams)baseParams, (AbsListView)actual.getParent(), _keys);
+			}
 			
 			processBaseKeywords(_keys);
 			processPaddingLeft(_keys);
@@ -1165,27 +1228,33 @@ public abstract class ViewProxy
 			processPaddingTop(_keys);
 			processPaddingBottom(_keys);
 			processPadding(_keys);
-			
-			processMarginLeft(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
-				 ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
-			processMarginRight(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
-				 ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
-			processMarginTop(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
-				 ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
-			processMarginBottom(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
-				 ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
-			processMargin(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
-				 ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
-			if (baseParams instanceof LinearLayout.LayoutParams)
+
+
+            if (!(baseParams instanceof AbsListView.LayoutParams ))
+            {
+                processMarginLeft(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
+                        ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
+                processMarginRight(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
+                        ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
+                processMarginTop(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
+                        ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
+                processMarginBottom(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
+                        ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
+                processMargin(((baseParams instanceof LinearLayout.LayoutParams)?(LinearLayout.LayoutParams)baseParams:
+                        ((baseParams instanceof RelativeLayout.LayoutParams)?(RelativeLayout.LayoutParams)baseParams:(FrameLayout.LayoutParams)baseParams)), _keys);
+            }
+
+
+            if (baseParams instanceof LinearLayout.LayoutParams)
 				processParentAlignment((LinearLayout.LayoutParams)baseParams, _keys);
 			else if (baseParams instanceof RelativeLayout.LayoutParams)
 			{
 				processParentAlignment((RelativeLayout.LayoutParams)baseParams, _keys);
 			}
-			else
+			else if (baseParams instanceof FrameLayout.LayoutParams)
 				processParentAlignment((FrameLayout.LayoutParams)baseParams, _keys);
 			baseUpdate(actual);
-			
+			//actual.setLayoutParams(baseParams);
 		}
 	}
 	
