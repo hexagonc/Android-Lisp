@@ -8,7 +8,7 @@
     <declare-styleable name = "Standard_Custom">
         <attr name = "textSize" format = "reference|dimension"/>
         <attr name = "textColor" format = "reference|color"/>
-        <attr name = "background" format = "reference|color"/>
+        <attr name = "backGround" format = "reference|color"/>
         <attr name = "text" format = "reference|string"/>
         <attr name = "shadowColor" format = "reference|color"/>
         <attr name = "selected" format = "boolean"/>

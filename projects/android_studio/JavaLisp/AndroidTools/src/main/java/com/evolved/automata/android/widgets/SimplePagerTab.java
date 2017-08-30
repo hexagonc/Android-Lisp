@@ -71,8 +71,8 @@ public class SimplePagerTab extends LinearLayout
 	
 		int shadowColor = ta.getColor(R.styleable.Standard_Custom_shadowColor, Color.BLACK);
 		setBackgroundColor(shadowColor);
-		
-		int tabColor = ta.getColor(R.styleable.Standard_Custom_background, Color.WHITE);
+
+		int tabColor = ta.getColor(R.styleable.Standard_Custom_backGround, Color.WHITE);
 		_embedded.setBackgroundColor(tabColor);
 		
 		boolean selected = ta.getBoolean(R.styleable.Standard_Custom_selected, false);
