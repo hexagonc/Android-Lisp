@@ -39,7 +39,7 @@ import io.reactivex.functions.Function;
  * Created by Evolved8 on 4/26/17.
  */
 
-public class LispEditText extends EditText implements Observer<ParseNode> {
+public class LispEditText extends EditText {
 
     public interface HeightEvent
     {
@@ -56,6 +56,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
 
     public interface ControlInterface
     {
+        void setTopParseNode(TopParseNode topNode);
         void disableSelectionEffects();
         void enableSelectionEffects();
         void setReadOnly();
@@ -178,7 +179,8 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         public void directUpdate(String updated)
         {
 
-            _subScriber.onNext(new EditEvent(updated));
+            if (_subScriber != null)
+                _subScriber.onNext(new EditEvent(updated));
         }
     }
 
@@ -202,25 +204,7 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         mSelectionBackgroundSpan = new BackgroundColorSpan(mSelectionColor);
         mPreviousSelection = null;
         mUpdateListener = new CodeUpdateListener();
-        mUpdateObservable = Observable.create(mUpdateListener).debounce(mUpdateTimeoutInterval, mUpdateTimeUnit).map(new Function<EditEvent, ParseNode>(){
 
-            @Override
-            public ParseNode apply(@NonNull EditEvent editEvent) throws Exception
-            {
-                Log.d("<>< <>< <>< <>< <><", "Updating parser with new text");
-                Tools.postEvent(new ParseStateEvent() {
-                    @Override
-                    public boolean isStarting()
-                    {
-                        return true;
-                    }
-                });
-                TopParseNode top = new TopParseNode();
-                top.processAll(editEvent.getNewCodeText());
-                return top;
-            }
-        }).observeOn(AndroidSchedulers.mainThread());
-        mUpdateObservable.subscribe(this);
         addTextChangedListener(mUpdateListener);
         SCROLL_THRESHOLD_PX = AndroidTools.convertDPtoPX(getContext(), SCROLL_THRESHOLD_DP);
 
@@ -410,6 +394,28 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         return new ControlInterface() {
 
             @Override
+            public void setTopParseNode(TopParseNode topNode)
+            {
+                mParseNode = topNode;
+                if (topNode != null)
+                {
+
+                    mCurrentSelection = mParseNode.findNode(mCursorPosition);
+                    if (mReadOnlyModeP)
+                    {
+                        mAllowSelectionChangesP = true;
+                        renderSelection(false);
+                    }
+                }
+                else
+                {
+                    mCurrentSelection = null;
+
+                }
+
+            }
+
+            @Override
             public void moveToParent()
             {
                 LispEditText.this.moveToParent();
@@ -456,6 +462,9 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             @Override
             public void disableReadOnly()
             {
+                mParseNode = null;
+                mCurrentSelection = null;
+
                 removeReadOnlyState();
                 disableSelectionEffects();
             }
@@ -494,13 +503,16 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
             @Override
             public void setText(String text)
             {
-
+                mParseNode = null;
+                mCurrentSelection = null;
                 setText(text, 0);
             }
 
             @Override
             public void setText(String text, int cursorPos)
             {
+                mParseNode = null;
+                mCurrentSelection = null;
                 setText(text, cursorPos, null);
             }
 
@@ -510,8 +522,10 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
                 if (text == null)
                     text = "";
                 LispEditText.this.setText(text);
+                boolean updateCursorPosP = false;
                 if (0  <= cursorPos && cursorPos <= text.length())
                 {
+                    updateCursorPosP = true;
                     mCursorPosition = cursorPos;
                     setSelection(cursorPos, cursorPos);
                 }
@@ -521,9 +535,15 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
                     setSelection(0, 0);
                 }
 
-                if (top != null)
+                if (top != null && mParseNode != top)
                 {
                     mParseNode = top;
+                    mCurrentSelection = mParseNode.findNode(cursorPos);
+                    if (mReadOnlyModeP)
+                    {
+                        mAllowSelectionChangesP = true;
+                        renderSelection(false);
+                    }
                 }
             }
 
@@ -802,43 +822,6 @@ public class LispEditText extends EditText implements Observer<ParseNode> {
         }
     }
 
-
-    @Override
-    public void onSubscribe(@NonNull Disposable d)
-    {
-
-    }
-
-    @Override
-    public void onNext(@NonNull ParseNode value)
-    {
-        mParseNode = (TopParseNode)value;
-        if (mStateListener != null)
-        {
-            mStateListener.onTextChange(getText().toString(), mCursorPosition);
-        }
-        mTempSuppressHighlightingP = false;
-        renderSelection(false);
-        Tools.postEvent(new ParseStateEvent() {
-            @Override
-            public boolean isStarting()
-            {
-                return false;
-            }
-        });
-    }
-
-    @Override
-    public void onError(@NonNull Throwable error)
-    {
-
-    }
-
-    @Override
-    public void onComplete()
-    {
-
-    }
 
     private void clearSelectionDisplay()
     {

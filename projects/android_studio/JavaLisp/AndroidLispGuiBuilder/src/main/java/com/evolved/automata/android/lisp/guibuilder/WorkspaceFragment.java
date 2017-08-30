@@ -15,6 +15,7 @@ import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.evolved.automata.android.widgets.ShadowButton;
@@ -42,7 +43,7 @@ public class WorkspaceFragment extends Fragment {
 
     LinkedList<PageFragment> mPages;
 
-
+    ImageView mProgressIcon;
 
     ShadowButton mNavigatePreviousButton;
     ShadowButton mNavigateNextButton;
@@ -92,6 +93,7 @@ public class WorkspaceFragment extends Fragment {
         mAddPageButton = (ImageButton)group.findViewById(R.id.v2_but_add_page);
         mPageTitleView = (TextView)group.findViewById(R.id.v2_txt_page_title);
         mStatusAlertsButton = (ShadowButton)group.findViewById(R.id.v2_but_status_more_info);
+        mProgressIcon = (ImageView)group.findViewById(R.id.img_progress_icon);
         mStatusAlertsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v)
@@ -363,25 +365,28 @@ public class WorkspaceFragment extends Fragment {
     public void onStart()
     {
         super.onStart();
-        Tools.registerEventHandler(this);
+
     }
 
     @Override
     public void onResume()
     {
         super.onResume();
+        Tools.registerEventHandler(this);
     }
 
     @Override
     public void onPause()
     {
+
+        Tools.unRegisterEventHandler(this);
         super.onPause();
     }
 
     @Override
     public void onStop()
     {
-        Tools.unRegisterEventHandler(this);
+
         super.onStop();
     }
 
@@ -409,5 +414,17 @@ public class WorkspaceFragment extends Fragment {
         }
         else
             return getCurrentPageFragment().onOptionsItemSelected(item);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onProgressEvent(BackgroundProcessEvent event)
+    {
+        if (event.getType() == BackgroundProcessEvent.TYPE.STARTING)
+        {
+            mProgressIcon.setVisibility(View.VISIBLE);
+        }
+        else
+            mProgressIcon.setVisibility(View.INVISIBLE);
+
     }
 }

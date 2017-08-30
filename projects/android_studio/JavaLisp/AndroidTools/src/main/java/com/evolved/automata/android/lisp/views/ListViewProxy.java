@@ -44,13 +44,6 @@ public class ListViewProxy extends ViewProxy {
             public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent)
             {
                 ViewProxy proxy = mChildren.get(position);
-//                if (convertView == null)
-//                {
-//
-//                    convertView = proxy.createView(parent, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-//                }
-//                else
-//                    proxy.setView(convertView);
                 if (proxy.getView() == null)
                     convertView = proxy.createView(parent, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                 else

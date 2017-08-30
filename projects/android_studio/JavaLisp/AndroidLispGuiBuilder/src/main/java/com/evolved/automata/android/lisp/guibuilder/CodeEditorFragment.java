@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 
 import com.evolved.automata.lisp.editor.ParseNode;
+import com.evolved.automata.lisp.editor.TopParseNode;
 import com.evolved.automata.lisp.editor.WordCompletor;
 
 import java.util.HashSet;
@@ -53,9 +54,10 @@ public class CodeEditorFragment extends Fragment {
 
     public interface EditorController
     {
+        void setTopParseNode(TopParseNode topNode);
         Disposable setStateObserver(Observer<StateChange> observer);
         String getText();
-        Disposable setText(String text, int cursor, Observer<StateChange> observer);
+        Disposable setText(String text, int cursor, TopParseNode top, Observer<StateChange> observer);
         Disposable enableReadOnlyMode(Observer<StateChange> observer);
         Disposable disableReadOnlyMode(Observer<StateChange> observer);
         int getCursorPosition();
@@ -362,6 +364,14 @@ public class CodeEditorFragment extends Fragment {
     {
 
         return new EditorController() {
+
+            @Override
+            public void setTopParseNode(TopParseNode topNode)
+            {
+                mController.setTopParseNode(topNode);
+            }
+
+
             @Override
             public Disposable setStateObserver(final Observer<StateChange> observer)
             {
@@ -403,7 +413,7 @@ public class CodeEditorFragment extends Fragment {
                     throw new IllegalStateException(NOT_PRESENT_EXCEPTION_MESSAGE);
             }
 
-            public Disposable setText(final String text, final int cursor, final Observer<StateChange> observer)
+            public Disposable setText(final String text, final int cursor, final TopParseNode top, final Observer<StateChange> observer)
             {
                 if (!isPresentP)
                     throw new IllegalStateException(NOT_PRESENT_EXCEPTION_MESSAGE);
@@ -441,7 +451,7 @@ public class CodeEditorFragment extends Fragment {
                         {
                             try
                             {
-                                mController.setText(text, cursor);
+                                mController.setText(text, cursor, top);
                                 StateChange change = new StateChange();
                                 change._text = mController.getText();
                                 change._cursorPos = cursor;

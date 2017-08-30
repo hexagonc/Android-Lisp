@@ -3,7 +3,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
-import android.app.ProgressDialog;
+
 import android.os.Bundle;
 import android.os.Looper;
 import android.support.annotation.Nullable;
@@ -21,6 +21,7 @@ import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.ParseNode;
+import com.evolved.automata.lisp.editor.TopParseNode;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -138,7 +139,10 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     {
 
         String text = mCodePage.getExpr();
-        mEditorFragment.getEditorController().setText(text, mCodePage.getCursorPosition(), new Observer<CodeEditorFragment.StateChange>() {
+        mCodePage.assertTopParseNodeIsInValid();
+        TopParseNode current = mCodePage.getTopParseNode();
+
+        mEditorFragment.getEditorController().setText(text, mCodePage.getCursorPosition(), current, new Observer<CodeEditorFragment.StateChange>() {
             @Override
             public void onSubscribe(@NonNull Disposable d)
             {
@@ -163,6 +167,36 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
             }
         });
+        if (current == null)
+        {
+            mCodePage.requestTopParseNode(new Observer<TopParseNode>()
+            {
+
+                @Override
+                public void onSubscribe(@NonNull Disposable d)
+                {
+
+                }
+
+                @Override
+                public void onNext(@NonNull TopParseNode topParseNode)
+                {
+                    mEditorFragment.getEditorController().setTopParseNode(topParseNode);
+                }
+
+                @Override
+                public void onError(@NonNull Throwable e)
+                {
+
+                }
+
+                @Override
+                public void onComplete()
+                {
+
+                }
+            });
+        }
     }
 
 
@@ -193,7 +227,17 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                     mEditorController.disableReadOnlyMode(CodePageFragment.this);
                 }
                 else
+                {
                     mEditorController.enableReadOnlyMode(CodePageFragment.this);
+                    TopParseNode current = mCodePage.getTopParseNode();
+                    if (current == null)
+                        updateTopParseNode();
+                    else
+                    {
+                        mEditorFragment.getEditorController().setTopParseNode(current);
+                    }
+
+                }
             }
         });
 
@@ -442,7 +486,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             if (code != null)
             {
                 mCodePage.setExpr(code);
-
+                mCodePage.assertTopParseNodeIsInValid();
             }
         }
 
@@ -463,17 +507,33 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             if (stateChange.isVisible)
             {
                 String text = mCodePage.getExpr();
-                mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()) , this);
+
                 if (mCodePage.isReadOnlyEnabled())
                 {
                     mEditorController.enableReadOnlyMode(this);
+                    TopParseNode current = mCodePage.getTopParseNode();
+                    if (current == null)
+                    {
+                        mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()), null , this);
+                        updateTopParseNode();
+                    }
+                    else
+                    {
+                        mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()), current , this);
+                    }
                 }
                 else
+                {
+                    mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()), null , this);
                     mEditorController.disableReadOnlyMode(this);
+                }
             }
         }
 
     }
+
+
+
 
     @Override
     public void onError(@NonNull Throwable e)
@@ -487,18 +547,34 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     }
 
-    ProgressDialog dialog;
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onParseUpdateEvent(LispEditText.ParseStateEvent event)
+    private void updateTopParseNode()
     {
-        if (event.isStarting())
+        mCodePage.requestTopParseNode(new Observer<TopParseNode>()
         {
-            dialog = ProgressDialog.show(getActivity(), "Busy...", "Parsing text");
-        }
-        else
-        {
-            if (dialog != null)
-                dialog.dismiss();
-        }
+
+            @Override
+            public void onSubscribe(@NonNull Disposable d)
+            {
+
+            }
+
+            @Override
+            public void onNext(@NonNull TopParseNode topParseNode)
+            {
+                mEditorFragment.getEditorController().setTopParseNode(topParseNode);
+            }
+
+            @Override
+            public void onError(@NonNull Throwable e)
+            {
+
+            }
+
+            @Override
+            public void onComplete()
+            {
+
+            }
+        });
     }
 }
