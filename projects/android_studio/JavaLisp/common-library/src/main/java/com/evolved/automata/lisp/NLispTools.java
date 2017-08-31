@@ -3207,10 +3207,6 @@ public class NLispTools
 						String base = evaluatedArgs[0].getString();
 						int length = (int)evaluatedArgs[1].getIntValue();
 
-
-
-
-
 						return makeValue(base.substring(0, length));
 
 					}
@@ -3614,7 +3610,7 @@ public class NLispTools
 							new Comparator<Value>(){
 								public int compare(Value s1, Value s2)
 								{
-									Value[] sargs = new Value[]{s2, s1};
+									Value[] sargs = new Value[]{s1, s2};
 									
 									lambda.setActualParameters(sargs);
 									
