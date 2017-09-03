@@ -7,6 +7,7 @@ import org.apache.commons.lang3.tuple.Triple;
 
 import android.content.Context;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,12 +23,49 @@ import com.evolved.automata.lisp.Value;
 
 public class SpinnerViewProxy extends ViewProxy
 {
-	
+
+
+	public static final String _DROPDOWN_HORIZONTAL_OFFSET = ":dropDownHorizontalOffset";
+	public static final String _DROPDOWN_VERTICAL_OFFSET = ":dropDownVerticalOffset";
+	public static final String _DROPDOWN_WIDTH = ":dropDownWidth";
+	public static final String _DROPDOWN_SELECTOR = ":dropDownSelector";
+	public static final String _SPINNER_MODE = ":spinnerMode";
+
 	ArrayAdapter<Triple<ViewProxy, ViewProxy, FunctionTemplate>> _adapter = null;
 	ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>> _spinnerSpecList = new ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>>();
 	AdapterView.OnItemSelectedListener _selectListener = null;
 	int _selection = 0;
-	
+
+	public static final String DIALOG_SPINNER_MODE = "dialog";
+	public static final String DROPDOWN_SPINNER_MODE = "dropdown";
+
+	public enum SpinnerMode
+	{
+		DIALOG_SPINNER_MODE("dialog", 0), DROPDOWN_SPINNER_MODE("dropdown", 1);
+		String _name;
+		int _index;
+		SpinnerMode(String name, int index)
+		{
+			_name = name;
+			_index = index;
+		}
+
+		public int getIndex()
+		{
+			return _index;
+		}
+	}
+
+	public static final HashMap<String, Integer> mSpinnerModeMap = new HashMap<String, Integer>()
+	{
+		{
+			put(DIALOG_SPINNER_MODE, Integer.valueOf(0));
+			put(DROPDOWN_SPINNER_MODE, Integer.valueOf(1));
+		}
+	};
+
+	SpinnerMode mSpinnerMode = SpinnerMode.DROPDOWN_SPINNER_MODE;
+
 	public SpinnerViewProxy(final Context con, HashMap<String, Value> keywords, ArrayList<Triple<ViewProxy, ViewProxy, FunctionTemplate>> spinnerSpecList)
 	{
 		super(con, keywords);
@@ -113,12 +151,31 @@ public class SpinnerViewProxy extends ViewProxy
 
 	@Override
 	public View createBaseView() {
-		Spinner spinner = new Spinner(context);
-		spinner.setAdapter(_adapter);
+		processSpinnerMode(_keys);
+		Spinner spinner = new Spinner(context, mSpinnerMode.getIndex());
+        spinner.setAdapter(_adapter);
 		spinner.setOnItemSelectedListener(_selectListener);
 		spinner.setSelection(_selection);
 		return spinner;
 	}
+
+
+	private void processSpinnerMode(HashMap<String, Value> keys)
+	{
+
+		Value spinnerModeValue = keys.get(_SPINNER_MODE);
+
+		if (spinnerModeValue != null && spinnerModeValue.isString())
+		{
+			String mode = spinnerModeValue.getString();
+			SpinnerMode spinnerMode = SpinnerMode.valueOf(mode.toLowerCase());
+			if (spinnerMode != null)
+			{
+				mSpinnerMode = spinnerMode;
+			}
+		}
+	}
+
 	
 	
 }

@@ -16,19 +16,34 @@
         android:layout_height="wrap_content"
         android:text = "@string/app_status_log_details_label"
         android:textStyle="bold"/>
-    <EditText
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="@dimen/app_status_log_details_edit_height"
-        android:editable = "false"
         android:inputType="textMultiLine"
         android:textSize="@dimen/app_status_log_details_text_sizes"
         android:id = "@+id/edit_log_details"
+        android:textIsSelectable="true"
         />
-    <com.evolved.automata.android.widgets.ShadowButton
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        custom:text = 'OK'
-        custom:textSize = '@dimen/app_status_log_button_text_sizes'
-        android:id = "@+id/sdw_but_exit_app_status_log"/>
+    <android.support.constraint.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <com.evolved.automata.android.widgets.ShadowButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            custom:text = 'OK'
+            custom:textSize = '@dimen/app_status_log_button_text_sizes'
+            android:id = "@+id/sdw_but_exit_app_status_log"
+            custom:layout_constraintLeft_toLeftOf = "parent"
+            />
+        <com.evolved.automata.android.widgets.ShadowButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            custom:text = 'Clear'
+            custom:textSize = '@dimen/app_status_log_button_text_sizes'
+            custom:layout_constraintRight_toRightOf = "parent"
+            android:id = "@+id/sdw_but_clear_app_status_log"/>
+
+    </android.support.constraint.ConstraintLayout>
+
 
 </LinearLayout>

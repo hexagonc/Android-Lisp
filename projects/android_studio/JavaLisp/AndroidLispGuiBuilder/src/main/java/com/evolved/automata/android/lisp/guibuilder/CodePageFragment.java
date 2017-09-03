@@ -1,12 +1,13 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentTransaction;
+
 
 import android.os.Bundle;
 import android.os.Looper;
 import android.support.annotation.Nullable;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -54,7 +55,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     ShadowButton mEvalButton;
     ShadowButton mSaveButton;
     ShadowButton mToggleReadOnlyButton;
-    ImageButton mClearSelection;
+
 
     CodePage mCodePage;
 
@@ -213,8 +214,6 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         mEvalButton = (ShadowButton)parent.findViewById(R.id.v2_but_eval);
         mSaveButton = (ShadowButton)parent.findViewById(R.id.v2_but_save_page);
         mToggleReadOnlyButton = (ShadowButton)parent.findViewById(R.id.v2_but_toggle_readonly);
-        mClearSelection = (ImageButton) parent.findViewById(R.id.v2_but_clear_selection);
-
 
         mToggleReadOnlyButton.setOnClickListener(new View.OnClickListener()
         {
@@ -264,15 +263,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             }
         });
 
-        mClearSelection.setOnClickListener(new View.OnClickListener()
-        {
 
-            @Override
-            public void onClick(View v)
-            {
-
-            }
-        });
 
 
         mEditorFragment = new CodeEditorFragment();

@@ -8,8 +8,9 @@ import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 
 import android.app.Application;
 import android.content.SharedPreferences;
+import android.support.multidex.MultiDexApplication;
 
-public class ALGBApplication extends Application
+public class ALGBApplication extends MultiDexApplication
 {
 
 

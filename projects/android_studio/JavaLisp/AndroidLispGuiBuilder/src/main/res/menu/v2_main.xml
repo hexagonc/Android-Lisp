@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
     <!--
     <item
         android:id="@+id/v2_menu_test_finished"
@@ -14,20 +15,20 @@
 
     <item android:id = "@+id/v2_menu_page_properties"
           android:title = "Page Properties"
-          android:showAsAction="never"/>
+          app:showAsAction="never"/>
     <item android:id = "@+id/v2_menu_workspace_management"
           android:title = "Manage Workspaces"
-          android:showAsAction="never"/>
+          app:showAsAction="never"/>
 
-    <!--
+
     <item android:id = "@+id/v2_menu_post_test_login"
           android:title = "Test Dropbox Login"
-          android:showAsAction="never"/>
-          -->
-    <item android:id = "@+id/v2_menu_send_test_status_event"
-        android:title = "Show info alert"
-        android:showAsAction="never"/>
+          app:showAsAction="never"/>
+
+    <item android:id = "@+id/v2_menu_show_event_log"
+        android:title = "Show Event Log"
+        app:showAsAction="never"/>
     <item android:id = "@+id/v2_start_dropbox_authentication"
           android:title = "Log into Dropbox"
-          android:showAsAction="never"/>
+          app:showAsAction="never"/>
 </menu>

@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AppCompatDialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,13 +30,15 @@ import java.util.UUID;
  * Created by Evolved8 on 5/29/17.
  */
 
-public class AppStatusLogDialogFragment extends DialogFragment {
+public class AppStatusLogDialogFragment extends AppCompatDialogFragment {
 
 
 
     ShadowButton mAcceptButton;
+    ShadowButton mClearButton;
 
-    EditText mSummaryView;
+    TextView mSummaryView;
+
     ListView mStatusLogListview;
 
 
@@ -45,7 +48,7 @@ public class AppStatusLogDialogFragment extends DialogFragment {
     ArrayAdapter<EventLog.LogEntry> mLogEntryAdapter;
 
     int mStyle = DialogFragment.STYLE_NORMAL;
-    int mTheme = 0;
+    int mTheme = android.support.v7.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert;
 
     int mSelectedWorkspacePos = -1;
 
@@ -64,6 +67,7 @@ public class AppStatusLogDialogFragment extends DialogFragment {
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        setStyle(mStyle, mTheme);
     }
 
     @Override
@@ -81,10 +85,13 @@ public class AppStatusLogDialogFragment extends DialogFragment {
 
         mStatusLogListview = (ListView)top.findViewById(R.id.lst_app_status);
         mAcceptButton = (ShadowButton)top.findViewById(R.id.sdw_but_exit_app_status_log);
-        mSummaryView = (EditText) top.findViewById(R.id.edit_log_details);
+        mClearButton = (ShadowButton)top.findViewById(R.id.sdw_but_clear_app_status_log);
+        mSummaryView = (TextView) top.findViewById(R.id.edit_log_details);
+
 
 
         getDialog().setTitle(R.string.app_status_log_title);
+
         configureUI();
 
         return top;
@@ -164,6 +171,17 @@ public class AppStatusLogDialogFragment extends DialogFragment {
         });
 
 
+        mClearButton.setOnClickListener(new View.OnClickListener()
+        {
+
+            @Override
+            public void onClick(View view)
+            {
+                EventLog.get().clearEntries();
+                mStatusLogs.clear();
+                mLogEntryAdapter.notifyDataSetChanged();
+            }
+        });
     }
 
 

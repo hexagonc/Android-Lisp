@@ -1,11 +1,12 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
+
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -30,7 +31,9 @@ import java.util.LinkedList;
  * Created by Evolved8 on 5/5/17.
  */
 
-public class WorkspaceFragment extends Fragment {
+public class WorkspaceFragment extends android.support.v4.app.Fragment {
+
+
 
 
     Animation mFlashAnimation = null;
@@ -149,7 +152,15 @@ public class WorkspaceFragment extends Fragment {
 
         final String fragTag = "app_status_log";
         AppStatusLogDialogFragment frag = AppStatusLogDialogFragment.create();
+
         frag.show(getFragmentManager(), fragTag);
+    }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onShowEventLogEvent(EventLog.ShowEventLogEvent event)
+    {
+        showAppStatusDialog();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -353,6 +364,7 @@ public class WorkspaceFragment extends Fragment {
                                                                                 PagePropertiesFragment.ChangeText cT = (PagePropertiesFragment.ChangeText)changes.get(PagePropertiesFragment.CHANGE_TYPE.CHANGE_TEXT);
                                                                                 CodePage page = getCurrentPage();
                                                                                 page.setExpr(cT.newText());
+                                                                                page.assertTopParseNodeIsInValid();
                                                                                 getCurrentPageFragment().updatePage();
                                                                             }
                                                                         }

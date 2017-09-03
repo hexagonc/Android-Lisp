@@ -4,9 +4,9 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.FragmentTransaction;
+
+
+
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -15,6 +15,11 @@ import android.os.Bundle;
 
 import android.os.IBinder;
 import android.os.ResultReceiver;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
+import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
@@ -25,6 +30,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 import com.dropbox.core.DbxRequestConfig;
+import com.dropbox.core.DbxWebAuth;
 import com.dropbox.core.android.Auth;
 import com.dropbox.core.android.AuthActivity;
 import com.dropbox.core.v2.DbxClientV2;
@@ -43,7 +49,7 @@ import io.reactivex.disposables.Disposable;
  * Created by Evolved8 on 4/21/17.
  */
 
-public class ALGBBaseActivity extends Activity implements LogHandler {
+public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
     public interface KeyboardVisibility
     {
@@ -75,8 +81,10 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         mWorkspaceMap = new HashMap<String, WorkspaceFragment>();
 
 
-        ActionBar bar = getActionBar();
-        bar.show();
+        Toolbar actionBarToolbar = (Toolbar)findViewById(R.id.tb_toolbar_actionbar);
+        setSupportActionBar(actionBarToolbar);
+
+        actionBarToolbar.inflateMenu(R.menu.v2_main);
 
         try
         {
@@ -121,7 +129,8 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         invalidateOptionsMenu();
 
         mCurrentWorkspaceFragment = frag;
-        FragmentManager manager = getFragmentManager();
+
+        FragmentManager manager = getSupportFragmentManager();
         FragmentTransaction ft = manager.beginTransaction();
         ft.replace(R.id.v2_top, mCurrentWorkspaceFragment);
         ft.commit();
@@ -156,10 +165,10 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
             AndroidTools.setStringPreferenceSetting(DROPBOX_ACCESS_TOKEN_KEY, token);
             String uId = Auth.getUid();
         }
-
+        String clientName = getResources().getString(R.string.dropbox_app_client_name);
         if (token != null)
         {
-            DbxRequestConfig.Builder builder = DbxRequestConfig.newBuilder("AndroidLispGUIBuilder");
+            DbxRequestConfig.Builder builder = DbxRequestConfig.newBuilder(clientName);
             DbxRequestConfig config = builder.build();
 
             AndroidTools.setStringPreferenceSetting(DROPBOX_ACCESS_TOKEN_KEY, token);
@@ -223,6 +232,11 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.v2_main, menu);
+
+        if (!getResources().getBoolean(R.bool.enable_test_dropbox_access_key))
+        {
+            menu.removeItem(R.id.v2_menu_post_test_login);
+        }
         if (mCurrentWorkspaceFragment != null)
             mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
         return true;
@@ -245,7 +259,23 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
         String accessToken = Auth.getOAuth2Token();
         if (accessToken == null)
         {
-            Auth.startOAuth2Authentication(this, getResources().getString(R.string.enc_dropbox_app_key));
+            boolean manifestConfiguredP = false;
+            String errorMessage = "Another app is conflicting";
+            try
+            {
+                manifestConfiguredP = AuthActivity.checkAppBeforeAuth(this, getString(R.string.enc_dropbox_app_key), false);
+            }
+            catch (Exception e)
+            {
+                errorMessage = e.toString();
+            }
+
+            if (manifestConfiguredP)
+                Auth.startOAuth2Authentication(this, getResources().getString(R.string.enc_dropbox_app_key));
+            else
+            {
+                EventLog.get().logSystemError(new Exception(errorMessage), "Cannot start OAuth authentication");
+            }
         }
         else
         {
@@ -260,27 +290,37 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
     {
 
 
-//        if (item.getItemId() == R.id.v2_menu_post_test_login)
-//        {
-//
-//            Tools.postEvent(new DropboxManager.LoginEvent(DropboxManager.get().getTestClient()));
-//            return true;
-//        }
-//        else
         if (item.getItemId() == R.id.v2_menu_workspace_management)
         {
             showWorkspaceManager();
             return true;
 
-        }else if (item.getItemId() == R.id.v2_menu_send_test_status_event)
+        }else if (item.getItemId() == R.id.v2_menu_show_event_log)
         {
-            Tools.postEvent(new NewErrorLogEntriesEvent());
+            EventLog.get().showLog();
             return true;
         }
         else if (item.getItemId() == R.id.v2_start_dropbox_authentication)
         {
-
             startDropboxAuthentication();
+            return true;
+        }
+        else if (item.getItemId() == R.id.v2_menu_post_test_login)
+        {
+            String accessToken = getResources().getString(R.string.v2_test_dropbox_token);
+            String clientName = getResources().getString(R.string.dropbox_app_client_name);
+            if (accessToken != null && accessToken.length() > 0 && clientName != null)
+            {
+                DbxRequestConfig.Builder builder = DbxRequestConfig.newBuilder(clientName);
+                DbxRequestConfig config = builder.build();
+
+                AndroidTools.setStringPreferenceSetting(DROPBOX_ACCESS_TOKEN_KEY, accessToken);
+                DbxClientV2 client = new DbxClientV2(config, accessToken);
+                Tools.postEvent(new DropboxManager.LoginEvent(client));
+
+            }
+            else
+                EventLog.get().logSystemError("Dropbox not configured for test login");
             return true;
         }
         else
@@ -308,16 +348,16 @@ public class ALGBBaseActivity extends Activity implements LogHandler {
             @Override
             public void onClose()
             {
-                Fragment f = getFragmentManager().findFragmentByTag(dialogTag);
-                FragmentTransaction trans = getFragmentManager().beginTransaction();
+                Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
+                FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
                 trans.remove(f).commit();
             }
 
             @Override
             public void onClose(HashMap<WorkspaceManagementFragment.CHANGE_TYPE, WorkspaceManagementFragment.Change> changes)
             {
-                Fragment f = getFragmentManager().findFragmentByTag(dialogTag);
-                FragmentTransaction trans = getFragmentManager().beginTransaction();
+                Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
+                FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
                 trans.remove(f).commit();
 
                 String currentWorkspaceId = mCurrentWorkspace.getWorkspaceId();

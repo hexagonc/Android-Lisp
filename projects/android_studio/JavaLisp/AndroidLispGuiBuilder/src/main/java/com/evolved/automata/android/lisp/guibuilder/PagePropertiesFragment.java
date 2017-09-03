@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AppCompatDialogFragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,7 +26,7 @@ import io.reactivex.disposables.Disposable;
  * Created by Evolved8 on 5/8/17.
  */
 
-public class PagePropertiesFragment extends DialogFragment {
+public class PagePropertiesFragment extends AppCompatDialogFragment {
 
 
     public enum CHANGE_TYPE
@@ -161,7 +162,7 @@ public class PagePropertiesFragment extends DialogFragment {
         PagePropertiesFragment frag = new PagePropertiesFragment();
         frag.setPage(page);
         frag.setStyle(DialogFragment.STYLE_NORMAL);
-        frag.setTheme(0);
+        frag.setTheme(android.support.v7.appcompat.R.style.Theme_AppCompat_Light_Dialog_Alert);
 
         frag.setCompleteListener(dialogFinishedListener);
         return frag;

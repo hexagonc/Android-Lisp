@@ -1,10 +1,13 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
-import android.app.Fragment;
+
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -79,14 +82,6 @@ public class CodeEditorFragment extends Fragment {
     LispCodeEditorParseContext mCodeEditorParseContext;
 
     LispEditText mCodeView;
-    ImageButton mParentButton;
-    ImageButton mChildButton;
-
-    ImageButton mPrevSiblingButton;
-    ImageButton mCursorLeftButton;
-    ImageButton mCursorRightButton;
-
-    ImageButton mNextSiblingButton;
 
     LispEditText.ControlInterface mController;
 
@@ -122,78 +117,82 @@ public class CodeEditorFragment extends Fragment {
     {
 
         ViewGroup top = (ViewGroup)inflater.inflate(R.layout.v2_code_editing, container, false);
+
+        Toolbar toolbar = (Toolbar)top.findViewById(R.id.toolbar);
+        toolbar.inflateMenu(R.menu.code_editor_menu);
+
+        toolbar.setOnMenuItemClickListener(new Toolbar.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item)
+            {
+                switch (item.getItemId())
+                {
+                    case R.id.menu_cursor_left:
+                    {
+                        mController.moveCursorLeft();
+                    }
+                    break;
+                    case R.id.menu_cursor_right:
+                    {
+                        mController.moveCursorRight();
+                    }
+                    break;
+                    case R.id.menu_to_parent:
+                    {
+                        mController.moveToParent();
+                    }
+                    break;
+                    case R.id.menu_to_child:
+                    {
+                        mController.moveToFirstChild();
+                    }
+                    break;
+                    case R.id.menu_to_prev_sibling:
+                    {
+                        mController.moveToPrevSibling(true);
+                    }
+                    break;
+                    case R.id.menu_to_next_sibling:
+                    {
+                        mController.moveToNextSibling(true);
+                    }
+                    break;
+                    case R.id.menu_clear:
+                    {
+
+                    }
+                    break;
+                    case R.id.menu_undo:
+                    {
+
+                    }
+                    break;
+                    case R.id.menu_copy:
+                    {
+
+                    }
+                    break;
+                    case R.id.menu_cut:
+                    {
+
+                    }
+                    break;
+                    case R.id.menu_paste:
+                    {
+
+                    }
+                    break;
+
+                }
+                return true;
+            }
+        });
+
         mCodeView = (LispEditText)top.findViewById(R.id.v2_edit_main_code);
         mCodeView.setHorizontallyScrolling(true);
         mController = mCodeView.getControlInterface();
 
 
-        mParentButton = (ImageButton)top.findViewById(R.id.v2_up_to_parent);
-        mChildButton = (ImageButton)top.findViewById(R.id.v2_down_to_child);
-
-        mPrevSiblingButton = (ImageButton)top.findViewById(R.id.v2_prev_sibling);
-        mCursorLeftButton = (ImageButton)top.findViewById(R.id.v2_cursor_left);
-        mCursorRightButton = (ImageButton)top.findViewById(R.id.v2_cursor_right);
-        mNextSiblingButton = (ImageButton)top.findViewById(R.id.v2_next_sibling);
-
-        mParentButton.setOnClickListener(new View.OnClickListener()
-        {
-
-            @Override
-            public void onClick(View v)
-            {
-                mController.moveToParent();
-            }
-        });
-
-        mChildButton.setOnClickListener(new View.OnClickListener()
-        {
-
-            @Override
-            public void onClick(View v)
-            {
-                mController.moveToFirstChild();
-            }
-        });
-
-        mPrevSiblingButton.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                mController.moveToPrevSibling(true);
-            }
-        });
-
-
-        mCursorLeftButton.setOnClickListener(new View.OnClickListener()
-        {
-
-            @Override
-            public void onClick(View v)
-            {
-                mController.moveCursorLeft();
-            }
-        });
-
-        mCursorRightButton.setOnClickListener(new View.OnClickListener()
-        {
-
-            @Override
-            public void onClick(View v)
-            {
-                mController.moveCursorRight();
-            }
-        });
-
-
-        mNextSiblingButton.setOnClickListener(new View.OnClickListener()
-        {
-            @Override
-            public void onClick(View v)
-            {
-                mController.moveToNextSibling(true);
-            }
-        });
 
 
         mController.setStateListener(new LispEditText.StateListener()

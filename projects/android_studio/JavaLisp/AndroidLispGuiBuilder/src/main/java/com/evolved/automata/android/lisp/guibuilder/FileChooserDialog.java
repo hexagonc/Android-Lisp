@@ -6,6 +6,7 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.Bundle;
 import android.os.Looper;
+import android.support.v7.app.AppCompatDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +23,7 @@ import com.evolved.automata.android.widgets.ShadowButton;
 
 import java.util.ArrayList;
 
-public class FileChooserDialog extends Dialog implements OnChildFilesRequestedListener
+public class FileChooserDialog extends AppCompatDialog implements OnChildFilesRequestedListener
 {
 
 
@@ -56,7 +57,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 	Activity _activity;
 	public FileChooserDialog(Activity activity, String title, FileChooserItem baseFolder)
 	{
-		super(activity);
+		super(activity, R.style.Theme_AppCompat_Light_Dialog);
 		_activity = activity;
 		_title = title;
 		_parent = activity;
@@ -180,6 +181,7 @@ public class FileChooserDialog extends Dialog implements OnChildFilesRequestedLi
 
 
 		setTitle(_title);
+
 
 		_pathView = (TextView)findViewById(R.id.txt_parent_path_view);
 		_fileList = (ListView)findViewById(R.id.lst_files);

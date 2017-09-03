@@ -13,4 +13,5 @@
     with Dropbox when setting up your developer account. -->
     
     <string name="dropbox_app_client_name"></string>
+    <bool name="enable_test_dropbox_access_key">true</bool>
 </resources>

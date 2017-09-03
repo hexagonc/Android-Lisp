@@ -1,9 +1,10 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
-import android.app.Fragment;
-import android.app.FragmentTransaction;
+
 import android.os.Bundle;
 
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -13,11 +14,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.evolved.automata.lisp.Environment;
-import com.evolved.automata.lisp.FunctionTemplate;
-import com.evolved.automata.lisp.NLispTools;
-import com.evolved.automata.lisp.SimpleFunctionTemplate;
-import com.evolved.automata.lisp.Value;
 
 /**
  * Created by Evolved8 on 5/8/17.

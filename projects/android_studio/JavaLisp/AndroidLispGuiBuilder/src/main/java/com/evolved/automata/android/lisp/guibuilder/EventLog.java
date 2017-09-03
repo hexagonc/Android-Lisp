@@ -13,6 +13,12 @@ import java.util.Calendar;
 
 public class EventLog {
 
+
+    public static class ShowEventLogEvent
+    {
+
+    }
+
     ALGB mApplication;
 
     private static EventLog mInternalLog;
@@ -264,6 +270,11 @@ public class EventLog {
         return mLogHistory;
     }
 
+    public void clearEntries()
+    {
+        mLogHistory.clear();
+    }
+
     public void logSystemInfo(String summary)
     {
         logEvent(new EventLog.SystemSource(), EntryType.INFO, summary);
@@ -324,5 +335,9 @@ public class EventLog {
     }
 
 
+    public void showLog()
+    {
+        Tools.postEvent(new ShowEventLogEvent());
+    }
 
 }
