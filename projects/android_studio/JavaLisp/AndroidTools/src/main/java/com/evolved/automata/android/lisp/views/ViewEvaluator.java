@@ -859,13 +859,27 @@ public class ViewEvaluator  {
 				{
 					Value proxyArg = evaluatedArgs[0];
 					final Value textArg = evaluatedArgs[1];
-					final TextViewProxy tv = (TextViewProxy)proxyArg.getObjectValue();
-					
-					tv.setText(textArg.getString());
-					if (tv.getView()!=null && !getBatchUIUpdates(env))
-						return continuationReturn(proxyArg);
-					else
-						return proxyArg;
+
+					Object proxy = proxyArg.getObjectValue();
+					if (proxy instanceof TextViewProxy)
+					{
+						TextViewProxy tv = (TextViewProxy)proxy;
+								tv.setText(textArg.getString());
+						if (tv.getView()!=null && !getBatchUIUpdates(env))
+							return continuationReturn(proxyArg);
+						else
+							return proxyArg;
+					}
+					else if (proxy instanceof  ShadowButtonProxy)
+					{
+						ShadowButtonProxy sbp = (ShadowButtonProxy)proxy;
+						sbp.setText(textArg.getString());
+						if (sbp.getView()!=null && !getBatchUIUpdates(env))
+							return continuationReturn(proxyArg);
+						else
+							return proxyArg;
+					}
+					throw new EvaluateException("Invalid Values for set-text");
 				}
 				catch (Exception e)
 				{
