@@ -26,6 +26,7 @@ public class ScrollViewProxy extends ViewGroupProxy
 	public ViewGroup getPreconfiguredView()
 	{
 		ScrollView layout = new ScrollView(context);
+        layout.setFillViewport(true);
 		return layout;
 		
 	}
