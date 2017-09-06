@@ -6,6 +6,7 @@ import java.util.HashSet;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.text.Editable;
 import android.text.Layout;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -192,6 +193,19 @@ public class TextViewProxy extends ViewProxy
 		if (!color.isNull())
 		{
 			setTextColor(color, tview);
+		}
+	}
+
+	public void insertTextAtCursor(String insertedText)
+	{
+		View actual;
+		if (encapsulated != null && (null != (actual = encapsulated.get())))
+		{
+			TextView tv = (TextView)actual;
+			int cursor = tv.getSelectionStart();
+			String newText = text.substring(0, cursor) +  insertedText + text.substring(cursor);
+			tv.setText(newText);
+			text = newText;
 		}
 	}
 	

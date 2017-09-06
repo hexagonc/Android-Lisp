@@ -112,6 +112,8 @@ public class ViewEvaluator  {
 		env.mapFunction("get-text", get_text(env, activity, interpreter));
 		
 		env.mapFunction("set-text", set_text(env, activity, interpreter));
+
+		env.mapFunction("insert-text-at-cursor", insert_text_at_cursor());
 		
 		env.mapFunction("image", image(env, activity, interpreter));
 		
@@ -839,6 +841,8 @@ public class ViewEvaluator  {
 		};
 	}
 
+
+
 	public static ViewFunctionTemplate set_text(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
 		return new ViewFunctionTemplate()
@@ -889,6 +893,44 @@ public class ViewEvaluator  {
 				
 			}
 			
+		};
+	}
+
+	public static ViewFunctionTemplate insert_text_at_cursor()
+	{
+		return new ViewFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)insert_text_at_cursor();
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+				Value proxyArg = evaluatedArgs[0];
+				final Value textArg = evaluatedArgs[1];
+
+				Object proxy = proxyArg.getObjectValue();
+				if (proxy instanceof TextViewProxy)
+				{
+					TextViewProxy tv = (TextViewProxy)proxy;
+					tv.insertTextAtCursor(textArg.getString());
+					if (tv.getView()!=null && !getBatchUIUpdates(env))
+						return continuationReturn(proxyArg);
+					else
+						return proxyArg;
+				}
+				else
+					throw new EvaluateException("Invalid Values for insert-text-at-cursor");
+
+			}
+
 		};
 	}
 	
