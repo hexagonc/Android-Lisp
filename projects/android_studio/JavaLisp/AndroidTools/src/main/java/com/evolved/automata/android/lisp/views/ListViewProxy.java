@@ -161,6 +161,13 @@ public class ListViewProxy extends ViewProxy {
         processItemLongClickListenerKeywords(_keys, view);
     }
 
+    public void updateListItems(ArrayList<ViewProxy> children)
+    {
+        mChildren.clear();
+        mChildren.addAll(children);
+        mViewAdapter.notifyDataSetChanged();
+    }
+
     public void setOnItemClickListener(final Value lambdaValue)
     {
         if (!lambdaValue.isLambda())

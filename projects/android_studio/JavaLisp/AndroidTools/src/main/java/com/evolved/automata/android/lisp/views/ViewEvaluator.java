@@ -205,6 +205,7 @@ public class ViewEvaluator  {
         env.mapFunction("set-selection-lambda", set_selection_listener(env));
 
         env.mapFunction("listview", listview(env, activity, interpreter));
+		env.mapFunction("update-list-items", update_list_items());
 	}
 
 	private static int convertPixelsToDP(Context con, int pixels)
@@ -2121,6 +2122,52 @@ public class ViewEvaluator  {
 			}
 		};
 	}
+
+
+	public static ViewFunctionTemplate update_list_items()
+	{
+		return new ViewFunctionTemplate()
+		{
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)update_list_items();
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+				ListViewProxy proxy = (ListViewProxy)evaluatedArgs[0].getObjectValue();
+
+				Value[] viewSpec = evaluatedArgs[1].getList();
+				ArrayList<ViewProxy> listviewItems = new ArrayList<ViewProxy>();
+
+
+				for (Value choiceItem:viewSpec)
+				{
+
+					Object p = choiceItem.getObjectValue();
+					if (p instanceof ViewProxy)
+					{
+						ViewProxy chid = (ViewProxy)p;
+						listviewItems.add(chid);
+					}
+
+				}
+
+				proxy.updateListItems(listviewItems);
+				if (proxy.getView()!=null && !getBatchUIUpdates(env))
+					return continuationReturn(evaluatedArgs[0]);
+				else
+					return evaluatedArgs[0];
+			}
+
+		};
+	}
+
 	
 	public static ViewFunctionTemplate set_spinner_items(final Environment env, final Activity con, final AndroidLispInterpreter interpreter)
 	{
