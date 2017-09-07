@@ -32,8 +32,9 @@ public class HorizontalScrollViewProxy extends ViewGroupProxy
     public void setScrollTargetX(int target, boolean smooth)
     {
         scrollTargetX = target;
-        HorizontalScrollView actual = (HorizontalScrollView)encapsulated.get();
-        if (actual !=null)
+
+        HorizontalScrollView actual;
+        if (encapsulated != null && ((actual = (HorizontalScrollView)encapsulated.get())!=null))
         {
             scrollTargetY = getView().getScrollY();
             if (smooth)
@@ -47,15 +48,16 @@ public class HorizontalScrollViewProxy extends ViewGroupProxy
 
     public void scrollByX(int amount, boolean smooth)
     {
-        HorizontalScrollView actual = (HorizontalScrollView)encapsulated.get();
-        if (actual !=null)
+        View actual;
+        if (encapsulated != null && ((actual = encapsulated.get()) != null))
         {
+            HorizontalScrollView hz = (HorizontalScrollView)actual;
             if (smooth)
-                actual.smoothScrollBy(amount, 0);
+                hz.smoothScrollBy(amount, 0);
             else
-                actual.scrollBy(amount, 0);
-
+                hz.scrollBy(amount, 0);
         }
+
 
     }
 }
