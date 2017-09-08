@@ -16,6 +16,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 
+
 import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.lisp.editor.CompositeNode;
 import com.evolved.automata.lisp.editor.ParseNode;
@@ -181,6 +182,8 @@ public class LispEditText extends EditText {
 
             if (_subScriber != null)
                 _subScriber.onNext(new EditEvent(updated));
+            if (mStateListener != null)
+                mStateListener.onTextChange(updated, mCursorPosition);
         }
     }
 
@@ -381,8 +384,12 @@ public class LispEditText extends EditText {
             }
             else
             {
-                mCurrentSelection = mParseNode.findNode(mCursorPosition);
-                renderSelection(false);
+                if (mParseNode != null)
+                {
+                    mCurrentSelection = mParseNode.findNode(mCursorPosition);
+                    renderSelection(false);
+                }
+
             }
         }
         mAllowSelectionChangesP = displaySelection;
