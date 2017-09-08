@@ -1,6 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.app.Activity;
+import android.util.Log;
 
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.NLispTools;
@@ -232,21 +233,30 @@ public abstract class Page {
 
     public boolean restorePage()
     {
-        Value stored = mMyEnvironment.simpleEvaluateFunction("get-data-value", mId, CONTEXT_KEY);
-
-        if (stored != null)
+        try
         {
-            mMyData = stored.getStringHashtable();
-            mMyEnvironment.setVariableValues(mMyData);
-            mMyEnvironment.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, Environment.getNull());
-            if (mApplication.hasData(getPageId(), SCRIPT_CONTEXT_KEY))
-                mScript = mApplication.getRawData(getPageId(), SCRIPT_CONTEXT_KEY);
-            else
-                mScript = "";
-            return true;
+
+
+            Value stored = mMyEnvironment.simpleEvaluateFunction("get-data-value", mId, CONTEXT_KEY);
+
+            if (stored != null)
+            {
+                mMyData = stored.getStringHashtable();
+                mMyEnvironment.setVariableValues(mMyData);
+                mMyEnvironment.mapValue(RenderFragment.VIEW_PROXY_VAR_NAME, Environment.getNull());
+                if (mApplication.hasData(getPageId(), SCRIPT_CONTEXT_KEY))
+                    mScript = mApplication.getRawData(getPageId(), SCRIPT_CONTEXT_KEY);
+                else
+                    mScript = "";
+                return true;
+            } else
+                return false;
         }
-        else
+        catch (Exception e)
+        {
+            Log.e("<><><><><><><>", e.toString());
             return false;
+        }
     }
 
 

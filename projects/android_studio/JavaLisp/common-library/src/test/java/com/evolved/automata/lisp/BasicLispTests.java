@@ -706,4 +706,29 @@ public class BasicLispTests extends TestHarnessBase
 		
 	}
 
+
+	/**
+	 * If this fails due to an initialization exce
+	 */
+	@Test
+	public void testSerializeOfComplexStrings()
+	{
+		String expr = "(concat \\\"(get-date-part \\\\\"\\\" part-key \\\"\\\\\")\\\" )";
+		try
+		{
+			Value v = NLispTools.makeValue(expr);
+			Environment env = new Environment();
+			NLispTools.addDefaultFunctionsAddMacros(env);
+			ExtendedFunctions.addExtendedFunctions(env);
+			env.mapValue("v", v);
+			Value result = env.evaluate("(eval (parse (serialize v)))", true);
+			Assert.assertTrue("Failed to match values", v.equals(result));
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			Assert.assertTrue(false);
+		}
+	}
+
 }

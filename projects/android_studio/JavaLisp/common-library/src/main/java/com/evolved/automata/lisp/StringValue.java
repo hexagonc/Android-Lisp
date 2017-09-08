@@ -1,5 +1,7 @@
 package com.evolved.automata.lisp;
 
+import org.apache.commons.lang3.StringUtils;
+
 public class StringValue extends Value {
 
 	String _value = null;
@@ -42,8 +44,16 @@ public class StringValue extends Value {
 		if (isIdentifier())
 			return addQualifiers(_value);
 		else
-			return addQualifiers("\"" + _value.replaceAll("\\\\", "\\\\").replace("\"", "\\\"") + "\"");
+		{
+			String delimiEmbeddedSlashes = StringUtils.replace(_value, "\\", "\\\\");
+			String delimitEmbeddedQuotes = StringUtils.replace(delimiEmbeddedSlashes, "\"", "\\\"");
+
+
+			return addQualifiers("\"" + delimitEmbeddedQuotes + "\"");
+		}
 	}
+
+
 
 	@Override
 	public Value clone() {
