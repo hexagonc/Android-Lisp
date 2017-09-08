@@ -311,10 +311,18 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
 
         for (String pageId:mWorkspace.getChildPageIds())
         {
-            CodePage page = mWorkspace.getApplication().retrieveCodePage(pageId);
-            PageFragment pageFragment = new PageFragment();
-            pageFragment.setPage(page);
-            mPages.add(pageFragment);
+            try
+            {
+                CodePage page = mWorkspace.getApplication().retrieveCodePage(pageId);
+                PageFragment pageFragment = new PageFragment();
+                pageFragment.setPage(page);
+                mPages.add(pageFragment);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+
         }
     }
 

@@ -1,5 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.util.Log;
+
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
@@ -221,9 +223,21 @@ public class Workspace {
 
     public Page getCurrentPage()
     {
-        String pageId = mPages.get(getCurrentPageIndex());
 
-        return mApplication.retrievePage(pageId);
+
+        try
+        {
+            String pageId = mPages.get(getCurrentPageIndex());
+            return mApplication.retrievePage(pageId);
+        }
+        catch (Exception e)
+        {
+            Log.e("<><><><><", "Current page unavailable, returning default page");
+            setCurrentPageIndex(0);
+            String pageId = mPages.get(getCurrentPageIndex());
+            return mApplication.retrievePage(pageId);
+        }
+
     }
 
     public String getTitle()

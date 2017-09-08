@@ -133,6 +133,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
         FragmentManager manager = getSupportFragmentManager();
         FragmentTransaction ft = manager.beginTransaction();
         ft.replace(R.id.v2_top, mCurrentWorkspaceFragment);
+        ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
         ft.commit();
 
     }
@@ -348,17 +349,17 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
             @Override
             public void onClose()
             {
-                Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
-                FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
-                trans.remove(f).commit();
+                //Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
+                //FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
+                //trans.remove(frag).commit();
             }
 
             @Override
             public void onClose(HashMap<WorkspaceManagementFragment.CHANGE_TYPE, WorkspaceManagementFragment.Change> changes)
             {
-                Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
-                FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
-                trans.remove(f).commit();
+                //Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
+                //FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
+                //trans.remove(f).commit();
 
                 String currentWorkspaceId = mCurrentWorkspace.getWorkspaceId();
                 String newlySelectedWorkspaceId = null;

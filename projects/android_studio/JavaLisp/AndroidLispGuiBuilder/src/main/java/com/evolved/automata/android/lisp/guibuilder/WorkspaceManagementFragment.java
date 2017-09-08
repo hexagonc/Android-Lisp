@@ -484,7 +484,7 @@ public class WorkspaceManagementFragment extends DialogFragment {
     private void cancelChanges()
     {
         mChangeListener.onClose();
-
+        getDialog().dismiss();
     }
 
     private void acceptChanges()
@@ -513,6 +513,7 @@ public class WorkspaceManagementFragment extends DialogFragment {
         }
 
         mChangeListener.onClose(mChanges);
+        getDialog().dismiss();
     }
 
 
