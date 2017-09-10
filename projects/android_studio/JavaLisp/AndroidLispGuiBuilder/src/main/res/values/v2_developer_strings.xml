@@ -2,4 +2,5 @@
 <resources>
     <!-- Do not commit and push this file to a public repository wit these values set -->
     <string name = "v2_test_dropbox_token"></string>
+    <bool name="enable_special_debug">true</bool>
 </resources>
