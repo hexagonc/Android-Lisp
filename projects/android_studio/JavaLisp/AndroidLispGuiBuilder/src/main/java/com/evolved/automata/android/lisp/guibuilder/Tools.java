@@ -25,6 +25,16 @@ public class Tools {
     public static final HashMap<String, Integer> DRAWABLE_RESOURCE_MAP = new HashMap<String, Integer>()
     {
         {
+            put("ic_add_white_24dp", R.drawable.ic_add_white_24dp);
+            put("ic_close_white_24dp", R.drawable.ic_close_white_24dp);
+            put("ic_more_horiz_black_24dp", R.drawable.ic_more_horiz_black_24dp);
+            put("ic_more_horiz_white_24dp", R.drawable.ic_more_horiz_white_24dp);
+            put("ic_more_vert_black_24dp", R.drawable.ic_more_vert_black_24dp);
+            put("ic_more_vert_white_24dp", R.drawable.ic_more_vert_white_24dp);
+            put("ic_remove_black_24dp", R.drawable.ic_remove_black_24dp);
+            put("ic_remove_white_24dp", R.drawable.ic_remove_white_24dp);
+
+
             put("ic_keyboard_black_24dp", R.drawable.ic_keyboard_black_24dp);
             put("dropbox_logos_dropbox_glyph_blue", R.drawable.dropbox_logos_dropbox_glyph_blue);
             put("ic_add_a_photo_black_24dp", R.drawable.ic_add_a_photo_black_24dp);
