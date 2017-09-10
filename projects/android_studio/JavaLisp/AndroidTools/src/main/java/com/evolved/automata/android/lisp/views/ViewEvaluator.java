@@ -173,6 +173,8 @@ public class ViewEvaluator  {
 		
 		env.mapFunction("get-id", get_id(env, activity, interpreter));
 
+		env.mapFunction("has-attached-view", has_attached_view());
+
 		env.mapFunction("set-id", set_id());
 		
 		env.mapFunction("log", log(env, activity, interpreter));
@@ -221,6 +223,38 @@ public class ViewEvaluator  {
 		return dp;
 	}
 
+
+
+	public static SimpleFunctionTemplate has_attached_view()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)has_attached_view();
+			}
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+
+				ViewProxy proxy = (ViewProxy)evaluatedArgs[0].getObjectValue();
+				View actualView = proxy.getView();
+				if (actualView != null)
+				{
+					return evaluatedArgs[0];
+				}
+				else
+					return Environment.getNull();
+
+			}
+
+		};
+	}
 
 	public static SimpleFunctionTemplate get_view_height(final Context con)
 	{

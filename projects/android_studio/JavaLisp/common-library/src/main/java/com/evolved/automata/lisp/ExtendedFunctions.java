@@ -1340,7 +1340,7 @@ public class ExtendedFunctions
 		}
 		);
 		
-		env.mapFunction("async-for", new AsyncFor());
+
 
 		env.mapFunction("get-datetime-parts", getDateParts());
 
