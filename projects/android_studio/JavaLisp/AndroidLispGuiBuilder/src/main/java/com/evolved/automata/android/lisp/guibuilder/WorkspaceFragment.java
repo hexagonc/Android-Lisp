@@ -50,7 +50,7 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
 
     ShadowButton mNavigatePreviousButton;
     ShadowButton mNavigateNextButton;
-    ImageButton mAddPageButton;
+    //ImageButton mAddPageButton;
     TextView mPageTitleView;
 
 
@@ -93,7 +93,7 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
 
         mNavigatePreviousButton = (ShadowButton)group.findViewById(R.id.v2_but_history_back);
         mNavigateNextButton = (ShadowButton)group.findViewById(R.id.v2_but_history_forward);
-        mAddPageButton = (ImageButton)group.findViewById(R.id.v2_but_add_page);
+        //mAddPageButton = (ImageButton)group.findViewById(R.id.v2_but_add_page);
         mPageTitleView = (TextView)group.findViewById(R.id.v2_txt_page_title);
         mStatusAlertsButton = (ShadowButton)group.findViewById(R.id.v2_but_status_more_info);
         mProgressIcon = (ImageView)group.findViewById(R.id.img_progress_icon);
@@ -127,24 +127,33 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
             }
         });
 
-        mAddPageButton.setOnClickListener(new View.OnClickListener(){
-
-            @Override
-            public void onClick(View v)
-            {
-                CodePage page = (CodePage)mWorkspace.addPage();
-                PageFragment fragment = new PageFragment();
-                fragment.setPage(page);
-                mPages.add(mWorkspace.getCurrentPageIndex(), fragment);
-                gotoCurrentPage();
-            }
-        });
+//        mAddPageButton.setOnClickListener(new View.OnClickListener(){
+//
+//            @Override
+//            public void onClick(View v)
+//            {
+//                CodePage page = (CodePage)mWorkspace.addPage();
+//                PageFragment fragment = new PageFragment();
+//                fragment.setPage(page);
+//                mPages.add(mWorkspace.getCurrentPageIndex(), fragment);
+//                gotoCurrentPage();
+//            }
+//        });
 
 
         gotoCurrentPage();
 
 
         return group;
+    }
+
+    private void addNewPage()
+    {
+        CodePage page = (CodePage)mWorkspace.addPage();
+        PageFragment fragment = new PageFragment();
+        fragment.setPage(page);
+        mPages.add(mWorkspace.getCurrentPageIndex(), fragment);
+        gotoCurrentPage();
     }
 
     private void showAppStatusDialog()
@@ -430,6 +439,11 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
         if (item.getItemId() == R.id.v2_menu_page_properties)
         {
             showPageProperties();
+            return true;
+        }
+        else if (item.getItemId() == R.id.v2_action_add_page)
+        {
+            addNewPage();
             return true;
         }
         else

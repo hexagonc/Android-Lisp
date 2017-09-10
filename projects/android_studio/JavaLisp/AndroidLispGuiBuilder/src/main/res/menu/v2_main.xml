@@ -8,11 +8,12 @@
         android:showAsAction="never"
         android:title="Finish test"/>
 
-        <item android:id = "@+id/v2_menu_open_dropbox"
-          android:title = "Open"
-          android:showAsAction="never"/>
-        -->
 
+        -->
+    <item android:id = "@+id/v2_action_add_page"
+          android:icon="@drawable/ic_add_white_24dp"
+          android:title = "Insert Page"
+          app:showAsAction="always"/>
     <item android:id = "@+id/v2_menu_page_properties"
           android:title = "Page Properties"
           app:showAsAction="never"/>

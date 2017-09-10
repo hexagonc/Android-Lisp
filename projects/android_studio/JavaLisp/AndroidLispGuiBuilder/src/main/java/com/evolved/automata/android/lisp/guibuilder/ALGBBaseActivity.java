@@ -117,7 +117,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     {
         mCurrentWorkspace = workspace;
         String workspaceId = mCurrentWorkspace.getWorkspaceId();
-
+        setWorkspaceActionbarTitle(workspace.getTitle());
         WorkspaceFragment frag = mWorkspaceMap.get(workspaceId);
         if (frag == null)
         {
@@ -434,8 +434,10 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
                     for (WorkspaceManagementFragment.WorkspaceData data:renamed)
                     {
+                        String original = data.getNewTitle();
+                        setWorkspaceActionbarTitle(original);
                         Workspace work = mApplication.getWorkspace(data.getWorkspaceId());
-                        work.setTitle(data.getNewTitle());
+                        work.setTitle(original);
                     }
                 }
 
@@ -452,6 +454,14 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
         mApplication);
 
         frag.show(getFragmentManager(), dialogTag);
+    }
+
+    public void setWorkspaceActionbarTitle(String original)
+    {
+        Toolbar actionBarToolbar = (Toolbar)findViewById(R.id.tb_toolbar_actionbar);
+
+        actionBarToolbar.setSubtitle(original);
+
     }
 
 
