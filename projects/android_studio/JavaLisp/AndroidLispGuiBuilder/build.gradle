@@ -36,6 +36,15 @@ android {
 
         multiDexEnabled true
 
+        /*
+            Set this if getting out of memory errors during dex
+            dexOptions {
+                javaMaxHeapSize "2g"
+                preDexLibraries = false
+            }
+
+         */
+
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
 		testApplicationId "com.evolved.automata.android.lisp.guibuilder.test"
