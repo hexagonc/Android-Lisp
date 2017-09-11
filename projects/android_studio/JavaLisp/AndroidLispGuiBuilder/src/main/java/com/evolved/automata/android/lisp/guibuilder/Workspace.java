@@ -40,7 +40,7 @@ public class Workspace {
     HashMap<String, Value> mMyData;
 
 
-    public Workspace(ALGB app) throws IllegalAccessException, InstantiationException
+    private Workspace(ALGB app) throws IllegalAccessException, InstantiationException
     {
         mMyData = new HashMap<String, Value>();
         mApplication = app;
@@ -61,7 +61,7 @@ public class Workspace {
         Tools.registerEventHandler(this);
     }
 
-    public Workspace(ALGB app, String id) throws IllegalAccessException, InstantiationException
+    private Workspace(ALGB app, String id) throws IllegalAccessException, InstantiationException
     {
         mApplication = app;
         mId = id;
@@ -89,6 +89,22 @@ public class Workspace {
             setCurrentPageIndex(mPages.size()-1);
         Tools.registerEventHandler(this);
     }
+
+    public static Workspace getWorkspace(ALGB app) throws InstantiationException, IllegalAccessException
+    {
+        return new Workspace(app);
+    }
+
+    public static Workspace getWorkspace(ALGB app, String id) throws InstantiationException, IllegalAccessException
+    {
+        HashMap<String, Value> data = app.getData(id, CONTEXT_KEY).getStringHashtable();
+        if (data == null)
+        {
+            return null;
+        }
+        return new Workspace(app, id);
+    }
+
 
     private void addDefaultPage()
     {
@@ -156,11 +172,14 @@ public class Workspace {
     {
         if (mPages.size() > 1 && index < mPages.size() && index >= 0)
         {
-            mPages.remove(index);
+
             if (index == mPages.size() - 1)
             {
+                mPages.remove(index);
                 setCurrentPageIndex(index - 1);
             }
+            else
+                mPages.remove(index);
 
             setPageList(mPages);
             return true;

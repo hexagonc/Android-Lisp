@@ -14,6 +14,10 @@
           android:icon="@drawable/ic_add_white_24dp"
           android:title = "Insert Page"
           app:showAsAction="always"/>
+    <item android:id = "@+id/v2_action_delete_page"
+          android:icon="@drawable/ic_remove_white_24dp"
+          android:title = "Delete Current Page"
+          app:showAsAction="always"/>
     <item android:id = "@+id/v2_menu_page_properties"
           android:title = "Page Properties"
           app:showAsAction="never"/>

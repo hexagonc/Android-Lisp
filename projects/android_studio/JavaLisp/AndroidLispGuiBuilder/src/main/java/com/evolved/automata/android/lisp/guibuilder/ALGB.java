@@ -44,10 +44,30 @@ public class ALGB {
 
     public static class DeletePageEvent extends PageStateEvent
     {
-        public DeletePageEvent(String id)
+        boolean suc;
+        public DeletePageEvent(String id, boolean success)
         {
-            super(id, PageStateEventType.DELETE);
+            super(id, PageStateEventType.DELETE); suc =success;
         }
+        public boolean getSuccess()
+        {
+            return suc;
+        }
+    }
+
+    public static class InvalidWorkspaceEvent
+    {
+        public String mWorkspaceId;
+        public InvalidWorkspaceEvent(String workspaceId)
+        {
+            mWorkspaceId = workspaceId;
+        }
+
+        public String getWorkspaceId()
+        {
+            return mWorkspaceId;
+        }
+
     }
 
 
@@ -72,6 +92,7 @@ public class ALGB {
     Handler mMainHandler;
 
 
+
     public ALGB(Context con) throws IllegalAccessException, InstantiationException
     {
         mMainHandler = new Handler(Looper.getMainLooper());
@@ -94,6 +115,11 @@ public class ALGB {
 
         NXTLispFunctions.setInterpreter(mBaseLispContext.getForegroundInterpreter());
 
+    }
+
+    public boolean specialDebuggingEnabled()
+    {
+        return mContext.getResources().getBoolean(R.bool.enable_special_debug);
     }
 
     private void addStandardFunctions() throws IllegalAccessException, InstantiationException
@@ -416,7 +442,7 @@ public class ALGB {
         if (w == null)
             throw new IllegalArgumentException("Workspace: " + id + " does not exist");
         mCurrentWorkspace = w;
-        mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, id);
+        //mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, id);
         return w;
     }
 
@@ -431,7 +457,17 @@ public class ALGB {
         else
         {
             String previousID = mData.getData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT);
-            mCurrentWorkspace = new Workspace(this, previousID);
+
+            Workspace work = Workspace.getWorkspace(this, previousID);
+
+            if (work == null && specialDebuggingEnabled())
+            {
+                Tools.postEvent(new InvalidWorkspaceEvent(previousID));
+            }
+            else
+            {
+                mCurrentWorkspace = work;
+            }
         }
     }
 
@@ -445,6 +481,7 @@ public class ALGB {
     public void saveAll()
     {
         mData.setData(CURRENT_WORKSPACE_KEY, APP_DATA_CONTEXT, mCurrentWorkspace.getWorkspaceId());
+
         for (Map.Entry<String, Workspace> entry:mWorkspaceCache.entrySet())
         {
             entry.getValue().save(true);
@@ -468,11 +505,14 @@ public class ALGB {
         if (hasData(pageid, Page.CONTEXT_KEY))
         {
             deleteData(pageid, Page.CONTEXT_KEY);
-            Tools.postEvent(new DeletePageEvent(pageid));
+            Tools.postEvent(new DeletePageEvent(pageid, true));
             return true;
         }
         else
+        {
+            Tools.postEvent(new DeletePageEvent(pageid, true));
             return false;
+        }
 
     }
 
@@ -563,7 +603,9 @@ public class ALGB {
             {
                 try
                 {
-                    w = new Workspace(this, workspaceId);
+                    w = Workspace.getWorkspace(this, workspaceId);
+                    if (w == null)
+
                     mWorkspaceCache.put(workspaceId, w);
                 }
                 catch (Exception e)
@@ -628,7 +670,7 @@ public class ALGB {
     {
         try
         {
-            Workspace workspace = new Workspace(this);
+            Workspace workspace = Workspace.getWorkspace(this);
             mWorkspaceCache.put(workspace.getWorkspaceId(), workspace);
             return workspace;
         }

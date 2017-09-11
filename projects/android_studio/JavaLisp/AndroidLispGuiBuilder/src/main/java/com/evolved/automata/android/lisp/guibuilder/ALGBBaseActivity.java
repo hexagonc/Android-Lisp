@@ -67,6 +67,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     HashMap<String, WorkspaceFragment> mWorkspaceMap;
     InputMethodManager mIMM = null;
 
+    String mActivityToolbarTitle = "ALGB";
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -180,6 +181,8 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
         {
             EventLog.get().logSystemInfo("Not logged into Dropbox");
         }
+
+        setTitle(mActivityToolbarTitle);
 
     }
 
@@ -349,17 +352,12 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
             @Override
             public void onClose()
             {
-                //Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
-                //FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
-                //trans.remove(frag).commit();
+
             }
 
             @Override
             public void onClose(HashMap<WorkspaceManagementFragment.CHANGE_TYPE, WorkspaceManagementFragment.Change> changes)
             {
-                //Fragment f = getSupportFragmentManager().findFragmentByTag(dialogTag);
-                //FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
-                //trans.remove(f).commit();
 
                 String currentWorkspaceId = mCurrentWorkspace.getWorkspaceId();
                 String newlySelectedWorkspaceId = null;

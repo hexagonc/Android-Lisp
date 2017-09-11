@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -18,6 +19,7 @@ import android.view.animation.AnimationUtils;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.evolved.automata.android.widgets.ShadowButton;
 
@@ -93,7 +95,7 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
 
         mNavigatePreviousButton = (ShadowButton)group.findViewById(R.id.v2_but_history_back);
         mNavigateNextButton = (ShadowButton)group.findViewById(R.id.v2_but_history_forward);
-        //mAddPageButton = (ImageButton)group.findViewById(R.id.v2_but_add_page);
+
         mPageTitleView = (TextView)group.findViewById(R.id.v2_txt_page_title);
         mStatusAlertsButton = (ShadowButton)group.findViewById(R.id.v2_but_status_more_info);
         mProgressIcon = (ImageView)group.findViewById(R.id.img_progress_icon);
@@ -126,20 +128,6 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
                 gotoCurrentPage();
             }
         });
-
-//        mAddPageButton.setOnClickListener(new View.OnClickListener(){
-//
-//            @Override
-//            public void onClick(View v)
-//            {
-//                CodePage page = (CodePage)mWorkspace.addPage();
-//                PageFragment fragment = new PageFragment();
-//                fragment.setPage(page);
-//                mPages.add(mWorkspace.getCurrentPageIndex(), fragment);
-//                gotoCurrentPage();
-//            }
-//        });
-
 
         gotoCurrentPage();
 
@@ -278,14 +266,22 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
         hideAlertStatus();
     }
 
-    @Deprecated
-    boolean deleteCurrentPage()
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    boolean deleteCurrentPage(ALGB.DeletePageEvent event)
     {
-        boolean success = mWorkspace.deletePage(mWorkspace.getCurrentPageIndex());
-        mPages.remove(mWorkspace.getCurrentPageIndex());
-        gotoCurrentPage();
+
+        boolean success = event.getSuccess();
+        if (success)
+        {
+            Log.e("<><><><><<><", "Notify from delete not implemented");
+            //mWorkspace
+            //gotoCurrentPage();
+        }
+
         return success;
     }
+
 
     void gotoCurrentPage()
     {
@@ -444,6 +440,25 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
         else if (item.getItemId() == R.id.v2_action_add_page)
         {
             addNewPage();
+            return true;
+        }
+        else if (item.getItemId() == R.id.v2_action_delete_page)
+        {
+            boolean deletePermanentP = false;
+            if (!deletePermanentP)
+            {
+                int currentIndex = mWorkspace.getCurrentPageIndex();
+                if (mWorkspace.deletePage(currentIndex))
+                {
+                    loadAllPages();
+                    gotoCurrentPage();
+                }
+                else
+                {
+                    Toast.makeText(getActivity(), "Can't delete first page", Toast.LENGTH_LONG).show();
+                }
+            }
+
             return true;
         }
         else
