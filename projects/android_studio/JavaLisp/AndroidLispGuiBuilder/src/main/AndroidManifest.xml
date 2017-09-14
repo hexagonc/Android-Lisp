@@ -28,7 +28,7 @@
         android:name="com.evolved.automata.android.lisp.guibuilder.ALGBApplication" >
 		<activity
 			android:name="com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity"
-			android:label="ALGBBaseActivity"
+			android:label="@string/app_name"
 			android:screenOrientation="portrait"
             android:windowSoftInputMode="stateUnchanged"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"

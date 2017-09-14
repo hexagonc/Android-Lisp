@@ -36,6 +36,12 @@ android {
 
         multiDexEnabled true
 
+        buildTypes {
+            release {
+                versionCode 1
+                versionName "0.1-alpha"
+            }
+        }
         /*
             Set this if getting out of memory errors during dex
             dexOptions {
