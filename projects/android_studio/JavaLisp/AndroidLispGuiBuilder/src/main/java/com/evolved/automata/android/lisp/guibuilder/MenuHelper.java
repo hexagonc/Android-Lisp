@@ -85,7 +85,7 @@ public class MenuHelper {
         addMenuSpec(R.id.v2_menu_render, new Class[]{CodePageFragment.class}, new Class[]{RenderFragment.class, SettingsFragment.class});
     }
 
-    public static void updateMenuItemDisplay(Menu menu, Fragment frag)
+    public static void updateMenuItemDisplay(Menu menu, Object frag)
     {
         MenuItem item = null;
         int numItems = menu.size(), itemId;
