@@ -390,7 +390,10 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
     public void onStart()
     {
         super.onStart();
-
+        ALGBBaseActivity baseActivity = (ALGBBaseActivity)getActivity();
+        baseActivity.setDefaultTitle();
+        baseActivity.setWorkspaceActionbarTitle(mWorkspace.getTitle());
+        baseActivity.hideBackOnToolbar();
     }
 
     @Override
@@ -419,12 +422,13 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
     {
-        getCurrentPageFragment().onCreateOptionsMenu(menu, inflater);
+        //getCurrentPageFragment().onCreateOptionsMenu(menu, inflater);
     }
 
     @Override
     public void onPrepareOptionsMenu(Menu menu)
     {
+        MenuHelper.updateMenuItemDisplay(menu, this);
         getCurrentPageFragment().onPrepareOptionsMenu(menu);
     }
 

@@ -10,30 +10,67 @@
 
 
         -->
-    <item android:id = "@+id/v2_action_add_page"
-          android:icon="@drawable/ic_add_white_24dp"
-          android:title = "Insert Page"
-          app:showAsAction="always"/>
-    <item android:id = "@+id/v2_action_delete_page"
-          android:icon="@drawable/ic_remove_white_24dp"
-          android:title = "Delete Current Page"
-          app:showAsAction="always"/>
-    <item android:id = "@+id/v2_menu_page_properties"
-          android:title = "Page Properties"
-          app:showAsAction="never"/>
-    <item android:id = "@+id/v2_menu_workspace_management"
-          android:title = "Manage Workspaces"
-          app:showAsAction="never"/>
+    <group android:id = "@+id/main_group">
+
+        <item android:id = "@+id/v2_action_delete_page"
+              android:icon="@drawable/ic_remove_white_24dp"
+              android:title = "Delete Current Page"
+              android:orderInCategory="1"
+              app:showAsAction="always"/>
+        <item android:id = "@+id/v2_action_add_page"
+              android:icon="@drawable/ic_add_white_24dp"
+              android:orderInCategory="2"
+              android:title = "Insert Page"
+              app:showAsAction="always"/>
+        <item android:id = "@+id/v2_menu_page_properties"
+              android:title = "Page Properties"
+              app:showAsAction="never"
+              android:orderInCategory="3"/>
+        <item android:id = "@+id/v2_menu_workspace_management"
+              android:title = "Manage Workspaces"
+              android:orderInCategory="4"
+              app:showAsAction="never"/>
+        <item android:id = "@+id/v2_menu_post_test_login"
+              android:title = "Test Dropbox Login"
+              android:orderInCategory="5"
+              app:showAsAction="never"/>
+
+        <item android:id = "@+id/v2_menu_show_event_log"
+              android:title = "Show Event Log"
+              android:orderInCategory="6"
+              app:showAsAction="never"/>
+        <item android:id = "@+id/v2_start_dropbox_authentication"
+              android:title = "Log into Dropbox"
+              android:orderInCategory="7"
+              app:showAsAction="never"/>
+        <item
+            android:id="@+id/v2_menu_save_page"
+            app:showAsAction="never"
+            android:orderInCategory="8"
+            android:title="Save Page"/>
+        <item
+            android:id="@+id/v2_menu_save_all"
+            app:showAsAction="never"
+            android:orderInCategory="9"
+            android:title="Save All"/>
+
+        <item
+            android:id="@+id/v2_menu_render"
+            app:showAsAction="never"
+            android:orderInCategory="10"
+            android:title="To Render Screen"/>
+        <item
+            android:id="@+id/v2_menu_to_code"
+            app:showAsAction="never"
+            android:orderInCategory="11"
+            android:title="To Code View"/>
+
+        <item android:id = "@+id/show_settings"
+              android:title = "Settings"
+              android:orderInCategory="12"
+              app:showAsAction="never"/>
+    </group>
 
 
-    <item android:id = "@+id/v2_menu_post_test_login"
-          android:title = "Test Dropbox Login"
-          app:showAsAction="never"/>
 
-    <item android:id = "@+id/v2_menu_show_event_log"
-        android:title = "Show Event Log"
-        app:showAsAction="never"/>
-    <item android:id = "@+id/v2_start_dropbox_authentication"
-          android:title = "Log into Dropbox"
-          app:showAsAction="never"/>
 </menu>

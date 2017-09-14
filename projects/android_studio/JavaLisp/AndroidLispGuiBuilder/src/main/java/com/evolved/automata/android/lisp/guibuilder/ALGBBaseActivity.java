@@ -63,11 +63,15 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     Workspace mCurrentWorkspace;
 
     WorkspaceFragment mCurrentWorkspaceFragment;
-
+    SettingsFragment mSettingsFragment;
     HashMap<String, WorkspaceFragment> mWorkspaceMap;
     InputMethodManager mIMM = null;
 
     String mActivityToolbarTitle = "ALGB";
+
+    boolean mShowingSettingsP = false;
+
+    Fragment mCurrentMainFragment = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -81,7 +85,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
         mWorkspaceMap = new HashMap<String, WorkspaceFragment>();
 
-
+        mSettingsFragment = new SettingsFragment();
         Toolbar actionBarToolbar = (Toolbar)findViewById(R.id.tb_toolbar_actionbar);
         setSupportActionBar(actionBarToolbar);
 
@@ -92,7 +96,15 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
             mApplication = ((ALGBApplication)getApplication()).getALGB();
             changeToWorkspace(mApplication.getCurrentWorkspace());
+            actionBarToolbar.setNavigationOnClickListener(new View.OnClickListener()
+            {
 
+                @Override
+                public void onClick(View view)
+                {
+                    onBackPressed();
+                }
+            });
         }
         catch (Exception e)
         {
@@ -116,9 +128,9 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
     private void changeToWorkspace(Workspace workspace)
     {
+
         mCurrentWorkspace = workspace;
         String workspaceId = mCurrentWorkspace.getWorkspaceId();
-        setWorkspaceActionbarTitle(workspace.getTitle());
         WorkspaceFragment frag = mWorkspaceMap.get(workspaceId);
         if (frag == null)
         {
@@ -126,17 +138,23 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
             frag.setWorkspace(workspace);
             mWorkspaceMap.put(workspaceId, frag);
         }
-
-        invalidateOptionsMenu();
-
         mCurrentWorkspaceFragment = frag;
+        //invalidateOptionsMenu();
+        switchMainFragment(mCurrentWorkspaceFragment, false);
 
+    }
+
+    private void switchMainFragment(Fragment frag, boolean updateBackstack)
+    {
+        invalidateOptionsMenu();
+        mCurrentMainFragment = frag;
         FragmentManager manager = getSupportFragmentManager();
         FragmentTransaction ft = manager.beginTransaction();
-        ft.replace(R.id.v2_top, mCurrentWorkspaceFragment);
+        ft.replace(R.id.v2_top, mCurrentMainFragment);
         ft.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_FADE);
+        if (updateBackstack)
+            ft.addToBackStack("Back");
         ft.commit();
-
     }
 
     public void setOnTestCompleteHandler(Runnable r)
@@ -182,8 +200,13 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
             EventLog.get().logSystemInfo("Not logged into Dropbox");
         }
 
-        setTitle(mActivityToolbarTitle);
 
+
+    }
+
+    public void setDefaultTitle()
+    {
+        setTitle(mActivityToolbarTitle);
     }
 
     @Override
@@ -195,7 +218,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     @Override
     protected void onStop()
     {
-        //mApplication.getMainhandler().removeCallbacks(mIMEWatcher);
+
         super.onStop();
     }
 
@@ -203,6 +226,13 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     public void onBackPressed()
     {
 
+        if (mShowingSettingsP)
+        {
+            mShowingSettingsP = false;
+
+            changeToWorkspace(mApplication.getCurrentWorkspace());
+            return;
+        }
         AlertDialog.Builder aBuilder = new AlertDialog.Builder(this);
         aBuilder.setTitle("Exit Android Lisp GuiBuilder?");
         aBuilder.setMessage("Any unsaved changes will be lost.").setPositiveButton("Ok", new DialogInterface.OnClickListener()
@@ -227,6 +257,27 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
     }
 
+    void showBackOnToolbar()
+    {
+        Toolbar tb = (Toolbar)findViewById(R.id.tb_toolbar_actionbar);
+        tb.setNavigationIcon(R.drawable.ic_chevron_left_white_24dp);
+
+    }
+
+    void hideBackOnToolbar()
+    {
+        Toolbar tb = (Toolbar)findViewById(R.id.tb_toolbar_actionbar);
+        tb.setNavigationIcon(null);
+
+    }
+
+    private void showSettingsShow()
+    {
+        mShowingSettingsP = true;
+        switchMainFragment(new SettingsFragment(), false);
+
+    }
+
     private void superOnBack()
     {
         super.onBackPressed();
@@ -241,16 +292,28 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
         {
             menu.removeItem(R.id.v2_menu_post_test_login);
         }
-        if (mCurrentWorkspaceFragment != null)
-            mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
+//        if (mCurrentWorkspaceFragment != null)
+//            mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
         return true;
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu)
     {
-        if (mCurrentWorkspaceFragment != null)
+
+        mCurrentMainFragment.onPrepareOptionsMenu(menu);
+        /*
+        if (mShowingSettingsP && mSettingsFragment != null)
+        {
+            mSettingsFragment.onPrepareOptionsMenu(menu);
+            return true;
+        }
+        else if (mCurrentWorkspaceFragment != null)
+        {
+
             mCurrentWorkspaceFragment.onPrepareOptionsMenu(menu);
+        }
+        */
         return true;
     }
 
@@ -325,6 +388,11 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
             }
             else
                 EventLog.get().logSystemError("Dropbox not configured for test login");
+            return true;
+        }
+        else if (item.getItemId() == R.id.show_settings)
+        {
+            showSettingsShow();
             return true;
         }
         else

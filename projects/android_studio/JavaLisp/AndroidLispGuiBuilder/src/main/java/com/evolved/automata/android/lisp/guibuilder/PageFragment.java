@@ -182,28 +182,20 @@ public class PageFragment extends Fragment {
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater)
     {
-        inflater.inflate(R.menu.v2_code_display, menu);
-
-        inflater.inflate(R.menu.v2_render_display, menu);
+//        inflater.inflate(R.menu.v2_code_display, menu);
+//
+//        inflater.inflate(R.menu.v2_render_display_menu, menu);
         super.onCreateOptionsMenu(menu, inflater);
     }
 
     @Override
     public void onPrepareOptionsMenu(Menu menu)
     {
-        MenuItem toCode = menu.findItem(R.id.v2_menu_to_code);
-        MenuItem toRender = menu.findItem(R.id.v2_menu_render);
-
-        if (mCurrrentPageType == Page.PAGE_TYPE.CODE)
-        {
-            toRender.setVisible(true);
-            toCode.setVisible(false);
-        }
-        else
-        {
-            toRender.setVisible(false);
-            toCode.setVisible(true);
-        }
+        MenuHelper.updateMenuItemDisplay(menu, this);
+        if (mCodeFragment!=null && mCodeFragment.isVisible())
+            mCodeFragment.onPrepareOptionsMenu(menu);
+        else if (mUIFragment != null && mUIFragment.isVisible())
+            mUIFragment.onPrepareOptionsMenu(menu);
     }
 
     @Override
