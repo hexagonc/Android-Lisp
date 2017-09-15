@@ -1274,8 +1274,8 @@ public abstract class ViewProxy
 			}
 			else if (baseParams instanceof FrameLayout.LayoutParams)
 				processParentAlignment((FrameLayout.LayoutParams)baseParams, _keys);
-			//baseUpdate(actual);
-			actual.setLayoutParams(baseParams);
+			baseUpdate(actual);
+			//actual.setLayoutParams(baseParams);
 		}
 	}
 
