@@ -40,6 +40,8 @@ import com.nostra13.universalimageloader.core.ImageLoader;
 import com.nostra13.universalimageloader.core.assist.FailReason;
 import com.nostra13.universalimageloader.core.assist.ImageLoadingListener;
 
+import org.apache.commons.lang3.StringUtils;
+
 public abstract class ViewProxy
 {
 	AndroidLispInterpreter _lispInterpreter;
@@ -379,8 +381,9 @@ public abstract class ViewProxy
 		{
 			try
 			{
+                clearAlignmentRules(params);
 				String alignment = alignArgument.getString();
-				for (String comp:alignment.split("\\|"))
+				for (String comp: StringUtils.splitByWholeSeparator(alignment, "|"))
 				{
 					if (comp.equalsIgnoreCase("top"))
 						params.addRule(RelativeLayout.ALIGN_PARENT_TOP);
@@ -392,6 +395,14 @@ public abstract class ViewProxy
 						params.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
 					else if (comp.equalsIgnoreCase("center"))
 						params.addRule(RelativeLayout.CENTER_IN_PARENT);
+                    else if (comp.equalsIgnoreCase("center_vertical"))
+                    {
+                        params.addRule(RelativeLayout.CENTER_VERTICAL);
+                    }
+                    else if (comp.equalsIgnoreCase("center_horizontal"))
+                    {
+                        params.addRule(RelativeLayout.CENTER_HORIZONTAL);
+                    }
 					else
 						throw new EvaluateException("Invalid parent alignment: " + alignArgument);
 				}
@@ -402,6 +413,16 @@ public abstract class ViewProxy
 			}
 		}
 				
+	}
+
+	protected void clearAlignmentRules(RelativeLayout.LayoutParams params)
+	{
+		int[] rules = new int[]{RelativeLayout.ALIGN_PARENT_TOP, RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.ALIGN_PARENT_LEFT, RelativeLayout.CENTER_IN_PARENT, RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.ALIGN_PARENT_RIGHT, RelativeLayout.CENTER_HORIZONTAL, RelativeLayout.CENTER_VERTICAL};
+		for (int rule:rules)
+        {
+            params.removeRule(rule);
+        }
+
 	}
 	
 	protected void processParentAlignment(FrameLayout.LayoutParams params, HashMap<String, Value> keys)
@@ -1253,10 +1274,11 @@ public abstract class ViewProxy
 			}
 			else if (baseParams instanceof FrameLayout.LayoutParams)
 				processParentAlignment((FrameLayout.LayoutParams)baseParams, _keys);
-			baseUpdate(actual);
-			//actual.setLayoutParams(baseParams);
+			//baseUpdate(actual);
+			actual.setLayoutParams(baseParams);
 		}
 	}
+
 	
 	public Value getMapValue(HashMap<String, Value> map, String key)
 	{
