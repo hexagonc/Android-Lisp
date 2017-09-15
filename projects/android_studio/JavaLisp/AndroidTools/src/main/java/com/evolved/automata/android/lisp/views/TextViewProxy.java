@@ -327,6 +327,10 @@ public class TextViewProxy extends ViewProxy
 						align |= Gravity.BOTTOM;
 					else if (comp.equalsIgnoreCase("center"))
 						align |= Gravity.CENTER;
+                    else if (comp.equalsIgnoreCase("center_horizontal"))
+                        align |= Gravity.CENTER_HORIZONTAL;
+                    else if (comp.equalsIgnoreCase("center_vertical"))
+                        align |= Gravity.CENTER_VERTICAL;
 				}
 				tview.setGravity(align);
 			}
