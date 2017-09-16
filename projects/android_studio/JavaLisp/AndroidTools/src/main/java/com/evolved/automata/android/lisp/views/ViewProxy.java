@@ -447,6 +447,14 @@ public abstract class ViewProxy
 						base|=Gravity.RIGHT;
 					else if (comp.equalsIgnoreCase("center"))
 						base|=Gravity.CENTER;
+                    else if (comp.equalsIgnoreCase("center_vertical"))
+                    {
+                        base|=Gravity.CENTER_VERTICAL;
+                    }
+                    else if (comp.equalsIgnoreCase("center_horizontal"))
+                    {
+                        base|=Gravity.CENTER_HORIZONTAL;
+                    }
 					else
 						throw new EvaluateException("Invalid parent alignment: " + alignArgument);
 				}
@@ -480,7 +488,15 @@ public abstract class ViewProxy
 					params.gravity = Gravity.RIGHT;
 				else if (comp.equalsIgnoreCase("center"))
 					params.gravity = Gravity.CENTER;
-				else
+                else if (comp.equalsIgnoreCase("center_vertical"))
+                {
+                    params.gravity=Gravity.CENTER_VERTICAL;
+                }
+                else if (comp.equalsIgnoreCase("center_horizontal"))
+                {
+                    params.gravity=Gravity.CENTER_HORIZONTAL;
+                }
+                else
 					throw new EvaluateException("Invalid parent alignment: " + alignArgument);
 			}
 			catch (Exception e)

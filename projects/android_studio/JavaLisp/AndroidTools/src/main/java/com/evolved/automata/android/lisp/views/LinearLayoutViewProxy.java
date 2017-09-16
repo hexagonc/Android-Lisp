@@ -51,6 +51,14 @@ public class LinearLayoutViewProxy extends ViewGroupProxy
 					gravity = Gravity.BOTTOM;
 				else if (salignment.equalsIgnoreCase("center"))
 					gravity = Gravity.CENTER;
+				else if (salignment.equalsIgnoreCase("center_vertical"))
+				{
+					gravity=Gravity.CENTER_VERTICAL;
+				}
+				else if (salignment.equalsIgnoreCase("center_horizontal"))
+				{
+					gravity=Gravity.CENTER_HORIZONTAL;
+				}
 				else
 					throw new EvaluateException("Invalid child alignment spec: " + align);
 			}
