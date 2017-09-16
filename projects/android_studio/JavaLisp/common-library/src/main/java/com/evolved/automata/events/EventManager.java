@@ -296,27 +296,8 @@ public class EventManager {
     protected boolean prereqsMet(Event e)
     {
 
-        // TODO: This is stupid. Figure out why the hell AndroidStudio throws errors on on this version of the loop.
-        /*
-        for (String name:e.getPrerequisites())
-        {
-
-            if (isNegatedEvent(name))
-            {
-                String baseEventName = name.substring(1);
-                if (mEventMap.containsKey(baseEventName))
-                    return false;
-            }
-            else
-            {
-                Event event = mEventMap.get(name);
-                if (event == null || event.getStatus() != EventStatus.COMPLETE)
-                    return false;
-            }
-        }
-         */
-        LinkedHashSet<String> stupid = e.getPrerequisites();
-        for (String name:stupid)
+        LinkedHashSet<String> eventNames = e.getPrerequisites();
+        for (String name:eventNames)
         {
 
             if (isNegatedEvent(name))
