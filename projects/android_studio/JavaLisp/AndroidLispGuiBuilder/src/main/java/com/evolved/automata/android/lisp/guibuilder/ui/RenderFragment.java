@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Activity;
 
@@ -11,7 +11,10 @@ import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.evolved.automata.android.lisp.guibuilder.EventLog;
+import com.evolved.automata.android.lisp.guibuilder.MenuHelper;
 import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
 import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.Value;
@@ -41,7 +44,7 @@ public class RenderFragment extends Fragment {
             if (ovalue instanceof ViewProxy)
             {
                 ViewProxy vproxy = (ViewProxy)ovalue;
-                vproxy.setLispInterpreter(mPageEnvironment, mPage.mBasePageLispContext.getForegroundInterpreter());
+                vproxy.setLispInterpreter(mPageEnvironment, mPage.getBasePageLispContext().getForegroundInterpreter());
                 View v = null;
                 try
                 {

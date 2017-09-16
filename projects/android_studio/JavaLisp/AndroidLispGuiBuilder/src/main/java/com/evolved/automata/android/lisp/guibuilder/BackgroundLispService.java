@@ -13,13 +13,12 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 
+import com.evolved.automata.android.lisp.guibuilder.model.LispContext;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.Value;
 
 import java.util.concurrent.LinkedBlockingQueue;
-
-import io.reactivex.Observable;
 
 /**
  * Created by Evolved8 on 8/9/17.

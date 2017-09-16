@@ -1,12 +1,15 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
 import android.content.Context;
-import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.dropbox.core.util.StringUtil;
+import com.evolved.automata.android.lisp.guibuilder.AndroidLispDAI;
+import com.evolved.automata.android.lisp.guibuilder.PageStateEvent;
+import com.evolved.automata.android.lisp.guibuilder.PageStateEventType;
+import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
 import com.evolved.automata.android.lisp.guibuilder.media.MediaEvaluator;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.android.mindstorms.lisp.NXTLispFunctions;
@@ -30,11 +33,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import io.reactivex.Observer;
-import io.reactivex.annotations.NonNull;
-import io.reactivex.disposables.Disposable;
-
-import static com.evolved.automata.android.lisp.guibuilder.Page.SCRIPT_CONTEXT_KEY;
+import static com.evolved.automata.android.lisp.guibuilder.model.Page.SCRIPT_CONTEXT_KEY;
 
 /**
  * Created by Evolved8 on 5/3/17.

@@ -4,10 +4,9 @@ import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.android.AppStateManager;
 import com.evolved.automata.android.DeviceInfo;
 
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 
-import android.app.Application;
-import android.content.SharedPreferences;
 import android.support.multidex.MultiDexApplication;
 
 public class ALGBApplication extends MultiDexApplication

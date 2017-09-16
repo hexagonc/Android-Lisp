@@ -1,9 +1,12 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
-import android.support.v4.app.Fragment;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+
+import com.evolved.automata.android.lisp.guibuilder.ui.CodePageFragment;
+import com.evolved.automata.android.lisp.guibuilder.ui.RenderFragment;
+import com.evolved.automata.android.lisp.guibuilder.ui.WorkspaceFragment;
 
 import java.util.HashMap;
 import java.util.HashSet;

@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Activity;
 import android.app.Fragment;

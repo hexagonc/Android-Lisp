@@ -1,8 +1,11 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
 import android.app.Activity;
 import android.util.Log;
 
+import com.evolved.automata.android.lisp.guibuilder.PageStateEvent;
+import com.evolved.automata.android.lisp.guibuilder.PageStateEventType;
+import com.evolved.automata.android.lisp.guibuilder.ui.RenderFragment;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.StringHashtableValue;
@@ -50,17 +53,17 @@ public abstract class Page {
     public static final String SCRIPT_CONTEXT_KEY = "SCRIPTING_PAGE_SCRIPT";
 
 
-    final String TITLE_KEY;
-    final String ID_KEY;
-    final String IS_READ_ONLY_KEY;
-    final String RESULT_HISTORY_KEY;
+    public final String TITLE_KEY;
+    public final String ID_KEY;
+    public final String IS_READ_ONLY_KEY;
+    public final String RESULT_HISTORY_KEY;
 
     static final String TITLE_KEY_PREFIX = "TITLE";
     static final String ID_KEY_PREFIX = "ID";
     static final String IS_READ_ONLY_KEY_PREFIX = "-IS-READ-ONLY";
     static final String RESULT_HISTORY_KEY_PREFIX = "-RESULT-HISTORY";
 
-    final String TYPE_KEY;
+    public final String TYPE_KEY;
     public static final String TYPE_KEY_PREFIX = "-TYPE-KEY";
 
 

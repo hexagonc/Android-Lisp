@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
 import android.app.Activity;
 import android.app.NotificationManager;
@@ -15,6 +15,13 @@ import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
+import com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity;
+import com.evolved.automata.android.lisp.guibuilder.BackgroundLispService;
+import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
+import com.evolved.automata.android.lisp.guibuilder.EventLog;
+import com.evolved.automata.android.lisp.guibuilder.LispDataAccessInterface;
+import com.evolved.automata.android.lisp.guibuilder.LispSpeechInterface;
+import com.evolved.automata.android.lisp.guibuilder.ui.RenderFragment;
 import com.evolved.automata.android.lisp.views.ViewProxy;
 import com.evolved.automata.android.speech.SpeechInterface.SpeechListener;
 import com.evolved.automata.android.lisp.AndroidLispInterpreter;
@@ -90,12 +97,12 @@ public class LispContext implements SpeechListener{
 
     public static class Request
     {
-        Observer<Value> rListener;
-        Value result;
-        String expr;
-        Value precompiledExpr;
-        Environment evaluationEnv;
-        boolean deletedP = false;
+        public Observer<Value> rListener;
+        public Value result;
+        public String expr;
+        public Value precompiledExpr;
+        public Environment evaluationEnv;
+        public boolean deletedP = false;
     }
 
     LispSpeechInterface.ListeningStateListener mListeningStateHandler;

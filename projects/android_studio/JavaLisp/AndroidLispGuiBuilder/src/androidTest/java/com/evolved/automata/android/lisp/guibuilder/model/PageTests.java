@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
 import android.app.Instrumentation;
 import android.content.Context;
@@ -6,10 +6,10 @@ import android.support.test.InstrumentationRegistry;
 import android.support.test.annotation.UiThreadTest;
 import android.support.test.rule.UiThreadTestRule;
 
-import com.evolved.automata.android.lisp.guibuilder.ALGB;
-import com.evolved.automata.android.lisp.guibuilder.CodePage;
-import com.evolved.automata.android.lisp.guibuilder.Page;
-import com.evolved.automata.android.lisp.guibuilder.Workspace;
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
+import com.evolved.automata.android.lisp.guibuilder.model.Page;
+import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 

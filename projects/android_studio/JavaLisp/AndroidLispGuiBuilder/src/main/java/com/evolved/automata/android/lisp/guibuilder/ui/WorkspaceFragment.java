@@ -1,8 +1,7 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Activity;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -16,11 +15,24 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity;
+import com.evolved.automata.android.lisp.guibuilder.AppStatusLogDialogFragment;
+import com.evolved.automata.android.lisp.guibuilder.BackgroundProcessEvent;
+import com.evolved.automata.android.lisp.guibuilder.EventLog;
+import com.evolved.automata.android.lisp.guibuilder.GlobalStatusAlertEvent;
+import com.evolved.automata.android.lisp.guibuilder.MenuHelper;
+import com.evolved.automata.android.lisp.guibuilder.NewBackgroundResultEvent;
+import com.evolved.automata.android.lisp.guibuilder.NewErrorLogEntriesEvent;
+import com.evolved.automata.android.lisp.guibuilder.NewInfoLogEntriesEvent;
+import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
+import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
 import com.evolved.automata.android.widgets.ShadowButton;
 
 import org.greenrobot.eventbus.Subscribe;

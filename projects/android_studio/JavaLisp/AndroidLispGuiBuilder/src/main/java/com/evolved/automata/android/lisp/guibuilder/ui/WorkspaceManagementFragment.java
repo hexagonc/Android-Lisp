@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Dialog;
 import android.app.DialogFragment;
@@ -18,6 +18,9 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
 import com.evolved.automata.android.widgets.ShadowButton;
 
 import java.util.ArrayList;

@@ -1,7 +1,9 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
 import android.util.Log;
 
+import com.evolved.automata.android.lisp.guibuilder.PageStateEvent;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;

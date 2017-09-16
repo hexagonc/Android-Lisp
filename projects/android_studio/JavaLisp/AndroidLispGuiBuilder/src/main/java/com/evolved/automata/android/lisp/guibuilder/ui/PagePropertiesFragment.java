@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Dialog;
 import android.app.DialogFragment;
@@ -15,6 +15,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.evolved.automata.android.lisp.guibuilder.DropboxChooserItem;
+import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
+import com.evolved.automata.android.lisp.guibuilder.FileChooserDialog;
+import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
 
 import java.util.HashMap;
 

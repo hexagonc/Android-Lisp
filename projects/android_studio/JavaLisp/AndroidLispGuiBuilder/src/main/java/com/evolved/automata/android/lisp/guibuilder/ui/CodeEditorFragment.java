@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Activity;
 
@@ -12,6 +12,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 
+import com.evolved.automata.android.lisp.guibuilder.LispCodeEditorParseContext;
+import com.evolved.automata.android.lisp.guibuilder.LispEditText;
+import com.evolved.automata.android.lisp.guibuilder.R;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
 import com.evolved.automata.lisp.editor.WordCompletor;

@@ -1,5 +1,10 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
+import com.evolved.automata.android.lisp.guibuilder.BackgroundProcessEvent;
+import com.evolved.automata.android.lisp.guibuilder.EventLog;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.model.Page;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.ParseNode;

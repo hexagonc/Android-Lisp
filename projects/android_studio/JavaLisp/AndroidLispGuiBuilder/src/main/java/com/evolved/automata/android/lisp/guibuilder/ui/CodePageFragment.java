@@ -1,4 +1,4 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Activity;
 
@@ -13,9 +13,16 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity;
+import com.evolved.automata.android.lisp.guibuilder.LispEditText;
+import com.evolved.automata.android.lisp.guibuilder.LispResultFragment;
+import com.evolved.automata.android.lisp.guibuilder.MenuHelper;
+import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
+import com.evolved.automata.android.lisp.guibuilder.model.LispContext;
 import com.evolved.automata.android.widgets.ShadowButton;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
@@ -28,13 +35,7 @@ import com.evolved.automata.lisp.editor.TopParseNode;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
-import java.util.concurrent.TimeUnit;
-
-import io.reactivex.Observable;
-import io.reactivex.ObservableEmitter;
-import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
-import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 

@@ -4,6 +4,7 @@ import android.app.Instrumentation;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
 
+import com.evolved.automata.android.lisp.guibuilder.model.LispContext;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.NLispTools;

@@ -1,5 +1,7 @@
-package com.evolved.automata.android.lisp.guibuilder;
+package com.evolved.automata.android.lisp.guibuilder.model;
 
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.model.Page;
 import com.evolved.automata.lisp.NLispTools;
 
 /**

@@ -1,49 +1,37 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
-import android.app.ActionBar;
-import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
-
 
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.Intent;
-import android.graphics.Rect;
 import android.os.Bundle;
 
-import android.os.IBinder;
-import android.os.ResultReceiver;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 import com.dropbox.core.DbxRequestConfig;
-import com.dropbox.core.DbxWebAuth;
 import com.dropbox.core.android.Auth;
 import com.dropbox.core.android.AuthActivity;
 import com.dropbox.core.v2.DbxClientV2;
 import com.evolved.automata.android.AndroidTools;
-import com.evolved.automata.events.EventManager;
+import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
+import com.evolved.automata.android.lisp.guibuilder.model.Page;
+import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
+import com.evolved.automata.android.lisp.guibuilder.ui.WorkspaceFragment;
+import com.evolved.automata.android.lisp.guibuilder.ui.WorkspaceManagementFragment;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
-
-import io.reactivex.Observer;
-import io.reactivex.annotations.NonNull;
-import io.reactivex.disposables.Disposable;
 
 /**
  * Created by Evolved8 on 4/21/17.
@@ -264,7 +252,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
     }
 
-    void hideBackOnToolbar()
+    public void hideBackOnToolbar()
     {
         Toolbar tb = (Toolbar)findViewById(R.id.tb_toolbar_actionbar);
         tb.setNavigationIcon(null);

@@ -22,6 +22,7 @@ import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.events.EventManager;
 import com.evolved.automata.lisp.editor.CompositeNode;
 import com.evolved.automata.lisp.editor.ParseNode;
+import com.evolved.automata.lisp.editor.SimpleTextEditor;
 import com.evolved.automata.lisp.editor.TopParseNode;
 
 import org.apache.commons.lang3.tuple.Pair;
@@ -59,6 +60,7 @@ public class LispEditText extends AppCompatEditText {
 
     public interface ControlInterface
     {
+        void setEditorModel(SimpleTextEditor editorModel);
         void setTopParseNode(TopParseNode topNode);
         void disableSelectionEffects();
         void enableSelectionEffects();
@@ -118,7 +120,7 @@ public class LispEditText extends AppCompatEditText {
     int mMinimumEditableHeightPx = 100;
 
 
-
+    SimpleTextEditor mEditorModel = null;
 
     boolean mIsShorterThanMinimumEditableHeightP = false;
 
@@ -388,6 +390,12 @@ public class LispEditText extends AppCompatEditText {
     public ControlInterface getControlInterface()
     {
         return new ControlInterface() {
+
+            @Override
+            public void setEditorModel(SimpleTextEditor editorModel)
+            {
+                mEditorModel = editorModel;
+            }
 
             @Override
             public void setTopParseNode(TopParseNode topNode)
