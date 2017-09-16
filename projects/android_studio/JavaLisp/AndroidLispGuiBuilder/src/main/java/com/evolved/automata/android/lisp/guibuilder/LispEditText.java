@@ -3,6 +3,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Color;
+import android.support.v7.widget.AppCompatEditText;
 import android.text.Editable;
 import android.text.Layout;
 import android.text.Spanned;
@@ -18,6 +19,7 @@ import android.widget.EditText;
 
 
 import com.evolved.automata.android.AndroidTools;
+import com.evolved.automata.events.EventManager;
 import com.evolved.automata.lisp.editor.CompositeNode;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
@@ -40,7 +42,7 @@ import io.reactivex.functions.Function;
  * Created by Evolved8 on 4/26/17.
  */
 
-public class LispEditText extends EditText {
+public class LispEditText extends AppCompatEditText {
 
     public interface HeightEvent
     {
@@ -85,11 +87,6 @@ public class LispEditText extends EditText {
     }
 
 
-    public interface ParseStateEvent
-    {
-        boolean isStarting();
-    }
-
 
     public static int SCROLL_THRESHOLD_DP = 10;
     public float SCROLL_THRESHOLD_PX;
@@ -99,15 +96,12 @@ public class LispEditText extends EditText {
 
     ForegroundColorSpan mSelectionForegroundSpan;
     BackgroundColorSpan mSelectionBackgroundSpan;
-    Observable<ParseNode> mUpdateObservable;
 
     TopParseNode mParseNode;
     ParseNode mCurrentSelection, mPreviousSelection;
     int mCursorPosition=0;
     int mSelectionColor = Color.rgb(198, 232, 237);
     boolean suppressSelectionUpdateP = false;
-    long mUpdateTimeoutInterval = 2000;
-    TimeUnit mUpdateTimeUnit = TimeUnit.MILLISECONDS;
 
     CodeUpdateListener mUpdateListener;
     boolean mAllowSelectionChangesP;
@@ -119,7 +113,6 @@ public class LispEditText extends EditText {
 
 
     final int MINIMUM_EDITABLE_HEIGHT_DP = 100;
-    final int MINIMUM_EXPANDABLE_EDITABLE_HEIGHT_INCREASE_DP = 10;
 
     int mMinimumExpandableHeightPx = 0;
     int mMinimumEditableHeightPx = 100;
@@ -163,7 +156,6 @@ public class LispEditText extends EditText {
         @Override
         public void afterTextChanged(Editable s)
         {
-            Log.d("<><><<><<><", "Updated text");
             String updated  =s.toString();
             mTempSuppressHighlightingP = true;
             clearSelectionDisplay();
@@ -237,7 +229,6 @@ public class LispEditText extends EditText {
     public boolean onTouchEvent(MotionEvent event)
     {
         Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
-        //Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
 
         switch (event.getAction())
         {
@@ -251,7 +242,7 @@ public class LispEditText extends EditText {
                 else
                 {
                     // Do nothing since we don't want to move the cursor if the screen was scrolled
-                    //Log.d("Vo<>oVo<>oVo", "Skipping touch up event since scrolling: " + movementDistance);
+
                     return true;
                 }
 
@@ -274,13 +265,13 @@ public class LispEditText extends EditText {
 
             @Override
             public boolean onSingleTapUp(MotionEvent e) {
-                // TODO Auto-generated method stub
+
                 return false;
             }
 
             @Override
             public void onShowPress(MotionEvent e) {
-                // TODO Auto-generated method stub
+
 
             }
 
@@ -293,20 +284,18 @@ public class LispEditText extends EditText {
 
             @Override
             public void onLongPress(MotionEvent e) {
-                // TODO Auto-generated method stub
 
             }
 
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX,
                                    float velocityY) {
-                // TODO Auto-generated method stub
+
                 return false;
             }
 
             @Override
             public boolean onDown(MotionEvent e) {
-                // TODO Auto-generated method stub
                 return false;
             }
         };
@@ -324,7 +313,7 @@ public class LispEditText extends EditText {
             public boolean onTouch(View v, MotionEvent event) {
                 mReadOnlyGestureDetector.onTouchEvent(event);
                 Pair<Float, Float> currentPos = Pair.of(event.getX(), event.getY());
-                //Log.d("Vo<>oVo<>oVo", "Touch event: " + event.toString());
+
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
                             mInitialPos = currentPos;
@@ -529,10 +518,9 @@ public class LispEditText extends EditText {
                 if (text == null)
                     text = "";
                 LispEditText.this.setText(text);
-                boolean updateCursorPosP = false;
                 if (0  <= cursorPos && cursorPos <= text.length())
                 {
-                    updateCursorPosP = true;
+
                     mCursorPosition = cursorPos;
                     setSelection(cursorPos, cursorPos);
                 }
@@ -654,7 +642,6 @@ public class LispEditText extends EditText {
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
     {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        Log.d("......", "Measured height " + getMeasuredHeight() + " max collapsable height " + mMinimumEditableHeightPx + " min expandable height " + mMinimumExpandableHeightPx);
 
         if (getMeasuredHeight() <= mMinimumEditableHeightPx)
         {
@@ -688,18 +675,12 @@ public class LispEditText extends EditText {
         }
     }
 
-    @Override
-    protected void onLayout(boolean changed, int left, int top, int right, int bottom)
-    {
-        super.onLayout(changed, left, top, right, bottom);
-        Log.d("......", "Layout available height: " + Math.abs(top - bottom));
-    }
 
     @Override
     protected void onSelectionChanged(int selStart, int selEnd)
     {
         super.onSelectionChanged(selStart, selEnd);
-        if (!suppressSelectionUpdateP && selStart == selEnd && mParseNode != null) // purse cursor movement change
+        if (!suppressSelectionUpdateP && selStart == selEnd && mParseNode != null)
         {
             
             if (mStateListener != null && selStart != mCursorPosition)
@@ -762,7 +743,7 @@ public class LispEditText extends EditText {
 
                 if (expectedEnd != actualEnd)
                 {
-                    Log.e("<><><><><>", "Code model out of sync with code text");
+                    EventLog.get().logSystemError("Code model out of sync with code text");
                 }
                 e.setSpan(mSelectionForegroundSpan, start, actualEnd, flags);
                 e.setSpan(mSelectionBackgroundSpan, start, actualEnd, flags);
