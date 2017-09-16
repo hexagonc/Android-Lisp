@@ -12,6 +12,7 @@ import android.app.AlertDialog;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -98,7 +99,9 @@ public class ViewEvaluator  {
 			ImageLoader.getInstance().init(config);
 			_imageConfiguredP = true;
 		}
-		
+
+		env.mapFunction("get-drawable-resource-id", get_drawable_resource_id(activity));
+
 		env.mapFunction("show-view", show_view(env, activity, interpreter));
 		
 		env.mapFunction("hide-view", hide_view(env, activity, interpreter));
@@ -212,6 +215,9 @@ public class ViewEvaluator  {
 		env.mapFunction("update-list-items", update_list_items());
 	}
 
+
+
+
 	private static int convertPixelsToDP(Context con, int pixels)
 	{
 		DisplayMetrics dm = new DisplayMetrics();
@@ -224,6 +230,32 @@ public class ViewEvaluator  {
 	}
 
 
+
+	public static SimpleFunctionTemplate get_drawable_resource_id(final Context con)
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)get_drawable_resource_id(con);
+			}
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, false, true);
+
+				Resources res = con.getResources();
+				String name = evaluatedArgs[0].getString();
+				int id = res.getIdentifier(name, "drawable", con.getPackageName());
+				return NLispTools.makeValue(id);
+			}
+
+		};
+	}
 
 	public static SimpleFunctionTemplate has_attached_view()
 	{

@@ -757,7 +757,7 @@ public class LispContext implements SpeechListener{
                 if (v == null)
                     return Environment.getNull();
                 else
-                    return v;
+                    return NLispTools.makeValue(true);
 
             }
         };
