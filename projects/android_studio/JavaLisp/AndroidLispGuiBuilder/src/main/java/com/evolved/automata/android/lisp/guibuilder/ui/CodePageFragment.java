@@ -496,15 +496,16 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             mCodePage.setReadOnlyMode(stateChange._readOnlyModeP);
             updateTop = mCodePage.isReadOnlyEnabled() && !mCodePage.isTopParseNodeValid();
         }
-
+        updateTop = updateTop || mCodePage.isReadOnlyEnabled() && !mCodePage.isTopParseNodeValid();
         if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.TEXT))
         {
             String code = stateChange._text;
-            if (code != null)
+            // TODO - need to be able to avoid testing for equality.  This would be done by better handling circular callback sequences
+            if (code != null && !code.equals(mCodePage.getExpr()))
             {
                 mCodePage.setExpr(code);
                 mCodePage.assertTopParseNodeIsInValid();
-                updateTop = updateTop || mCodePage.isReadOnlyEnabled();
+                updateTop = true;
             }
         }
 
