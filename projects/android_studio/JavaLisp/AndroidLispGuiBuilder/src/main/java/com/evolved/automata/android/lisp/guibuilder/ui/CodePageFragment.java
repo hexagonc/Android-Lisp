@@ -505,7 +505,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             {
                 mCodePage.setExpr(code);
                 mCodePage.assertTopParseNodeIsInValid();
-                updateTop = true;
+                updateTop = mCodePage.isReadOnlyEnabled();
             }
         }
 

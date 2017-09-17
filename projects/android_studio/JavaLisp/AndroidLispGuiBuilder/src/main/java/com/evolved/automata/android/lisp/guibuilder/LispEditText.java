@@ -302,7 +302,7 @@ public class LispEditText extends AppCompatEditText {
             //ALGBEventManager.get().removeEvent(ce.getType());
             CopyEvent copyEvent = (CopyEvent)ce;
             String newText = copyEvent.getText();
-            Editable editable = getText();
+            Editable editable = getText(), copy;
             editable.clearSpans();
             // Update cursor position before updating text so that we send only one
             // notification to state listener in the CodeUpdateListener (if we update
@@ -311,21 +311,22 @@ public class LispEditText extends AppCompatEditText {
             // state change with the updated cursor position from the onSelectionChanged
             // callback
             int newCursorPos;
+            copy= Editable.Factory.getInstance().newEditable(editable);
             if (mCurrentSelection != null && mParseNode != null)
             {
                 int start = mCurrentSelection.getStartIndex();
                 String selection = mCurrentSelection.toString();
                 newCursorPos = start + newText.length();
-                editable.replace(start, start + selection.length(), newText);
+                copy.replace(start, start + selection.length(), newText);
 
             }
             else
             {
                 newCursorPos = mCursorPosition + newText.length();
 
-                editable.insert(mCursorPosition, newText);
+                copy.insert(mCursorPosition, newText);
             }
-            setText(editable.toString());
+            setText(copy.toString());
             setSelection(newCursorPos);
             //if (mStateListener != null)
             //    mStateListener.onTextChange(editable.toString(), mCursorPosition);
@@ -792,18 +793,22 @@ public class LispEditText extends AppCompatEditText {
 
 
 
+
+/*
     @Override
     public void setText(CharSequence text, BufferType type)
     {
-        super.setText(text, type);
-        if (mUpdateListener != null)
+        if (!text.toString().equals(getText().toString()))
         {
-            if (!text.toString().equals(getText().toString()))
+            super.setText(text, type);
+            if (mUpdateListener != null && mUpdateListener == null)
+            {
                 mUpdateListener.directUpdate(text.toString());
+            }
         }
 
-
     }
+*/
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
