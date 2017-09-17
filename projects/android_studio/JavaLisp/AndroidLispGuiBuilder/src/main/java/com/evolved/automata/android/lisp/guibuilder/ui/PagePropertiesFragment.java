@@ -13,11 +13,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.evolved.automata.android.lisp.guibuilder.DropboxChooserItem;
 import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
+import com.evolved.automata.android.lisp.guibuilder.EventLog;
 import com.evolved.automata.android.lisp.guibuilder.FileChooserDialog;
 import com.evolved.automata.android.lisp.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.Tools;
@@ -141,7 +143,8 @@ public class PagePropertiesFragment extends AppCompatDialogFragment {
     Button mSyncButton;
     EditText mPageTitleText;
     TextView mDropboxSyncPath;
-
+    RadioButton mDownloadButton;
+    RadioButton mUploadButton;
     CodePage mPage;
 
     int mStyle = DialogFragment.STYLE_NORMAL;
@@ -275,6 +278,8 @@ public class PagePropertiesFragment extends AppCompatDialogFragment {
             }
         });
 
+        mDownloadButton = (RadioButton)top.findViewById(R.id.v2_rad_load_from_dropbox);
+        mUploadButton = (RadioButton)top.findViewById(R.id.v2_rad_save_to_dropbox);
 
         mSyncButton = (Button)top.findViewById(R.id.v2_but_sync_now);
         mSyncButton.setEnabled(canSync());
@@ -282,38 +287,80 @@ public class PagePropertiesFragment extends AppCompatDialogFragment {
             @Override
             public void onClick(View v)
             {
-                String path = mDropboxSyncPath.getText().toString();
+                final String path = mDropboxSyncPath.getText().toString();
 
                 if (path.trim().length()>0)
                 {
-                    final ProgressDialog dialog = ProgressDialog.show(getActivity(), "Downloading...", "Downloading: " + path);
-                    DropboxManager.get().getController().downloadFile(path, new Observer<DropboxManager.DropboxResponse>() {
-                        @Override
-                        public void onSubscribe(@NonNull Disposable d)
-                        {
 
-                        }
+                    if (mDownloadButton.isChecked())
+                    {
+                        final ProgressDialog dialog = ProgressDialog.show(getActivity(), "Downloading...", "Downloading: " + path);
+                        DropboxManager.get().getController().downloadFile(path, new Observer<DropboxManager.DropboxResponse>() {
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d)
+                            {
 
-                        @Override
-                        public void onNext(@NonNull DropboxManager.DropboxResponse dropboxResponse)
-                        {
-                            dialog.dismiss();
-                            DropboxManager.DownloadTextResponse response = (DropboxManager.DownloadTextResponse)dropboxResponse;
-                            (new ChangeText(response.getContents())).fill(mChanges);
-                        }
+                            }
 
-                        @Override
-                        public void onError(@NonNull Throwable e)
-                        {
-                            dialog.dismiss();
-                        }
+                            @Override
+                            public void onNext(@NonNull DropboxManager.DropboxResponse dropboxResponse)
+                            {
+                                dialog.dismiss();
+                                DropboxManager.DownloadTextResponse response = (DropboxManager.DownloadTextResponse)dropboxResponse;
+                                (new ChangeText(response.getContents())).fill(mChanges);
+                            }
 
-                        @Override
-                        public void onComplete()
-                        {
+                            @Override
+                            public void onError(@NonNull Throwable e)
+                            {
+                                dialog.dismiss();
+                                Toast.makeText(getActivity(), "Errors downloading file" , Toast.LENGTH_SHORT).show();
+                                EventLog.get().logSystemError(e, "Errors downloading file: " + path);
+                            }
 
-                        }
-                    });
+                            @Override
+                            public void onComplete()
+                            {
+
+                            }
+                        });
+                    }
+                    else if (mUploadButton.isChecked())
+                    {
+                        final ProgressDialog dialog = ProgressDialog.show(getActivity(), "Uploading...", "Uploading: " + path);
+                        DropboxManager.get().getController().uploadTextFile(path, mPage.getExpr(), true, new Observer<DropboxManager.DropboxResponse>() {
+                            @Override
+                            public void onSubscribe(@NonNull Disposable d)
+                            {
+
+                            }
+
+                            @Override
+                            public void onNext(@NonNull DropboxManager.DropboxResponse dropboxResponse)
+                            {
+                                dialog.dismiss();
+                                Toast.makeText(getActivity(), "Uploaded file to Dropbox", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onError(@NonNull Throwable e)
+                            {
+                                dialog.dismiss();
+                                Toast.makeText(getActivity(), "Errors uploading file", Toast.LENGTH_SHORT).show();
+                                EventLog.get().logSystemError(e, "Errors uploading file: " + path);
+                            }
+
+                            @Override
+                            public void onComplete()
+                            {
+
+                            }
+                        });
+                    }
+
+
+
+
                 }
                 else
                 {
