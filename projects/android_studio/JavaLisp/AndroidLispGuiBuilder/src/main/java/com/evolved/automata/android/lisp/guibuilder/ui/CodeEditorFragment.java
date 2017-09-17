@@ -21,6 +21,7 @@ import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventManager;
 import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventTypes;
 import com.evolved.automata.android.lisp.guibuilder.events.CopyEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.PasteEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.UndoEvent;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
 import com.evolved.automata.lisp.editor.WordCompletor;
@@ -173,7 +174,7 @@ public class CodeEditorFragment extends Fragment {
                     break;
                     case R.id.menu_undo:
                     {
-
+                        Tools.postEvent(UndoEvent.make());
                     }
                     break;
                     case R.id.menu_copy:

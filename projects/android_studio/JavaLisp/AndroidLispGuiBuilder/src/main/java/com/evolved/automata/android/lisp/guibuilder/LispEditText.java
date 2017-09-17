@@ -1,8 +1,6 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.support.v7.widget.AppCompatEditText;
 import android.text.Editable;
@@ -25,8 +23,8 @@ import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventManager;
 import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventTypes;
 import com.evolved.automata.android.lisp.guibuilder.events.CopyEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.PasteEvent;
-import com.evolved.automata.events.Event;
-import com.evolved.automata.events.EventManager;
+import com.evolved.automata.android.lisp.guibuilder.events.RedoEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.UndoEvent;
 import com.evolved.automata.lisp.editor.CompositeNode;
 import com.evolved.automata.lisp.editor.EditorTransaction;
 import com.evolved.automata.lisp.editor.ParseNode;
@@ -38,16 +36,10 @@ import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
 
-import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
-import io.reactivex.Observer;
-import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Function;
 
 /**
  * Created by Evolved8 on 4/26/17.
@@ -131,6 +123,7 @@ public class LispEditText extends AppCompatEditText {
 
 
     SimpleTextEditor mEditorModel = null;
+    boolean mSuppressNextTextModelUpdateP = false;
 
     boolean mIsShorterThanMinimumEditableHeightP = false;
 
@@ -153,6 +146,8 @@ public class LispEditText extends AppCompatEditText {
 
         ObservableEmitter<EditEvent> _subScriber;
 
+        EditorTransaction _currentTransaction = null;
+
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after)
         {
@@ -160,7 +155,7 @@ public class LispEditText extends AppCompatEditText {
             {
                 String deleted = s.toString().substring(start, start + count);
 
-
+                _currentTransaction = new EditorTransaction(start, deleted, start, "", mCursorPosition - count);
                 Log.d(".o0000o.o0000o.o0000o", String.format("deleted: %1$s, new cursor position is: %2$s", deleted, mCursorPosition - count));
             }
             Log.d(".o0000o.o0000o.o0000o", String.format("beforeTextChanged(:start %1$s :count %2$s :after %3$s)", start, count, after));
@@ -174,6 +169,16 @@ public class LispEditText extends AppCompatEditText {
             {
                 String inserted = s.toString().substring(start, count+ start);
                 Log.d(".o0000o.o0000o.o0000o", String.format("inserted: %1$s, new cursor position is: %2$s", inserted, mCursorPosition));
+                if (_currentTransaction != null)
+                {
+                    _currentTransaction = new EditorTransaction(_currentTransaction.getInitialCursorPos(),
+                                                                _currentTransaction.getCharactersToDelete(),
+                                                                start,
+                                                                inserted,
+                                                                mCursorPosition);
+                }
+                else
+                    _currentTransaction = new EditorTransaction(start, "", start, inserted, start + count);
             }
             Log.d(".o0000o.o0000o.o0000o", String.format("onTextChanged(:start %1$s :before %2$s :count %3$s)", start, before, count));
         }
@@ -185,6 +190,13 @@ public class LispEditText extends AppCompatEditText {
             mTempSuppressHighlightingP = true;
             clearSelectionDisplay();
             directUpdate(updated);
+            if (_currentTransaction != null && mEditorModel != null && !mSuppressNextTextModelUpdateP)
+            {
+                mEditorModel.applyTransaction(_currentTransaction, true);
+                Log.d("~<o00o>~ ~<o00o>~", "Apply transaction: " + _currentTransaction.toString());
+            }
+            mSuppressNextTextModelUpdateP = false;
+            _currentTransaction = null;
 
         }
 
@@ -255,6 +267,30 @@ public class LispEditText extends AppCompatEditText {
     {
         super(context, attrs);
         init();
+    }
+
+    @Subscribe (threadMode = ThreadMode.MAIN)
+    public void onUndoEvent(UndoEvent event)
+    {
+        if (mEditorModel != null)
+        {
+            if (mEditorModel.applyUndoTransaction())
+            {
+                int cursor = mEditorModel.getCursorPosition();
+                mSuppressNextTextModelUpdateP = true;
+                setText(mEditorModel.getText());
+                setSelection(cursor);
+            }
+            else
+                Log.d("<><<><><>", "Nothing to undo");
+        }
+    }
+
+    @Subscribe (threadMode = ThreadMode.MAIN)
+    public void onRedoEvent(RedoEvent event)
+    {
+        Log.d("><><><<", "Redo not implemented yet");
+
     }
 
     @Subscribe (threadMode = ThreadMode.MAIN)
