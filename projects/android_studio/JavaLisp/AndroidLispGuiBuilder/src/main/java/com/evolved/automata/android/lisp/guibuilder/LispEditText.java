@@ -156,9 +156,9 @@ public class LispEditText extends AppCompatEditText {
                 String deleted = s.toString().substring(start, start + count);
 
                 _currentTransaction = new EditorTransaction(start, deleted, start, "", mCursorPosition - count);
-                Log.d(".o0000o.o0000o.o0000o", String.format("deleted: %1$s, new cursor position is: %2$s", deleted, mCursorPosition - count));
+                //Log.d(".o0000o.o0000o.o0000o", String.format("deleted: %1$s, new cursor position is: %2$s", deleted, mCursorPosition - count));
             }
-            Log.d(".o0000o.o0000o.o0000o", String.format("beforeTextChanged(:start %1$s :count %2$s :after %3$s)", start, count, after));
+            //Log.d(".o0000o.o0000o.o0000o", String.format("beforeTextChanged(:start %1$s :count %2$s :after %3$s)", start, count, after));
 
         }
 
@@ -168,7 +168,7 @@ public class LispEditText extends AppCompatEditText {
             if (count > 0)
             {
                 String inserted = s.toString().substring(start, count+ start);
-                Log.d(".o0000o.o0000o.o0000o", String.format("inserted: %1$s, new cursor position is: %2$s", inserted, mCursorPosition));
+                //Log.d(".o0000o.o0000o.o0000o", String.format("inserted: %1$s, new cursor position is: %2$s", inserted, mCursorPosition));
                 if (_currentTransaction != null)
                 {
                     _currentTransaction = new EditorTransaction(_currentTransaction.getInitialCursorPos(),
@@ -180,7 +180,7 @@ public class LispEditText extends AppCompatEditText {
                 else
                     _currentTransaction = new EditorTransaction(start, "", start, inserted, start + count);
             }
-            Log.d(".o0000o.o0000o.o0000o", String.format("onTextChanged(:start %1$s :before %2$s :count %3$s)", start, before, count));
+            //Log.d(".o0000o.o0000o.o0000o", String.format("onTextChanged(:start %1$s :before %2$s :count %3$s)", start, before, count));
         }
 
         @Override
@@ -193,7 +193,7 @@ public class LispEditText extends AppCompatEditText {
             if (_currentTransaction != null && mEditorModel != null && !mSuppressNextTextModelUpdateP)
             {
                 mEditorModel.applyTransaction(_currentTransaction, true);
-                Log.d("~<o00o>~ ~<o00o>~", "Apply transaction: " + _currentTransaction.toString());
+                //Log.d("~<o00o>~ ~<o00o>~", "Apply transaction: " + _currentTransaction.toString());
             }
             mSuppressNextTextModelUpdateP = false;
             _currentTransaction = null;
@@ -793,22 +793,6 @@ public class LispEditText extends AppCompatEditText {
 
 
 
-
-/*
-    @Override
-    public void setText(CharSequence text, BufferType type)
-    {
-        if (!text.toString().equals(getText().toString()))
-        {
-            super.setText(text, type);
-            if (mUpdateListener != null && mUpdateListener == null)
-            {
-                mUpdateListener.directUpdate(text.toString());
-            }
-        }
-
-    }
-*/
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
