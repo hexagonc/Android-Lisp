@@ -128,11 +128,7 @@ public class Event {
         return this;
     }
 
-    /**
-     * Supposed a threadmode annotation, ThreadMode(MAIN, CURRENT, BACKGROUND)
-     * @param manager
-     * @return
-     */
+
     public Event onRemoved(EventManager manager)
     {
         return this;

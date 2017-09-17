@@ -1,6 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.support.v7.widget.AppCompatEditText;
@@ -19,13 +20,22 @@ import android.widget.EditText;
 
 
 import com.evolved.automata.android.AndroidTools;
+import com.evolved.automata.android.lisp.guibuilder.events.ALGBEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventManager;
+import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventTypes;
+import com.evolved.automata.android.lisp.guibuilder.events.CopyEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.PasteEvent;
+import com.evolved.automata.events.Event;
 import com.evolved.automata.events.EventManager;
 import com.evolved.automata.lisp.editor.CompositeNode;
+import com.evolved.automata.lisp.editor.EditorTransaction;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.SimpleTextEditor;
 import com.evolved.automata.lisp.editor.TopParseNode;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
@@ -146,13 +156,26 @@ public class LispEditText extends AppCompatEditText {
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after)
         {
+            if (count > 0)
+            {
+                String deleted = s.toString().substring(start, start + count);
+
+
+                Log.d(".o0000o.o0000o.o0000o", String.format("deleted: %1$s, new cursor position is: %2$s", deleted, mCursorPosition - count));
+            }
+            Log.d(".o0000o.o0000o.o0000o", String.format("beforeTextChanged(:start %1$s :count %2$s :after %3$s)", start, count, after));
 
         }
 
         @Override
         public void onTextChanged(CharSequence s, int start, int before, int count)
         {
-
+            if (count > 0)
+            {
+                String inserted = s.toString().substring(start, count+ start);
+                Log.d(".o0000o.o0000o.o0000o", String.format("inserted: %1$s, new cursor position is: %2$s", inserted, mCursorPosition));
+            }
+            Log.d(".o0000o.o0000o.o0000o", String.format("onTextChanged(:start %1$s :before %2$s :count %3$s)", start, before, count));
         }
 
         @Override
@@ -204,7 +227,22 @@ public class LispEditText extends AppCompatEditText {
 
         addTextChangedListener(mUpdateListener);
         SCROLL_THRESHOLD_PX = AndroidTools.convertDPtoPX(getContext(), SCROLL_THRESHOLD_DP);
+        mEditorModel = new SimpleTextEditor("", 0 , Tools.getEditorUndoHistoryLength(getContext()));
 
+    }
+
+    @Override
+    protected void onAttachedToWindow()
+    {
+        super.onAttachedToWindow();
+        Tools.registerEventHandler(this);
+    }
+
+    @Override
+    protected void onDetachedFromWindow()
+    {
+        Tools.unRegisterEventHandler(this);
+        super.onDetachedFromWindow();
     }
 
     public LispEditText(Context context)
@@ -217,6 +255,81 @@ public class LispEditText extends AppCompatEditText {
     {
         super(context, attrs);
         init();
+    }
+
+    @Subscribe (threadMode = ThreadMode.MAIN)
+    public void onPasteEvent(PasteEvent event)
+    {
+        ALGBEvent ce = ALGBEventManager.get().getEvent(ALGBEventTypes.COPY);
+        if (ce != null)
+        {
+            //ALGBEventManager.get().removeEvent(ce.getType());
+            CopyEvent copyEvent = (CopyEvent)ce;
+            String newText = copyEvent.getText();
+            Editable editable = getText();
+            editable.clearSpans();
+            // Update cursor position before updating text so that we send only one
+            // notification to state listener in the CodeUpdateListener (if we update
+            // mCursorPosition after inserting the text, there will be a TextChanged
+            // state notification with the old cursor position then a separate
+            // state change with the updated cursor position from the onSelectionChanged
+            // callback
+            int newCursorPos;
+            if (mCurrentSelection != null && mParseNode != null)
+            {
+                int start = mCurrentSelection.getStartIndex();
+                String selection = mCurrentSelection.toString();
+                newCursorPos = start + newText.length();
+                editable.replace(start, start + selection.length(), newText);
+
+            }
+            else
+            {
+                newCursorPos = mCursorPosition + newText.length();
+
+                editable.insert(mCursorPosition, newText);
+            }
+            setText(editable.toString());
+            setSelection(newCursorPos);
+            //if (mStateListener != null)
+            //    mStateListener.onTextChange(editable.toString(), mCursorPosition);
+
+        }
+    }
+
+
+
+    // TODO: Finish this
+    private void applyEditorTransaction(EditorTransaction trans, boolean updatHistory, boolean updateUI)
+    {
+        if (mEditorModel!=null)
+        {
+            int initCursor = mEditorModel.getCursorPosition();
+            mEditorModel.applyTransaction(trans, updatHistory);
+
+            if (updateUI)
+            {
+                int finalCur = mEditorModel.getCursorPosition();
+                if (initCursor != finalCur)
+                {
+                    if (trans.getCharactersToInsert().length() == 0 && trans.getCharactersToDelete().length() == 0)
+                    {
+                        setSelection(mEditorModel.getCursorPosition());
+                    }
+                    String newText = mEditorModel.getText();
+                    mStateListener.onTextChange(newText, mEditorModel.getCursorPosition());
+                    setText(newText);
+                }
+
+                mCursorPosition = mEditorModel.getCursorPosition();
+
+
+
+
+            }
+        }
+        else
+            EventLog.get().logSystemError("Trying to apply editor transaction with undefined editor!");
     }
 
     private float distance(Pair<Float, Float> p1, Pair<Float, Float> p2)
@@ -400,8 +513,10 @@ public class LispEditText extends AppCompatEditText {
             @Override
             public void setTopParseNode(TopParseNode topNode)
             {
+
+                boolean updateP = mParseNode != topNode;
                 mParseNode = topNode;
-                if (topNode != null)
+                if (topNode != null && updateP)
                 {
 
                     mCurrentSelection = mParseNode.findNode(mCursorPosition);
@@ -634,13 +749,15 @@ public class LispEditText extends AppCompatEditText {
     }
 
 
+
     @Override
     public void setText(CharSequence text, BufferType type)
     {
         super.setText(text, type);
         if (mUpdateListener != null)
         {
-            mUpdateListener.directUpdate(text.toString());
+            if (!text.toString().equals(getText().toString()))
+                mUpdateListener.directUpdate(text.toString());
         }
 
 
@@ -688,6 +805,9 @@ public class LispEditText extends AppCompatEditText {
     protected void onSelectionChanged(int selStart, int selEnd)
     {
         super.onSelectionChanged(selStart, selEnd);
+        //if (mEditorModel != null && selStart == selEnd)
+        //    mEditorModel.applyMoveCursorTransaction(selStart);
+
         if (!suppressSelectionUpdateP && selStart == selEnd && mParseNode != null)
         {
             
@@ -709,6 +829,16 @@ public class LispEditText extends AppCompatEditText {
                 renderSelection(false);
             }
         }
+        else if (selStart == selEnd)
+        {
+            if (mStateListener != null && selStart != mCursorPosition)
+            {
+                mCursorPosition = selStart;
+                mStateListener.onCursorChange(mCursorPosition);
+            }
+
+        }
+        Log.d("~)o(~ ~)o(~ ~)o(~ ~)o(~", "Selection changed: (" + selStart + ", " + selEnd + ")");
         suppressSelectionUpdateP = false;
     }
 

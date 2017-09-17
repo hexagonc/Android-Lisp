@@ -59,7 +59,7 @@ public class EventManager {
 
     protected EventManager(EventRequestDispatcher requestDispatcher)
     {
-        super();
+        this();
         mRequestDispatcher = requestDispatcher;
     }
 

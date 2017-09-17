@@ -476,9 +476,26 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     }
 
+
+
+    // ~o) (o~~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~
+    // This is where the CodeEditorFragment notifies the CodePageFragment, and hence the CodePage
+    // that there have been changes to the LispEditText.  If there have been text changes and
+    // the LispEditText is in read-only mode then it recomputes the cached TopParseNode in the
+    // CodePage immediately.  Otherwise, it just invalidates the TopParseNode.  Upon switching from
+    // write mode to read-only mode, it checks if the TopParseNode is valid and if not, recomputes it
+    // then.
+    // ~o) (o~~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~ ~o) (o~
     @Override
     public void onNext(@NonNull CodeEditorFragment.StateChange stateChange)
     {
+        boolean updateTop = false;
+        if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.READONLY))
+        {
+            updateToggleButton();
+            mCodePage.setReadOnlyMode(stateChange._readOnlyModeP);
+            updateTop = mCodePage.isReadOnlyEnabled() && !mCodePage.isTopParseNodeValid();
+        }
 
         if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.TEXT))
         {
@@ -487,19 +504,13 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
             {
                 mCodePage.setExpr(code);
                 mCodePage.assertTopParseNodeIsInValid();
+                updateTop = updateTop || mCodePage.isReadOnlyEnabled();
             }
         }
 
         if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.CURSOR))
         {
             mCodePage.setCursorPosition(stateChange._cursorPos);
-        }
-
-
-        if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.READONLY))
-        {
-            updateToggleButton();
-            mCodePage.setReadOnlyMode(stateChange._readOnlyModeP);
         }
 
         if (stateChange._changeType.contains(CodeEditorFragment.CHANGE_TYPE.VISIBILITY))
@@ -519,8 +530,10 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                     }
                     else
                     {
+
                         mEditorController.setText(text, Math.max(0, mCodePage.getCursorPosition()), current , this);
                     }
+                    updateTop = false;
                 }
                 else
                 {
@@ -528,6 +541,11 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
                     mEditorController.disableReadOnlyMode(this);
                 }
             }
+        }
+
+        if (updateTop)
+        {
+            updateTopParseNode();
         }
 
     }

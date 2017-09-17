@@ -1,6 +1,10 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import com.dropbox.core.v2.files.Metadata;
+import com.evolved.automata.android.AndroidTools;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
@@ -199,6 +203,15 @@ public class Tools {
         return parentReady.toString();
 
     }
+
+    static final String DEFAULT_SHARED = "-*DEFAULT*-";
+    public static int getEditorUndoHistoryLength(Context con)
+    {
+        String key = con.getString(R.string.pref_int_key_undo_history_length);
+        SharedPreferences preferences = con.getSharedPreferences(DEFAULT_SHARED, Context.MODE_PRIVATE);
+        return preferences.getInt(key, 20);
+    }
+
 
 
 }

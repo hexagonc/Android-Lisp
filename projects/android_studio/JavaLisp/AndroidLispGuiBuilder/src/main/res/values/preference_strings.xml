@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name = "pref_int_key_undo_history_length">pref_int_key_undo_history_length</string>
+    <string name = "pref_bool_key_auto_save_workspace_changes">pref_bool_key_auto_save_workspace_changes</string>
+    <string name = "pref_bool_key_include_sample_workspace">pref_bool_key_include_sample_workspace</string>
+</resources>

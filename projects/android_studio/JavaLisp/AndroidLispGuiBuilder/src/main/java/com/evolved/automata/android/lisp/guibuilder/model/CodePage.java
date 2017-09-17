@@ -96,6 +96,12 @@ public class CodePage extends Page {
             return null;
     }
 
+    public boolean isTopParseNodeValid()
+    {
+        return mIsValid;
+    }
+
+
     public void requestTopParseNode(final Observer<TopParseNode> resultObserver)
     {
         final String processingId = UUID.randomUUID().toString();

@@ -15,6 +15,12 @@ import android.widget.ImageButton;
 import com.evolved.automata.android.lisp.guibuilder.LispCodeEditorParseContext;
 import com.evolved.automata.android.lisp.guibuilder.LispEditText;
 import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.events.ALGBEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventManager;
+import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventTypes;
+import com.evolved.automata.android.lisp.guibuilder.events.CopyEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.PasteEvent;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
 import com.evolved.automata.lisp.editor.WordCompletor;
@@ -172,7 +178,11 @@ public class CodeEditorFragment extends Fragment {
                     break;
                     case R.id.menu_copy:
                     {
-
+                        ParseNode selection = mController.getSelection();
+                        if (selection != null && selection.getLength()>0)
+                        {
+                            ALGBEventManager.get().onEvent(CopyEvent.make(selection.toString()));
+                        }
                     }
                     break;
                     case R.id.menu_cut:
@@ -182,7 +192,7 @@ public class CodeEditorFragment extends Fragment {
                     break;
                     case R.id.menu_paste:
                     {
-
+                        Tools.postEvent(PasteEvent.make());
                     }
                     break;
 
