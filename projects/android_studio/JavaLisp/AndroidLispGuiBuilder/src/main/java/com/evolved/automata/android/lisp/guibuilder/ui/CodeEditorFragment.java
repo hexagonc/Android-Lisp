@@ -168,7 +168,7 @@ public class CodeEditorFragment extends Fragment {
                     break;
                     case R.id.menu_clear:
                     {
-
+                        mController.clearCurrentSelection();
                     }
                     break;
                     case R.id.menu_undo:
@@ -187,7 +187,12 @@ public class CodeEditorFragment extends Fragment {
                     break;
                     case R.id.menu_cut:
                     {
-
+                        ParseNode selection = mController.getSelection();
+                        if (selection != null && selection.getLength()>0)
+                        {
+                            ALGBEventManager.get().onEvent(CopyEvent.make(selection.toString()));
+                            mController.clearCurrentSelection();
+                        }
                     }
                     break;
                     case R.id.menu_paste:

@@ -691,9 +691,15 @@ public class LispEditText extends AppCompatEditText {
                 {
                     int start = mCurrentSelection.getStartIndex();
                     int end = mCurrentSelection.getLength() + start;
-                    int newCursor = mCurrentSelection.getStartIndex();
-                    String newText = getText().toString();
-                    setText(newText.substring(0, start) + newText.substring(end + 1), newCursor);
+
+                    if (end > start)
+                    {
+                        Editable e = LispEditText.this.getText();
+                        e.delete(start, end);
+                        LispEditText.this.setText(e.toString());
+                        setSelection(start);
+                    }
+
                 }
             }
 
@@ -879,10 +885,6 @@ public class LispEditText extends AppCompatEditText {
 
                 int expectedEnd = end, actualEnd = Math.min(end, e.toString().length());
 
-                if (expectedEnd != actualEnd)
-                {
-                    EventLog.get().logSystemError("Code model out of sync with code text");
-                }
                 e.setSpan(mSelectionForegroundSpan, start, actualEnd, flags);
                 e.setSpan(mSelectionBackgroundSpan, start, actualEnd, flags);
                 if (updateCursorP)
