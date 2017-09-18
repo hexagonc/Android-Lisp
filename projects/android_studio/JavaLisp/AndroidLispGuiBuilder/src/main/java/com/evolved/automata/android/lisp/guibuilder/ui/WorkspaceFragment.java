@@ -2,6 +2,8 @@ package com.evolved.automata.android.lisp.guibuilder.ui;
 
 import android.app.Activity;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -30,6 +32,8 @@ import com.evolved.automata.android.lisp.guibuilder.NewErrorLogEntriesEvent;
 import com.evolved.automata.android.lisp.guibuilder.NewInfoLogEntriesEvent;
 import com.evolved.automata.android.lisp.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.TutorialManager;
+import com.evolved.automata.android.lisp.guibuilder.events.AddPageToCurrentWorkspaceEvent;
 import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
 import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
@@ -40,6 +44,17 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.HashMap;
 import java.util.LinkedList;
+
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.annotations.Nullable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Cancellable;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by Evolved8 on 5/5/17.
@@ -66,7 +81,7 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
     ShadowButton mNavigateNextButton;
     //ImageButton mAddPageButton;
     TextView mPageTitleView;
-
+    Disposable tutorialDisposeable = null;
 
     public void setWorkspace(Workspace work)
     {
@@ -150,6 +165,11 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
     private void addNewPage()
     {
         CodePage page = (CodePage)mWorkspace.addPage();
+        addNewPage(page);
+    }
+
+    private void addNewPage(CodePage page)
+    {
         PageFragment fragment = new PageFragment();
         fragment.setPage(page);
         mPages.add(mWorkspace.getCurrentPageIndex(), fragment);
@@ -420,6 +440,11 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
     {
 
         Tools.unRegisterEventHandler(this);
+        if (tutorialDisposeable != null)
+        {
+            tutorialDisposeable.dispose();
+            tutorialDisposeable = null;
+        }
         super.onPause();
     }
 
@@ -477,8 +502,82 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
 
             return true;
         }
+        else if (item.getItemId() == R.id.menu_tutorial)
+        {
+            onTutorialSelected();
+            return true;
+        }
         else
             return getCurrentPageFragment().onOptionsItemSelected(item);
+    }
+
+
+    private void onTutorialSelected()
+    {
+        ObservableOnSubscribe<TutorialManager.Tutorials> tutorialRetriever = new ObservableOnSubscribe<TutorialManager.Tutorials>() {
+            @Override
+            public void subscribe(@NonNull ObservableEmitter<TutorialManager.Tutorials> observer) throws Exception
+            {
+                TutorialManager.Tutorials tutorials = TutorialManager.get().getTutorials();
+                if (!observer.isDisposed())
+                {
+                    observer.onNext(tutorials);
+                    observer.onComplete();
+                }
+
+            }
+        };
+
+        Observer<TutorialManager.Tutorials> resultObserver = new Observer<TutorialManager.Tutorials>() {
+
+
+            @Override
+            public void onSubscribe(@NonNull Disposable d)
+            {
+                tutorialDisposeable = d;
+            }
+
+            @Override
+            public void onNext(@NonNull TutorialManager.Tutorials value)
+            {
+                tutorialDisposeable = null;
+                final TutorialManager.TutorialSpec[] tutorials = value.getTutorials();
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+
+                builder.setTitle("Select a Tutorial to Load");
+
+                builder.setItems(R.array.tutorial_short_descriptions, new DialogInterface.OnClickListener()
+                {
+
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i)
+                    {
+                        TutorialManager.TutorialSpec spec = tutorials[i];
+                        CodePage page = (CodePage)mWorkspace.addPage(spec.getTitle(), spec.getContents());
+                        page.setReadOnlyMode(true);
+                        Tools.postEvent(AddPageToCurrentWorkspaceEvent.make(page));
+                    }
+                });
+                builder.create().show();
+            }
+
+            @Override
+            public void onError(@NonNull Throwable error)
+            {
+                tutorialDisposeable = null;
+                EventLog.get().logSystemError(error, "Errors loading tutorial");
+            }
+
+            @Override
+            public void onComplete()
+            {
+                tutorialDisposeable = null;
+            }
+        };
+
+        Observable.create(tutorialRetriever).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(resultObserver);
+;
+
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -491,5 +590,11 @@ public class WorkspaceFragment extends android.support.v4.app.Fragment {
         else
             mProgressIcon.setVisibility(View.INVISIBLE);
 
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onAddPageEvent(AddPageToCurrentWorkspaceEvent event)
+    {
+        addNewPage(event.getPage());
     }
 }

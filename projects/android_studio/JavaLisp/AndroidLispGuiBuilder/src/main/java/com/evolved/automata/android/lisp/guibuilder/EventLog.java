@@ -1,5 +1,7 @@
 package com.evolved.automata.android.lisp.guibuilder;
 
+import android.util.Log;
+
 import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.model.Page;
 
@@ -335,6 +337,15 @@ public class EventLog {
 
     }
 
+    public void logcatError(String key, String message)
+    {
+        Log.e(key, message);
+    }
+
+    public void logcatDebug(String key, String message)
+    {
+        Log.d(key, message);
+    }
 
     public void showLog()
     {

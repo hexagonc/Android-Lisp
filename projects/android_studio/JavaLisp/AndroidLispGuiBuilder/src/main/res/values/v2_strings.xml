@@ -20,4 +20,43 @@
     <string name = "workspace_management_selected_label_title">Workspace</string>
     <string name = "app_status_log_details_label">Details:</string>
     <string name = "app_status_log_title">Application Status Log</string>
+
+    <!-- Tutorial Settings -->
+    <array name="tutorial_short_descriptions">
+        <item>Basic UI Scriptiong Walkthrough</item>
+        <item>Example: Simple Tic-Tac-Toe UI</item>
+        <item>Example: Game of Life simulator</item>
+        <item>Example: Lego Mindstorms Bluetooth Control</item>
+    </array>
+    <array name="tutorial_filename_names">
+        <item>basic-tutorial.lisp</item>
+        <item>tic_tac_toe_simple.lisp</item>
+        <item>game_of_life.lisp</item>
+        <item>mindstorms_sample.lisp</item>
+    </array>
+    <array name="tutorial_page_titles">
+        <item>Basic Tutorial</item>
+        <item>Tic-Tac-Toe No AI</item>
+        <item>Game of Life</item>
+        <item>Mindstorms Bluetooth Control</item>
+    </array>
+
+    <array name="tutorial_descriptions">
+        <item>Covers mostly basic UI components and basic syntax and functions in the Lisp Scripting Language.</item>
+        <item>Simple example for creating a non-function Tic-Tac-Toe UI.</item>
+        <item>An inefficient Game of Life simulator.</item>
+        <item>Functional example for connecting to Lego Mindstorms robot using Bluetooth.</item>
+    </array>
+
+
+    <!-- Sample Code Workspace Settings -->
+    <array name="sample_workspace_page_filename_names">
+        <item>game_of_life.lisp</item>
+    </array>
+    <array name="sample_workspace_page_names">
+        <item>game of life</item>
+    </array>
+    <string name = "sample_workspace_name">Code Samples</string>
+    <string name = "sample_workspace_id">+code-samples-id+</string>
+
 </resources>

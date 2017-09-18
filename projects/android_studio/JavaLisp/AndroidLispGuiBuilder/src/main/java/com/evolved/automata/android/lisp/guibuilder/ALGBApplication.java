@@ -22,14 +22,15 @@ public class ALGBApplication extends MultiDexApplication
 		super.onCreate();
 		try
 		{
-
+			Tools.mApplication = this;
+			NXTBluetoothManager.create(this);
 			mApplication = new ALGB(getApplicationContext());
 			AndroidTools.initialize(null, this, null);
 			AppStateManager.create(this);
-			NXTBluetoothManager.create(this);
+
 			DeviceInfo.create(this);
 			DropboxManager.create(getApplicationContext());
-
+			TutorialManager.make(this);
 			EventLog.create(mApplication);
 
 		}

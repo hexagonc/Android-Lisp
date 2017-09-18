@@ -22,52 +22,56 @@
               android:orderInCategory="2"
               android:title = "Insert Page"
               app:showAsAction="always"/>
+        <item android:id = "@+id/menu_tutorial"
+              android:title = "Help/Tutorial"
+              android:orderInCategory="3"
+              app:showAsAction="never"/>
         <item android:id = "@+id/v2_menu_page_properties"
               android:title = "Page Properties"
               app:showAsAction="never"
-              android:orderInCategory="3"/>
+              android:orderInCategory="4"/>
         <item android:id = "@+id/v2_menu_workspace_management"
               android:title = "Manage Workspaces"
-              android:orderInCategory="4"
+              android:orderInCategory="5"
               app:showAsAction="never"/>
         <item android:id = "@+id/v2_menu_post_test_login"
               android:title = "Test Dropbox Login"
-              android:orderInCategory="5"
+              android:orderInCategory="6"
               app:showAsAction="never"/>
 
         <item android:id = "@+id/v2_menu_show_event_log"
               android:title = "Show Event Log"
-              android:orderInCategory="6"
+              android:orderInCategory="7"
               app:showAsAction="never"/>
         <item android:id = "@+id/v2_start_dropbox_authentication"
               android:title = "Log into Dropbox"
-              android:orderInCategory="7"
+              android:orderInCategory="8"
               app:showAsAction="never"/>
         <item
             android:id="@+id/v2_menu_save_page"
             app:showAsAction="never"
-            android:orderInCategory="8"
+            android:orderInCategory="9"
             android:title="Save Page"/>
         <item
             android:id="@+id/v2_menu_save_all"
             app:showAsAction="never"
-            android:orderInCategory="9"
+            android:orderInCategory="10"
             android:title="Save All"/>
 
         <item
             android:id="@+id/v2_menu_render"
             app:showAsAction="never"
-            android:orderInCategory="10"
+            android:orderInCategory="11"
             android:title="To Render Screen"/>
         <item
             android:id="@+id/v2_menu_to_code"
             app:showAsAction="never"
-            android:orderInCategory="11"
+            android:orderInCategory="12"
             android:title="To Code View"/>
 
         <item android:id = "@+id/show_settings"
               android:title = "Settings"
-              android:orderInCategory="12"
+              android:orderInCategory="13"
               app:showAsAction="never"/>
     </group>
 

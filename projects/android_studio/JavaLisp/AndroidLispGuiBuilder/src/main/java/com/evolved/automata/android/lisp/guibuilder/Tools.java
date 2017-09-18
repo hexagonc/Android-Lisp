@@ -2,6 +2,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.AssetManager;
 
 import com.dropbox.core.v2.files.Metadata;
 import com.evolved.automata.android.AndroidTools;
@@ -14,7 +15,11 @@ import com.evolved.automata.lisp.Value;
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.UUID;
 
 
@@ -25,12 +30,25 @@ import java.util.UUID;
 public class Tools {
 
 
+
+
+    static ALGBApplication mApplication = null;
+    private static AssetManager mAssetManager = null;
+    public static final String DEFAULT_SHARED = "-*DEFAULT*-";
+
     public static Environment addAndroidToolFunctions(Environment env)
     {
         env.mapFunction("notify-progress-start", notify_progress_started());
         env.mapFunction("notify-progress-completed", notify_progress_completed());
         env.mapFunction("notify-progress-failed", notify_progress_failed());
         return env;
+    }
+
+    public static AssetManager getAssets()
+    {
+        if (mAssetManager == null)
+            mAssetManager = mApplication.getAssets();
+        return mAssetManager;
     }
 
     public static SimpleFunctionTemplate notify_progress_started()
@@ -204,7 +222,7 @@ public class Tools {
 
     }
 
-    static final String DEFAULT_SHARED = "-*DEFAULT*-";
+
     public static int getEditorUndoHistoryLength(Context con)
     {
         String key = con.getString(R.string.pref_int_key_undo_history_length);
@@ -212,6 +230,78 @@ public class Tools {
         return preferences.getInt(key, 20);
     }
 
+
+    static HashMap<String, HashSet<String>> mAssetsInPathMap = new HashMap<String, HashSet<String>>();
+
+
+
+    public static HashSet<String> getAssetsInPath(String path)
+    {
+
+        if (mAssetsInPathMap.containsKey(path))
+        {
+            return mAssetsInPathMap.get(path);
+        }
+        else
+        {
+            HashSet<String> fileNames = null;
+            try
+            {
+                String[] items = getAssets().list(path);
+                fileNames = new HashSet<String>();
+                for (String s:items)
+                    fileNames.add(s);
+
+            }
+            catch (IOException ie)
+            {
+
+            }
+            mAssetsInPathMap.put(path, fileNames);
+            return fileNames;
+        }
+
+    }
+
+
+
+
+    public static String getAssertStringData(String fullFilenamePath)
+    {
+        BufferedInputStream bistream = null;
+        try
+        {
+            StringBuilder builder = new StringBuilder();
+            bistream = new BufferedInputStream(getAssets().open(fullFilenamePath, AssetManager.ACCESS_STREAMING));
+
+            int byteData;
+
+            while ((byteData = bistream.read()) != -1)
+            {
+                builder.appendCodePoint(byteData);
+            }
+            return builder.toString();
+
+        }
+        catch (IOException ie)
+        {
+            EventLog.get().logcatError("<><<><><><>", ie.getMessage());
+            return null;
+        }
+        finally
+        {
+            if (bistream != null)
+            {
+                try
+                {
+                    bistream.close();
+                } catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
 
 }

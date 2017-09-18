@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.evolved.automata.android.lisp.guibuilder.PageStateEvent;
 import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.events.AddPageToCurrentWorkspaceEvent;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
@@ -199,6 +200,15 @@ public class Workspace {
         setCurrentPageIndex(index + 1);
         setPageList(mPages);
         return newPage;
+    }
+
+    public Page addPage(String title, String contents)
+    {
+        CodePage page = (CodePage)addPage();
+        page.setExpr(contents);
+        page.setTitle(title);
+        Tools.postEvent(AddPageToCurrentWorkspaceEvent.make(page));
+        return page;
     }
 
     public int getNumPages()

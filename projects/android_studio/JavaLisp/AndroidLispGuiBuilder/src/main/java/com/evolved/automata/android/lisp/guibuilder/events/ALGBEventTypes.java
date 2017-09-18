@@ -5,7 +5,7 @@ package com.evolved.automata.android.lisp.guibuilder.events;
  */
 
 public enum ALGBEventTypes {
-    COPY("copy"), PASTE("paste"), UNDO("undo"), REDO("redo");
+    COPY("copy"), PASTE("paste"), UNDO("undo"), REDO("redo"), ADD_WORKSPACE_PAGE("add-to-current-workspace");
 
     String eventName;
     ALGBEventTypes(String name)

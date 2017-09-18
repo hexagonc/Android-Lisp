@@ -78,7 +78,7 @@ public class MenuHelper {
         addMenuSpec(R.id.v2_menu_workspace_management, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
         addMenuSpec(R.id.v2_start_dropbox_authentication, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
         addMenuSpec(R.id.v2_menu_show_event_log, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
-
+        addMenuSpec(R.id.menu_tutorial, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
         addMenuSpec(R.id.v2_menu_save_page, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
         addMenuSpec(R.id.v2_menu_save_all, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
 
