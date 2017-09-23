@@ -42,14 +42,13 @@ android {
                 versionName "0.1-alpha"
             }
         }
-        /*
-            Set this if getting out of memory errors during dex
-            dexOptions {
-                javaMaxHeapSize "2g"
-                preDexLibraries = false
-            }
 
-         */
+
+        dexOptions {
+            javaMaxHeapSize "2g"
+            preDexLibraries = false
+        }
+
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 

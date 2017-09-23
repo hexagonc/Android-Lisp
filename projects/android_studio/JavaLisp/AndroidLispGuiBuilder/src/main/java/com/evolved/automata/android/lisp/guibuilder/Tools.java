@@ -31,7 +31,7 @@ public class Tools {
 
 
 
-
+    public static final int DEFAULT_UNDO_HISTORY_LENGTH = 20;
     static ALGBApplication mApplication = null;
     private static AssetManager mAssetManager = null;
     public static final String DEFAULT_SHARED = "-*DEFAULT*-";
@@ -227,7 +227,15 @@ public class Tools {
     {
         String key = con.getString(R.string.pref_int_key_undo_history_length);
         SharedPreferences preferences = con.getSharedPreferences(DEFAULT_SHARED, Context.MODE_PRIVATE);
-        return preferences.getInt(key, 20);
+        return preferences.getInt(key, DEFAULT_UNDO_HISTORY_LENGTH);
+    }
+
+    public static void setIntegerPreference(int prefKey, int value)
+    {
+        SharedPreferences preferences = mApplication.getSharedPreferences(DEFAULT_SHARED, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt(mApplication.getString(prefKey), value);
+        editor.commit();
     }
 
 

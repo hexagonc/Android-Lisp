@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name = "standard_accept_label">Ok</string>
+    <string name = "standard_cancel_label">Cancel</string>
+    <string name = "standard_negative_label">No</string>
     <string name="app_name">Android GUI Builder</string>
     <string name = "v2_workspace_management_title">Manage Workspaces</string>
     <string name = "v2_workspace_management_accept_label">Ok</string>
@@ -58,5 +61,11 @@
     </array>
     <string name = "sample_workspace_name">Code Samples</string>
     <string name = "sample_workspace_id">+code-samples-id+</string>
+
+    <!-- Preference strings -->
+    <string name = "pref_undo_history_summary">Number of undo steps to save.  Currently %1$d.</string>
+    <string name = "pref_dialog_undo_history_title">Undo History Depth</string>
+    <string name = "pref_dialog_undo_history_prompt">Enter the number of steps to save in your undo history.  Minimum value is 1.</string>
+    <string name = "pref_dialog_undo_history_error_prompt">Invalid input.  Please enter an integer number greater than or equal to 1.</string>
 
 </resources>

@@ -40,4 +40,6 @@
     <dimen name = "app_status_log_listview_item_height">20dp</dimen>
     <dimen name = "app_status_log_listview_item_date_summary_sep">15dp</dimen>
 
+    <dimen name = "num_pref_label_textsize">12dp</dimen>
+    <dimen name = "num_pref_value_textsize">12dp</dimen>
 </resources>

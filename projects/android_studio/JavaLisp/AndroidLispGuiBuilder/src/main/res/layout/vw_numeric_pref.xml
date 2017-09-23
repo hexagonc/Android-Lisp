@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content">
+    <TextView android:layout_width = "match_parent"
+        android:layout_height = "wrap_content"
+        android:id = "@+id/txt_numeric_pref_label"
+        android:textSize="@dimen/num_pref_label_textsize"/>
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:id = "@+id/edit_numeric_pref_value"
+        android:textSize="@dimen/num_pref_value_textsize"/>
+</LinearLayout>

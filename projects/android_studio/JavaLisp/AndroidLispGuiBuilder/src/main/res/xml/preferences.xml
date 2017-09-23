@@ -7,9 +7,10 @@
                         android:summary="Workspace changes include: adding or removing pages, and creating, deleting, and renaming workspaces."
                         android:defaultValue="false"
                         android:key = "@string/pref_bool_key_auto_save_workspace_changes"/>
+
     <Preference android:title = "Code Editor Undo History Length"
-                        android:defaultValue="20"
-                        android:summary="Number of steps to save"
-                        android:key = "@string/pref_int_key_undo_history_length"
-                        android:id = "@+id/pref_history_length"/>
+                      android:defaultValue="20"
+                      android:summary="Number of steps to save. Currently 20"
+                      android:key = "@string/pref_int_key_undo_history_length"
+                      android:id = "@+id/pref_history_length"/>
 </PreferenceScreen>
