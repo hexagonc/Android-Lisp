@@ -299,7 +299,7 @@ public class LispEditText extends AppCompatEditText {
         ALGBEvent ce = ALGBEventManager.get().getEvent(ALGBEventTypes.COPY);
         if (ce != null)
         {
-            //ALGBEventManager.get().removeEvent(ce.getType());
+
             CopyEvent copyEvent = (CopyEvent)ce;
             String newText = copyEvent.getText();
             Editable editable = getText(), copy;
@@ -328,9 +328,6 @@ public class LispEditText extends AppCompatEditText {
             }
             setText(copy.toString());
             setSelection(newCursorPos);
-            //if (mStateListener != null)
-            //    mStateListener.onTextChange(editable.toString(), mCursorPosition);
-
         }
     }
 
@@ -565,7 +562,12 @@ public class LispEditText extends AppCompatEditText {
                 }
                 else
                 {
-                    mCurrentSelection = null;
+                    if (topNode == null)
+                    {
+                        clearSelectionDisplay();
+                        mCurrentSelection = null;
+                    }
+
 
                 }
 

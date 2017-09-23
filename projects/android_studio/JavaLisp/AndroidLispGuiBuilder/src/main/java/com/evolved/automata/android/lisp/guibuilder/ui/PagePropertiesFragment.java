@@ -364,7 +364,10 @@ public class PagePropertiesFragment extends AppCompatDialogFragment {
                 }
                 else
                 {
-                    Toast.makeText(getActivity(), "Nothing to download", Toast.LENGTH_LONG).show();
+                    if (mUploadButton.isChecked())
+                        Toast.makeText(getActivity(), "Nothing to upload", Toast.LENGTH_LONG).show();
+                    else
+                        Toast.makeText(getActivity(), "Nothing to download", Toast.LENGTH_LONG).show();
                 }
 
 
