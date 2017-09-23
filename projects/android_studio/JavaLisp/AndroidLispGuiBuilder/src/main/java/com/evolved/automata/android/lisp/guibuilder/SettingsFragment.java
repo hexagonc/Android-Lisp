@@ -92,6 +92,7 @@ public class SettingsFragment extends PreferenceFragmentCompat {
         numEdit.setText(initialText);
         numEdit.setHint(hintText);
         builder.setView(top);
+
         builder.setPositiveButton(getString(R.string.standard_accept_label), new DialogInterface.OnClickListener()
         {
 
@@ -124,12 +125,12 @@ public class SettingsFragment extends PreferenceFragmentCompat {
             }
         });
 
-
+        final AlertDialog dialog = builder.create();
         pref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference)
             {
-                builder.create().show();
+                dialog.show();
                 return true;
             }
         });
