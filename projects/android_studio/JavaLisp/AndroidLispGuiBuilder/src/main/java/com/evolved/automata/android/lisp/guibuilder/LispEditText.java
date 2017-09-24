@@ -303,7 +303,8 @@ public class LispEditText extends AppCompatEditText {
             CopyEvent copyEvent = (CopyEvent)ce;
             String newText = copyEvent.getText();
             Editable editable = getText(), copy;
-            editable.clearSpans();
+            clearSelectionDisplay();
+
             // Update cursor position before updating text so that we send only one
             // notification to state listener in the CodeUpdateListener (if we update
             // mCursorPosition after inserting the text, there will be a TextChanged
