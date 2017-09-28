@@ -206,6 +206,11 @@ public class TextViewProxy extends ViewProxy
 			String newText = text.substring(0, cursor) +  insertedText + text.substring(cursor);
 			tv.setText(newText);
 			text = newText;
+			if (actual instanceof EditText)
+			{
+				EditText edit = (EditText)actual;
+				edit.setSelection(cursor + insertedText.length());
+			}
 		}
 	}
 	
