@@ -3,6 +3,7 @@ package com.evolved.automata.android.lisp.guibuilder;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
+import android.support.v7.preference.PreferenceManager;
 
 import com.dropbox.core.v2.files.Metadata;
 import com.evolved.automata.android.AndroidTools;
@@ -223,16 +224,28 @@ public class Tools {
     }
 
 
+    public static SharedPreferences getDefaultSharedPreference()
+    {
+
+        return PreferenceManager.getDefaultSharedPreferences(mApplication);
+    }
+    public static boolean getSampleWorkspaceEnabled()
+    {
+         SharedPreferences pref = getDefaultSharedPreference();
+        return pref.getBoolean(mApplication.getString(R.string.pref_bool_key_include_sample_workspace), true);
+    }
+
+
     public static int getEditorUndoHistoryLength(Context con)
     {
         String key = con.getString(R.string.pref_int_key_undo_history_length);
-        SharedPreferences preferences = con.getSharedPreferences(DEFAULT_SHARED, Context.MODE_PRIVATE);
+        SharedPreferences preferences = getDefaultSharedPreference();
         return preferences.getInt(key, DEFAULT_UNDO_HISTORY_LENGTH);
     }
 
     public static void setIntegerPreference(int prefKey, int value)
     {
-        SharedPreferences preferences = mApplication.getSharedPreferences(DEFAULT_SHARED, Context.MODE_PRIVATE);
+        SharedPreferences preferences = getDefaultSharedPreference();
         SharedPreferences.Editor editor = preferences.edit();
         editor.putInt(mApplication.getString(prefKey), value);
         editor.commit();

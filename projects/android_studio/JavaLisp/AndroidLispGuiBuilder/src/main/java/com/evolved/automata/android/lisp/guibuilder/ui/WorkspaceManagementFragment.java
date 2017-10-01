@@ -19,6 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.evolved.automata.android.lisp.guibuilder.R;
+import com.evolved.automata.android.lisp.guibuilder.Tools;
 import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
 import com.evolved.automata.android.widgets.ShadowButton;
@@ -293,10 +294,14 @@ public class WorkspaceManagementFragment extends DialogFragment {
 
         for (String id:mApplication.getAllWorkspaceId())
         {
-            Workspace work = mApplication.getWorkspace(id);
-            WorkspaceData data = new WorkspaceData(id, work.getTitle());
-            data.setSelected(id.equals(mInitialWorkspaceId));
-            mWorkspaceListData.add(data);
+            if (!id.equals(mApplication.getSampleWorkspaceId()) || Tools.getSampleWorkspaceEnabled())
+            {
+                Workspace work = mApplication.getWorkspace(id);
+                WorkspaceData data = new WorkspaceData(id, work.getTitle());
+                data.setSelected(id.equals(mInitialWorkspaceId));
+                mWorkspaceListData.add(data);
+            }
+
         }
 
 

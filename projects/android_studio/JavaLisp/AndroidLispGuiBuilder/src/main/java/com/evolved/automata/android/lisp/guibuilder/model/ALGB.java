@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 
 import static com.evolved.automata.android.lisp.guibuilder.model.Page.SCRIPT_CONTEXT_KEY;
@@ -659,6 +660,57 @@ public class ALGB {
             throw new IllegalArgumentException("Cannot delete workspace that does not exist");
     }
 
+    public boolean deleteWorkspace(String id, String replacementIfCurrent, boolean deleteChildrenn)
+    {
+        Workspace w = getWorkspace(id);
+        if (w != null)
+        {
+
+            if (getAllWorkspaceId().length == 1)
+            {
+                return false;
+            }
+            else
+            {
+                if (deleteChildrenn)
+                {
+                    LinkedList<String> children = w.getChildPageIds();
+                    for (String childId:children)
+                    {
+                        deletePage(childId);
+                    }
+                }
+
+                if (id.equals(mCurrentWorkspace.getWorkspaceId()))
+                {
+                    if (id.equals(replacementIfCurrent))
+                    {
+                        throw new IllegalArgumentException("Can't delete a workspace and replace with self");
+                    }
+
+                    Workspace replacement = getWorkspace(replacementIfCurrent);
+                    if (replacement == null)
+                    {
+                        throw new IllegalArgumentException("Can't replace current workspace with non-existent one");
+                    }
+
+                    deleteData(id, Workspace.CONTEXT_KEY);
+                    mWorkspaceCache.remove(id);
+
+                    setCurrentWorkspace(replacementIfCurrent);
+                }
+                else
+                {
+                    deleteData(id, Workspace.CONTEXT_KEY);
+                    mWorkspaceCache.remove(id);
+                }
+                return true;
+            }
+        }
+        else
+            throw new IllegalArgumentException("Cannot delete workspace that does not exist");
+    }
+
 
     public Workspace getCachedWorkspace(String workId)
     {
@@ -719,4 +771,34 @@ public class ALGB {
         mBaseLispContext.getEnvironment().simpleEvaluateFunction("delete-data-value", key, context);
     }
 
+    public boolean sampleWorkspaceExistsP()
+    {
+        return hasData(getSampleWorkspaceId(), Workspace.CONTEXT_KEY);
+    }
+
+    public String getSampleWorkspaceId()
+    {
+        return mContext.getString(R.string.sample_workspace_id);
+    }
+
+    public String getSampleWorkspaceName()
+    {
+        return mContext.getString(R.string.sample_workspace_name);
+    }
+
+    public void createSampleWorkspaceExists(boolean recreate) throws IllegalAccessException, InstantiationException
+    {
+        if (recreate && sampleWorkspaceExistsP())
+        {
+            deleteWorkspace(getSampleWorkspaceId(), null, true);
+        }
+
+        Workspace work = Workspace.getSampleWorkspace(this);
+        mWorkspaceCache.put(getSampleWorkspaceId(), work);
+    }
+
+    public boolean sampleWorkspacesEnabledP()
+    {
+        return Tools.getSampleWorkspaceEnabled();
+    }
 }

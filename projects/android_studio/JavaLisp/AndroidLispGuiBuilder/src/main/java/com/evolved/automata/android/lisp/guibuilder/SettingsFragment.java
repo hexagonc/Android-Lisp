@@ -66,6 +66,9 @@ public class SettingsFragment extends PreferenceFragmentCompat {
     {
         addPreferencesFromResource(R.xml.preferences);
 
+
+
+
         final Preference pref = findPreference(getString(R.string.pref_int_key_undo_history_length));
         pref.setSummary(getString(R.string.pref_undo_history_summary, Tools.getEditorUndoHistoryLength(getContext())));
         configureAsNumericPreference(pref, R.string.pref_dialog_undo_history_title, R.string.pref_dialog_undo_history_prompt, R.string.pref_int_key_undo_history_length, R.string.pref_dialog_undo_history_error_prompt, 1, 10000, "", "" + Tools.getEditorUndoHistoryLength(getContext()),

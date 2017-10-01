@@ -3,6 +3,7 @@ package com.evolved.automata.android.lisp.guibuilder.model;
 import android.util.Log;
 
 import com.evolved.automata.android.lisp.guibuilder.PageStateEvent;
+import com.evolved.automata.android.lisp.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.Tools;
 import com.evolved.automata.android.lisp.guibuilder.events.AddPageToCurrentWorkspaceEvent;
 import com.evolved.automata.lisp.NLispTools;
@@ -43,26 +44,40 @@ public class Workspace {
     HashMap<String, Value> mMyData;
 
 
-    private Workspace(ALGB app) throws IllegalAccessException, InstantiationException
+    private Workspace(ALGB app, boolean createSample) throws IllegalAccessException, InstantiationException
     {
         mMyData = new HashMap<String, Value>();
         mApplication = app;
         mPages = new LinkedList<String>();
-        addDefaultPage();
 
-        mId = UUID.randomUUID().toString();
+        if (createSample)
+        {
+            mId = app.getSampleWorkspaceId();
+            addSamplePages();
+        }
+        else
+        {
+            mId = UUID.randomUUID().toString();
+            addDefaultPage();
+        }
+
 
         WORKSPACE_TITLE_KEY = mId + WORKSPACE_TITLE_KEY_PREFIX;
         CURRENT_PAGE_INDEX_KEY = mId + CURRENT_PAGE_INDEX_KEY_PREFIX;
         CHILD_PAGE_LIST_KEY = mId + CHILD_PAGE_LIST_KEY_PREFIX;
         WORKSPACE_ID_KEY = mId + WORKSPACE_ID_KEY_PREFIX;
 
-        setTitle("default");
+        if (!createSample)
+            setTitle("default");
+        else
+            setTitle(mApplication.getSampleWorkspaceName());
         setCurrentPageIndex(0);
         setWorkspaceId(mId);
         setPageList(mPages);
         Tools.registerEventHandler(this);
     }
+
+
 
     private Workspace(ALGB app, String id) throws IllegalAccessException, InstantiationException
     {
@@ -93,9 +108,30 @@ public class Workspace {
         Tools.registerEventHandler(this);
     }
 
+    private void addSamplePages()
+    {
+        String[] pageNames = mApplication.getContext().getResources().getStringArray(R.array.sample_workspace_page_names);
+        String[] fileNames = mApplication.getContext().getResources().getStringArray(R.array.sample_workspace_page_filename_names);
+
+        for (int i = 0;i < pageNames.length;i++)
+        {
+            String data = Tools.getAssertStringData(fileNames[i]);
+            CodePage page = mApplication.createNewCodePage();
+            page.setTitle(pageNames[i]);
+            page.setExpr(data);
+            mPages.add(page.getPageId());
+        }
+    }
+
+
+    public static Workspace getSampleWorkspace(ALGB app) throws InstantiationException, IllegalAccessException
+    {
+        return new Workspace(app, true);
+    }
+
     public static Workspace getWorkspace(ALGB app) throws InstantiationException, IllegalAccessException
     {
-        return new Workspace(app);
+        return new Workspace(app, false);
     }
 
     public static Workspace getWorkspace(ALGB app, String id) throws InstantiationException, IllegalAccessException
@@ -112,6 +148,7 @@ public class Workspace {
     private void addDefaultPage()
     {
         Page current = mApplication.createNewCodePage();
+        current.setTitle("default");
         mPages.add(current.getPageId());
     }
 

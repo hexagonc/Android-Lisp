@@ -33,6 +33,17 @@ import com.evolved.automata.android.lisp.guibuilder.ui.WorkspaceManagementFragme
 import java.util.HashMap;
 import java.util.LinkedList;
 
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.annotations.Nullable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Cancellable;
+import io.reactivex.schedulers.Schedulers;
+
 /**
  * Created by Evolved8 on 4/21/17.
  */
@@ -347,7 +358,53 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
         if (item.getItemId() == R.id.v2_menu_workspace_management)
         {
-            showWorkspaceManager();
+
+            if (!mApplication.specialDebuggingEnabled() && (!Tools.getSampleWorkspaceEnabled() || mApplication.sampleWorkspaceExistsP()))
+            {
+                showWorkspaceManager();
+            }
+            else
+            {
+                ObservableOnSubscribe<Void> observable = new ObservableOnSubscribe<Void>() {
+                    @Override
+                    public void subscribe(@NonNull ObservableEmitter<Void> e) throws Exception
+                    {
+                        mApplication.createSampleWorkspaceExists(getResources().getBoolean(R.bool.enable_special_debug));
+                        e.onComplete();
+                    }
+                };
+
+                Observer<Void> showDialog = new Observer<Void>() {
+
+
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d)
+                    {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull Void value)
+                    {
+
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable error)
+                    {
+
+                    }
+
+                    @Override
+                    public void onComplete()
+                    {
+                        showWorkspaceManager();
+                    }
+                };
+
+                Observable.create(observable).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(showDialog);
+            }
+
             return true;
 
         }else if (item.getItemId() == R.id.v2_menu_show_event_log)

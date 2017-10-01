@@ -1,18 +1,11 @@
 
 (progn
     ; Game of life sample app
-    ; Due to the terrible performance of this method of displaying the cells,
-    ; you should probably avoid board sizes larger than 25 x 25 unless you
-    ; have a fast device.  Even then, the performance will probably be bad.
-    ; Poor performance will probably be inevitable until I add support for
-    ; direct drawing on the canvas of a view.
-
-
     (setq _MATCH_PARENT "match_parent")
     (setq _WRAP_CONTENT "wrap_content")
+    
 
-
-
+    
 
     (setq alive-color
           "#02004C")
@@ -23,8 +16,8 @@
     (setq board-color
           "white")
 
-    (setq rows 15)
-    (setq cols 15)
+    (setq rows 25)
+    (setq cols 25)
     (setq col-list (make-range 0 (- cols 1)))
     (setq row-list (make-range 0 (- rows 1)))
 
@@ -41,9 +34,9 @@
 
     (defun umod (value mod)
         (or (and (<= 0
-                     (setq v
-                           (mod value mod)))
-                v)
+                              (setq v
+                                        (mod value mod)))
+                        v)
             (+ v
                 mod)))
 
@@ -74,6 +67,24 @@
                  state-specification)
         cell-view)
 
+    (comment
+
+    (setq x (map-some (o i) cells (and (second o) i)))
+      ; testing
+     (setq s (map-some (s i) cells (progn (setq coord (get-index-coordinate i)) (< 0 (get-num-surrounding-alive-cells (first coord) (second coord))))))
+     (setq coord (get-index-coordinate 82))
+     (get-num-surrounding-alive-cells (first coord) (second coord))
+      (setq cell-width
+            (integer (/ grid-width cols)))
+      (setq cell-height
+            (integer (/ grid-height rows)))
+
+      (multiple-bind (i j)
+                     (list 0 0))
+      (create-cell-view i j cell-width cell-height)
+
+      )
+
     (defun create-game-board ()
         (setq cell-width
               (integer (/ grid-width cols)))
@@ -93,7 +104,7 @@
 
 
     (defun initialize-cell-state (initial-state)
-        (setq initial-state
+        (setq initial-state 
               (or initial-state
                   (fill-list num-cells F)))
         (for i
@@ -111,9 +122,9 @@
                          state-specification))))
 
     (defun get-num-surrounding-alive-cells (i j)
-
-
-
+       
+       
+       
         (length (find offset
                       surround-cell-offsets
                       (nth (nth cells
@@ -123,14 +134,28 @@
                                                       cols)))
                            current-state-index))))
 
+   (defun get-default ()
+      (lambda (r e) (if e (log-error "errors" e))))
+
     (defun do-display-pass ()
+        (setq updated ())
         (for array-index
              num-cells
-             F
+             (evaluate-foreground (get-default)
+                                                   (for spec 
+                                                           updated F 
+                                                           (progn (multiple-bind (cell-view current-cell-alive-p) spec)
+                                                                        (if current-cell-alive-p
+                     (update-parameters cell-view
+                                        :background-color alive-color)
+                     (update-parameters cell-view
+                                        :background-color death-color)))))
              (progn
                  (multiple-bind (cell-view current-cell-alive-p next-state-alive-p)
                                 (setq state (nth cells array-index)))
-
+                 (if (or (and current-cell-alive-p (not next-state-alive-p))
+                            (and (not current-cell-alive-p) next-state-alive-p))
+                      (set updated (append updated (list (list cell-view next-state-alive-p)))))
                  (set-nth state
                           current-state-index
                           (setq current-cell-alive-p
@@ -143,11 +168,7 @@
                           array-index
                           state)
 
-                 (if current-cell-alive-p
-                     (update-parameters cell-view
-                                        :background-color alive-color)
-                     (update-parameters cell-view
-                                        :background-color death-color)))))
+                 )))
 
     (defun do-update-pass ()
         (setq updated-p F)
@@ -182,7 +203,7 @@
 
 (setq counts F)
 (defun get-neighbor-counts ()
-
+        
     (set counts (mapcar (state-specification array-index)
             cells
          (progn
@@ -190,7 +211,7 @@
                             (get-index-coordinate array-index))
              (setq num-neighbors
                    (get-num-surrounding-alive-cells i j))
-
+             
 
              (setq cell-is-alive-p
                    (nth state-specification current-state-index))
@@ -205,7 +226,7 @@
              (list num-neighbors cell-is-alive-p (list i j))))))
 
     (defun process-cells ()
-
+        
         (do-update-pass)
         (do-display-pass))
 
@@ -221,12 +242,17 @@
     (defun on-start ()
         (set running-p 1)
         (setq finished F)
-        (unless (or finished
-                    (not running-p))
-            (setq finished
-                  (process-cells)))
-        (set running-p F)
-       (show-short-toast "finished")
+        (evaluate-background "game" 
+                                                (lambda (r e) (if e (log-error "errors" e)))
+                                                (while (or (not finished)
+                                                                   running-p)
+                                                       (setq finished
+                                                                (process-cells)))
+                                                (set running-p F)
+                                                (evaluate-foreground (get-default ) (show-short-toast "finished")))
+        
+        
+       
         )
 
     (defun on-stop ()
@@ -242,11 +268,13 @@
                                               :height _WRAP_CONTENT
                                               (button "start"
                                                       :on-click (on-start))
+                                              (button "step"
+                                                      :on-click (progn (get-neighbor-counts)(do-display-pass)(show-short-toast "step")))
                                               (button "stop"
                                                       :on-click (on-stop))
                                               (button "randomize"
                                                       :on-click (on-randomize)))))
 
-    (set-top-view parent-view)
+    (set-top-view parent-view)      
 
 )
