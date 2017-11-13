@@ -7,23 +7,28 @@ import android.os.Bundle;
 import android.os.Looper;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity;
+import com.evolved.automata.android.lisp.guibuilder.EventLog;
 import com.evolved.automata.android.lisp.guibuilder.LispEditText;
 import com.evolved.automata.android.lisp.guibuilder.LispResultFragment;
 import com.evolved.automata.android.lisp.guibuilder.MenuHelper;
 import com.evolved.automata.android.lisp.guibuilder.R;
 import com.evolved.automata.android.lisp.guibuilder.Tools;
+import com.evolved.automata.android.lisp.guibuilder.events.FindTextEvent;
 import com.evolved.automata.android.lisp.guibuilder.model.CodePage;
 import com.evolved.automata.android.lisp.guibuilder.model.LispContext;
 import com.evolved.automata.android.widgets.ShadowButton;
+import com.evolved.automata.editor.TextSearchResult;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
@@ -34,6 +39,8 @@ import com.evolved.automata.lisp.editor.TopParseNode;
 
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+
+import java.util.Iterator;
 
 import io.reactivex.Observer;
 import io.reactivex.annotations.NonNull;
@@ -79,6 +86,8 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         MenuHelper.updateMenuItemDisplay(menu, this);
         //super.onPrepareOptionsMenu(menu);
     }
+
+
 
     SimpleFunctionTemplate getPrintln()
     {
@@ -340,6 +349,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onStart()
     {
         super.onStart();
+        Tools.registerEventHandler(this);
         Log.i("-+*+--+*+--+*+-", "CodePage onStart");
         mEditorController = mEditorFragment.getEditorController();
         mEditorController.setStateObserver(this);
@@ -447,14 +457,14 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
     public void onResume()
     {
         super.onResume();
-        Tools.registerEventHandler(this);
+
         Log.i("-+*+--+*+--+*+-", "CodePage onResume");
     }
 
     @Override
     public void onPause()
     {
-        Tools.unRegisterEventHandler(this);
+
         super.onPause();
         Log.i("-+*+--+*+--+*+-", "CodePage onPause");
     }
@@ -465,7 +475,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
         mCodePage.setResultHistory(mResultController.getResults());
         super.onStop();
         Log.i("-+*+--+*+--+*+-", "CodePage onStop");
-
+        Tools.unRegisterEventHandler(this);
     }
 
 
@@ -551,6 +561,12 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     }
 
+    void showFindReplaceDialog()
+    {
+        SearchReplaceDialog dialog = SearchReplaceDialog.make(mCodePage);
+        FragmentManager manager = getChildFragmentManager();
+        dialog.show(manager, "Search Dialog");
+    }
 
 
 
@@ -595,5 +611,17 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
             }
         });
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onTextSearch(FindTextEvent findEvent)
+    {
+        String text = findEvent.getSearchText();
+        if (mCodePage != null && text != null)
+        {
+            //EventLog.get().logSystemInfo("Searching for text: " + text);
+            Iterator<TextSearchResult> results = mCodePage.findText(text);
+            findEvent.setResults(results);
+        }
     }
 }

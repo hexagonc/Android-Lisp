@@ -5,11 +5,15 @@ import com.evolved.automata.android.lisp.guibuilder.EventLog;
 import com.evolved.automata.android.lisp.guibuilder.Tools;
 import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.model.Page;
+import com.evolved.automata.editor.TextSearchIndex;
+import com.evolved.automata.editor.TextSearchResult;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.editor.ParseNode;
 import com.evolved.automata.lisp.editor.TopParseNode;
 
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.UUID;
 
 import io.reactivex.Observable;
@@ -46,6 +50,25 @@ public class CodePage extends Page {
 
     boolean mIsValid = false;
 
+    TextSearchIndex mSearchIndex = null;
+
+    LinkedList<String> mTextFindHistory = new LinkedList<String>();
+    LinkedList<String> mTextReplaceHistory = new LinkedList<String>();
+
+    int mMaxSearchHistory = 10;
+    boolean mUpdateSearchIndexOnTextUpdateP;
+
+
+    public LinkedList<String> getSearchHistory()
+    {
+        return mTextFindHistory;
+    }
+
+    public LinkedList<String> getReplaceHistory()
+    {
+        return mTextReplaceHistory;
+    }
+
     public CodePage(ALGB app)
     {
         super(app);
@@ -75,7 +98,9 @@ public class CodePage extends Page {
         if (v != null)
         {
             String serialized = v.getString();
+
             mTopParseNode = (TopParseNode)ParseNode.deserialize(serialized);
+            mSearchIndex = new TextSearchIndex(getExpr());
         }
     }
 
@@ -95,6 +120,63 @@ public class CodePage extends Page {
         else
             return null;
     }
+
+    public void updateSearchIndex()
+    {
+        findText("", null);
+    }
+
+    public Iterator<TextSearchResult> findText(String text)
+    {
+        if (mSearchIndex != null)
+        {
+
+            updateSearchHistory(text);
+            return mSearchIndex.getSearchIterator(text);
+        }
+        else
+            return null;
+    }
+
+    private void updateSearchHistory(String s)
+    {
+        if (mTextFindHistory.size() > mMaxSearchHistory)
+            mTextFindHistory.removeFirst();
+
+        if (mTextFindHistory.contains(s))
+        {
+            mTextFindHistory.remove(s);
+        }
+        mTextFindHistory.add(s);
+
+    }
+
+    public void findText(final String text, Observer<Iterator<TextSearchResult>> observer)
+    {
+        if (mIsValid)
+        {
+            if (observer != null)
+                observer.onNext(findText(text));
+        }
+        else
+        {
+            ObservableOnSubscribe<Iterator<TextSearchResult>> obserable = new ObservableOnSubscribe<Iterator<TextSearchResult>>() {
+                @Override
+                public void subscribe(@NonNull ObservableEmitter<Iterator<TextSearchResult>> innerObserver) throws Exception
+                {
+                    mSearchIndex = new TextSearchIndex(getExpr());
+                    mIsValid = true;
+                    if (innerObserver != null)
+                        innerObserver.onNext(findText(text));
+
+                }
+            };
+
+            Observable.create(obserable).subscribeOn(Schedulers.computation()).observeOn(AndroidSchedulers.mainThread()).subscribe(observer);
+        }
+    }
+
+
 
     public boolean isTopParseNodeValid()
     {
@@ -123,6 +205,7 @@ public class CodePage extends Page {
                     {
                         mTopParseNode = new TopParseNode();
                         mTopParseNode.processAll(getExpr());
+                        mSearchIndex = new TextSearchIndex(getExpr());
                         mIsValid = true;
                         setIsParseNodeValid();
                         Tools.postEvent(BackgroundProcessEvent.makeProcessingFinishedEvent("Parsed TopNode for " + getTitle(), processingId));

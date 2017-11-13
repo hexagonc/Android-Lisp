@@ -200,6 +200,12 @@ public class TextSearchIndex {
         {
 
             @Override
+            public String getString()
+            {
+                return text;
+            }
+
+            @Override
             public int getLineNumber()
             {
                 return item.getLineNumber();

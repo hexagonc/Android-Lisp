@@ -24,13 +24,17 @@ import com.dropbox.core.android.Auth;
 import com.dropbox.core.android.AuthActivity;
 import com.dropbox.core.v2.DbxClientV2;
 import com.evolved.automata.android.AndroidTools;
+import com.evolved.automata.android.lisp.guibuilder.events.FindTextEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.GoToLineNumber;
 import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.lisp.guibuilder.model.Page;
 import com.evolved.automata.android.lisp.guibuilder.model.Workspace;
 import com.evolved.automata.android.lisp.guibuilder.ui.WorkspaceFragment;
 import com.evolved.automata.android.lisp.guibuilder.ui.WorkspaceManagementFragment;
+import com.evolved.automata.editor.TextSearchResult;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 import io.reactivex.Observable;
@@ -54,6 +58,8 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     {
         boolean isVisible();
     }
+
+
 
     Runnable mOnTestComplete = null;
 
@@ -82,6 +88,7 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
 
 
+        DebugHelper.make(this);
         mWorkspaceMap = new HashMap<String, WorkspaceFragment>();
 
         mSettingsFragment = new SettingsFragment();
@@ -291,8 +298,11 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
         {
             menu.removeItem(R.id.v2_menu_post_test_login);
         }
-//        if (mCurrentWorkspaceFragment != null)
-//            mCurrentWorkspaceFragment.onCreateOptionsMenu(menu, getMenuInflater());
+
+        if (!mApplication.specialDebuggingEnabled())
+        {
+            menu.removeItem(R.id.debug_options);
+        }
         return true;
     }
 
@@ -440,6 +450,11 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
             showSettingsShow();
             return true;
         }
+        else if (item.getItemId() == R.id.debug_options)
+        {
+            showDebugOptions();
+            return true;
+        }
         else
         {
 
@@ -573,6 +588,11 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
 
         actionBarToolbar.setSubtitle(original);
 
+    }
+
+    private void showDebugOptions()
+    {
+        DebugHelper.get().showDebugOptions();
     }
 
 

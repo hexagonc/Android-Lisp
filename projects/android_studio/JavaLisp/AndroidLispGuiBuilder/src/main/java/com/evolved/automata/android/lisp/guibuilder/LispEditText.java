@@ -22,9 +22,11 @@ import com.evolved.automata.android.lisp.guibuilder.events.ALGBEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventManager;
 import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventTypes;
 import com.evolved.automata.android.lisp.guibuilder.events.CopyEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.GoToLineNumber;
 import com.evolved.automata.android.lisp.guibuilder.events.PasteEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.RedoEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.UndoEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.UpdateHighLightEvent;
 import com.evolved.automata.lisp.editor.CompositeNode;
 import com.evolved.automata.lisp.editor.EditorTransaction;
 import com.evolved.automata.lisp.editor.ParseNode;
@@ -983,6 +985,59 @@ public class LispEditText extends AppCompatEditText {
     {
         getEditableText().removeSpan(mSelectionBackgroundSpan);
         getEditableText().removeSpan(mSelectionForegroundSpan);
+    }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onGotoLineEvent(GoToLineNumber lineEvent)
+    {
+        int lineNumber = lineEvent.getLineNumber();
+        int lineHeight = getLineHeight();
+        int scrollTarget = (lineNumber - 1)*lineHeight;
+        //EventLog.get().logSystemInfo("Goto line event", "" + lineNumber);
+        scrollTo(0, scrollTarget);
+    }
+
+    BackgroundColorSpan highlightSpan = null;
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onTextHighLightEvent(UpdateHighLightEvent highlightEvent)
+    {
+        int start = highlightEvent.getHighlightStart();
+        int end = highlightEvent.getHighlightStop();
+        int color = highlightEvent.getColor();
+
+        //String selected = getText().toString().substring(start, end);
+
+        //EventLog.get().logSystemInfo("Highlight", "Start: " + start + " End: " + end + " value: " + selected);
+        switch (highlightEvent.getHighlightAction())
+        {
+            case SET:
+            {
+                Editable e = getEditableText();
+                if (highlightSpan != null)
+                    e.removeSpan(highlightSpan);
+                highlightSpan =  new BackgroundColorSpan(color);
+
+                e.setSpan(highlightSpan, start, end, Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+
+            }
+            break;
+            case CLEAR:
+            {
+                Editable e = getEditableText();
+                e.removeSpan(highlightSpan);
+                highlightSpan = null;
+            }
+            break;
+            case CLEAR_ALL:
+            {
+                Editable e = getEditableText();
+                if (highlightSpan != null)
+                    e.removeSpan(highlightSpan);
+            }
+            break;
+        }
     }
 
 }

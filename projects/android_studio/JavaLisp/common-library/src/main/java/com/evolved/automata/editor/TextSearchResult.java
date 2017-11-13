@@ -17,5 +17,5 @@ public interface TextSearchResult {
     String getContextualText(int maxCharactersBefore, int maxCharactersAfter);
     void replaceResultText(String newText, ResultHandler onUpdated);
     String previewTextReplacement(String replacement, int maxCharactersBefore, int maxCharactersAfter);
-
+    String getString();
 }

@@ -415,7 +415,15 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
                 String basePath = evaluatedArgs[0].getString();
                 Value onResultLambda = evaluatedArgs[1];
                 final Lambda lambda = (Lambda) onResultLambda.getLambda();
-
+                final String title;
+                if (evaluatedArgs.length>2)
+                {
+                    title = evaluatedArgs[2].getString();
+                }
+                else
+                {
+                     title = "Select file";
+                }
 
                 DropboxChooserItem.FileItemSelectHandler fileSelectedHandler = new DropboxChooserItem.FileItemSelectHandler() {
                     @Override
@@ -477,7 +485,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
 
                 if (activity != null)
                 {
-                    getController().getFileDialog(activity, "Select File to Download", basePath, fileSelectedHandler, dialogResponseObserver);
+                    getController().getFileDialog(activity, title, basePath, fileSelectedHandler, dialogResponseObserver);
                     return evaluatedArgs[0];
                 }
                 else

@@ -82,6 +82,7 @@ public class MenuHelper {
         addMenuSpec(R.id.v2_menu_save_page, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
         addMenuSpec(R.id.v2_menu_save_all, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
 
+        addMenuSpec(R.id.search_replace, new Class[]{CodePageFragment.class}, new Class[]{RenderFragment.class, SettingsFragment.class});
         addMenuSpec(R.id.show_settings, new Class[]{WorkspaceFragment.class}, new Class[]{SettingsFragment.class});
 
         addMenuSpec(R.id.v2_menu_to_code, new Class[]{RenderFragment.class}, new Class[]{CodePageFragment.class, SettingsFragment.class});

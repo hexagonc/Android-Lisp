@@ -226,6 +226,9 @@ public class PageFragment extends Fragment {
             case R.id.v2_menu_save_page:
                 mPage.savePage();
                 return true;
+            case R.id.search_replace:
+                mCodeFragment.showFindReplaceDialog();
+                return true;
         }
         return super.onOptionsItemSelected(item);
     }

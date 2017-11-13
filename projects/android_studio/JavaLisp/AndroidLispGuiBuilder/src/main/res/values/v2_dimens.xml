@@ -42,4 +42,10 @@
 
     <dimen name = "num_pref_label_textsize">12dp</dimen>
     <dimen name = "num_pref_value_textsize">12dp</dimen>
+
+    <!-- Search Dialog -->
+    <dimen name = "search_dialog_width">250dp</dimen>
+    <dimen name = "search_dialog_label_size">20sp</dimen>
+    <dimen name = "search_dialog_input_size">17sp</dimen>
+
 </resources>

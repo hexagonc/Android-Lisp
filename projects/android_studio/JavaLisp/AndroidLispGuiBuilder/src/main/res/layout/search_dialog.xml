@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent">
+    <TextView android:layout_width = "wrap_content"
+              android:layout_height = "wrap_content"
+              android:textStyle="bold"
+              android:textSize = "@dimen/search_dialog_label_size"
+              android:text = "Find:"
+        />
+    <AutoCompleteTextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:singleLine="true"
+        android:id = "@+id/auto_search_texts"
+        />
+    <CheckBox
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text = "Replace:"
+        android:checked="false"/>
+
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="invisible">
+        <AutoCompleteTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:id = "@+id/auto_replace_text"
+            />
+        <Button
+            android:layout_below="@id/auto_replace_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text = "Replace"
+            android:id = "@+id/but_replace"
+            android:layout_alignParentLeft="true"/>
+        <Button
+            android:layout_below="@id/auto_replace_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text = "Replace All"
+            android:id = "@+id/but_replace_all"
+            android:layout_alignParentRight="true"/>
+    </RelativeLayout>
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Button
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text = "Prev"
+            android:id = "@+id/but_search_prev"
+            android:layout_alignParentLeft="true"/>
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text = "Next"
+            android:id = "@+id/but_search_next"
+            android:layout_toRightOf="@id/but_search_prev"
+            />
+        <Button
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text = "Finish"
+            android:id = "@+id/but_dialog_finish"
+            android:layout_alignParentRight="true"/>
+    </RelativeLayout>
+
+
+</LinearLayout>

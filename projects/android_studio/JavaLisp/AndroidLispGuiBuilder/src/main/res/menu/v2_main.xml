@@ -68,10 +68,17 @@
             app:showAsAction="never"
             android:orderInCategory="12"
             android:title="To Code View"/>
-
+        <item android:id = "@+id/search_replace"
+              android:title = "Find/Replace"
+              android:orderInCategory="14"
+              app:showAsAction="never"/>
         <item android:id = "@+id/show_settings"
               android:title = "Settings"
-              android:orderInCategory="13"
+              android:orderInCategory="15"
+              app:showAsAction="never"/>
+        <item android:id = "@+id/debug_options"
+              android:title = "Debug"
+              android:orderInCategory="16"
               app:showAsAction="never"/>
     </group>
 
