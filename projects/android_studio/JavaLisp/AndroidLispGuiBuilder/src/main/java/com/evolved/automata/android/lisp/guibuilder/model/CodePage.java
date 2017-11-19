@@ -34,6 +34,9 @@ public class CodePage extends Page {
     final String LOCAL_STORAGE_PATH_KEY;
     final String DROPBOX_PATH_KEY;
     final String CURSOR_POSITION_KEY;
+    final String FIND_HISTORY_KEY ;
+    final String REPLACE_HISTORY_KEY;
+
 
     final String EXPR_KEY_PREFIX = "EXPR";
     final String LOCAL_STORAGE_PATH_KEY_PREFIX = "LOCAL-STORAGE";
@@ -45,6 +48,9 @@ public class CodePage extends Page {
 
     final String TOP_PARSE_NODE_IS_VALID_KEY_PREFIX = "TOP_PARSE_NODE_IS_VALID_KEY";
     final String TOP_PARSE_NODE_KEY_PREFIX = "TOP_PARSE_NODE_KEY";
+
+    final String FIND_HISTORY_PREFIX = "FIND_HISTORY";
+    final String REPLACE_HISTORY_PREFIX = "REPLACE_HISTORY";
 
     TopParseNode mTopParseNode = null;
 
@@ -78,6 +84,8 @@ public class CodePage extends Page {
         CURSOR_POSITION_KEY = mId + "-" + CURSOR_POSITION_KEY_PREFIX;
         TOP_PARSE_NODE_IS_VALID_KEY = mId + "-" + TOP_PARSE_NODE_IS_VALID_KEY_PREFIX;
         TOP_PARSE_NODE_KEY  = mId + "-" + TOP_PARSE_NODE_KEY_PREFIX;
+        FIND_HISTORY_KEY = mId + "-" + FIND_HISTORY_PREFIX;
+        REPLACE_HISTORY_KEY = mId + "-" + REPLACE_HISTORY_PREFIX;
         setExpr("");
         setCursorPosition(0);
     }
@@ -91,6 +99,8 @@ public class CodePage extends Page {
         CURSOR_POSITION_KEY = mId + "-" + CURSOR_POSITION_KEY_PREFIX;
         TOP_PARSE_NODE_IS_VALID_KEY = mId + "-" + TOP_PARSE_NODE_IS_VALID_KEY_PREFIX;
         TOP_PARSE_NODE_KEY  = mId + "-" + TOP_PARSE_NODE_KEY_PREFIX;
+        FIND_HISTORY_KEY = mId + "-" + FIND_HISTORY_PREFIX;
+        REPLACE_HISTORY_KEY = mId + "-" + REPLACE_HISTORY_PREFIX;
         Value v = mMyData.get(TOP_PARSE_NODE_IS_VALID_KEY);
         mIsValid = v!=null && !v.isNull();
 
@@ -100,7 +110,27 @@ public class CodePage extends Page {
             String serialized = v.getString();
 
             mTopParseNode = (TopParseNode)ParseNode.deserialize(serialized);
-            mSearchIndex = new TextSearchIndex(getExpr());
+
+        }
+
+        v = mMyData.get(FIND_HISTORY_KEY);
+        if (v != null)
+        {
+
+            for (String history:NLispTools.getStringArrayFromValue(v))
+            {
+                mTextFindHistory.add(history);
+            }
+        }
+
+        v = mMyData.get(REPLACE_HISTORY_KEY);
+        if (v != null)
+        {
+
+            for (String history:NLispTools.getStringArrayFromValue(v))
+            {
+                mTextReplaceHistory.add(history);
+            }
         }
     }
 
@@ -110,6 +140,8 @@ public class CodePage extends Page {
     {
         setTopParseNode();
         setIsParseNodeValid();
+        setStringListDataValue(FIND_HISTORY_KEY, mTextFindHistory);
+        setStringListDataValue(REPLACE_HISTORY_KEY, mTextReplaceHistory);
         super.savePage();
     }
 
@@ -138,7 +170,20 @@ public class CodePage extends Page {
             return null;
     }
 
-    private void updateSearchHistory(String s)
+    public void updateReplaceHistory(String s)
+    {
+        if (mTextReplaceHistory.size() > mMaxSearchHistory)
+            mTextReplaceHistory.removeFirst();
+
+        if (mTextReplaceHistory.contains(s))
+        {
+            mTextReplaceHistory.remove(s);
+        }
+        mTextReplaceHistory.add(s);
+
+    }
+
+    public void updateSearchHistory(String s)
     {
         if (mTextFindHistory.size() > mMaxSearchHistory)
             mTextFindHistory.removeFirst();
@@ -151,7 +196,7 @@ public class CodePage extends Page {
 
     }
 
-    public void findText(final String text, Observer<Iterator<TextSearchResult>> observer)
+    private void findText(final String text, Observer<Iterator<TextSearchResult>> observer)
     {
         if (mIsValid)
         {

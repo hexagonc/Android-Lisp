@@ -18,14 +18,22 @@
     <CheckBox
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text = "In Selection:"
+        android:checked="false"
+        android:id = "@+id/chk_search_selection"/>
+    <CheckBox
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text = "Replace:"
-        android:checked="false"/>
+        android:checked="false"
+        android:id = "@+id/chk_show_replace"/>
 
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:visibility="invisible">
+        android:visibility="invisible"
+        android:id = "@+id/rel_replace_container">
         <AutoCompleteTextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -22,9 +22,13 @@ import com.evolved.automata.android.lisp.guibuilder.events.ALGBEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventManager;
 import com.evolved.automata.android.lisp.guibuilder.events.ALGBEventTypes;
 import com.evolved.automata.android.lisp.guibuilder.events.CopyEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.GetSelectionBoundsEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.GoToLineNumber;
+import com.evolved.automata.android.lisp.guibuilder.events.NormalModeEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.PasteEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.RedoEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.ReplaceModeEvent;
+import com.evolved.automata.android.lisp.guibuilder.events.ReplaceTextEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.UndoEvent;
 import com.evolved.automata.android.lisp.guibuilder.events.UpdateHighLightEvent;
 import com.evolved.automata.lisp.editor.CompositeNode;
@@ -48,6 +52,11 @@ import io.reactivex.annotations.NonNull;
  */
 
 public class LispEditText extends AppCompatEditText {
+
+
+    public enum MODE {
+        REPLACE, NORMAL
+    }
 
     public interface HeightEvent
     {
@@ -93,6 +102,34 @@ public class LispEditText extends AppCompatEditText {
     }
 
 
+    public static class Selection {
+        int _start;
+        int _end;
+        String _text;
+
+        public Selection(String text, int start, int end)
+        {
+            _start = start;
+            _end = end;
+            _text = text;
+        }
+
+        public String getSelectionText()
+        {
+            return _text;
+        }
+
+        public int getSelectionStart()
+        {
+            return _start;
+        }
+
+        public int getSelectionEnd()
+        {
+            return _end;
+        }
+    }
+
 
     public static int SCROLL_THRESHOLD_DP = 10;
     public float SCROLL_THRESHOLD_PX;
@@ -128,6 +165,12 @@ public class LispEditText extends AppCompatEditText {
     boolean mSuppressNextTextModelUpdateP = false;
 
     boolean mIsShorterThanMinimumEditableHeightP = false;
+
+    MODE mMode = MODE.NORMAL;
+
+    String mInitialText = null;
+
+
 
     public static class EditEvent
     {
@@ -211,10 +254,14 @@ public class LispEditText extends AppCompatEditText {
         public void directUpdate(String updated)
         {
 
-            if (_subScriber != null)
-                _subScriber.onNext(new EditEvent(updated));
-            if (mStateListener != null)
-                mStateListener.onTextChange(updated, mCursorPosition);
+            if (mMode == MODE.NORMAL)
+            {
+                if (_subScriber != null)
+                    _subScriber.onNext(new EditEvent(updated));
+                if (mStateListener != null)
+                    mStateListener.onTextChange(updated, mCursorPosition);
+            }
+
         }
     }
 
@@ -1001,6 +1048,22 @@ public class LispEditText extends AppCompatEditText {
     BackgroundColorSpan highlightSpan = null;
 
     @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onGetSelection(GetSelectionBoundsEvent event)
+    {
+        if (mCurrentSelection != null)
+        {
+            int start = mCurrentSelection.getStartIndex();
+            int length = mCurrentSelection.getLength();
+            if (length > 0)
+            {
+                event.onSelection(new Selection(mCurrentSelection.getValue(), start, start + length));
+                return;
+            }
+        }
+        event.onSelection(null);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onTextHighLightEvent(UpdateHighLightEvent highlightEvent)
     {
         int start = highlightEvent.getHighlightStart();
@@ -1040,4 +1103,36 @@ public class LispEditText extends AppCompatEditText {
         }
     }
 
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onNormalMode(NormalModeEvent event)
+    {
+        String currentText = getText().toString();
+        if (mInitialText != null && !currentText.equals(mInitialText))
+        {
+            mInitialText = null;
+            mMode = MODE.NORMAL;
+
+            if (mStateListener != null)
+                mStateListener.onTextChange(currentText, mCursorPosition);
+        }
+    }
+
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onReplaceMode(ReplaceModeEvent event)
+    {
+        mMode = MODE.REPLACE;
+        mInitialText = getText().toString();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onReplaceText(ReplaceTextEvent event)
+    {
+        int pos = event.getStartPosition();
+        int length = event.getNumCharactersToDelete();
+        String newText = event.getReplacementText();
+        Editable edit = getEditableText();
+        edit.replace(pos, pos + length, newText);
+
+    }
 }

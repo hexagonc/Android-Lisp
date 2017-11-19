@@ -12,6 +12,7 @@ import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.UUID;
 
 /**
@@ -290,6 +291,24 @@ public abstract class Page {
         }
         return false;
     }
+
+    public void setStringArratDataValue(String key, String[] data)
+    {
+        Value[] v = new Value[data.length];
+        for (int i = 0;i < data.length;i++)
+            v[i] = NLispTools.makeValue(data[i]);
+        mMyData.put(key, NLispTools.makeValue(v));
+    }
+
+    public void setStringListDataValue(String key, LinkedList<String> data)
+    {
+        Value[] v = new Value[data.size()];
+        int i = 0;
+        for (String d:data)
+            v[i++] = NLispTools.makeValue(d);
+        mMyData.put(key, NLispTools.makeValue(v));
+    }
+
 
     public void setStringDataValue(String key, String value)
     {
