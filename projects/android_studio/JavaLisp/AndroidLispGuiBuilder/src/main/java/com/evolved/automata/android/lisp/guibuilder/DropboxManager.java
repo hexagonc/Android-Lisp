@@ -10,9 +10,11 @@ import android.util.Log;
 import com.dropbox.core.DbxDownloader;
 import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
+import com.dropbox.core.DbxWebAuth;
 import com.dropbox.core.v2.DbxClientV2;
 import com.dropbox.core.v2.files.DbxUserFilesRequests;
 import com.dropbox.core.v2.files.FileMetadata;
+import com.dropbox.core.v2.files.FolderMetadata;
 import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
 import com.dropbox.core.v2.files.UploadBuilder;
@@ -50,6 +52,8 @@ import io.reactivex.functions.Consumer;
 import io.reactivex.schedulers.Schedulers;
 import io.reactivex.subjects.PublishSubject;
 
+import static com.evolved.automata.android.lisp.guibuilder.DropboxManager.DROPBOX_RESPONSE_TYPE.CREATE_FILE;
+import static com.evolved.automata.android.lisp.guibuilder.DropboxManager.DROPBOX_RESPONSE_TYPE.CREATE_FOLDER;
 import static com.evolved.automata.android.lisp.guibuilder.DropboxManager.DROPBOX_RESPONSE_TYPE.DOWNLOAD_TEXT_FILE;
 import static com.evolved.automata.android.lisp.guibuilder.DropboxManager.DROPBOX_RESPONSE_TYPE.UPLOAD_FILE;
 
@@ -63,7 +67,7 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
 
     public enum DROPBOX_RESPONSE_TYPE
     {
-        SHOW_FILE_DOWNLOAD_DIALOG, GET_FOLDER_CHILDREN, UPLOAD_FILE, DOWNLOAD_TEXT_FILE
+        SHOW_FILE_DOWNLOAD_DIALOG, GET_FOLDER_CHILDREN, UPLOAD_FILE, DOWNLOAD_TEXT_FILE, CREATE_FOLDER, CREATE_FILE
     }
 
     public static abstract class DropboxResponse
@@ -73,6 +77,64 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
         public DROPBOX_RESPONSE_TYPE getType()
         {
             return _type;
+        }
+    }
+
+    public static class DroboxCreateFolderResponse extends DropboxResponse
+    {
+
+        Exception _error;
+        FolderMetadata _meta;
+
+        public DroboxCreateFolderResponse(FolderMetadata meta, Exception e)
+        {
+            _error = e;
+            _meta = meta;
+        }
+
+        public FolderMetadata getData()
+        {
+            return _meta;
+        }
+
+        public boolean wasSuccess()
+        {
+            return _error != null;
+        }
+
+        public Exception getError()
+        {
+            return _error;
+        }
+
+        public DROPBOX_RESPONSE_TYPE getType()
+        {
+            return CREATE_FOLDER;
+        }
+    }
+
+    public static class DropboxCreateFileResponse extends DropboxResponse {
+        Exception _error;
+
+        public DropboxCreateFileResponse(Exception e)
+        {
+
+            _error = e;
+        }
+
+        public boolean wasSuccess()
+        {
+            return _error != null;
+        }
+
+        public Exception getError()
+        {
+            return _error;
+        }
+
+        public DROPBOX_RESPONSE_TYPE getType()
+        {
+            return CREATE_FILE;
         }
     }
 
@@ -689,6 +751,75 @@ public class DropboxManager implements Observer<DropboxManager.DropboxEvent> {
     @Override
     public void onComplete()
     {
+
+    }
+
+
+    void createFolder(final String path, Observer<DropboxFileData> observer)
+    {
+
+
+        Observable<DropboxFileData> observable = Observable.create(new ObservableOnSubscribe<DropboxFileData>() {
+            @Override
+            public void subscribe(@NonNull ObservableEmitter<DropboxFileData> observer) throws Exception
+            {
+                try
+                {
+                    DbxUserFilesRequests files =  mClient.files();
+                    FolderMetadata data = files.createFolder(path);
+
+                    observer.onNext(DropboxFileData.from(data));
+                    observer.onComplete();
+                }
+                catch (DbxException db)
+                {
+                    observer.onError(db);
+                }
+            }
+        });
+        observable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(observer);
+
+    }
+
+    public void createFile(final String fileFullPath, Observer<DropboxFileData> observer)
+    {
+        Observable<DropboxFileData> observable = Observable.create(new ObservableOnSubscribe<DropboxFileData>() {
+            @Override
+            public void subscribe(@NonNull ObservableEmitter<DropboxFileData> observer) throws Exception
+            {
+                DbxUserFilesRequests files =  mClient.files();
+
+
+                UploadBuilder builder = files.uploadBuilder(fileFullPath);
+                UploadUploader loader = builder.start();
+                OutputStream ostream = null;
+                ostream = loader.getOutputStream();
+                try
+                {
+
+                    FileMetadata response = loader.finish();
+
+                    observer.onNext(DropboxFileData.from(response));
+                    observer.onComplete();
+                }
+                catch (DbxException de)
+                {
+                    observer.onError(de);
+                }
+
+
+            }
+        });
+        observable.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(observer);
+    }
+
+    public static String getListablePathFromFileName(String fileName)
+    {
+        int separatorpoi= fileName.lastIndexOf('/');
+        if (separatorpoi == -1)
+            return "";
+        else
+            return fileName.substring(0, separatorpoi);
 
     }
 

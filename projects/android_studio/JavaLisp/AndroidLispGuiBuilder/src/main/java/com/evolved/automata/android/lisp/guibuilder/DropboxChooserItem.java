@@ -5,14 +5,22 @@ import android.graphics.Color;
 import android.view.View;
 import android.widget.TextView;
 
+import com.dropbox.core.v2.files.FileMetadata;
+import com.dropbox.core.v2.files.FolderMetadata;
+import com.dropbox.core.v2.files.ListFolderResult;
 import com.dropbox.core.v2.files.Metadata;
 
 import java.util.ArrayList;
 
 
+import io.reactivex.Observable;
+import io.reactivex.ObservableEmitter;
+import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by Evolved8 on 5/11/17.
@@ -212,14 +220,122 @@ public class DropboxChooserItem implements FileChooserItem {
     }
 
     @Override
-    public boolean onCreateChildFolder(String name, OnCreateChildFileListener listener)
+    public boolean onCreateChildFolder(final String name, final OnCreateChildFileListener listener)
     {
-        return false;
+        String fullName;
+        if (getParent() != null)
+            fullName = mData.getListableName() + "/" + name;
+        else
+            fullName = "/" + name;
+
+        DropboxManager.get().createFolder(  fullName, new Observer<DropboxFileData>() {
+            @Override
+            public void onSubscribe(@NonNull Disposable d)
+            {
+
+            }
+
+            @Override
+            public void onNext(@NonNull DropboxFileData data)
+            {
+
+                notifyChildItemCreated(data, listener);
+            }
+
+            @Override
+            public void onError(@NonNull Throwable e)
+            {
+                listener.onError(e.toString());
+            }
+
+            @Override
+            public void onComplete()
+            {
+
+            }
+        });
+        return true;
+    }
+
+    private void notifyChildItemCreated(final @NonNull DropboxFileData data, final OnCreateChildFileListener listener)
+    {
+        Observable<DropboxChooserItem> ob = Observable.create(new ObservableOnSubscribe<DropboxChooserItem>() {
+            @Override
+            public void subscribe(@NonNull ObservableEmitter<DropboxChooserItem> observer) throws Exception
+            {
+                try
+                {
+                    DropboxChooserItem item = new DropboxChooserItem(data, mSelectHandler);
+                    observer.onNext(item);
+                    observer.onComplete();
+                }
+                catch (Exception e)
+                {
+                    observer.onError(e);
+                }
+            }
+        });
+        ob.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe(new Observer<DropboxChooserItem>() {
+            @Override
+            public void onSubscribe(@NonNull Disposable d)
+            {
+
+            }
+
+            @Override
+            public void onNext(@NonNull DropboxChooserItem dropboxChooserItem)
+            {
+                listener.onSuccess(dropboxChooserItem);
+            }
+
+            @Override
+            public void onError(@NonNull Throwable e)
+            {
+                listener.onError(e.toString());
+            }
+
+            @Override
+            public void onComplete()
+            {
+
+            }
+        });
     }
 
     @Override
-    public boolean onCreateChildFile(String name, OnCreateChildFileListener listener)
+    public boolean onCreateChildFile(String name, final OnCreateChildFileListener listener)
     {
-        return false;
+        String fullName;
+        if (getParent() != null)
+            fullName = mData.getListableName() + "/" + name;
+        else
+            fullName = "/" + name;
+
+        DropboxManager.get().createFile(fullName, new Observer<DropboxFileData>() {
+            @Override
+            public void onSubscribe(@NonNull Disposable d)
+            {
+
+            }
+
+            @Override
+            public void onNext(final @NonNull DropboxFileData data)
+            {
+                notifyChildItemCreated(data, listener);
+            }
+
+            @Override
+            public void onError(@NonNull Throwable e)
+            {
+                listener.onError(e.toString());
+            }
+
+            @Override
+            public void onComplete()
+            {
+
+            }
+        });
+        return true;
     }
 }

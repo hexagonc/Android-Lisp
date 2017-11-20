@@ -97,8 +97,9 @@ public class FileChooserDialog extends AppCompatDialog implements OnChildFilesRe
 
 			@Override
 			public void onSuccess(FileChooserItem item) {
-				startProgressDialog();
+				stopProgressDialog();
 				_currentFolder.getChildren(FileChooserDialog.this);
+				_selectedFileEdit.setText("");
 			}
 
 			@Override
@@ -172,6 +173,7 @@ public class FileChooserDialog extends AppCompatDialog implements OnChildFilesRe
 				if (_currentFolder.getParent()!=null)
 				{
 					startProgressDialog();
+					_selectedFileEdit.setText("");
 					_currentFolder.getParent().getChildren(FileChooserDialog.this);
 				}
 			}
@@ -219,7 +221,7 @@ public class FileChooserDialog extends AppCompatDialog implements OnChildFilesRe
 				if (f.hasChildren())
 				{
 					_selectedFile = null;
-
+					_selectedFileEdit.setText("");
 					startProgressDialog();
 					f.getChildren( FileChooserDialog.this);
 				}
@@ -240,8 +242,10 @@ public class FileChooserDialog extends AppCompatDialog implements OnChildFilesRe
 
 			@Override
 			public void onSuccess(FileChooserItem item) {
-				dismiss();
-				item.onClickListener(FileChooserDialog.this);
+				stopProgressDialog();
+				_children.add(item);
+				_fileAdapter.notifyDataSetChanged();
+				_selectedFile = item;
 			}
 
 			@Override
