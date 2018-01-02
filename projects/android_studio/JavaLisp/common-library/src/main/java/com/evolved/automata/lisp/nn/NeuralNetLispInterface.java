@@ -11,6 +11,8 @@ import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.editor.SimpleTextEditor;
+import com.evolved.automata.nn.FastLSTMNetwork;
 import com.evolved.automata.nn.LSTMLearningResult;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.LinkedLSTM;
@@ -24,7 +26,10 @@ import com.evolved.automata.nn.VectorValueMapper;
 import com.evolved.automata.nn.VectorViewer;
 import com.evolved.automata.nn.WeightMatrix;
 
+import java.util.Arrays;
 import java.util.HashMap;
+
+import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
 
 /**
  * Created by Evolved8 on 12/19/16.
@@ -87,6 +92,736 @@ public class NeuralNetLispInterface {
         env.mapFunction("simple-slstm-undo-remove-last", simpleSLSTMUndoRemoveLast());
         env.mapFunction("simple-slstm-remove-all", simpleSLSTMRemoveAll());
 
+
+        env.mapFunction("fast-make-binary-sequence-lstm", FastMakeBinarySequenceLSTM());
+        env.mapFunction("fast-make-state-sequence-lstm", FastMakeStateSequenceLSTM());
+        env.mapFunction("fast-forward-pass", FastForwardPass());
+        env.mapFunction("fast-reset-to-initial-state", FastResetToInitialState());
+        env.mapFunction("fast-randomize-weights", FastRandomizeWeigts());
+
+        env.mapFunction("fast-calculate-error-deltas", FastCalculateErrorDeltas());
+
+        env.mapFunction("fast-update-weights-rprop", FastUpdateWeightsRrop());
+        env.mapFunction("fast-update-weights-gradient-descent", FastUpdateWeightsGradientDescent());
+
+        env.mapFunction("fast-get-output-error", FastGetOutputError());
+
+        env.mapFunction("fast-round-vector", FastRoundVector());
+
+        env.mapFunction("fast-set-node-state", FastSetNodeState());
+        env.mapFunction("fast-get-node-state", FastGetNodeState());
+
+        env.mapFunction("fast-copy-lstm", FastCopyLSTM());
+
+        env.mapFunction("fast-rounded-vector-equals", FastRoundedVectorEquals());
+
+        env.mapFunction("fast-network-to-string", FastNetworkToString());
+        env.mapFunction("fast-string-to-fast-network", FastStringToFastNetwork());
+
+        env.mapFunction("fast-nodestate-to-string", FastNodestateToString());
+        env.mapFunction("fast-string-to-nodestate", FastStringToNodestate());
+
+        env.mapFunction("fast-num-to-tally-vector", FastNumToTallyVector());
+        env.mapFunction("fast-tally-vector-to-num", FastTallyVectorToNum());
+
+        env.mapFunction("fast-enum-vector-to-num", FastEnumVectorToNum());
+        env.mapFunction("fast-num-to-enum-vector", FastNumToEnumVector());
+    }
+
+    public static SimpleFunctionTemplate FastNumToEnumVector()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastNumToEnumVector();
+            }
+
+            // First argument is a vector
+            // Second argument is radiix
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                int value = (int)evaluatedArgs[0].getIntValue();
+                int radiix = (int)evaluatedArgs[1].getIntValue();
+
+                Value[] out = new Value[radiix];
+
+
+                for (int i = 1; i <= radiix ;i++)
+                {
+                    if (i == value)
+                        out[i-1] = NLispTools.makeValue(1);
+                    else
+                        out[i-1] = NLispTools.makeValue(0);
+                }
+
+                return NLispTools.makeValue(out);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastEnumVectorToNum()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastEnumVectorToNum();
+            }
+
+            // First argument is a vector
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                float[] vector = getFloatData(evaluatedArgs[0]);
+
+                int value = 0;
+
+                for (int i = 0; i < vector.length ;i++)
+                {
+                    if (vector[i] > 0.5)
+                    {
+                        value = i+1;
+                        break;
+                    }
+                }
+
+                return NLispTools.makeValue(value);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastTallyVectorToNum()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastTallyVectorToNum();
+            }
+
+            // First argument is a vector
+            // [Optional] Second argument indicates if vector represents signed number
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                float[] vector = getFloatData(evaluatedArgs[0]);
+
+                int sign = 1, offset = 0;
+                if (evaluatedArgs.length > 1)
+                {
+
+                    if (!evaluatedArgs[1].isNull())
+                    {
+                        offset = 1;
+                        if (vector[0] > 0.5)
+                        {
+                            sign = -1;
+                        }
+                        else
+                            sign = 1;
+                    }
+                }
+
+                int value = 0;
+
+                for (int i = offset; i < vector.length ;i++)
+                {
+                    if (vector[i] > 0.5)
+                    {
+                        value += sign;
+                    }
+                }
+
+                return NLispTools.makeValue(value);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastNumToTallyVector()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastNumToTallyVector();
+            }
+
+            // First argument is an integer
+            // Second argument is the radiix
+            // [Optional] Third argument is a flag indicating whether result is signed
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                int num = (int)evaluatedArgs[0].getIntValue();
+                int radiix = (int)evaluatedArgs[1].getIntValue();
+
+                int offset = 0;
+                if (evaluatedArgs.length > 2 && !evaluatedArgs[2].isNull())
+                {
+                    offset = 1;
+                }
+
+                Value[] out = new Value[radiix + offset];
+                if (offset > 0)
+                {
+                    if (num < 0)
+                        out[0] = NLispTools.makeValue(1);
+                    else
+                        out[0] = NLispTools.makeValue(0);
+                }
+
+                for (int i = 0; i < radiix;i++)
+                {
+                    if (i < Math.abs(num))
+                    {
+                        out[i + offset] = NLispTools.makeValue(1);
+                    }
+                    else
+                        out[i + offset] = NLispTools.makeValue(0);
+                }
+
+                return NLispTools.makeValue(out);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastRoundVector()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastRoundVector();
+            }
+
+            // First argument is the data list
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                return roundDataValues(evaluatedArgs[0]);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastRoundedVectorEquals()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastRoundedVectorEquals();
+            }
+
+            // First argument is the first data vector list
+            // Second argument is the second data vector list
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                float[] first = getFloatData(evaluatedArgs[0]);
+                float[] second = getFloatData(evaluatedArgs[1]);
+
+                if (first.length != second.length)
+                    return NLispTools.makeValue(false);
+                for (int i = 0;i < first.length;i++)
+                {
+                    if (roundToInt(first[i]) != roundToInt(second[i]))
+                        return NLispTools.makeValue(false);
+                }
+                return evaluatedArgs[1];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastMakeBinarySequenceLSTM()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastMakeBinarySequenceLSTM();
+            }
+
+            // First argument is the input/output width
+            // Second argument is a number of memory cell states
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                int numInputOutput = (int)evaluatedArgs[0].getIntValue();
+                int memorycellStates = (int)evaluatedArgs[1].getIntValue();
+
+                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardBinarySequenceNetwork(numInputOutput, memorycellStates);
+                return ExtendedFunctions.makeValue(proxy);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastMakeStateSequenceLSTM()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastMakeStateSequenceLSTM();
+            }
+
+            // First argument is the input/output width
+            // Second argument is a number of memory cell states
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                int numInputOutput = (int)evaluatedArgs[0].getIntValue();
+                int memorycellStates = (int)evaluatedArgs[1].getIntValue();
+
+                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardStateSequenceNetwork(numInputOutput, memorycellStates);
+                return ExtendedFunctions.makeValue(proxy);
+            }
+        };
+    }
+
+    static float[] getFloatData(Value data)
+    {
+        Value[] vec = data.getList();
+        float[] out = new float[vec.length];
+        for (int i = 0; i < vec.length; i++)
+            out[i] = (float)vec[i].getIntValue();
+        return out;
+    }
+
+    static Value getLispDataValue(float[] data)
+    {
+        Value[] out = new Value[data.length];
+        for (int i = 0; i < data.length;i++)
+        {
+            out[i] = NLispTools.makeValue(data[i]);
+        }
+        return NLispTools.makeValue(out);
+    }
+
+    static Value roundDataValues(Value data)
+    {
+        Value[] out = data.getList();
+        for (int i = 0;i < out.length;i++)
+        {
+            if (out[i].getFloatValue() > 0.5F)
+                out[i] = NLispTools.makeValue(1);
+            else
+                out[i] = NLispTools.makeValue(0);
+        }
+        return NLispTools.makeValue(out);
+    }
+
+    public static SimpleFunctionTemplate FastNodestateToString()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastNodestateToString();
+            }
+
+            // First argument is the NodeState
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy.NodeState state = (LSTMNetworkProxy.NodeState)evaluatedArgs[0].getObjectValue();
+
+
+                return NLispTools.makeValue(state.serialize());
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastStringToNodestate()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastStringToNodestate();
+            }
+
+            // First argument is a string nodestae
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                String nodeStateString = evaluatedArgs[0].getString();
+                LSTMNetworkProxy.NodeState state = LSTMNetworkProxy.NodeState.createNodeState(nodeStateString);
+                return ExtendedFunctions.makeValue(state);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastNetworkToString()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastNetworkToString();
+            }
+
+            // First argument is the LSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+
+                String serialized = proxy.serialize();
+                return NLispTools.makeValue(serialized);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastStringToFastNetwork()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastStringToFastNetwork();
+            }
+
+            // First argument is a string
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                String networkString = evaluatedArgs[0].getString();
+                float[] data =  LSTMNetworkProxy.deserializeFloatString(networkString);
+                return ExtendedFunctions.makeValue(LSTMNetworkProxy.make(data));
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastRandomizeWeigts()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastRandomizeWeigts();
+            }
+
+            // First argument is the LSTM
+            // Optional second argument is an double fraction of weights to randomize
+            // Optional third argument is a constant value to set a random fraction of
+            // the weights to.  If this value isn't set then a random fraction of the
+            // weights be set to a random value
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                if (evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull())
+                {
+                    float randomizeFraction = (float)evaluatedArgs[1].getFloatValue();
+                    if (evaluatedArgs.length > 2)
+                    {
+                        float randomSetValue = (float)evaluatedArgs[2].getFloatValue();
+                        proxy.randomizeNetworkWeights(randomizeFraction,randomSetValue );
+                    }
+                    else
+                        proxy.randomizeNetworkWeights(randomizeFraction);
+                }
+                else
+                    proxy.randomizeNetworkWeights();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate FastResetToInitialState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastResetToInitialState();
+            }
+
+            // First argument is the LSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                proxy.resetNetworkToInitialState();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastForwardPass()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastForwardPass();
+            }
+
+            // First argument is the LSTM
+            // Second argument is an input vector
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                float[] input = getFloatData(evaluatedArgs[1]);
+                float[] output = proxy.executeForwardPass(input);
+                return getLispDataValue(output);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastCopyLSTM()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastCopyLSTM();
+            }
+
+            // First argument is the LSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+
+                return ExtendedFunctions.makeValue(LSTMNetworkProxy.duplicate(proxy));
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastGetNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastGetNodeState();
+            }
+
+            // First argument is the LSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+
+                return ExtendedFunctions.makeValue(proxy.getCurrentNodeState());
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastSetNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastSetNodeState();
+            }
+
+            // First argument is the LSTM
+            // Second argument is a NodeState object
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+
+                LSTMNetworkProxy.NodeState state = (LSTMNetworkProxy.NodeState)evaluatedArgs[1].getObjectValue();
+                proxy.setNodeState(state);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastUpdateWeightsRrop()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastUpdateWeightsRrop();
+            }
+
+            // First argument is the LSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                float[] input = getFloatData(evaluatedArgs[1]);
+                proxy.updateWeights(LSTMNetwork.WeightUpdateType.RPROP);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastUpdateWeightsGradientDescent()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastUpdateWeightsGradientDescent();
+            }
+
+            // First argument is the LSTM
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                proxy.updateWeights(LSTMNetwork.WeightUpdateType.DEFAULT);
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastCalculateErrorDeltas()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastCalculateErrorDeltas();
+            }
+
+            // First argument is the LSTM
+            // Second argument is the expected output
+            // Optional third argument is a flag indicating whether to round the expected output
+            // Optional fourth argument is a flag indicating whether to round the calculated output
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                float[] expectedOutput = getFloatData(evaluatedArgs[1]);
+                boolean roundExpected =  (evaluatedArgs.length > 2)?!evaluatedArgs[2].isNull():false;
+                boolean roundCalculatedExpected =  (evaluatedArgs.length > 3)?!evaluatedArgs[3].isNull():false;
+
+                float error = proxy.getOutputError(expectedOutput, roundExpected, roundCalculatedExpected, true);
+                return NLispTools.makeValue(error);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastGetOutputError()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastGetOutputError();
+            }
+
+            // First argument is the LSTM
+            // Second argument is the expected output
+            // Optional third argument is a flag indicating whether to round the expected output
+            // Optional fourth argument is a flag indicating whether to round the calculated output
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                float[] expectedOutput = getFloatData(evaluatedArgs[1]);
+                boolean roundExpected =  (evaluatedArgs.length > 2)?!evaluatedArgs[2].isNull():false;
+                boolean roundCalculatedExpected =  (evaluatedArgs.length > 3)?!evaluatedArgs[3].isNull():false;
+
+                float error = proxy.getOutputError(expectedOutput, roundExpected, roundCalculatedExpected, false);
+                return NLispTools.makeValue(error);
+            }
+        };
     }
 
     public static SimpleFunctionTemplate PredictionLSTMMaxErrorPerInputVector()
@@ -492,7 +1227,7 @@ public class NeuralNetLispInterface {
             {
                 checkActualArguments(1, false, false);
 
-                LSTMNetwork lstm = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
+                LSTMNetwork lstm  = (LSTMNetwork)evaluatedArgs[0].getObjectValue();
                 lstm.useDefaultInitialNodeActivation();
                 return evaluatedArgs[0];
             }

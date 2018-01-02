@@ -739,10 +739,10 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
     // Activation function ids
     public static final int SIGMOID_ACTIVATION_ID = 0;
-    static final int HYPERTANGENT_ACTIVATION_ID = 1;
-    static final int RECTILINEAR_ACTIVATION_ID = 2;
-    static final int IDENTITY_ACTIVATION_ID = 3;
-    static final int SOFTMAX_ACTIVATION_ID = 4;
+    public static final int HYPERTANGENT_ACTIVATION_ID = 1;
+    public static final int RECTILINEAR_ACTIVATION_ID = 2;
+    public static final int IDENTITY_ACTIVATION_ID = 3;
+    public static final int SOFTMAX_ACTIVATION_ID = 4;
 
     static final UnaryVectorOperator[] ACTIVATION_FUNCTION_MAP = {SigmoidVectorOperator, HypertangentVectorOperator, RectilinearVectorOperator, IdentityVectorOperator, SoftmaxVectorOperator};
     static final UnaryVectorOperator[] ACTIVATION_FUNCTION_DERIVATIVE_MAP = {SigmoidVectorDerivativeOperator, HypertangentVectorDerivativeOperator, RectilinearVectorDerivativeOperator, IdentityVectorDerivativeOperator, SoftmaxVectorDerivativeOperator};
@@ -2060,6 +2060,27 @@ public class FastLSTMNetwork extends LSTMNetwork{
         matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, weight_delta_idx, initialDelta);
     }
 
+    static void initializeLink(float[] networkSpec, int linkId, float initialDelta, float minWeight, float maxWeight, float fraction)
+    {
+        int linkDataIdx = getLinkDataIndex(networkSpec, linkId);
+        int sourceLayerWidth = getLinkSourceLayerWidth(networkSpec, linkId);
+        int targetLayerWidth = getLinkTargetLayerWidth(networkSpec, linkId);
+
+        int weight_idx = getLinkWeightIndex(targetLayerWidth, sourceLayerWidth, linkDataIdx);
+        int weight_delta_idx = getLinkWeightDeltaIndex(targetLayerWidth, sourceLayerWidth, linkDataIdx);
+        int calculated_gradient_idx = getLinkCalculatedGradientIndex(targetLayerWidth, sourceLayerWidth, linkDataIdx);
+        int prev_calculated_gradient_idx = getLinkPrevCalculatedGradientIndex(targetLayerWidth, sourceLayerWidth, linkDataIdx);
+        int elligibilityTraceIdx = getLinkElligibilityTraceIndex(targetLayerWidth, sourceLayerWidth, linkDataIdx);
+
+
+        matrixRandomizeFraction(targetLayerWidth, sourceLayerWidth, networkSpec, weight_idx, minWeight, maxWeight, fraction);
+        matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, elligibilityTraceIdx, 0);
+
+        matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, calculated_gradient_idx, 0);
+        matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, prev_calculated_gradient_idx, 0);
+        matrixElementwiseSet(targetLayerWidth, sourceLayerWidth, networkSpec, weight_delta_idx, initialDelta);
+    }
+
 
 
 
@@ -2447,16 +2468,32 @@ public class FastLSTMNetwork extends LSTMNetwork{
      */
     public static float updateForwardPassErrors(float[] networkSpec, float[] targetOutput)
     {
-        int backprop_link_count_idx = getBackwardPassLinkIndex(networkSpec);
-        int linkIdIdx = 0;
-        int linkId;
+        return updateForwardPassErrors(networkSpec, targetOutput, true);
+    }
 
-        int numBackwardPassLinks = (int)networkSpec[backprop_link_count_idx];
-        int update_gradient_link_order = backprop_link_count_idx + 1;
-        for (linkIdIdx = 0; linkIdIdx < numBackwardPassLinks; linkIdIdx++ )
+
+    /**
+     * Use this to calculate the errors after each forward pass.  This should be called eventually after
+     * EACH forward pass or else the error responsibility vectors will be wrong
+     * @param networkSpec
+     * @param targetOutput
+     * @return
+     */
+    public static float updateForwardPassErrors(float[] networkSpec, float[] targetOutput, boolean updateErrorsP)
+    {
+        if (updateErrorsP)
         {
-            linkId = (int)networkSpec[update_gradient_link_order + linkIdIdx];
-            updatePartialGradient(networkSpec, linkId, targetOutput);
+            int backprop_link_count_idx = getBackwardPassLinkIndex(networkSpec);
+            int linkIdIdx = 0;
+            int linkId;
+
+            int numBackwardPassLinks = (int)networkSpec[backprop_link_count_idx];
+            int update_gradient_link_order = backprop_link_count_idx + 1;
+            for (linkIdIdx = 0; linkIdIdx < numBackwardPassLinks; linkIdIdx++ )
+            {
+                linkId = (int)networkSpec[update_gradient_link_order + linkIdIdx];
+                updatePartialGradient(networkSpec, linkId, targetOutput);
+            }
         }
 
         OutputErrorFunction outError = ERROR_FUNCTION_MAP[(int)networkSpec[OUTPUT_LAYER_ERROR_FUNCTION_ID_IDX]];
@@ -2509,6 +2546,42 @@ public class FastLSTMNetwork extends LSTMNetwork{
         }
 
     }
+
+    public static void perturbWeights(float[] networkSpec, float randomizeFraction)
+    {
+        int backprop_link_count_idx = getBackwardPassLinkIndex(networkSpec);
+        float initialDelta  = getRPROPInitialWeightDelta(networkSpec);
+        float minWeight = getMinInitialWeight(networkSpec);
+        float maxWeight = getMaxInitialWeight(networkSpec);
+        int linkIdIdx = 0;
+        int linkId;
+        int numBackwardPassLinks = (int)networkSpec[backprop_link_count_idx];
+        int update_gradient_link_order = backprop_link_count_idx + 1;
+        for (linkIdIdx = 0; linkIdIdx < numBackwardPassLinks; linkIdIdx++ )
+        {
+            linkId = (int)networkSpec[update_gradient_link_order + linkIdIdx];
+
+            initializeLink(networkSpec, linkId, initialDelta, minWeight, maxWeight, randomizeFraction);
+        }
+    }
+
+
+    public static void perturbWeights(float[] networkSpec, float randomizeFraction, float value)
+    {
+        int backprop_link_count_idx = getBackwardPassLinkIndex(networkSpec);
+        float initialDelta  = getRPROPInitialWeightDelta(networkSpec);
+        int linkIdIdx = 0;
+        int linkId;
+        int numBackwardPassLinks = (int)networkSpec[backprop_link_count_idx];
+        int update_gradient_link_order = backprop_link_count_idx + 1;
+        for (linkIdIdx = 0; linkIdIdx < numBackwardPassLinks; linkIdIdx++ )
+        {
+            linkId = (int)networkSpec[update_gradient_link_order + linkIdIdx];
+
+            initializeLink(networkSpec, linkId, initialDelta, value, value, randomizeFraction);
+        }
+    }
+
 
     // ported to c
     /**
@@ -2630,6 +2703,32 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
             all_data[matrix_offset_index + i] = (minValue + (maxValue - minValue)* (float)ran);
         }
+    }
+
+    static void matrixRandomizeFraction(int rows, int cols, float[] all_data, int matrix_offset_index, float minValue, float maxValue, float fraction)
+    {
+        double ran = 0;
+
+        int randomCount = (int)(rows*cols*fraction);
+
+        int j, i;
+        int[] selectionMap = new int[rows*cols];
+        for (j = 0; j < rows*cols;j++)
+            selectionMap[j] = j;
+
+
+        for (j = 0; j < randomCount;j++)
+        {
+            ran = randomLCG();
+            int selectedIndex = (int)((rows*cols - j)*ran) + j;
+            int effectiveIndex =  selectionMap[selectedIndex];
+            int temp = selectionMap[j];
+            selectionMap[j] = effectiveIndex;
+            selectionMap[selectedIndex] = temp;
+            all_data[matrix_offset_index + effectiveIndex] = (minValue + (maxValue - minValue)* (float)ran);
+
+        }
+
     }
 
 
