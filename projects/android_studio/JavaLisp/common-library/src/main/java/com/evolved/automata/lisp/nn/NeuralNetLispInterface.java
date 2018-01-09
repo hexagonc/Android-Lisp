@@ -599,7 +599,7 @@ public class NeuralNetLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, false, true);
+                checkActualArguments(1, false, true);
 
                 LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
                 proxy.resetNetworkToInitialState();
@@ -731,7 +731,6 @@ public class NeuralNetLispInterface {
                 checkActualArguments(1, false, true);
 
                 LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
-                float[] input = getFloatData(evaluatedArgs[1]);
                 proxy.updateWeights(LSTMNetwork.WeightUpdateType.RPROP);
                 return evaluatedArgs[0];
             }
