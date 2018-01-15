@@ -70,7 +70,7 @@ public class CodePageFragment extends Fragment implements  Observer<CodeEditorFr
 
     LispContext mCodeContext;
 
-    static final boolean PRINT_ON_MAINTHREAD_P = false;
+    static final boolean PRINT_ON_MAINTHREAD_P = true;
 
 
     @Override
