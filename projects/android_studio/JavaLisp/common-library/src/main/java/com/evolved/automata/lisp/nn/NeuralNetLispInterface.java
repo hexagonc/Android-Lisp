@@ -93,6 +93,7 @@ public class NeuralNetLispInterface {
         env.mapFunction("simple-slstm-remove-all", simpleSLSTMRemoveAll());
 
 
+        env.mapFunction("fast-make-binary-sequence-classifier-lstm", FastMakeBinarySequenceClassifierLSTM());
         env.mapFunction("fast-make-binary-sequence-lstm", FastMakeBinarySequenceLSTM());
         env.mapFunction("fast-make-state-sequence-lstm", FastMakeStateSequenceLSTM());
         env.mapFunction("fast-forward-pass", FastForwardPass());
@@ -105,11 +106,13 @@ public class NeuralNetLispInterface {
         env.mapFunction("fast-update-weights-gradient-descent", FastUpdateWeightsGradientDescent());
 
         env.mapFunction("fast-get-output-error", FastGetOutputError());
+        env.mapFunction("fast-get-output-vector", FastGetOutput());
 
         env.mapFunction("fast-round-vector", FastRoundVector());
 
         env.mapFunction("fast-set-node-state", FastSetNodeState());
         env.mapFunction("fast-get-node-state", FastGetNodeState());
+        env.mapFunction("fast-node-states-equal-p", FastNodeStatesEqualP());
 
         env.mapFunction("fast-copy-lstm", FastCopyLSTM());
 
@@ -138,7 +141,7 @@ public class NeuralNetLispInterface {
                 return (T) FastNumToEnumVector();
             }
 
-            // First argument is a vector
+            // First argument is a positive integer
             // Second argument is radiix
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
@@ -356,6 +359,39 @@ public class NeuralNetLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate FastMakeBinarySequenceClassifierLSTM()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastMakeBinarySequenceClassifierLSTM();
+            }
+
+            // First argument is the input
+            // Second argument is the output width
+            // third argument is a number of memory cell states
+            // Optional fourth argument is the network topology (0 - legacy, 1 - peepholes, 2 - forget gates, 3 - peepholes and forget gates
+            // The output will use a softmax activation and cross-entry error function
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, true, true);
+
+                int numInput = (int)evaluatedArgs[0].getIntValue();
+                int numOutput = (int)evaluatedArgs[1].getIntValue();
+                int memorycellStates = (int)evaluatedArgs[2].getIntValue();
+                int flags = 0;
+                if (evaluatedArgs.length > 3)
+                    flags = (int)evaluatedArgs[3].getIntValue();
+
+                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardBinarySequenceClassifierNetwork(numInput, numOutput, memorycellStates, flags);
+                return ExtendedFunctions.makeValue(proxy);
+            }
+        };
+    }
+
     public static SimpleFunctionTemplate FastMakeBinarySequenceLSTM()
     {
         return new SimpleFunctionTemplate() {
@@ -368,16 +404,19 @@ public class NeuralNetLispInterface {
 
             // First argument is the input/output width
             // Second argument is a number of memory cell states
-
+            // Optional third argument is the network topology (0 - legacy, 1 - peepholes, 2 - forget gates, 3 - peepholes and forget gates
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, false, true);
+                checkActualArguments(2, true, true);
 
                 int numInputOutput = (int)evaluatedArgs[0].getIntValue();
                 int memorycellStates = (int)evaluatedArgs[1].getIntValue();
+                int flags = 0;
+                if (evaluatedArgs.length > 2)
+                    flags = (int)evaluatedArgs[2].getIntValue();
 
-                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardBinarySequenceNetwork(numInputOutput, memorycellStates);
+                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardBinarySequenceNetwork(numInputOutput, memorycellStates, flags);
                 return ExtendedFunctions.makeValue(proxy);
             }
         };
@@ -396,16 +435,19 @@ public class NeuralNetLispInterface {
 
             // First argument is the input/output width
             // Second argument is a number of memory cell states
-
+            // Optional third argument is the network topology (0 - legacy, 1 - peepholes, 2 - forget gates, 3 - peepholes and forget gates
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, false, true);
+                checkActualArguments(2, true, true);
 
                 int numInputOutput = (int)evaluatedArgs[0].getIntValue();
                 int memorycellStates = (int)evaluatedArgs[1].getIntValue();
+                int flags = 0;
+                if (evaluatedArgs.length > 2)
+                    flags = (int)evaluatedArgs[2].getIntValue();
 
-                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardStateSequenceNetwork(numInputOutput, memorycellStates);
+                LSTMNetworkProxy proxy = LSTMNetworkProxy.makeStandardStateSequenceNetwork(numInputOutput, memorycellStates, flags);
                 return ExtendedFunctions.makeValue(proxy);
             }
         };
@@ -660,6 +702,37 @@ public class NeuralNetLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate FastNodeStatesEqualP()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastNodeStatesEqualP();
+            }
+
+            // First argument is a Note state
+            // Second argument is a Note state
+            // Optional third argument is a percent error fraction, defaulting to 0.0001
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetworkProxy.NodeState lstate = (LSTMNetworkProxy.NodeState)evaluatedArgs[0].getObjectValue();
+                LSTMNetworkProxy.NodeState rstate = (LSTMNetworkProxy.NodeState)evaluatedArgs[1].getObjectValue();
+                double error = 0.001;
+                if (evaluatedArgs.length > 2)
+                {
+                    error = evaluatedArgs[2].getFloatValue();
+                }
+
+                return NLispTools.makeValue(lstate.compare(rstate, error));
+            }
+        };
+    }
+
 
     public static SimpleFunctionTemplate FastGetNodeState()
     {
@@ -792,6 +865,31 @@ public class NeuralNetLispInterface {
         };
     }
 
+
+    public static SimpleFunctionTemplate FastGetOutput()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastGetOutput();
+            }
+
+            // First argument is the LSTM
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+                float[] output = proxy.getOutputVaues();
+
+
+                return getLispDataValue(output);
+            }
+        };
+    }
 
     public static SimpleFunctionTemplate FastGetOutputError()
     {

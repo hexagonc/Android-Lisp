@@ -4,6 +4,7 @@ import com.evolved.automata.lisp.FloatValue;
 import com.evolved.automata.nn.FastLSTMNetwork;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.NNTools;
+import com.evolved.automata.nn.OutputLayer;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -18,6 +19,22 @@ import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
  */
 
 public class LSTMNetworkProxy {
+
+    public enum NETWORK_TOPOLOGY {
+        ORIGINAL(0), PEEPHOLES_ONLY(1), FORGET_GATES_ONLY(2);
+        int value;
+
+        NETWORK_TOPOLOGY(int v)
+        {
+            value = v;
+        }
+
+        public int getValue()
+        {
+            return value;
+        }
+    }
+
     float[] mNetwork;
 
     public static final char DELIMITER = ':';
@@ -52,6 +69,19 @@ public class LSTMNetworkProxy {
             return new NodeState(deserializeFloatString(stringSerialized));
         }
 
+        public boolean compare(NodeState rstate, double fractionalError)
+        {
+            if (rstate._nodeActivations.length != _nodeActivations.length)
+                return false;
+            for (int i = 0;i < _nodeActivations.length;i++)
+            {
+                if (Math.abs((rstate._nodeActivations[i] - _nodeActivations[i])/_nodeActivations[i]) > fractionalError)
+                    return false;
+            }
+            return true;
+        }
+
+
     }
 
     protected LSTMNetworkProxy(float[] d)
@@ -74,15 +104,21 @@ public class LSTMNetworkProxy {
      * @param numMemoryCellStates
      * @return
      */
-    public static LSTMNetworkProxy makeStandardStateSequenceNetwork(int numInputOutputNodes, int numMemoryCellStates)
+    public static LSTMNetworkProxy makeStandardStateSequenceNetwork(int numInputOutputNodes, int numMemoryCellStates, int flags)
     {
-        return new LSTMNetworkProxy(getStateSequenceNetwork(numInputOutputNodes, numMemoryCellStates));
+        return new LSTMNetworkProxy(getStateSequenceNetwork(numInputOutputNodes, numMemoryCellStates, flags));
     }
 
-    public static LSTMNetworkProxy makeStandardBinarySequenceNetwork(int numInputOutputNodes, int numMemoryCellStates)
+    public static LSTMNetworkProxy makeStandardBinarySequenceNetwork(int numInputOutputNodes, int numMemoryCellStates, int flags)
     {
-        return new LSTMNetworkProxy(getStandardSequenceNetwork(numInputOutputNodes, numMemoryCellStates));
+        return new LSTMNetworkProxy(getStandardSequenceNetwork(numInputOutputNodes, numMemoryCellStates, flags));
     }
+
+    public static LSTMNetworkProxy makeStandardBinarySequenceClassifierNetwork(int numInput, int numOutputNodes, int numMemoryCellStates, int flags)
+    {
+        return new LSTMNetworkProxy(getStandardSequenceClassifierNetwork(numInput, numOutputNodes, numMemoryCellStates, flags));
+    }
+
 
     public static LSTMNetworkProxy duplicate(LSTMNetworkProxy proxy)
     {
@@ -143,6 +179,11 @@ public class LSTMNetworkProxy {
     public NodeState getCurrentNodeState()
     {
         return NodeState.createNodeState(FastLSTMNetwork.getNodeStateSnapshot(mNetwork));
+    }
+
+    public float[] getOutputVaues()
+    {
+        return FastLSTMNetwork.getOutputActivation(mNetwork);
     }
 
     public LSTMNetworkProxy setNodeState(NodeState state)
@@ -331,37 +372,94 @@ public class LSTMNetworkProxy {
 
     // Create template network strings
 
-    private static float[] getStateSequenceNetwork(int inputOutputWidth, int numMemoryCellStates)
+    private static float[] getStateSequenceNetwork(int inputOutputWidth, int numMemoryCellStates, int flags)
     {
-        FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputOutputWidth, inputOutputWidth, numMemoryCellStates);
+        FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(inputOutputWidth, inputOutputWidth, numMemoryCellStates, flags);
         builder.setInputNodeCount(inputOutputWidth, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
         FastLSTMNetwork network = builder.build();
         return network.getActualData();
     }
 
-    private static float[] getStandardSequenceNetwork(int numInputNodes, int memoryCellCount)
+    private static float[] getStandardSequenceNetwork(int numInputNodes, int memoryCellCount, int flags)
     {
-        return getStandardBuilder(numInputNodes, numInputNodes, memoryCellCount).build().getActualData();
+        return getStandardBuilder(numInputNodes, numInputNodes, memoryCellCount, flags).build().getActualData();
+    }
+
+    private static float[] getStandardSequenceClassifierNetwork(int numInputNodes, int numOutputNodes, int memoryCellCount, int flags)
+    {
+        FastLSTMNetwork.LSTMNetworkBuilder builder = getStandardBuilder(numInputNodes, numOutputNodes, memoryCellCount, flags);
+        builder.setInputNodeCount(numInputNodes, FastLSTMNetwork.CROSS_ENTROPY_ERROR_ID, FastLSTMNetwork.SOFTMAX_ACTIVATION_ID);
+        builder.setOutputNodeCount(numOutputNodes);
+        return builder.build().getActualData();
     }
 
 
     // Tools
 
-    static FastLSTMNetwork.LSTMNetworkBuilder getStandardBuilder(int inputNodeCode, int outputNodeCode, int numMemoryCellStates)
+    static FastLSTMNetwork.LSTMNetworkBuilder getStandardBuilder(int inputNodeCode, int outputNodeCode, int numMemoryCellStates, int flags)
     {
         FastLSTMNetwork.LSTMNetworkBuilder builder = FastLSTMNetwork.getFastBuilder();
 
         builder.setInputNodeCount(inputNodeCode, FastLSTMNetwork.MSE_ERROR_FUNCTION_ID, FastLSTMNetwork.SIGMOID_ACTIVATION_ID);
         builder.setOutputNodeCount(outputNodeCode);
         builder.addMemoryCell("M", numMemoryCellStates);
-        HashMap<String, ArrayList<String>> connectivityMap = NNTools.getStandardLinkConnectivityMap("M");
-        for (String sourceNode:connectivityMap.keySet())
+        HashMap<String, ArrayList<String>> connectivityMap = null;
+
+        switch (flags)
         {
-            builder.addNodeConnections(sourceNode, NNTools.arrayListToArray(connectivityMap.get(sourceNode)));
+            case 0: // standard
+            {
+                connectivityMap = NNTools.getStandardLinkConnectivityMap("M");
+                for (String sourceNode:connectivityMap.keySet())
+                {
+                    builder.addNodeConnections(sourceNode, NNTools.arrayListToArray(connectivityMap.get(sourceNode)));
+                }
+
+                builder.addWeightUpdateOrder(NNTools.getStandardSingleCellWeightUpdateOrder("M"));
+                builder.addFeedForwardLinkOrder(NNTools.getStandardSingleCellFeedforwardOrder("M"));
+            }
+            break;
+            case 1: // peepholes
+            {
+                connectivityMap = NNTools.getStandardLinkConnectivityMapWithPeepholes("M");
+                for (String sourceNode:connectivityMap.keySet())
+                {
+                    builder.addNodeConnections(sourceNode, NNTools.arrayListToArray(connectivityMap.get(sourceNode)));
+                }
+
+                builder.addWeightUpdateOrder(NNTools.getStandardSingleCellWeightUpdateOrderWithPeepholes("M"));
+                builder.addFeedForwardLinkOrder(NNTools.getStandardSingleCellFeedforwardOrderWithPeepholes("M"));
+            }
+            break;
+            case 2: // forget gates
+            {
+                connectivityMap = NNTools.getStandardLinkConnectivityMapWithForgetGates("M");
+                for (String sourceNode:connectivityMap.keySet())
+                {
+                    builder.addNodeConnections(sourceNode, NNTools.arrayListToArray(connectivityMap.get(sourceNode)));
+                }
+
+                builder.addWeightUpdateOrder(NNTools.getStandardSingleCellWeightUpdateOrderWithForgetGates("M"));
+                builder.addFeedForwardLinkOrder(NNTools.getStandardSingleCellFeedforwardOrderWithForgetGates("M"));
+            }
+            break;
+            case 3: // peepholes and forget gates
+            {
+                connectivityMap = NNTools.getStandardLinkConnectivityMapWithPeepholesAndForgetGates("M");
+                for (String sourceNode:connectivityMap.keySet())
+                {
+                    builder.addNodeConnections(sourceNode, NNTools.arrayListToArray(connectivityMap.get(sourceNode)));
+                }
+
+                builder.addWeightUpdateOrder(NNTools.getStandardSingleCellWeightUpdateOrderWithPeepholesAndForgetGates("M"));
+                builder.addFeedForwardLinkOrder(NNTools.getStandardSingleCellFeedforwardOrderWithPeepholesAndForgetGates("M"));
+            }
+            break;
+
         }
 
-        builder.addWeightUpdateOrder(NNTools.getStandardSingleCellWeightUpdateOrder("M"));
-        builder.addFeedForwardLinkOrder(NNTools.getStandardSingleCellFeedforwardOrder("M"));
+
+
         builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.INITIAL_DELTA, 0.012);
         builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MAX_DELTA, 50);
         builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
