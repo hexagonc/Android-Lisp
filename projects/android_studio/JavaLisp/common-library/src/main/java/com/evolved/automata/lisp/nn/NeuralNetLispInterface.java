@@ -129,6 +129,137 @@ public class NeuralNetLispInterface {
 
         env.mapFunction("fast-enum-vector-to-num", FastEnumVectorToNum());
         env.mapFunction("fast-num-to-enum-vector", FastNumToEnumVector());
+        env.mapFunction("fast-vector-xnor", FastVectorXNOR());
+        env.mapFunction("fast-vector-xor", FastVectorXOR());
+
+        env.mapFunction("fast-set-output-error-mask", FastSetOutputErrorMask());
+        env.mapFunction("fast-clear-output-error-mask", FastClearOutputErrorMask());
+    }
+
+    public static SimpleFunctionTemplate FastSetOutputErrorMask()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastSetOutputErrorMask();
+            }
+
+            // First argument is the LSTM
+            // Second argument is an error vector
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+
+                float[] output = getFloatData(evaluatedArgs[1]);
+                proxy.setOutputErrorMask(output);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastClearOutputErrorMask()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastClearOutputErrorMask();
+            }
+
+            // First argument is the LSTM
+
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                LSTMNetworkProxy proxy = (LSTMNetworkProxy)evaluatedArgs[0].getObjectValue();
+
+                proxy.clearOutputErrorMask();
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate FastVectorXNOR()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastVectorXNOR();
+            }
+
+            // First argument is the first data vector list
+            // Second argument is the second data vector list
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                float[] first = getFloatData(evaluatedArgs[0]);
+                float[] second = getFloatData(evaluatedArgs[1]);
+
+                float[] out = new float[first.length];
+
+                if (first.length != second.length)
+                    return NLispTools.makeValue(false);
+                for (int i = 0;i < first.length;i++)
+                {
+                    if (roundToInt(first[i]) != roundToInt(second[i]))
+                        out[i] = 0;
+                    else
+                        out[i] = 1;
+                }
+                return getLispDataValue(out);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastVectorXOR()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastVectorXOR();
+            }
+
+            // First argument is the first data vector list
+            // Second argument is the second data vector list
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                float[] first = getFloatData(evaluatedArgs[0]);
+                float[] second = getFloatData(evaluatedArgs[1]);
+
+                float[] out = new float[first.length];
+
+                if (first.length != second.length)
+                    return NLispTools.makeValue(false);
+                for (int i = 0;i < first.length;i++)
+                {
+                    if (roundToInt(first[i]) != roundToInt(second[i]))
+                        out[i] = 1;
+                    else
+                        out[i] = 0;
+                }
+                return getLispDataValue(out);
+            }
+        };
     }
 
     public static SimpleFunctionTemplate FastNumToEnumVector()

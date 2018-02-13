@@ -3092,6 +3092,25 @@ public class NLispTools
 			
 		}
 		);
+
+		env.mapFunction("reverse", new SimpleFunctionTemplate()
+				{
+
+					@Override
+					public Value evaluate(Environment env,Value[] evaluatedArgs) {
+						checkActualArguments(1, false, true);
+
+						Value list = evaluatedArgs[0];
+
+						if (!list.isList())
+							throw new RuntimeException("Argument to 'reverse' must be a list");
+						return reverseList(list);
+
+					}
+
+				}
+		);
+
 		
 		env.mapFunction("replace", new SimpleFunctionTemplate()
 		{
@@ -4883,6 +4902,16 @@ public class NLispTools
 			out[i-start] = input[i];
 		return out;
 	}
+
+	public static Value reverseList(Value list)
+	{
+		Value[] orig = list.getList();
+		Value[] out = new Value[orig.length];
+		for (int i=0;i<orig.length;i++)
+			out[orig.length - i -1] = orig[i];
+		return makeValue(out);
+	}
+
 	
 	public static KeyValuePair<Value[], HashMap<String, Value>> getPartitionValues(Value[] args)
 	{

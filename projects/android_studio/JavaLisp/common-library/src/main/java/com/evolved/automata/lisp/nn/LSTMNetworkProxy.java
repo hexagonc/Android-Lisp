@@ -193,6 +193,19 @@ public class LSTMNetworkProxy {
         return this;
     }
 
+    public LSTMNetworkProxy setOutputErrorMask(float[] mask)
+    {
+        FastLSTMNetwork.setOutputErrorMask(mNetwork, mask);
+        return this;
+    }
+
+    public LSTMNetworkProxy clearOutputErrorMask()
+    {
+
+        FastLSTMNetwork.clearOutputErrorMask(mNetwork);
+        return this;
+    }
+
     public LSTMNetworkProxy resetNetworkToInitialState()
     {
 
