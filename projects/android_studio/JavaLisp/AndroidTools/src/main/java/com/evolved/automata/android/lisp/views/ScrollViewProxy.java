@@ -16,6 +16,7 @@ public class ScrollViewProxy extends ViewGroupProxy
 {
 	
 	int scrollTarget;
+
 	public ScrollViewProxy(Context con, HashMap<String, Value> keywords)
 	{
 		super(con, keywords);

@@ -222,6 +222,20 @@ public class ALGBBaseActivity extends AppCompatActivity implements LogHandler {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle outState)
+    {
+        try
+        {
+            //super.onSaveInstanceState(outState);
+        }
+        catch (Exception e)
+        {
+            Log.e("<><><>", e.toString());
+        }
+
+    }
+
+    @Override
     protected void onStop()
     {
 

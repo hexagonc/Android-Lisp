@@ -5,6 +5,7 @@ import java.util.HashMap;
 import com.evolved.automata.lisp.Value;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.HorizontalScrollView;
@@ -51,6 +52,7 @@ public class HorizontalScrollViewProxy extends ViewGroupProxy
         View actual;
         if (encapsulated != null && ((actual = encapsulated.get()) != null))
         {
+            Log.d(".;;.;.;.;.;.;.;.", "Scroling by " + amount);
             HorizontalScrollView hz = (HorizontalScrollView)actual;
             if (smooth)
                 hz.smoothScrollBy(amount, 0);

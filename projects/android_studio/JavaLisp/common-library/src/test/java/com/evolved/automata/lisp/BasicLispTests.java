@@ -10,10 +10,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import junit.framework.Assert;
+import org.junit.Test;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.random.RandomDataGenerator;
-import org.junit.Test;
+
 
 import com.evolved.automata.AITools;
 import com.evolved.automata.lisp.LispInterpreter.LispInputListener;

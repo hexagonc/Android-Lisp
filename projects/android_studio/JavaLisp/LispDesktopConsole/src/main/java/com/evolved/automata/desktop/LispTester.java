@@ -631,8 +631,20 @@ public class LispTester {
 		final Environment top;
 		boolean skipCont = false;
 		String databasePath = ":memory:";
+		String dropboxAccessToken = null;
+		String dropboxAppName = null;
 		if (args != null && args.length > 0)
-			databasePath = args[0];
+		{
+            if (!args[0].equals("none"))
+            {
+                databasePath = args[0];
+            }
+
+			if (args.length >= 3){
+				dropboxAppName = args[1];
+				dropboxAccessToken = args[2];
+			}
+		}
 		PreparedStatement insertStatement = null;
 		PreparedStatement testStatement = null;
 		PreparedStatement selectStatement = null;
@@ -702,7 +714,8 @@ public class LispTester {
 			top.mapFunction("delete-old-data", deleteOldData(deleteOldDataStatement));
 			top.mapFunction("select-old-data-names", selectOldData(selectOldDataStatement));
 			top.mapFunction("get-all-names", selectAllDataKeys(selectAllDataKeysStatement));
-			
+			DropboxInterface.addDefaultFunctions(top, dropboxAccessToken, dropboxAppName);
+
 			BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
 			String lineinput;
 			LinkedList<Value> parsedResult = null;

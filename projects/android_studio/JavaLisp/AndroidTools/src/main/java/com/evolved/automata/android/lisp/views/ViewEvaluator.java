@@ -1916,7 +1916,7 @@ public class ViewEvaluator  {
 					}
 					
 					
-					return continuationReturn(evaluatedArgs[0]);
+					return evaluatedArgs[0];
 				}
 				else
 				{

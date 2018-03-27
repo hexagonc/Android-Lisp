@@ -47,13 +47,19 @@ public class ShadowButton extends RelativeLayout
 		unpressedButton.setText(_text);
 		pressedButton.setVisibility(INVISIBLE);
 		unpressedButton.setVisibility(VISIBLE);
+
+		pressedButton.setPadding(0,0,0,0);
+		unpressedButton.setPadding(0,0,0,0);
+		unpressedButton.setTransformationMethod(null);
+		pressedButton.setTransformationMethod(null);
 		
 	}
 	
 	public ShadowButton(Context context, AttributeSet attrs) 
 	{
 		super(context, attrs);
-		
+
+
 		_defPaint = new Paint();
 		_defPaint.setAlpha(255);
 		LayoutInflater inflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -74,10 +80,12 @@ public class ShadowButton extends RelativeLayout
 		TypedArray ta = getContext().obtainStyledAttributes(attrs, R.styleable.Standard_Custom);
 		
 		_text = ta.getString(R.styleable.Standard_Custom_text);
+
 		
 		pressedButton.setText(_text);
 		unpressedButton.setText(_text);
-		
+
+
 		float tsize = ta.getDimensionPixelSize(R.styleable.Standard_Custom_textSize, 12);
 		pressedButton.setTextSize(TypedValue.COMPLEX_UNIT_PX, (int)tsize);
 		unpressedButton.setTextSize(TypedValue.COMPLEX_UNIT_PX, (int)tsize);
@@ -85,7 +93,10 @@ public class ShadowButton extends RelativeLayout
 		int color = ta.getColor(R.styleable.Standard_Custom_textColor, 0);
 		unpressedButton.setTextColor(color);
 		pressedButton.setTextColor(color);
-		
+		pressedButton.setPadding(0,0,0,0);
+		unpressedButton.setPadding(0,0,0,0);
+		unpressedButton.setTransformationMethod(null);
+		pressedButton.setTransformationMethod(null);
 		ta.recycle();
 	}
 	

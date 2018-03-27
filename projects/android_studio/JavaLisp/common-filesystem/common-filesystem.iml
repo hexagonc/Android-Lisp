@@ -30,5 +30,7 @@
     <orderEntry type="module" module-name="common-library" exported="" />
     <orderEntry type="library" exported="" name="commons-lang3-3.4" level="project" />
     <orderEntry type="library" exported="" name="commons-math3-3.5" level="project" />
+    <orderEntry type="library" exported="" name="json-20160810" level="project" />
+    <orderEntry type="library" exported="" name="org.apache.commons.codec-1.9.0.v20170208-1614" level="project" />
   </component>
 </module>

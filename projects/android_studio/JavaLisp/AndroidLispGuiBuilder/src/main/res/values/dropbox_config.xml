@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Set the dropbox app key to the value that is given from Dropbox apps developer console
+    <!-- Set the encrypted dropbox app key to the value that is returned from
+    	 GuiBuilderConfiguration.encryptDecrypt();
+    	 You'll have to initially set this to the unencrypted app key provided by Dropbox, then
+    	 set a breakpoint or debugging statement in encryptDecrypt() to get the encrypted value
+    	 from encryptDecrypt().  Once you have the encrypted value, replace this resource with your
+    	 encrypted key.  This provides only minimal security for your app key. Make sure you use
+    	 obfuscation on any apps based on this mechanism that are released into the wild.  You
+    	 should probably also define your own encryption combination key in GuiBuilderConfiguration
+    	 before using it to encrypt your key.
     -->
-    <string name="enc_dropbox_app_key"></string>
+    <string name="enc_dropbox_app_key">skcvcakxgw2r47e</string>
+    <string name="manifest_key">db-skcvcakxgw2r47e</string>
 
-    <!-- This is the same value as above with "db-" appended to it.  It is required for the OAuth2
-     authentication -->
-    <string name="manifest_key"></string>
-    
-    <!-- Enter the name of your Dropbox application.  This in the name of the Dropbox folder underneath 
+    <!-- Enter the name of your Dropbox application.  This in the name of the Dropbox folder underneath
     Apps that users of your application can save and load files.  It is also the name that you registered
     with Dropbox when setting up your developer account. -->
-    
-    <string name="dropbox_app_client_name"></string>
-    <bool name="enable_test_dropbox_access_key">true</bool>
+
+    <string name="dropbox_app_client_name">AndroidLispGUIBuilder</string>
+    <bool name="enable_test_dropbox_access_key">false</bool>
 </resources>
