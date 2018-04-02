@@ -2285,7 +2285,7 @@ public class ViewEvaluator  {
 			@Override
 			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
 			{
-				return (T)set_selected_spinner_item(env, con, interpreter);
+				return (T)set_spinner_items(env, con, interpreter);
 			}
 			
 			@Override
