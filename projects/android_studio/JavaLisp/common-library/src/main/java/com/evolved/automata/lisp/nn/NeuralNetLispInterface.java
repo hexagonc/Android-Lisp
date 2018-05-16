@@ -113,6 +113,9 @@ public class NeuralNetLispInterface {
         env.mapFunction("fast-set-node-state", FastSetNodeState());
         env.mapFunction("fast-get-node-state", FastGetNodeState());
         env.mapFunction("fast-node-states-equal-p", FastNodeStatesEqualP());
+        env.mapFunction("fast-get-node-state-avg-diff", FastGetNodeStateAvgDifference());
+        env.mapFunction("fast-get-raw-node-state", FastGetRawNodeState());
+
 
         env.mapFunction("fast-copy-lstm", FastCopyLSTM());
 
@@ -860,6 +863,78 @@ public class NeuralNetLispInterface {
                 }
 
                 return NLispTools.makeValue(lstate.compare(rstate, error));
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastGetRawNodeState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastGetRawNodeState();
+            }
+
+            // First argument is a Note state
+            // Returns the raw state value as a double[]
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                LSTMNetworkProxy.NodeState lstate = (LSTMNetworkProxy.NodeState)evaluatedArgs[0].getObjectValue();
+
+                float[] l = lstate.getRawActivations();
+
+                int n = l.length;
+
+                Value[] out = new Value[n];
+                for (int i = 0; i < n; i++){
+                    out[i] = NLispTools.makeValue(l[i]);
+                }
+
+                return NLispTools.makeValue(out);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate FastGetNodeStateAvgDifference()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) FastGetNodeStateAvgDifference();
+            }
+
+            // First argument is a Note state
+            // Second argument is a Note state
+            // Returns the average abs difference between each value
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                LSTMNetworkProxy.NodeState lstate = (LSTMNetworkProxy.NodeState)evaluatedArgs[0].getObjectValue();
+                LSTMNetworkProxy.NodeState rstate = (LSTMNetworkProxy.NodeState)evaluatedArgs[1].getObjectValue();
+                double error = 0;
+
+                float[] l = lstate.getRawActivations();
+                float[] r = rstate.getRawActivations();
+
+                if (l.length != r.length)
+                    return NLispTools.makeValue(false);
+
+                int n = l.length;
+
+                for (int i = 0; i < n; i++){
+                    error = error * i/(i + 1.0) + Math.abs(l[i] - r[i])/(i + 1.0);
+                }
+
+                return NLispTools.makeValue(error);
             }
         };
     }

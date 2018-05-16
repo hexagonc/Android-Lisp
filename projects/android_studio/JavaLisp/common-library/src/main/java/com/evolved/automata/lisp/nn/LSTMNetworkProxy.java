@@ -81,6 +81,10 @@ public class LSTMNetworkProxy {
             return true;
         }
 
+        public float[] getRawActivations(){
+            return _nodeActivations;
+        }
+
 
     }
 
