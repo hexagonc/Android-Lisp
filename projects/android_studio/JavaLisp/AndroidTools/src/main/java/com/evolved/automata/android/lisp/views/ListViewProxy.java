@@ -1,8 +1,10 @@
 package com.evolved.automata.android.lisp.views;
 
 import android.content.Context;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -57,6 +59,24 @@ public class ListViewProxy extends ViewProxy {
     public View createBaseView()
     {
         ListView actual = new ListView(context);
+        actual.setOnTouchListener(new View.OnTouchListener(){
+
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent)
+            {
+                int action = motionEvent.getAction();
+                switch (action){
+                    case MotionEvent.ACTION_DOWN:
+                        view.getParent().requestDisallowInterceptTouchEvent(true);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        view.getParent().requestDisallowInterceptTouchEvent(false);
+                        break;
+                }
+                view.onTouchEvent(motionEvent);
+                return true;
+            }
+        });
         actual.setAdapter(mViewAdapter);
         return actual;
     }

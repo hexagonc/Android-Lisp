@@ -54,6 +54,14 @@ public class SpinnerViewProxy extends ViewProxy
 		{
 			return _index;
 		}
+
+		public static SpinnerMode from(String value){
+			for (SpinnerMode mode:SpinnerMode.values()){
+				if (mode._name.equals(value))
+					return mode;
+			}
+			return null;
+		}
 	}
 
 	public static final HashMap<String, Integer> mSpinnerModeMap = new HashMap<String, Integer>()
@@ -75,38 +83,49 @@ public class SpinnerViewProxy extends ViewProxy
 		    @Override
 			public View getView(int position, View cachedView, ViewGroup listItemParentView)
 			{
-				if (cachedView == null)
-				{
-					LayoutInflater inflater = (LayoutInflater)con.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-					RelativeLayout parent = (RelativeLayout)inflater.inflate(com.evolved.automata.android.tools.R.layout.lisp_spinner_item_layout, listItemParentView, false);
-					Triple<ViewProxy, ViewProxy, FunctionTemplate> spec = _spinnerSpecList.get(position);
-					ViewProxy listDisplayView = spec.getLeft();
-					
-					parent.addView(listDisplayView.createView(parent));
-					return parent;
-				}
-				else
-					return cachedView;
+                // Fix this to do caching
+//
+//				if (cachedView == null)
+//				{
+//					LayoutInflater inflater = (LayoutInflater)con.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+//					RelativeLayout parent = (RelativeLayout)inflater.inflate(com.evolved.automata.android.tools.R.layout.lisp_spinner_item_layout, listItemParentView, false);
+//					Triple<ViewProxy, ViewProxy, FunctionTemplate> spec = _spinnerSpecList.get(position);
+//					ViewProxy listDisplayView = spec.getLeft();
+//
+//					parent.addView(listDisplayView.createView(parent));
+//					return parent;
+//				}
+//				else
+//					return cachedView;
+                LayoutInflater inflater = (LayoutInflater)con.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                RelativeLayout parent = (RelativeLayout)inflater.inflate(com.evolved.automata.android.tools.R.layout.lisp_spinner_item_layout, listItemParentView, false);
+                Triple<ViewProxy, ViewProxy, FunctionTemplate> spec = _spinnerSpecList.get(position);
+                ViewProxy listDisplayView = spec.getLeft();
+
+                parent.addView(listDisplayView.createView(parent));
+                return parent;
 			}
 		    
 		    @Override
 			public View getDropDownView(int position, View cachedView, ViewGroup listItemParentView)
 			{
-				if (cachedView == null)
-				{
-					
-					LayoutInflater inflater = (LayoutInflater)con.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-					RelativeLayout parent = (RelativeLayout)inflater.inflate(com.evolved.automata.android.tools.R.layout.lisp_spinner_item_layout, listItemParentView, false);
-					
-					Triple<ViewProxy, ViewProxy, FunctionTemplate> spec = _spinnerSpecList.get(position);
-					ViewProxy listDisplayView = spec.getMiddle();
-					View v = listDisplayView.createView(parent);
+                // TODO: fix this to use caching
+//				if (cachedView == null)
+//				{
+//
+//
+//				}
+//				else
+//					return cachedView;
+                LayoutInflater inflater = (LayoutInflater)con.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+                RelativeLayout parent = (RelativeLayout)inflater.inflate(com.evolved.automata.android.tools.R.layout.lisp_spinner_item_layout, listItemParentView, false);
 
-					parent.addView(v);
-					return parent;
-				}
-				else
-					return cachedView;
+                Triple<ViewProxy, ViewProxy, FunctionTemplate> spec = _spinnerSpecList.get(position);
+                ViewProxy listDisplayView = spec.getMiddle();
+                View v = listDisplayView.createView(parent);
+
+                parent.addView(v);
+                return parent;
 			}
 		    
 		};
@@ -128,6 +147,8 @@ public class SpinnerViewProxy extends ViewProxy
 				Log.d("spinner", "On nothing selected: selection value " + _selection);
 			}
 		};
+
+
 	}
 	
 	public void setSelected(int i)
@@ -143,7 +164,7 @@ public class SpinnerViewProxy extends ViewProxy
 	{
 		_spinnerSpecList.clear();
 		_spinnerSpecList.addAll(spinnerSpecList);
-		if (encapsulated!=null)
+		if (encapsulated!=null && encapsulated.get()!=null)
 		{
 			_adapter.notifyDataSetChanged();
 		}
@@ -168,7 +189,7 @@ public class SpinnerViewProxy extends ViewProxy
 		if (spinnerModeValue != null && spinnerModeValue.isString())
 		{
 			String mode = spinnerModeValue.getString();
-			SpinnerMode spinnerMode = SpinnerMode.valueOf(mode.toLowerCase());
+			SpinnerMode spinnerMode = SpinnerMode.from(mode.toLowerCase());
 			if (spinnerMode != null)
 			{
 				mSpinnerMode = spinnerMode;

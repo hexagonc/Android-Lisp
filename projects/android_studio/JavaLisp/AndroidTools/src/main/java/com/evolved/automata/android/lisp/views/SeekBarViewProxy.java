@@ -17,19 +17,20 @@ public class SeekBarViewProxy extends ViewProxy
 	double _minValue = 0;
 	double _maxValue = 100;
 	double _currentValue = 0;
+    double _smoothingMilli = 200;
 	
 	SeekBar.OnSeekBarChangeListener _seekChangeListener = null;
-	public SeekBarViewProxy(Context con, HashMap<String, Value> keywords, double minimumValue, double maximumValue)
+	public SeekBarViewProxy(Context con, HashMap<String, Value> keywords, double minimumValue, double maximumValue, double smoothingMilli)
 	{
 		super(con, keywords);
 		_minValue = minimumValue;
 		_maxValue = maximumValue;
-		
+		_smoothingMilli = smoothingMilli;
 		final Value changeListenerValue = keywords.get(SEEK_CHANGE_LISTENER_KEY);
 		if (changeListenerValue != null && !changeListenerValue.isNull())
 		{
 			_seekChangeListener = new SeekBar.OnSeekBarChangeListener() {
-				
+				long lastProcessMilli = 0;
 				@Override
 				public void onStopTrackingTouch(SeekBar seekBar) {
 					// TODO Auto-generated method stub
@@ -46,19 +47,24 @@ public class SeekBarViewProxy extends ViewProxy
 				public void onProgressChanged(SeekBar seekBar, int progress,
 						boolean fromUser) {
 					
-					
-					_currentValue = progress/100.0*(_maxValue - _minValue) + _minValue;
-					Value dValue = NLispTools.makeValue(_currentValue);
-					
-					Environment parameterEnv = new Environment(_currentEnv);
-					parameterEnv.mapValue(DEFAULT_SELECTED_VALUE_BINDING_NAME, dValue);
-					Value transformed = NLispTools.getMinimalEnvironment(parameterEnv, changeListenerValue);
-					_lispInterpreter.evaluatePreParsedValue(parameterEnv, transformed, true);
+					if (!fromUser)
+						return;
+
+                    if (System.currentTimeMillis() - lastProcessMilli >= _smoothingMilli){
+                        _currentValue = progress/100.0*(_maxValue - _minValue) + _minValue;
+                        Value dValue = NLispTools.makeValue(_currentValue);
+
+                        Environment parameterEnv = new Environment(_currentEnv);
+                        parameterEnv.mapValue(DEFAULT_SELECTED_VALUE_BINDING_NAME, dValue);
+                        Value transformed = NLispTools.getMinimalEnvironment(parameterEnv, changeListenerValue);
+                        _lispInterpreter.evaluatePreParsedValue(parameterEnv, transformed, true);
+                        lastProcessMilli = System.currentTimeMillis();
+                    }
+
 					
 				}
 			};
-			
-			
+
 		}
 	}
 	
