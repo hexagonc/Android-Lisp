@@ -41,12 +41,12 @@ public class LSTMNetworkProxy {
 
     public static class NodeState {
         final float[] _nodeActivations;
-        final String _serialized;
+        float[] _network;
 
         private NodeState(float[] network)
         {
             _nodeActivations = network;
-            _serialized = serializeFloats(network);
+            _network = network;
         }
 
         public float[] getState()
@@ -56,7 +56,7 @@ public class LSTMNetworkProxy {
 
         public String serialize()
         {
-            return _serialized;
+            return serializeFloats(_network);
         }
 
         public static NodeState createNodeState(float[] d)
@@ -188,6 +188,15 @@ public class LSTMNetworkProxy {
     public float[] getOutputVaues()
     {
         return FastLSTMNetwork.getOutputActivation(mNetwork);
+    }
+
+    public float[] getLastInput()
+    {
+        return FastLSTMNetwork.getInputActivation(mNetwork);
+    }
+
+    public float[] getNetwork(){
+        return mNetwork;
     }
 
     public LSTMNetworkProxy setNodeState(NodeState state)
@@ -413,7 +422,7 @@ public class LSTMNetworkProxy {
 
     // Tools
 
-    static FastLSTMNetwork.LSTMNetworkBuilder getStandardBuilder(int inputNodeCode, int outputNodeCode, int numMemoryCellStates, int flags)
+    public static FastLSTMNetwork.LSTMNetworkBuilder getStandardBuilder(int inputNodeCode, int outputNodeCode, int numMemoryCellStates, int flags)
     {
         FastLSTMNetwork.LSTMNetworkBuilder builder = FastLSTMNetwork.getFastBuilder();
 
@@ -475,8 +484,6 @@ public class LSTMNetworkProxy {
 
         }
 
-
-
         builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.INITIAL_DELTA, 0.012);
         builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MAX_DELTA, 50);
         builder.addWeightParameter(LSTMNetwork.WeightUpdateParameters.MIN_DELTA, 0);
@@ -486,5 +493,72 @@ public class LSTMNetworkProxy {
         builder.setWeightUpdateType(LSTMNetwork.WeightUpdateType.RPROP);
 
         return builder;
+    }
+
+    public static Double getAverageError(NodeState lstate, NodeState rstate){
+
+        double error = 0;
+
+        float[] l = lstate.getRawActivations();
+        float[] r = rstate.getRawActivations();
+
+        if (l.length != r.length)
+            return null;
+
+        int n = l.length;
+
+        for (int i = 0; i < n; i++){
+            error = error * i/(i + 1.0) + Math.abs(l[i] - r[i])/(i + 1.0);
+        }
+        return error;
+    }
+
+    /**
+     *
+     * @param lstate
+     * @param rstate - this is comparision state
+     * @param minValue
+     * @return
+     */
+    public static Double getAverageFractionalError(NodeState lstate, NodeState rstate, double minValue){
+
+        double error = 0;
+
+        float[] l = lstate.getRawActivations();
+        float[] r = rstate.getRawActivations();
+
+        if (l.length != r.length)
+            return null;
+
+        int n = l.length;
+
+        double denominator;
+        for (int i = 0; i < n; i++){
+            error = error * i/(i + 1.0) + Math.abs(l[i] - r[i])/(r[i] + minValue)/(i + 1.0);
+        }
+        return error;
+    }
+
+    public static Double getAverageFractionalError(NodeState lstate, NodeState rstate){
+        double error = 0;
+
+        float[] l = lstate.getRawActivations();
+        float[] r = rstate.getRawActivations();
+
+        if (l.length != r.length)
+            return null;
+
+        int n = l.length;
+
+        double denominator;
+        for (int i = 0; i < n; i++){
+
+            if (Math.abs(r[i]) == 0)
+                denominator = 0.000001;
+            else
+                denominator = Math.abs(r[i]);
+            error = error * i/(i + 1.0) + Math.abs(l[i] - r[i])/denominator/(i + 1.0);
+        }
+        return error;
     }
 }

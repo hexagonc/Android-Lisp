@@ -43,6 +43,26 @@ public class NNTools {
         return s.toString();
     }
 
+    public static Integer tallyVectorToInteger(float[] value){
+        int radiix = value.length;
+
+        Integer out = null;
+        int j = 0;
+        boolean zeros = false;
+        for (int i = 0; i < radiix;i++){
+            if (value[i] == 1.0F){
+                if (zeros)
+                    return null;
+                j++;
+            }
+            else {
+                zeros = true;
+            }
+        }
+        return j;
+    }
+
+
     public static Vector[] stringToVArray(String serialized)
     {
         if (serialized == null)

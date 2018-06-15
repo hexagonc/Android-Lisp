@@ -50,6 +50,14 @@ public class Vector {
         return v;
     }
 
+    public float[] rawFloat()
+    {
+        float[] f = new float[raw().length];
+        for (int i = 0;i < f.length;i++){
+            f[i] = (float)v[i];
+        }
+        return f;
+    }
 
 
     public Vector setValue(double value, int i)

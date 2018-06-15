@@ -2411,12 +2411,16 @@ public class ViewEvaluator  {
 				 
 				Value minValue = evaluatedArgs[0];
 				Value maxValue = evaluatedArgs[1];
-				
-						
-				SeekBarViewProxy proxy = new SeekBarViewProxy(con, kv.GetValue(), minValue.getFloatValue(), maxValue.getFloatValue());
+
+				double smoothingMilli = 300;
+
+				if (evaluatedArgs.length > 3){
+					smoothingMilli = evaluatedArgs[3].getFloatValue();
+				}
+				SeekBarViewProxy proxy = new SeekBarViewProxy(con, kv.GetValue(), minValue.getFloatValue(), maxValue.getFloatValue(), smoothingMilli);
 				proxy.setLispInterpreter(env, interpreter);
 				
-				if (evaluatedArgs.length>2)
+				if (evaluatedArgs.length>2 && !evaluatedArgs[2].isNull())
 				{
 					Value currentValue = evaluatedArgs[2];
 					proxy.setCurrentValue(currentValue.getFloatValue());

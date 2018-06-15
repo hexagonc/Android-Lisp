@@ -2172,37 +2172,67 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
     public static float[] getNodeStateSnapshot(float[] networkSpec)
     {
-        int feedforware_link_count_index = getForwardPassLinkIndex(networkSpec);
         int I_length = Math.max(1, (int)networkSpec[INPUT_NODE_COUNT_IDX]);
         int O_length = Math.max(1, (int)networkSpec[OUTPUT_NODE_COUNT_IDX]);
         int P_length = Math.max(1, (int)networkSpec[NUM_CELL_STATES_IDX]);
 
+        int[][] dataSpec = new int[][]{
+                {I_length*3, I_length}, // input layer
+                {O_length*3, O_length*2}, // output layer
+                {P_length*3, P_length}, // cell input
+                {P_length*3, P_length}, // cell output
+                {P_length*3, P_length}, // forget gate
+                {P_length*3, P_length}, // input gate
+                {P_length*3, P_length}, // output gate
+                {P_length*2, 0}}; // memory cell
 
-        int node_state_length = feedforware_link_count_index - LAYER_STATE_BASE_IDX;
-        assert node_state_length == I_length*4 + O_length*4 + 22*P_length;
+        int node_state_length = 0;
+        int i = 0, offset = 0;
+
+        for (i = 0; i < dataSpec.length;i++){
+            node_state_length+=dataSpec[i][0];
+        }
 
         float[] nodeStateSnapshot = new float[node_state_length];
-        for (int i = 0;i<node_state_length;i++)
-        {
-            nodeStateSnapshot[i] = networkSpec[LAYER_STATE_BASE_IDX + i];
+        i = 0;
+        for (int j = 0; j < dataSpec.length;j++){
+            int width = dataSpec[j][0];
+            for (int k = 0;k<width;k++){
+                nodeStateSnapshot[i] = networkSpec[LAYER_STATE_BASE_IDX + offset + k];
+                i++;
+            }
+            offset+=width + dataSpec[j][1];
         }
+
         return nodeStateSnapshot;
     }
 
 
     public static void loadNodeStateFromSnapshot(float[] networkSpec,  float[] nodeStateSnapshot)
     {
-        int feedforward_link_count_index = getForwardPassLinkIndex(networkSpec);
         int I_length = Math.max(1, (int)networkSpec[INPUT_NODE_COUNT_IDX]);
         int O_length = Math.max(1, (int)networkSpec[OUTPUT_NODE_COUNT_IDX]);
         int P_length = Math.max(1, (int)networkSpec[NUM_CELL_STATES_IDX]);
 
+        int[][] dataSpec = new int[][]{
+                {I_length*3, I_length}, // input layer
+                {O_length*3, O_length*2}, // output layer
+                {P_length*3, P_length}, // cell input
+                {P_length*3, P_length}, // cell output
+                {P_length*3, P_length}, // forget gate
+                {P_length*3, P_length}, // input gate
+                {P_length*3, P_length}, // output gate
+                {P_length*2, 0}}; // memory cell
 
-        int node_state_length = feedforward_link_count_index - LAYER_STATE_BASE_IDX;
-        assert node_state_length == I_length*4 + O_length*5 + 22*P_length;
-        for (int i = 0;i<node_state_length;i++)
-        {
-            networkSpec[LAYER_STATE_BASE_IDX + i] = nodeStateSnapshot[i];
+        int i = 0, offset = 0;
+
+        for (int j = 0; j < dataSpec.length;j++){
+            int width = dataSpec[j][0];
+            for (int k = 0;k<width;k++){
+                networkSpec[LAYER_STATE_BASE_IDX + offset + k] = nodeStateSnapshot[i];
+                i++;
+            }
+            offset+=width + dataSpec[j][1];
         }
     }
 
@@ -2455,6 +2485,16 @@ public class FastLSTMNetwork extends LSTMNetwork{
         int input_activation_idx = getLayerActivationIndex(networkSpec, INPUT_LAYER_ID);
         for (int i =0;i < layerWidth;i++)
             networkSpec[input_activation_idx + i] = data[i];
+    }
+
+    public static float[] getInputActivation(float[] networkSpec)
+    {
+        int layerWidth = getLayerWidth(networkSpec, INPUT_LAYER_ID);
+        int input_activation_idx = getLayerActivationIndex(networkSpec, INPUT_LAYER_ID);
+        float[] data = new float[layerWidth];
+        for (int i =0;i < layerWidth;i++)
+            data[i] = networkSpec[input_activation_idx + i];
+        return data;
     }
 
     // ported to c

@@ -29,6 +29,19 @@ public class AITools {
 		}
 	};
 
+	public  static <T> HashMap<T, Integer> incrementMap(HashMap<T, Integer> map, T key, int update){
+		Integer prior = map.get(key);
+		if (prior == null){
+			prior = 0;
+		}
+		map.put(key, Integer.valueOf(prior + update));
+		return map;
+	}
+
+	public  static <T> HashMap<T, Integer> incrementMap(HashMap<T, Integer> map, T key){
+		return incrementMap(map, key, 1);
+	}
+
 	public static final HashMap<Integer, String> DAY_OF_WEEK_SHORT_NAME_MAP = new HashMap<Integer, String>()
 	{
 		{

@@ -1,0 +1,1614 @@
+package com.evolved.automata.nn;
+
+import com.evolved.automata.lisp.nn.LSTMNetworkProxy;
+import com.evolved.automata.nn.util.FeatureModel;
+import com.evolved.automata.nn.util.Group;
+import com.evolved.automata.nn.util.IncrementalUpdateSpec;
+import com.evolved.automata.nn.util.LearningConfiguration;
+import com.evolved.automata.nn.util.WorldModel;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
+
+/**
+ * Created by Evolved8 on 5/28/18.
+ */
+
+public class LSTMGroupTests {
+
+    class SimpleAllocator {
+
+        int _maxFeatures;
+        int _allocationIndex = 0;
+
+        public SimpleAllocator(int max){
+            _maxFeatures = max;
+        }
+        public FeatureModel getFeature(){
+            _allocationIndex++;
+            FeatureModel model = null;
+            if (_allocationIndex <= _maxFeatures){
+                model = new FeatureModel(10, 30, WorldModel.getFeatureLearningConfiguration());
+            }
+            return model;
+        }
+    }
+
+
+    final int[] baseTestInput = new int[]{5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+    final int baseTestRadiix = 10;
+
+    FeatureModel[] buffer = null;
+
+    @Test
+    public void testLearningSequence(){
+
+        String errorMessage = "failed to create network";
+        try
+        {
+            int[] rawInput = new int[]{5, 5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+            int inputNodeCode = 10;
+            int outputNodeCode = 10;
+            int numMemoryCellStates = 30;
+            int flags = 0;
+
+            LSTMNetworkProxy networkProxy = LSTMNetworkProxy.makeStandardBinarySequenceNetwork(inputNodeCode, numMemoryCellStates, flags);
+
+            LearningConfiguration context = getSimpleLearningConfiguration();
+
+            int subSequence = 5;
+
+            ArrayList<Vector> inputVector = convert(rawInput, inputNodeCode, subSequence);
+
+            errorMessage = "Failed to get input output spec";
+            ArrayList<Pair<Vector, Vector>> inputOutputSpec =  getInputOututSpec(inputVector);
+
+            errorMessage = "Failed to learn sequence";
+            IncrementalUpdateSpec result = simpleLearnSequence(networkProxy, inputOutputSpec, context);
+            ArrayList<Vector> extrapolated = null;
+            if (result.successCriteriaSatisfied()) {
+                errorMessage = "Failed to extrapolate output";
+                extrapolated = result.extrapolateRange();
+                int[] extrapolatedValue = vectorsToInts(extrapolated);
+                System.out.println("Successfully extrapolated: " + Arrays.toString(extrapolatedValue));
+            }
+            else {
+                System.out.println("Failed to extrapolate");
+            }
+
+        }
+        catch (Exception e){
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testStagedSequence(){
+
+        String errorMessage = "failed to create network";
+        try
+        {
+            int[] rawInput = new int[]{5, 5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+            int inputNodeCode = 10;
+            int outputNodeCode = 10;
+            int numMemoryCellStates = 30;
+            int flags = 0;
+
+            LSTMNetworkProxy networkProxy = LSTMNetworkProxy.makeStandardBinarySequenceNetwork(inputNodeCode, numMemoryCellStates, flags);
+
+            LearningConfiguration context = getSimpleLearningConfiguration();
+
+            int maxLength = 7;
+
+            for (int subSequence = 2; subSequence < maxLength; subSequence++){
+                ArrayList<Vector> inputVector = convert(rawInput, inputNodeCode, subSequence);
+                int[] original = vectorsToInts(inputVector);
+                System.out.println("Trying to learn: " + Arrays.toString(original));
+                errorMessage = "Failed to get input output spec";
+                ArrayList<Pair<Vector, Vector>> inputOutputSpec =  getInputOututSpec(inputVector);
+
+                errorMessage = "Failed to learn sequence";
+                IncrementalUpdateSpec result = simpleLearnSequence(networkProxy, inputOutputSpec, context);
+                ArrayList<Vector> extrapolated = null;
+                if (result.successCriteriaSatisfied()) {
+                    errorMessage = "Failed to extrapolate output";
+                    extrapolated = result.extrapolateRange(true);
+                    int[] extrapolatedValues= vectorsToInts(extrapolated);
+
+                    errorMessage = "Failed to extrapolate correct output length: expected " + original.length +" but found: " + extrapolatedValues.length;
+                    Assert.assertTrue(errorMessage, extrapolatedValues.length == original.length);
+                    for (int j = 0;j<extrapolatedValues.length;j++){
+                        errorMessage = "Failed to learn: x[" + j +"] = " + original[j];
+                        Assert.assertTrue(errorMessage, original[j] == extrapolatedValues[j]);
+                    }
+                    System.out.println("Successfully extrapolated: " + Arrays.toString(extrapolatedValues));
+                }
+                else {
+                    System.out.println("Failed to extrapolate: " + Arrays.toString(original));
+                }
+
+            }
+        }
+        catch (Exception e){
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testIncrementalLearning(){
+        String errorMessage = "failed to create network";
+        try
+        {
+            errorMessage = "Failed to create feature model";
+            int[] rawInput = new int[]{5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+            int inputNodeCode = 10;
+            int numMemoryCellStates = 30;
+
+            int bufferSize = 10;
+
+            buffer = new FeatureModel[bufferSize];
+
+
+            FeatureModel model = new FeatureModel(inputNodeCode, numMemoryCellStates, getSimpleLearningConfiguration().setMaxIterations(2000).setDebugLevel(0));
+
+            for (int i = 0; i < rawInput.length;i++){
+                ArrayList<Vector> inputVector = convert(rawInput, inputNodeCode, i+1);
+                int[] original = vectorsToInts(inputVector);
+                System.out.println("Original: " + Arrays.toString(original));
+
+                Vector input = intToTallyVector(rawInput[i], 10);
+                errorMessage = "Failed to process: " + rawInput[i];
+                model.processNextInput(input);
+                ArrayList<Vector> extrapolated = model.extrapFeature();
+                int[] output = vectorsToInts(extrapolated);
+                System.out.println("(" + i + ") Partial: " + Arrays.toString(output));
+
+                if (model.isComplete()){
+                    System.out.println("Finished.  Validation skipped.  Couldn't learn: " + Arrays.toString(original));
+                    break;
+                }
+                else {
+                    errorMessage = "Failed to extrapolate correct length: expected " + original.length + " but found: " + output.length;
+                    Assert.assertTrue(errorMessage, output.length == original.length);
+                    for (int j = 0; j<original.length;j++){
+                        errorMessage = "Failed to learn value: (" + j + ") " + original[j] + " found: " + output[j];
+                        Assert.assertTrue(errorMessage, output[j] == original[j]);
+                    }
+                }
+            }
+
+            errorMessage = "failed to extrapolate feature";
+            ArrayList<Vector> extrapolated = model.extrapFeature();
+            int[] output = vectorsToInts(extrapolated);
+            System.out.println("Final output: " + Arrays.toString(output));
+
+        }
+        catch (Exception e){
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    private ArrayList<Vector> trainFeature(FeatureModel model, ArrayList<Vector> base, int minRequiredLength){
+        model.forceInitialState();
+        LearningConfiguration originalConfig = model.getConfiguration();
+        LearningConfiguration unlimitedConfig = originalConfig.getUnlimitedConfiguration();
+        model.setConfiguration(unlimitedConfig);
+
+        for (Vector input:base) {
+            System.out.println("Learning: " + tallyVectorToInteger(input.rawFloat()));
+            if (!model.isComplete()){
+                if (model.getFeatureLength() > minRequiredLength){
+                    System.out.println("Switching to constrained learning");
+                    model.setConfiguration(originalConfig);
+                }
+                model.processNextInput(input);
+            }
+            else
+                break;
+        }
+        return model.extrapFeature();
+    }
+
+    private int[] getRandomTestInput(int size, Integer radiix, Long seed){
+        if (radiix == null){
+            return baseTestInput;
+        }
+        int[] out = new int[size];
+        if (seed != 0)
+            FastLSTMNetwork.setSeed(seed);
+        for (int i = 0; i < size;i++){
+            double ran;
+            if (seed != 0 )
+                ran = FastLSTMNetwork.randomLCG();
+            else
+                ran = Math.random();
+            out[i] = (int)(ran*radiix);
+        }
+        return out;
+    }
+
+    @Test
+    public void testExtrapolation(){
+        String errorMessage = "";
+
+        try
+        {
+            errorMessage = "Failed to create feature model";
+
+            long seed = System.currentTimeMillis();
+            int radiix = 10;
+            int size = 25;
+            int prefixSize = 3;
+            System.out.println("trying prefix extrapolation with seed [" + seed + "] and radiix " + radiix);
+
+            int[] rawInput = getRandomTestInput(size,radiix,  seed);
+
+            System.out.println("Trying to learn: " + Arrays.toString(rawInput));
+            int inputNodeCode = 10;
+            int numMemoryCellStates = 30;
+
+            FeatureModel model = new FeatureModel(inputNodeCode, numMemoryCellStates, WorldModel.getFeatureLearningConfiguration().setDebugLevel(0));
+
+            errorMessage = "Failed to learn any of " + Arrays.toString(rawInput);
+
+            ArrayList<Vector> learned = trainFeature(model, convert(rawInput, 10), 2*prefixSize);
+
+            int[] output = vectorsToInts(learned);
+            System.out.println("Feature consists of: " + Arrays.toString(output));
+
+            if (output.length > 2 * prefixSize){
+                int[] drivingInput = getSuffix(output, prefixSize);
+                System.out.println("Trying to continue pattern: " + Arrays.toString(drivingInput));
+                errorMessage = "Failed to reset recognition";
+                model.resetRecognition();
+                int driveIndex = 0;
+                for (int i = 0; i < drivingInput.length;i++){
+                    errorMessage = "Failed to extrapolate from " + drivingInput[i];
+                    Vector input = intToTallyVector(drivingInput[i], radiix);
+
+                    Vector predictedOutput = model.getPredictedOutput();
+                    if (driveIndex > prefixSize){
+                        System.out.println("Expect match with: [" + drivingInput[i] +" -> " + tallyVectorToInteger(predictedOutput.rawFloat()) + "] " + model.getDistanceToFinalState());
+                    }
+                    else {
+                        System.out.println("Driving model with: [" + drivingInput[i] + " -> " + tallyVectorToInteger(predictedOutput.rawFloat()) + "] "+ model.getDistanceToFinalState());
+                    }
+
+                    FeatureModel.STATE out = model.processNextInput(input);
+
+                    errorMessage = "Failed to start recognizing pattern after  " + driveIndex + " steps.";
+                    //Assert.assertTrue(errorMessage, (driveIndex < prefixSize) || out == FeatureModel.STATE.MATCHING);
+                    driveIndex++;
+                }
+            }
+            else {
+                System.out.println("Insufficient learning");
+            }
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testLimitedFeatures(){
+
+        String errorMessage = "failed to create FeatureModel";
+        try
+        {
+            errorMessage = "Failed to create feature model";
+            int[] rawInput = new int[]{5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+            int inputNodeCode = 10;
+            int numMemoryCellStates = 30;
+            FeatureModel model = new FeatureModel(inputNodeCode, numMemoryCellStates, WorldModel.getFeatureLearningConfiguration().getUnlimitedConfiguration().setDebugLevel(0).addAllowedDebugTag("FINISHED"));
+            int bufferSize = 5;
+
+            for (int i = 0; i < rawInput.length;i++){
+                Vector input = intToTallyVector(rawInput[i], inputNodeCode);
+                if (model.getFeatureLength() == bufferSize){
+                    System.out.println("Shifing");
+                    errorMessage = "Failed to shift model forward";
+                    model.shiftForward();
+                }
+
+                errorMessage = "Failed to process: " + rawInput[i];
+                model.processNextInput(input);
+                errorMessage = "Failed to extrapolate model";
+                ArrayList<Vector> out = model.extrapFeature();
+                System.out.println("Learned: " + Arrays.toString(vectorsToInts(out)));
+            }
+
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testLearningLongSequences(){
+        String errorMessage = "Failed to create simple allocator";
+        try
+        {
+
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+            int maxBufferSize = 20;
+            SimpleAllocator allocator = new SimpleAllocator(maxBufferSize);
+
+            long seed = System.currentTimeMillis();
+            int radiix = 10;
+            int size = 25;
+            System.out.println("trying prefix extrapolation with seed [" + seed + "] and radiix " + radiix);
+
+            int[] rawInput = getRandomTestInput(size,radiix,  seed);
+
+            LearningConfiguration baseConfig = WorldModel.getFeatureLearningConfiguration().setDebugLevel(0).addAllowedDebugTag("FINISHED");
+            LearningConfiguration currentUnlimitedConfig =baseConfig.getUnlimitedConfiguration();
+            LearningConfiguration bufferUnlimitedConfig = baseConfig.getUnlimitedConfiguration();
+
+            // Initialization of the current and buffer models
+            FeatureModel currentModel = allocator.getFeature();
+            currentModel.setConfiguration(currentUnlimitedConfig);
+
+            FeatureModel bufferModel = allocator.getFeature();
+            bufferModel.setConfiguration(bufferUnlimitedConfig);
+
+            ArrayList<FeatureModel> completedFeatures = new ArrayList<FeatureModel>();
+
+            for (int i = 0; i < rawInput.length; i++){
+                Vector input = intToTallyVector(rawInput[i], radiix);
+                System.out.println("learning: " + rawInput[i]);
+
+                if (currentModel == null){
+                    System.out.println("Finished due to feature allocator exhaustion");
+                    break;
+                }
+
+                if (currentModel.getFeatureLength() >= featureBufferSize + minimumBufferOverlap){
+                    System.out.println("Extending current model: " + currentModel.getFeatureLength());
+                    currentModel.setConfiguration(baseConfig );
+                }
+                else {
+                    currentModel.setConfiguration(currentUnlimitedConfig);
+                }
+
+                if (bufferModel != null &&  bufferModel.getFeatureLength() == featureBufferSize){
+                    bufferModel.shiftForward();
+                }
+
+                currentModel.processNextInput(input);
+                if (bufferModel != null) {
+                    bufferModel.processNextInput(input);
+                }
+
+                if (currentModel.isComplete()){
+                    completedFeatures.add(currentModel);
+                    //FeatureModel temp = bufferModel;
+                    currentModel = bufferModel;
+
+                    bufferModel = allocator.getFeature();
+                    bufferModel.setConfiguration(baseConfig.getUnlimitedConfiguration());
+                }
+            }
+
+            if (currentModel != null){
+                completedFeatures.add(currentModel);
+            }
+
+
+            System.out.println("Results of: " + Arrays.toString(rawInput));
+            for (FeatureModel learnedModel:completedFeatures){
+                System.out.println("" + Arrays.toString(vectorsToInts(learnedModel.extrapFeature())));
+            }
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testLearningLongSequencesInGroups(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 20;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            int radiix = 10;
+
+            //int[] rawInput = getRandomTestInput(size,radiix,  seed);
+            int[] rawInput = new int[]{5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+            System.out.println("trying prefix extrapolation with seed [" + seed + "] and radiix " + radiix + " resulting in: " + Arrays.toString(rawInput));
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, WorldModel.getFeatureLearningConfiguration());
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            int j = 0;
+            for (int i = 0; i < rawInput.length; i++){
+                Vector input = intToTallyVector(rawInput[i], radiix);
+
+                errorMessage = "Failed to process input " + rawInput[i];
+                System.out.println("learned: " + rawInput[i]);
+
+                // Step (3) process all group types that you want
+                ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                Assert.assertTrue(errorMessage, results.size() == 1);
+                WorldModel.GroupSpecification result = results.get(0);
+                j = 0;
+                errorMessage = "Failed to get all features";
+                ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                for (FeatureModel feature: existingModels){
+
+                    System.out.println("" + j + ") " + feature.toString());
+                    j++;
+                }
+            }
+
+            errorMessage = "Failed to assert boundary";
+
+            world.assertBoundary(DEFAULT_TYPE);
+            DEFAULT_GROUP.setMode(Group.MODE.EXTRAPOLATION);
+
+            errorMessage = "Failed to obtain all features";
+            // Step (4) view all features, ordered
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Finished learning: " + Arrays.toString(rawInput));
+            System.out.println("Feature learned data:");
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+
+                if (feature.isComplete()){
+                    System.out.println("" + j + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + j + ") " + feature);
+                }
+
+                j++;
+            }
+
+            world.assertBoundary(DEFAULT_TYPE);
+            errorMessage = "Failed to get sorted features";
+
+            existingModels = DEFAULT_GROUP.getOrderedFeatures();
+            System.out.println("_.<>._.<>._.<>._.<>._.<>._.<>._.<>._.<>._.<>._");
+            String featurestring = null;
+            for (int i = 0; i < rawInput.length; i++){
+                Vector input = intToTallyVector(rawInput[i], radiix);
+
+                errorMessage = "Failed to extrapolate input " + rawInput[i];
+                System.out.println("************************");
+                System.out.println("Trying to predict: " + rawInput[i]);
+                j = 0;
+
+                for (FeatureModel feature: existingModels){
+                    featurestring = "(" + feature.getMetaData() + ") " + feature.toString();
+                    if (feature.isComplete()){
+                        featurestring+= " -> " + tallyVectorToInteger(NNTools.roundToInt(feature.getPredictedOutput().rawFloat()));
+                    }
+                    System.out.println(featurestring);
+                    j++;
+                }
+
+                world.processNextInput(input, DEFAULT_GROUP);
+                existingModels = DEFAULT_GROUP.getOrderedFeatures();
+            }
+
+            System.out.println("overall preference: " + Arrays.toString(DEFAULT_GROUP.getPreference()));
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testLearningLongPeriodicSequencesUntilExhaustion(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 20;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528643029020L;
+
+            boolean useSeed = true;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 18;
+
+            boolean useDefaultPattern = false;
+            int[] rawInput = null;
+            if (useDefaultPattern)
+            {
+                rawInput = new int[]{5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+                System.out.println("Using default input: " + Arrays.toString(rawInput));
+            }
+            else
+            {
+                rawInput = getRandomTestInput(size, radiix, seed);
+                System.out.println("trying extrapolation with seed [" + seed + "] and radiix " + radiix + " resulting in: " + Arrays.toString(rawInput));
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setBoundaryOnOvertime(true);
+            DEFAULT_GROUP.setLearningBoundaryMultiple(6);
+            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+
+            int j = 0;
+
+            int testIndex = 0;
+            outer: for (int repCount = 0; repCount < numCycles; repCount++){
+                System.out.println("<o><o><o><o><o> Starting Step (" + (1 + repCount) + ") <o><o><o><o><o><o><o>");
+
+                for (int i = 0; i < rawInput.length; i++){
+                    testIndex++;
+                    Vector input = intToTallyVector(rawInput[i], radiix);
+
+                    errorMessage = "Failed to process input " + rawInput[i];
+                    System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[i]);
+
+                    // Step (3) process all group types that you want
+                    ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                    errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                    Assert.assertTrue(errorMessage, results.size() == 1);
+                    WorldModel.GroupSpecification result = results.get(0);
+                    j = 0;
+                    errorMessage = "Failed to get all features";
+                    ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                    for (FeatureModel feature: existingModels){
+
+                        System.out.println("" + j + ") " + feature.toString());
+                        j++;
+                    }
+
+                    if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                        System.out.println("......................................");
+                        System.out.println("Memory allocation exhausted, finished");
+                        System.out.println("......................................");
+                        break outer;
+                    }
+                }
+
+            }
+
+            errorMessage = "Failed to assert boundary";
+
+            world.assertBoundary(DEFAULT_TYPE);
+            DEFAULT_GROUP.setMode(Group.MODE.EXTRAPOLATION);
+
+            errorMessage = "Failed to obtain all features";
+            // Step (4) view all features
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Finished learning: " + Arrays.toString(rawInput));
+            System.out.println("Feature learned data:");
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            errorMessage = "Failed to allocate expected size.  Expected " + maxAllocation + " but found: " + existingModels.size();
+            Assert.assertTrue(errorMessage, maxAllocation == existingModels.size());
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+
+                if (feature.isComplete()){
+                    System.out.println("" + j + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + j + ") " + feature);
+                }
+
+                j++;
+            }
+
+            /*
+            world.assertBoundary(DEFAULT_TYPE);
+            errorMessage = "Failed to get sorted features";
+
+            existingModels = DEFAULT_GROUP.getOrderedFeatures();
+            System.out.println("_.<>._.<>._.<>._.<>._.<>._.<>._.<>._.<>._.<>._");
+            String featurestring = null;
+            for (int i = 0; i < rawInput.length; i++){
+                Vector input = intToTallyVector(rawInput[i], radiix);
+
+                errorMessage = "Failed to extrapolate input " + rawInput[i];
+                System.out.println("************************");
+                System.out.println("Trying to predict: " + rawInput[i]);
+                j = 0;
+
+                for (FeatureModel feature: existingModels){
+                    featurestring = "(" + feature.getMetaData() + ") " + feature.toString();
+                    if (feature.isComplete()){
+                        featurestring+= " -> " + tallyVectorToInteger(NNTools.roundToInt(feature.getPredictedOutput().rawFloat()));
+                    }
+                    System.out.println(featurestring);
+                    j++;
+                }
+
+                world.processNextInput(input, DEFAULT_GROUP);
+                existingModels = DEFAULT_GROUP.getOrderedFeatures();
+            }
+
+            System.out.println("overall preference: " + Arrays.toString(DEFAULT_GROUP.getPreference()));
+            */
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testLearningLongPeriodicSequencesWithDreaming(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 20;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528643029020L;
+
+            boolean useSeed = true;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 18;
+
+            boolean useDefaultPattern = false;
+            int[] rawInput = null;
+            if (useDefaultPattern)
+            {
+                rawInput = new int[]{5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 2, 2, 3, 6, 10, 10, 5, 3};
+                System.out.println("Using default input: " + Arrays.toString(rawInput));
+            }
+            else
+            {
+                rawInput = getRandomTestInput(size, radiix, seed);
+                System.out.println("trying extrapolation with seed [" + seed + "] and radiix " + radiix + " resulting in: " + Arrays.toString(rawInput));
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setDebugEnabled(false);
+            DEFAULT_GROUP.setBoundaryOnOvertime(true);
+            DEFAULT_GROUP.setLearningBoundaryMultiple(6);
+            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+
+            int j = 0;
+
+            int testIndex = 0;
+            outer: for (int repCount = 0; repCount < numCycles; repCount++){
+                System.out.println("<o><o><o><o><o> Starting Step (" + (1 + repCount) + ") <o><o><o><o><o><o><o>");
+
+                for (int i = 0; i < rawInput.length; i++){
+                    testIndex++;
+                    Vector input = intToTallyVector(rawInput[i], radiix);
+
+                    errorMessage = "Failed to process input " + rawInput[i];
+                    System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[i]);
+
+                    // Step (3) process all group types that you want
+                    ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                    errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                    Assert.assertTrue(errorMessage, results.size() == 1);
+                    WorldModel.GroupSpecification result = results.get(0);
+                    j = 0;
+                    errorMessage = "Failed to get all features";
+                    ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                    for (FeatureModel feature: existingModels){
+
+                        System.out.println("" + j + ") " + feature.toString());
+                        j++;
+                    }
+
+                    if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                        System.out.println("......................................");
+                        System.out.println("Memory allocation exhausted, finished");
+                        System.out.println("......................................");
+                        break outer;
+                    }
+                }
+
+            }
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+
+            errorMessage = "Failed to dream";
+
+            Group.DreamSpec dreamedResults = DEFAULT_GROUP.dream();
+            HashMap<Integer, Group.FeatureValueMetadata> prefs = DEFAULT_GROUP.getPreferenceMap();
+
+            System.out.println("[oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo]");
+            System.out.println("Final preferences");
+            System.out.println("Data: " + Arrays.toString(rawInput));
+            int i = 0;
+            for (Integer index:DEFAULT_GROUP.getPreference()){
+                FeatureModel model = DEFAULT_GROUP.getFeature(index);
+                System.out.println("(" + i + ") *" + prefs.get(index) + "* " + model.toString() + " " + model.displayExtrapolatedFeature());
+                i++;
+            }
+
+            System.out.println("Dream sequence: " + dreamedResults.getDreamedValue());
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testLearningLongPeriodicSequencesWithDreamingAndClustering(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 30;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528684442328L;
+
+            boolean useSeed = true;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 70;
+
+            int numClusters = 2;
+
+            int[][] rawInput = new int[numClusters][size];
+
+            for (int i = 0; i < numClusters;i++){
+                rawInput[i] = getRandomTestInput(size, radiix, seed);
+                seed++;
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setDebugEnabled(false);
+            DEFAULT_GROUP.setBoundaryOnOvertime(true);
+            DEFAULT_GROUP.setLearningBoundaryMultiple(10);
+            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+
+            int j = 0;
+
+            int testIndex = 0;
+
+            outer: for (j = 0;j<numCycles;j++){
+                if (j > 50){
+                    DEFAULT_GROUP.setMemoryManagement(false);
+                }
+                for (int clusterIndex = numClusters-1; clusterIndex >=0; clusterIndex--){
+                    System.out.println("<o><o><o><o><o><o><o><o><o><o><o><o>");
+                    System.out.println("Learning cluster (" + (1 + clusterIndex) + "): " + Arrays.toString(rawInput[clusterIndex]));
+
+                    for (int k = 0;k < 2;k++){
+                        for (int i = 0; i < rawInput[clusterIndex].length; i++){
+                            testIndex++;
+                            Vector input = intToTallyVector(rawInput[clusterIndex][i], radiix);
+
+                            errorMessage = "Failed to process input " + rawInput[clusterIndex][i];
+                            System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[clusterIndex][i]);
+
+                            // Step (3) process all group types that you want
+                            ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                            errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                            Assert.assertTrue(errorMessage, results.size() == 1);
+                            WorldModel.GroupSpecification result = results.get(0);
+                            j = 0;
+                            errorMessage = "Failed to get all features";
+                            ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                            for (FeatureModel feature: existingModels){
+
+                                System.out.println("" + j + ") " + feature.toString());
+                                j++;
+                            }
+
+                            if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                                System.out.println("......................................");
+                                System.out.println("Memory allocation exhausted, finished");
+                                System.out.println("......................................");
+                                break outer;
+                            }
+                        }
+                    }
+
+                    DEFAULT_GROUP.resetAll(false);
+                }
+            }
+
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+
+            errorMessage = "Failed to dream";
+
+            Group.DreamSpec dreamedResults = DEFAULT_GROUP.dream();
+            final HashMap<Integer, Group.FeatureValueMetadata> prefs = dreamedResults.getDreamPreferences();
+
+            System.out.println("[oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo]");
+            System.out.println("Final preferences");
+            for (int cIndex = 0;cIndex < numClusters;cIndex++){
+                System.out.println("Seed: " + seed +  " O-~~ O-~~ O-~~ O-~~ O-~~ O-~~ O-~~ O-~~ O-~~");
+                System.out.println("Input: " + (cIndex + 1) + Arrays.toString(rawInput[cIndex]));
+            }
+
+            boolean sortByUsageP = false;
+
+            final HashMap<Integer, Integer> dreams = dreamedResults.getSelectionCountMap();
+            double totalCount = 0;
+            for (Map.Entry<Integer, Integer> e:dreams.entrySet()){
+                totalCount+=e.getValue();
+            }
+
+            Integer[] keys = dreams.keySet().toArray(new Integer[0]);
+
+            Comparator<Integer> usageComparator = new Comparator<Integer>() {
+                @Override
+                public int compare(Integer left, Integer right)
+                {
+                    return Double.compare(dreams.get(right), dreams.get(left));
+                }
+            };
+
+            Comparator<Integer> prefComparator = new Comparator<Integer>() {
+                @Override
+                public int compare(Integer left, Integer right)
+                {
+                    return Double.compare(prefs.get(right).getPreferenceFraction(), prefs.get(left).getPreferenceFraction());
+                }
+            };
+
+            if (sortByUsageP)
+                Arrays.sort(keys, usageComparator);
+            else
+                Arrays.sort(keys, prefComparator);
+
+            int i = 0;
+            for (Integer index:keys){
+                FeatureModel model = DEFAULT_GROUP.getFeature(index);
+                Group.FeatureMetaData meta = (Group.FeatureMetaData)model.getMetaData();
+                int dreamCount = dreams.get(Integer.valueOf(meta.getAllocationIndex()));
+                String format = "< %1$d : %2$d%%> (" + index + ") *" + prefs.get(index) + "* " + model.toString() + " " + model.displayExtrapolatedFeature();
+                System.out.println(String.format(format, dreamCount, (int)(dreamCount/totalCount*100)));
+                i++;
+            }
+
+
+            System.out.println("Dreams: " + dreams);
+            System.out.println("Dream sequence: " + dreamedResults.getDreamedValue());
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testLearningUnlimitedSequencesWithDreamingAndClustering(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 30;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528684442328L;
+
+            boolean useSeed = true;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 40;
+
+            int numClusters = 2;
+
+            int[][] rawInput = new int[numClusters][size];
+
+            for (int i = 0; i < numClusters;i++){
+                rawInput[i] = getRandomTestInput(size, radiix, seed);
+                seed++;
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setDreamToFreeMemory(true);
+            DEFAULT_GROUP.setDebugEnabled(false);
+            DEFAULT_GROUP.setBoundaryOnOvertime(true);
+            DEFAULT_GROUP.setLearningBoundaryMultiple(10);
+            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+            DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+
+            ArrayList<String> recycledNames = new ArrayList<String>();
+            Group.MemoryManagementListener managementListener = new Group.MemoryManagementListener() {
+                @Override
+                public void onStartMemoryManagement(int totalAllocation)
+                {
+                    System.out.println(".i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.");
+                    System.out.println("Staring memory management: total allocation: " + totalAllocation);
+                }
+
+                @Override
+                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                {
+                    System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
+                    System.out.println("Finished memory managements");
+                    System.out.println("Recycled: " + recycled);
+                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft());
+                    });
+                }
+            };
+
+            DEFAULT_GROUP.setMemoryListener(managementListener);
+
+
+            int j = 0;
+
+            int testIndex = 0;
+
+            int loopCount = 1;
+            outer: for (int kk = 0;kk<numCycles;kk++){
+                if (kk > 30){
+                    DEFAULT_GROUP.setMemoryManagement(false);
+                }
+                for (int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++){
+                    System.out.println("<o><o><o><o><o><o><o><o><o><o><o><o>");
+                    System.out.println("Learning cluster (" + (1 + clusterIndex) + "): " + Arrays.toString(rawInput[clusterIndex]));
+
+                    for (int k = 0;k < loopCount;k++){
+                        for (int i = 0; i < rawInput[clusterIndex].length; i++){
+                            testIndex++;
+                            Vector input = intToTallyVector(rawInput[clusterIndex][i], radiix);
+
+                            errorMessage = "Failed to process input " + rawInput[clusterIndex][i];
+                            System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[clusterIndex][i]);
+
+                            // Step (3) process all group types that you want
+                            ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                            errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                            Assert.assertTrue(errorMessage, results.size() == 1);
+                            WorldModel.GroupSpecification result = results.get(0);
+                            j = 0;
+                            errorMessage = "Failed to get all features";
+                            ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                            for (FeatureModel feature: existingModels){
+
+                                System.out.println("" + j + ") " + feature.toString());
+                                j++;
+                            }
+
+                            if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                                System.out.println("......................................");
+                                System.out.println("Memory allocation exhausted, finished");
+                                System.out.println("......................................");
+                                break outer;
+                            }
+                        }
+                    }
+
+                    DEFAULT_GROUP.resetAll(false);
+                }
+            }
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    int[] vectorsToInts(Vector[] in){
+        int[] out = new int[in.length];
+
+        for (int i = 0; i < out.length;i++){
+            out[i] = tallyVectorToInteger(in[i].rawFloat());
+        }
+        return out;
+    }
+
+    int[] vectorsToInts(ArrayList<Vector> in){
+        return vectorsToInts(in.toArray(new Vector[0]));
+    }
+
+    ArrayList<Vector> convert(int[] base, int radiix, int max){
+        ArrayList<Vector> out = new ArrayList<>();
+
+        for (int i = 0;i< Math.min(base.length, max);i++){
+            out.add(intToTallyVector(base[i], radiix));
+        }
+        return out;
+    }
+
+    int[] getSuffix(int[] base, int suffixLength){
+        int[] out = new int[base.length - suffixLength];
+        for (int i = suffixLength;i < base.length;i++){
+            out[i -  suffixLength] = base[i];
+        }
+        return out;
+    }
+
+    ArrayList<Vector> convert(int[] base, int radiix){
+        return convert(base, radiix, base.length);
+    }
+
+
+    Vector intToTallyVector(int value, int radiix){
+        float[] out = new float[radiix];
+        for (int i = 1; i <= radiix;i++)
+        {
+            if (i <= value)
+            {
+                out[i - 1] = 1F;
+            }
+        }
+
+        return new Vector(out);
+    }
+
+    public Integer tallyVectorToInteger(float[] value){
+        int radiix = value.length;
+
+        Integer out = null;
+        int j = 0;
+        boolean zeros = false;
+        for (int i = 0; i < radiix;i++){
+            if (value[i] == 1.0F){
+                if (zeros)
+                    return null;
+                j++;
+            }
+            else {
+                zeros = true;
+            }
+        }
+        return j;
+    }
+
+
+
+
+
+    public LearningConfiguration getSimpleLearningConfiguration(){
+        LearningConfiguration configuration = new LearningConfiguration();
+        configuration.set(LearningConfiguration.KEY.ANNEALING_FRACTION, Double.valueOf(0.1F));
+        configuration.set(LearningConfiguration.KEY.BEST_SOLUTION_BONUS_MILLI, Integer.valueOf(1000));
+        configuration.set(LearningConfiguration.KEY.NUM_SOLUTION_BUFFER, Integer.valueOf(5));
+        configuration.set(LearningConfiguration.KEY.INITIAL_RANDOM_FRACTION, Float.valueOf(0.5F));
+        //configuration.set(LearningConfiguration.KEY.MAX_ITERATIONS, Integer.valueOf(3000));
+        //configuration.set(LearningConfiguration.KEY.BEST_SOLUTION_BONUS_ITERATIONS, Integer.valueOf(400));
+        return configuration;
+    }
+
+    public String dateParts(){
+        Calendar calendar = Calendar.getInstance();
+        int year = calendar.get(Calendar.YEAR);
+        int month = calendar.get(Calendar.MONTH);
+        int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+        int dayOfYear = calendar.get(Calendar.DAY_OF_YEAR);
+        int hourOfDay = calendar.get(Calendar.HOUR_OF_DAY);
+        int hourAMPM = calendar.get(Calendar.HOUR);
+        int am_pm = calendar.get(Calendar.AM_PM);
+        String am_pm_label;
+        if (am_pm == Calendar.AM)
+            am_pm_label = "AM";
+        else
+            am_pm_label = "PM";
+        int minute = calendar.get(Calendar.MINUTE);
+        int second = calendar.get(Calendar.SECOND);
+        int millisecond = calendar.get(Calendar.MILLISECOND);
+
+        return String.format("%d/%d/%d:%d:%d:%d", year, month, dayOfMonth, hourOfDay, minute, second, millisecond);
+    }
+
+    public void debug(String tag, String text) {
+        String log = String.format("%s [%s] - %s", dateParts(), tag, text);
+        System.out.println(log);
+    }
+
+    public IncrementalUpdateSpec simpleLearnSequence(LSTMNetworkProxy network, ArrayList<Pair<Vector, Vector>> inputOutputSpec, LearningConfiguration configuration){
+        String message = null;
+        long startTime = System.currentTimeMillis();
+        long stopTime = 0;
+        Integer maxDuration = null;
+        if (configuration.hasMaxDuration()) {
+            maxDuration = configuration.getMaxDurationMilli();
+            stopTime = startTime + maxDuration;
+        }
+
+        if (configuration.initialRandomFraction() != null)
+            network.randomizeNetworkWeights(configuration.initialRandomFraction());
+
+        double randomFraction = 1;
+        double minRandomFraction = 0.05;
+        double maxRandomFraction = 1;
+
+        double convergenceThreshold = 0.00001;
+        double successFraction = 0;
+        double previousSequenceError = 0;
+        boolean finishedP = false;
+        int i = 0;
+        // TODO: initialize this from prior steps provided in configuration
+        int baseImprovementIndex = 0;
+        int highestSegmentMatchCount = 0;
+        int segmentMatchCount = 0;
+        int numInputOutputPairs = inputOutputSpec.size();
+        int newSolutionFailureCount = 0;
+
+        int maxFailureCount = 0;
+        boolean isFirstPair = true;
+        boolean isLastPair = true;
+        boolean firstPairMatchedP = false;
+        boolean lastPairMatchedP = false;
+        boolean allSegmentsMatchedP = false;
+        boolean roundErrorsP = false;
+        boolean hasPreviousSequenceError = false;
+        boolean isValidP = false;
+        boolean isSuccessCriteriaSatisfiedP = false;
+
+        // TODO: initialize this from configuration
+        int solutionIndex = 0;
+        int improvementIndex = 0;
+        int resetWidth = 50;
+        if (configuration.getFailureIterations() != null){
+            resetWidth = configuration.getFailureIterations();
+        }
+
+        Integer maxIterations = configuration.getMaxIterations();
+
+        // TODO: make this part of configuration
+        boolean chooseRandomlyAmongstViableSolutionsP = false;
+        boolean currentNetworkIsBestP = false;
+        Integer bestSolutionBufferSize = configuration.getBestSolutionBufferSize();
+        if (bestSolutionBufferSize == null)
+            bestSolutionBufferSize = 1;
+
+        LSTMNetworkProxy currentNetwork = network;
+        ArrayList<IncrementalUpdateSpec> bestNetworks = new ArrayList<IncrementalUpdateSpec>();
+        ArrayList<Integer> annealingCountList = new ArrayList<Integer>();
+
+        IncrementalUpdateSpec bestUpdateSpec = null, lastValidUpdateSpec = null;
+        double lastValidMatchFraction = 0;
+
+        while (!finishedP &&
+                (!configuration.hasMaxDuration() || (System.currentTimeMillis() < stopTime)) &&
+                (!configuration.hasMaxIterations() || i < maxIterations))
+        {
+
+            Double sequenceError = null;
+            Double pairError = null;
+            allSegmentsMatchedP = true;
+            lastPairMatchedP = false;
+            LSTMNetworkProxy.NodeState initialState = null, temp;
+            LSTMNetworkProxy.NodeState finalState = null;
+
+            currentNetwork.resetNetworkToInitialState();
+
+            // Process all segments of the input sequence
+            int j = 0;
+            for (Pair<Vector, Vector> inputOutputPair:inputOutputSpec) {
+                float[] input = inputOutputPair.getLeft().rawFloat();
+                float[] expectedOutput = inputOutputPair.getRight().rawFloat();
+                isFirstPair = j == 0;
+                isLastPair = j == numInputOutputPairs - 1;
+
+                currentNetwork.executeForwardPass(input);
+
+                if (isFirstPair) {
+                    initialState =  currentNetwork.getCurrentNodeState();
+                }
+
+                if (isLastPair) {
+                    finalState =  currentNetwork.getCurrentNodeState();
+                }
+
+                pairError = Double.valueOf(currentNetwork.getOutputError(expectedOutput, false, false, true));
+
+                debug("FORWARD-PASS", "Errors: " + pairError);
+                if (sequenceError == null) {
+                    sequenceError = pairError;
+                }
+                else {
+                    sequenceError = Math.max(sequenceError.doubleValue(), pairError.doubleValue());
+                }
+
+                float[] predictedOutput = currentNetwork.getOutputVaues();
+
+                if (roundedEquals(predictedOutput, expectedOutput)) {
+                    segmentMatchCount++;
+                    if (isFirstPair) {
+                        firstPairMatchedP = true;
+                    }
+
+                    if (isLastPair) {
+                        lastPairMatchedP = true;
+                    }
+
+                }
+                else {
+                    allSegmentsMatchedP = false;
+                }
+                j++;
+            }
+
+            // Now assess the current lstm's performance
+            if (allSegmentsMatchedP) {
+                debug("ALL-MATCH", "finished");
+                return new IncrementalUpdateSpec(true, true, currentNetwork, true, initialState, finalState, 1);
+            }
+
+            if ((currentNetworkIsBestP = highestSegmentMatchCount < segmentMatchCount) ||
+                    (bestSolutionBufferSize > bestNetworks.size() && firstPairMatchedP && highestSegmentMatchCount == segmentMatchCount)) {
+
+                // Handle case where current network is better than any previous
+                if (currentNetworkIsBestP) {
+                    bestNetworks = new ArrayList<>();
+                    highestSegmentMatchCount = segmentMatchCount;
+                    successFraction = 1.0*segmentMatchCount/numInputOutputPairs;
+
+                    boolean hasMaxIterationBonus = configuration.hasBestSolutionBonusIterations() && configuration.hasMaxIterations();
+                    boolean hasMaxDurationBonus = configuration.hasBestSolutionBonusMilli() && configuration.hasMaxDuration();
+
+                    boolean satisfiesLastPairCriteriaP = (lastPairMatchedP && configuration.requiresLastPairToMatch()) || !configuration.requiresLastPairToMatch();
+
+                    if (satisfiesLastPairCriteriaP &&
+                            !configuration.requiresCompleteMatchP() &&
+                            configuration.earlyStopSuccessFraction() <= successFraction) {
+                        if (hasMaxIterationBonus || hasMaxDurationBonus) {
+                            if (hasMaxIterationBonus) {
+                                maxIterations = i + maxIterations;
+                            }
+
+                            if (hasMaxDurationBonus) {
+                                stopTime = System.currentTimeMillis() + configuration.getBestSolutionBonusMilli();
+                            }
+                        }
+                        else {
+                            finishedP = true;
+                            debug("", "Early stop");
+                        }
+
+                    }
+                    else {
+                        if (hasMaxIterationBonus) {
+                            maxIterations = i + maxIterations;
+                        }
+
+                        if (hasMaxDurationBonus) {
+                            stopTime = System.currentTimeMillis() + configuration.getBestSolutionBonusMilli();
+                        }
+                    }
+                }
+
+                //
+
+                debug("ANOTHER-SOLUTION", "Found another solution after: " + (i - improvementIndex) + " steps");
+                newSolutionFailureCount = 0;
+                improvementIndex = i;
+
+                // ......................
+                // Booleans
+                isValidP = (lastPairMatchedP && configuration.requiresLastPairToMatch()) || bestNetworks.size() > 0;
+                configuration.setResultIsValid(isValidP);
+
+                isSuccessCriteriaSatisfiedP = isValidP &&
+                        (allSegmentsMatchedP ||
+                                (!configuration.requiresCompleteMatchP() &&
+                                        (successFraction >= configuration.earlyStopSuccessFraction()) &&
+                                        (!configuration.requiresLastPairToMatch() || lastPairMatchedP && configuration.requiresLastPairToMatch())));
+                // +++++++++++++++++++++
+
+
+                bestUpdateSpec = new IncrementalUpdateSpec(isValidP, isSuccessCriteriaSatisfiedP, currentNetwork, true, initialState, finalState, (float)successFraction);
+                bestNetworks.add(bestUpdateSpec);
+                annealingCountList.add(0);
+
+
+                if (lastPairMatchedP && configuration.requiresLastPairToMatch()) {
+                    debug("LAST-MATCH", "Found network satisfying last segment matching at " + successFraction);
+                    lastValidUpdateSpec = bestUpdateSpec;
+                    lastValidMatchFraction = successFraction;
+                }
+            }
+
+            // Weight adaptation
+
+            if (!finishedP) {
+                if (hasPreviousSequenceError) {
+                    // Not sure what roundErrorsP is for
+                    boolean networkHasConverged = roundErrorsP || Math.abs((sequenceError - previousSequenceError)/sequenceError) < convergenceThreshold;
+                    boolean tooLongSinceLastImprovement = ((i - improvementIndex) > resetWidth) && (i - baseImprovementIndex) > resetWidth;
+                    if (networkHasConverged || tooLongSinceLastImprovement) {
+                        int numBestSolutions = bestNetworks.size();
+                        // Select one of the set of good solutions and use this
+                        if (numBestSolutions > 0) {
+                            int selectedIndex;
+                            if (chooseRandomlyAmongstViableSolutionsP) {
+                                selectedIndex = (int)(numBestSolutions * Math.random());
+                            }
+                            else {
+                                selectedIndex = solutionIndex;
+                            }
+                            currentNetwork = LSTMNetworkProxy.duplicate(bestNetworks.get(selectedIndex).getNetwork());
+
+                            newSolutionFailureCount = annealingCountList.get(selectedIndex);
+
+                            annealingCountList.set(selectedIndex, newSolutionFailureCount + 1);
+
+                            if (configuration.hasAnnealingFraction()) {
+                                randomFraction = configuration.annealingFraction();
+                            }
+                            else {
+                                // TODO: Fix this.  Doesn't work.  Is supposed to decrease with a longer .
+                                // This else-clause is not supposed to decrease as newSolutionFailureCount increases
+                                randomFraction = Math.min(maxRandomFraction, (minRandomFraction + (newSolutionFailureCount * (maxRandomFraction - minRandomFraction)/maxRandomFraction)));
+                            }
+
+                        }
+                        else {
+                            if (configuration.hasAnnealingFraction()) {
+                                randomFraction = configuration.annealingFraction();
+                            }
+                            else
+                                randomFraction = 1;
+                        }
+
+                        currentNetwork.randomizeNetworkWeights((float)randomFraction);
+
+                        hasPreviousSequenceError = false;
+                        newSolutionFailureCount++;
+                        baseImprovementIndex = i;
+                    }
+                    else {
+                        currentNetwork.updateWeights(LSTMNetwork.WeightUpdateType.RPROP);
+                    }
+                }
+                else {
+                    hasPreviousSequenceError = true;
+                    currentNetwork.updateWeights(LSTMNetwork.WeightUpdateType.RPROP);
+                }
+            }
+
+            previousSequenceError = sequenceError;
+            i++;
+        }
+
+        long endTime = System.currentTimeMillis();
+        int seconds = (int)((endTime - startTime)/1000);
+
+        message = ((configuration.requiresLastPairToMatch() && lastPairMatchedP)?"Done satisfying last pair requirements after ":"Done after") +
+                seconds +
+                " seconds and " +
+                i +
+                " steps " +
+                ((lastPairMatchedP)?lastValidMatchFraction:successFraction);
+
+        debug("FINISHED", message);
+
+        configuration.wasSuccessCriteriaSatisfied(isSuccessCriteriaSatisfiedP);
+
+        int selectedIndex;
+        if (chooseRandomlyAmongstViableSolutionsP) {
+            selectedIndex = (int)(bestNetworks.size() * Math.random());
+        }
+        else {
+            selectedIndex = solutionIndex;
+        }
+
+        return bestNetworks.get(selectedIndex);
+    }
+
+    public static boolean roundedEquals(float[] first, float[] second) {
+        if (first.length != second.length)
+            return false;
+        for (int i = 0;i < first.length;i++)
+        {
+            if (roundToInt(first[i]) != roundToInt(second[i]))
+                return false;
+        }
+        return true;
+    }
+
+    public static ArrayList<Pair<Vector, Vector>> getInputOututSpec(Vector[] raw){
+        ArrayList<Pair<Vector, Vector>> output = new ArrayList<Pair<Vector, Vector>>();
+        for (int i = 0;i < raw.length - 1;i++){
+            output.add(Pair.of(raw[i], raw[i+1]));
+        }
+        return output;
+    }
+
+    public static ArrayList<Pair<Vector, Vector>> getInputOututSpec(ArrayList<Vector> raw){
+        Vector[] in = raw.toArray(new Vector[0]);
+
+        return getInputOututSpec(in);
+    }
+
+}
