@@ -448,6 +448,22 @@ public class FeatureModel {
         return mState == STATE.MATCHING || mState == STATE.NON_MATCHING;
     }
 
+    public boolean isBuilding(){
+        return mState == STATE.BUILDING;
+    }
+
+    public boolean isMatching(){
+        return mState == STATE.MATCHING;
+    }
+
+    public boolean isNonMatching(){
+        return mState == STATE.NON_MATCHING;
+    }
+
+    public boolean isFinished(){
+        return mState == STATE.NON_MATCHING;
+    }
+
     public STATE getState(){
         return mState;
     }
