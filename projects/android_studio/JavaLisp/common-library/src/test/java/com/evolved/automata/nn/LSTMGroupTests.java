@@ -460,6 +460,7 @@ public class LSTMGroupTests {
             WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, WorldModel.getFeatureLearningConfiguration());
 
             Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             int j = 0;
             for (int i = 0; i < rawInput.length; i++){
@@ -601,9 +602,10 @@ public class LSTMGroupTests {
 
             Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
 
-            DEFAULT_GROUP.setBoundaryOnOvertime(true);
+            DEFAULT_GROUP.setMemoryManagement(false);
             DEFAULT_GROUP.setLearningBoundaryMultiple(6);
             DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             int j = 0;
 
@@ -731,7 +733,7 @@ public class LSTMGroupTests {
                 seed = baseSeed;
 
             int radiix = 10;
-            int numCycles = 18;
+            int numCycles = 30;
 
             boolean useDefaultPattern = false;
             int[] rawInput = null;
@@ -767,6 +769,8 @@ public class LSTMGroupTests {
             DEFAULT_GROUP.setBoundaryOnOvertime(true);
             DEFAULT_GROUP.setLearningBoundaryMultiple(6);
             DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+            DEFAULT_GROUP.setMemoryManagement(true);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             int j = 0;
 
@@ -901,6 +905,7 @@ public class LSTMGroupTests {
             DEFAULT_GROUP.setBoundaryOnOvertime(true);
             DEFAULT_GROUP.setLearningBoundaryMultiple(10);
             DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             int j = 0;
 
@@ -1046,7 +1051,7 @@ public class LSTMGroupTests {
 
             long baseSeed = 1528684442328L;
 
-            boolean useSeed = true;
+            boolean useSeed = false;
             int size = 25;
             long seed = System.currentTimeMillis();
             if (useSeed)
@@ -1087,6 +1092,7 @@ public class LSTMGroupTests {
             DEFAULT_GROUP.setLearningBoundaryMultiple(10);
             DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
             DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             ArrayList<String> recycledNames = new ArrayList<String>();
             Group.MemoryManagementListener managementListener = new Group.MemoryManagementListener() {
@@ -1116,7 +1122,7 @@ public class LSTMGroupTests {
 
             int testIndex = 0;
 
-            int loopCount = 1;
+            int loopCount = 2;
             outer: for (int kk = 0;kk<numCycles;kk++){
                 if (kk > 30){
                     DEFAULT_GROUP.setMemoryManagement(false);
@@ -1178,6 +1184,8 @@ public class LSTMGroupTests {
                 j++;
             }
 
+            Group.DreamSpec dream = DEFAULT_GROUP.dream();
+            System.out.println(dream.getDreamedValue());
         }
         catch (Exception e){
             e.printStackTrace();

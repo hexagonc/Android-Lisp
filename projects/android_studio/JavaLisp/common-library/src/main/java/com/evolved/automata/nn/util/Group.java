@@ -90,8 +90,6 @@ public class Group {
     HashMap<Integer, FeatureValueMetadata> mPreferenceMap = new HashMap<>();
 
 
-
-
     int mUpdateCount = 0;
     int mResetInterval = 10;
     public final double DECAY_FRACTION = 0.1;
@@ -116,8 +114,8 @@ public class Group {
     HashSet<Integer> mCompleteFeatures = new HashSet<>();
     HashSet<Integer> mInternalAvailable = new HashSet<>();
 
-    FeatureModel mCurrentlyLearningModel = null;
-    FeatureModel mNextLearningModel = null;
+    FeatureModel mFocusModel = null;
+    FeatureModel mBufferModel = null;
     double mSlowLearningThresholdMultiple = 5;
     int mMinimumTemporalSampleCount = 20;
     boolean mAutoResetOnDurationExceptionP = false;
@@ -269,6 +267,66 @@ public class Group {
 
     }
 
+    Comparator<FeatureModel> mStandardValueComparator = new Comparator<FeatureModel>() {
+        @Override
+        public int compare(FeatureModel prior, FeatureModel other)
+        {
+            float[] priorPrediction = NNTools.roundToInt(prior.getPredictedOutput().rawFloat());
+            float[] otherPredction = NNTools.roundToInt(other.getPredictedOutput().rawFloat());
+
+            boolean priorValid = mConfiguration.isValidInput(priorPrediction);
+            boolean otherValid = mConfiguration.isValidInput(otherPredction);
+            if (priorValid && !otherValid)
+            {
+                updatePreference(prior);
+                return -1;
+            }
+            else if (otherValid && !priorValid){
+                updatePreference(other);
+                return 1;
+            }
+
+
+            int score = 0;
+            if (prior.getState() == FeatureModel.STATE.MATCHING &&
+                    other.getState() != FeatureModel.STATE.MATCHING)
+            {
+
+                score = -1;
+            }
+            else if (other.getState() == FeatureModel.STATE.MATCHING &&
+                    prior.getState() != FeatureModel.STATE.MATCHING)
+            {
+                score = 1;
+            }
+            else if (prior.getState() == FeatureModel.STATE.MATCHING &&
+                    other.getState() == FeatureModel.STATE.MATCHING)
+            {
+                if (prior.matchedLastInput() && !other.matchedLastInput()){
+                    score = -1;
+                }
+                else if (!prior.matchedLastInput() && other.matchedLastInput()){
+                    score = 1;
+                }
+                else
+                    score = -1* Double.compare(prior.getDistanceToFinalState(), other.getDistanceToFinalState());
+            }
+            else {
+                score = -1* Double.compare(prior.getMatchHistory().getTrend(), other.getMatchHistory().getTrend());
+            }
+
+            updateIncidence(prior);
+            updateIncidence(other);
+
+            if (score == -1)
+                updatePreference(prior);
+            else if (score == 1){
+                updatePreference(other);
+            }
+            return score;
+        }
+    };
+
     public FeatureMetaData createMetadata(int index){
         FeatureMetaData mdata = new FeatureMetaData();
         mdata._allocationIndex = index;
@@ -284,6 +342,7 @@ public class Group {
     PriorityQueue<Integer> recycleQueue = null;
     WorldModel.GroupType mType;
 
+    PriorityQueue<FeatureModel> mFocusQueue;
 
     public void updateStepLearningMilli(long time){
         mAvgStepLearningMilli = (int)(mAvgStepLearningMilli*mTemporalUpdateCount/(1.0 + mTemporalUpdateCount) + time/(1.0 + mTemporalUpdateCount));
@@ -300,71 +359,8 @@ public class Group {
         mConfiguration = configuration;
 
         mKey = key;
-        mGroupHeap = new PriorityQueue<>(10, new Comparator<FeatureModel>() {
-            @Override
-            public int compare(FeatureModel prior, FeatureModel other)
-            {
-                float[] priorPrediction = NNTools.roundToInt(prior.getPredictedOutput().rawFloat());
-                float[] otherPredction = NNTools.roundToInt(other.getPredictedOutput().rawFloat());
-//                Integer p = NNTools.tallyVectorToInteger(priorPrediction);
-//                Integer o = NNTools.tallyVectorToInteger(otherPredction);
-                boolean priorValid = mConfiguration.isValidInput(priorPrediction);
-               boolean otherValid = mConfiguration.isValidInput(otherPredction);
-//
-//                if (p == null || o == null)
-//                {
-//                    System.out.println("bad");
-//                }
-                if (priorValid && !otherValid)
-                {
-                    updatePreference(prior);
-                    return -1;
-                }
-                else if (otherValid && !priorValid){
-                    updatePreference(other);
-                    return 1;
-                }
-
-
-                int score = 0;
-                if (prior.getState() == FeatureModel.STATE.MATCHING &&
-                        other.getState() != FeatureModel.STATE.MATCHING)
-                {
-
-                    score = -1;
-                }
-                else if (other.getState() == FeatureModel.STATE.MATCHING &&
-                        prior.getState() != FeatureModel.STATE.MATCHING)
-                {
-                    score = 1;
-                }
-                else if (prior.getState() == FeatureModel.STATE.MATCHING &&
-                        other.getState() == FeatureModel.STATE.MATCHING)
-                {
-                    if (prior.matchedLastInput() && !other.matchedLastInput()){
-                        score = -1;
-                    }
-                    else if (!prior.matchedLastInput() && other.matchedLastInput()){
-                        score = 1;
-                    }
-                    else
-                        score = -1* Double.compare(prior.getDistanceToFinalState(), other.getDistanceToFinalState());
-                }
-                else {
-                    score = -1* Double.compare(prior.getMatchHistory().getTrend(), other.getMatchHistory().getTrend());
-                }
-
-                updateIncidence(prior);
-                updateIncidence(other);
-
-                if (score == -1)
-                    updatePreference(prior);
-                else if (score == 1){
-                    updatePreference(other);
-                }
-                return score;
-            }
-        });
+        mGroupHeap = new PriorityQueue<>(10, mStandardValueComparator);
+        mFocusQueue = new PriorityQueue<>(10, mStandardValueComparator);
     }
 
     public Group setMinimumRecycleUsageCount(int minimumUsage){
@@ -396,11 +392,11 @@ public class Group {
     public Group setMode(MODE mode){
         mMode = mode;
         if (mMode == MODE.LEARNING){
-            if (mCurrentlyLearningModel != null){
+            if (mFocusModel != null){
 
             }
-            mCurrentlyLearningModel = null;
-            mNextLearningModel = null;
+            mFocusModel = null;
+            mBufferModel = null;
 
         }
         return this;
@@ -421,8 +417,8 @@ public class Group {
             break;
             case MIXED:
             {
-                mMode = learnNextInput(input);
                 processAllCompleteModels(input);
+                mMode = learnNextInput(input);
 
             }
             break;
@@ -432,97 +428,71 @@ public class Group {
 
 
     public MODE learnNextInput(Vector input){
-        boolean resetDueToTimeout = false;
-        if (mCurrentlyLearningModel == null){
-            mCurrentlyLearningModel = getAnotherFeature();
+        
+        if (mFocusModel == null){
+            mFocusModel = getAnotherFeature();
         }
 
-        if (mNextLearningModel == null){
-            mNextLearningModel = getAnotherFeature();
-        }
-
-        if (mCurrentlyLearningModel == null){
+        if (mFocusModel == null){
             return MODE.EXTRAPOLATION;
         }
 
-        mCurrentlyLearningModel.setLabel("CURRENT");
+        if (mBufferModel == null){
+            mBufferModel = getAnotherFeature();
+        }
+
+        mFocusModel.setLabel("CURRENT");
         int featureBufferSize = mType.getFeatureBufferSize();
         int minimumBufferOverlap = mType.getMinimumBufferOverlap();
         long startTime, duration;
-        if (mCurrentlyLearningModel.getFeatureLength() >= featureBufferSize + minimumBufferOverlap){
-            mCurrentlyLearningModel.setConfiguration(mConfiguration);
+
+        if (!mFocusModel.isMatching()){
+            if (mFocusModel.getFeatureLength() == featureBufferSize + minimumBufferOverlap)
+            {
+                mFocusModel.setConfiguration(mConfiguration);
+            }
+
             startTime = System.currentTimeMillis();
             System.out.println("Extending model");
-            mCurrentlyLearningModel.processNextInput(input);
+            mFocusModel.processNextInput(input);
             duration = System.currentTimeMillis() - startTime;
+
+            if (mFocusModel.isBuilding()){
+                updateStepLearningMilli(duration);
+                FeatureMetaData featureMetaData = getFeatureInternalMetaData(mFocusModel);
+                featureMetaData.updateStepLearningMilli(duration);
+            }
+            else
+                mFocusModel.setLabel("");
         }
         else {
-            startTime = System.currentTimeMillis();
-            System.out.println("building model");
-            mCurrentlyLearningModel.processNextInput(input);
-            duration = System.currentTimeMillis() - startTime;
-            if (mCurrentlyLearningModel.isComplete()){
-                resetAll(false);
-                System.out.println("Abandoning this model due to timeout");
-                return mMode;
-            }
+            System.out.println("Recognition skip");
         }
 
-
-        updateStepLearningMilli(duration);
-        FeatureMetaData featureMetaData = getFeatureInternalMetaData(mCurrentlyLearningModel);
-        featureMetaData.updateStepLearningMilli(duration);
-
-        if (mCurrentlyLearningModel.isComplete()){
-            mCurrentlyLearningModel.setLabel("");
-            mCurrentlyLearningModel.resetRecognition();
-
-            //
-            mCurrentlyLearningModel = mNextLearningModel;
-
-            if (mCurrentlyLearningModel != null){
-                mCurrentlyLearningModel.setLabel("CURRENT");
-
-                System.out.println("Building model");
-                startTime = System.currentTimeMillis();
-                mCurrentlyLearningModel.processNextInput(input);
-                duration = System.currentTimeMillis() - startTime;
-                if (mCurrentlyLearningModel.isComplete()){
-                    resetAll(false);
-                    System.out.println("Abandoning this model due to timeout");
-                    return mMode;
-                }
-
-                updateStepLearningMilli(duration);
-                featureMetaData = getFeatureInternalMetaData(mCurrentlyLearningModel);
-                featureMetaData.updateStepLearningMilli(duration);
-                mNextLearningModel = getAnotherFeature();
-            }
-            else {
-                return MODE.EXTRAPOLATION;
-            }
-        }
-
-        if (mNextLearningModel != null){
-            if (mNextLearningModel.getFeatureLength() == featureBufferSize){
-                mNextLearningModel.shiftForward();
+        if (mBufferModel != null){
+            if (mBufferModel.getFeatureLength() == featureBufferSize){
+                mBufferModel.shiftForward();
             }
 
-            mNextLearningModel.setLabel("BUFFER");
             System.out.println("Building buffer");
-            mNextLearningModel.processNextInput(input);
+            mBufferModel.processNextInput(input);
 
-            if (mNextLearningModel.isComplete()){
-                resetAll(false);
-                System.out.println("Abandoning this model due to timeout");
-                return mMode;
+            if (mBufferModel.isComplete()){
+                mBufferModel.setLabel("");
+                mBufferModel = null;
+                System.out.println("Buffer exhausted");
+            }
+            else if (mFocusModel.isFinished()){
+                mFocusModel.setLabel("");
+                mFocusModel = mBufferModel;
+                mFocusModel.setLabel("CURRENT");
+                mBufferModel = null;
             }
         }
-
-
-        if (mResetOnTimeoutsP && (resetDueToTimeout || duration >= mSlowLearningThresholdMultiple * mAvgStepLearningMilli && mTemporalUpdateCount >= mMinimumTemporalSampleCount)){
-            resetAll(false);
-            System.out.println("Resetting due to overtime: " + duration + "ms");
+        else if (mFocusModel.isFinished()){
+            mFocusModel.setLabel("");
+            mFocusModel = null;
+            mMode = MODE.EXTRAPOLATION;
         }
 
         return mMode;
@@ -530,9 +500,23 @@ public class Group {
 
     public DreamSpec dream(){
         if (mFeatureMap.size() > 0){
-            Integer[] keys = mFeatureMap.keySet().stream().filter(i -> mFeatureMap.get(i).isComplete()).collect(Collectors.toList()).toArray(new Integer[0]);
-            int randomIndex = (int)(Math.random()*keys.length);
-            return dream(keys[randomIndex]);
+            double maxFraction = mPreferenceMap.keySet().stream().map(i->Double.valueOf(mPreferenceMap.get(i).getPreferenceFraction())).reduce(0D, (Double left, Double right)->Math.max(left, right));
+
+            if (maxFraction > 0){
+                ArrayList<WeightedValue<Integer>> weights = new ArrayList<>();
+                weights.addAll(mPreferenceMap.keySet().stream().filter(index->mFeatureMap.get(index).isComplete()).map((Integer key)->{
+                    return new WeightedValue<Integer>(key, mPreferenceMap.get(key).getPreferenceFraction());
+                }).collect(Collectors.toList()));
+
+                return dream(AITools.ChooseWeightedRandomFair(weights).GetValue());
+            }
+            else {
+                Integer[] keys = mFeatureMap.keySet().stream().filter(i -> mFeatureMap.get(i).isComplete()).collect(Collectors.toList()).toArray(new Integer[0]);
+
+                int randomIndex = (int)(Math.random()*keys.length);
+                return dream(keys[randomIndex]);
+            }
+
         }
         else
             return null;
@@ -563,92 +547,88 @@ public class Group {
         return n;
     }
 
-    public DreamSpec dream(int initialModel){
-        FeatureModel seed = mFeatureMap.get(Integer.valueOf(initialModel));
-
+    public DreamSpec dream(int dreamFocusIndex){
         MODE priorMode = mMode;
         mMode = MODE.SLEEPING;
 
         HashMap<Integer, FeatureValueMetadata> backup = copyPrefs(mPreferenceMap);
 
-        ArrayList<Vector> base = seed.extrapFeature();
-
-        int maxUpdates = 300;
-        int baseUpdateCount = mUpdateCount;
+        boolean scaleDreamsByFeatureLength = true;
 
         DreamSpec dreamedOutput = new DreamSpec();
 
-        resetAll(true);
+        int maxLength = 0;
         boolean debugP = mDebugEnabledP;
         ArrayList<FeatureModel> out = null;
 
-        dreamedOutput.updateInput(Integer.valueOf(initialModel), base, mConfiguration);
+        for (int cycle = 0; cycle < 30;cycle++){
+            final Integer dreamIndex = dreamFocusIndex;
+            FeatureModel dreamFocus = mFeatureMap.get(dreamIndex);
+            ArrayList<Vector> dreamInput = dreamFocus.extrapFeature();
+            dreamedOutput.updateInput(dreamIndex, dreamInput, mConfiguration);
 
-        for (int i = baseUpdateCount;i<baseUpdateCount + maxUpdates;i++){
 
-            if (debugP)
-            {
-                System.out.println("!i! !i! !i! !i! !i! !i! !i! !i! !i! !i! !i!");
-                StringBuilder builder = new StringBuilder("Processing dream input: " + seed.displayExtrapolatedFeature());
-                System.out.println(builder.toString().trim());
+            final HashSet<Integer> exclusion = new HashSet<>();
+            exclusion.add(dreamIndex);
+            if (mFocusModel != null){
+                exclusion.add(getFeatureInternalMetaData(mFocusModel)._allocationIndex);
+            }
+            if (mBufferModel != null){
+                exclusion.add(getFeatureInternalMetaData(mBufferModel)._allocationIndex);
             }
 
-            for (Vector dreamInput:base){
-                if (debugP){
-                    System.out.println("Processing dream input: " + mConfiguration.getInputString(dreamInput.rawFloat()));
-                }
+            ArrayList<FeatureModel> dreamModels = new ArrayList<>();
+            mPreferenceMap.keySet().stream().filter((Integer i)->!exclusion.contains(i) && mFeatureMap.get(i).isComplete()).forEach((Integer i)->{
+                FeatureModel m = mFeatureMap.get(i);
+                dreamModels.add(m);
+                m.resetRecognition();
 
-                processInput(dreamInput);
+            });
 
-                out = getOrderedFeatures();
-                if (debugP){
-                    for (FeatureModel feature: out){
-                        String featurestring = "(" + getFeatureInternalMetaData(feature).getAllocationIndex() + ") " + feature.toString();
-                        if (feature.isComplete()){
-                            featurestring+= " -> " + mConfiguration.getInputString(feature.getPredictedOutput().rawFloat());
-                        }
-                        System.out.println("Dream results: " + featurestring);
+            PriorityQueue<FeatureModel> dreamQueue = new PriorityQueue<>(10, mStandardValueComparator);
+
+            int len = dreamInput.size(), i = 1;
+            for (Vector input:dreamInput){
+
+                for (FeatureModel dreamModel:dreamModels){
+                    dreamModel.processNextInput(input);
+                    if (i == len){
+                        dreamQueue.add(dreamModel);
                     }
                 }
-
+                i++;
             }
 
-            if (debugP){
-                System.out.println("-:- -:- -:- -:- -:- -:- -:- -:- -:- ");
-                System.out.println("Feature Preferences:");
-                System.out.println("-:- -:- -:- -:- -:- -:- -:- -:- -:- ");
+            FeatureModel best = dreamQueue.peek();
+            if (best.isMatching())
+            {
+                dreamFocusIndex = getFeatureInternalMetaData(best).getAllocationIndex();
+            }
+            else {
+                ArrayList<WeightedValue<Integer>> prefs = new ArrayList<WeightedValue<Integer>>();
 
-                for (FeatureModel feature: out){
-                    Integer index = getFeatureInternalMetaData(feature).getAllocationIndex();
+                double weight;
+                if (scaleDreamsByFeatureLength){
+                    maxLength = dreamModels.stream().map(m->m.getFeatureLength()).reduce(0, (l,r)->Math.max(l, r));
+                }
 
+                for (FeatureModel model:dreamModels){
+                    Integer modelIndex = getFeatureInternalMetaData(model).getAllocationIndex();
 
-                    String prefString= null;
+                    if (scaleDreamsByFeatureLength)
+                        weight = model.getFeatureLength()/maxLength;
+                    else
+                        weight = 1;
 
                     if (mDreamWithFractionP)
-                        prefString = String.format("%1$.3f", mPreferenceMap.get(index).getPreferenceFraction()) ;
+                        prefs.add(new WeightedValue<Integer>(modelIndex, weight* mPreferenceMap.get(modelIndex).getPreferenceFraction()));
                     else
-                        prefString = String.format("%1$d", mPreferenceMap.get(index).getPreferenceCount());
-
-                    String featurestring = "*" + prefString + "* (" + getFeatureInternalMetaData(feature).getAllocationIndex() + ") " + feature.toString();
-                    if (feature.isComplete()){
-                        featurestring+= " -> " + mConfiguration.getInputString(feature.getPredictedOutput().rawFloat());
-                    }
-                    System.out.println("Dream results: " + featurestring);
+                        prefs.add(new WeightedValue<Integer>(modelIndex, weight* mPreferenceMap.get(modelIndex).getPreferenceCount()));
                 }
+
+                WeightedValue<Integer> selected = AITools.ChooseWeightedRandomFair(prefs);
+                dreamFocusIndex = selected.GetValue();
             }
-
-            seed = selectedGoodModel();
-            seed.resetRecognition();
-            base = seed.extrapFeature();
-
-            Integer selectedIndex = Integer.valueOf(getFeatureInternalMetaData(seed).getAllocationIndex());
-
-            dreamedOutput.updateInput(Integer.valueOf(selectedIndex), base, mConfiguration);
-
-            if (debugP){
-                System.out.println("Selected new feature: " + seed);
-            }
-
         }
 
         mMode =  priorMode;
@@ -700,7 +680,6 @@ public class Group {
                         @Override
                         public int compare(Integer left, Integer right)
                         {
-
                             return Double.compare(selectionCount.get(left)*mFeatureMap.get(left).getFeatureLength()/maxLength, selectionCount.get(right)*mFeatureMap.get(right).getFeatureLength()/maxLength);
                         }
                     };
@@ -754,17 +733,13 @@ public class Group {
 
                         freed.add(model);
                         i++;
-
                     }
-
-
 
                     if (recycleQueue.size()>0)
                         model = mFeatureMap.get(recycleQueue.poll());
                     else
                         return null;
                 }
-
             }
             else
                 return null;
@@ -890,10 +865,11 @@ public class Group {
         return mMode == MODE.SLEEPING;
     }
 
-    public ArrayList<FeatureModel> processAllCompleteModels(Vector input){
+    public void processAllCompleteModels(Vector input){
         ArrayList<FeatureModel> out = new ArrayList<>();
         mGroupHeap.clear();
-        boolean updateCountP = false;
+        mFocusQueue.clear();
+
         for (Integer index: mFeatureMap.keySet()){
             FeatureModel model = mFeatureMap.get(index);
             if (model.isComplete()){
@@ -901,16 +877,37 @@ public class Group {
                 if (!isSleeping()){
                     getFeatureInternalMetaData(model).updateUsageCount();
                 }
+                else if (model.isMatching()){
+                    mFocusQueue.add(model);
+                }
 
                 mGroupHeap.add(model);
             }
         }
 
-        while (mGroupHeap.size()>0){
-            out.add(mGroupHeap.poll());
+        if (mFocusQueue.size()>0 && (mFocusModel==null || mFocusModel.isNonMatching())){
+            if (mFocusModel!=null && mFocusModel.isNonMatching())
+            {
+                mFocusModel.setLabel("");
+            }
+            mFocusModel = mFocusQueue.poll();
+            mFocusModel.setLabel("CURRENT");
+            System.out.println("Setting recognition focus");
         }
-
-        return out;
+        else if (mFocusModel != null && mFocusModel.isNonMatching()){
+            System.out.println("Discarding prior focus");
+            if (mBufferModel != null){
+                System.out.println("Using buffer as new focus");
+                mFocusModel.setLabel("");
+                mFocusModel = mBufferModel;
+                mFocusModel.setLabel("CURRENT");
+                mBufferModel = null;
+            }
+            else {
+                mFocusModel.setLabel("");
+                mFocusModel = null;
+            }
+        }
     }
 
     public void decayPreferenceMap(){
@@ -923,16 +920,18 @@ public class Group {
     public Group resetAll(boolean onlyComplete){
 
         if (!onlyComplete){
-            if (mNextLearningModel != null){
-                mNextLearningModel.forceComplete();
+            if (mBufferModel != null){
+                mBufferModel.setLabel("");
+                mBufferModel.forceComplete();
             }
 
-            if (mCurrentlyLearningModel != null){
-                mCurrentlyLearningModel.forceComplete();
+            if (mFocusModel != null){
+                mFocusModel.setLabel("");
+                mFocusModel.forceComplete();
             }
 
-            mCurrentlyLearningModel = null;
-            mNextLearningModel = null;
+            mFocusModel = null;
+            mBufferModel = null;
         }
 
         boolean updateP = false;
