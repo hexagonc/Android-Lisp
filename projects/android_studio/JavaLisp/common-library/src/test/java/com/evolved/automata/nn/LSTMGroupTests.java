@@ -603,8 +603,6 @@ public class LSTMGroupTests {
             Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
 
             DEFAULT_GROUP.setMemoryManagement(false);
-            DEFAULT_GROUP.setLearningBoundaryMultiple(6);
-            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
             DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             int j = 0;
@@ -766,9 +764,7 @@ public class LSTMGroupTests {
             Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
 
             DEFAULT_GROUP.setDebugEnabled(false);
-            DEFAULT_GROUP.setBoundaryOnOvertime(true);
-            DEFAULT_GROUP.setLearningBoundaryMultiple(6);
-            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+
             DEFAULT_GROUP.setMemoryManagement(true);
             DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
@@ -828,9 +824,9 @@ public class LSTMGroupTests {
             }
 
 
-            errorMessage = "Failed to dream";
+            errorMessage = "Failed to sleep";
 
-            Group.DreamSpec dreamedResults = DEFAULT_GROUP.dream();
+            Group.DreamSpec dreamedResults = DEFAULT_GROUP.sleep();
             HashMap<Integer, Group.FeatureValueMetadata> prefs = DEFAULT_GROUP.getPreferenceMap();
 
             System.out.println("[oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo]");
@@ -902,9 +898,7 @@ public class LSTMGroupTests {
             Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
 
             DEFAULT_GROUP.setDebugEnabled(false);
-            DEFAULT_GROUP.setBoundaryOnOvertime(true);
-            DEFAULT_GROUP.setLearningBoundaryMultiple(10);
-            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+
             DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
             int j = 0;
@@ -952,7 +946,7 @@ public class LSTMGroupTests {
                         }
                     }
 
-                    DEFAULT_GROUP.resetAll(false);
+                    DEFAULT_GROUP.resetAll();
                 }
             }
 
@@ -974,9 +968,9 @@ public class LSTMGroupTests {
             }
 
 
-            errorMessage = "Failed to dream";
+            errorMessage = "Failed to sleep";
 
-            Group.DreamSpec dreamedResults = DEFAULT_GROUP.dream();
+            Group.DreamSpec dreamedResults = DEFAULT_GROUP.sleep();
             final HashMap<Integer, Group.FeatureValueMetadata> prefs = dreamedResults.getDreamPreferences();
 
             System.out.println("[oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo] [oOo]");
@@ -1086,11 +1080,9 @@ public class LSTMGroupTests {
 
             Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
 
-            DEFAULT_GROUP.setDreamToFreeMemory(true);
+            DEFAULT_GROUP.setSleepToFreeMemory(true);
             DEFAULT_GROUP.setDebugEnabled(false);
-            DEFAULT_GROUP.setBoundaryOnOvertime(true);
-            DEFAULT_GROUP.setLearningBoundaryMultiple(10);
-            DEFAULT_GROUP.setMinimumOvertimeSampleCount(20);
+
             DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
             DEFAULT_GROUP.setMode(Group.MODE.MIXED);
 
@@ -1164,11 +1156,12 @@ public class LSTMGroupTests {
                         }
                     }
 
-                    DEFAULT_GROUP.resetAll(false);
+                    DEFAULT_GROUP.resetAll();
                 }
             }
 
             System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Seed: " + seed);
             ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
 
             j = 0;
@@ -1184,7 +1177,7 @@ public class LSTMGroupTests {
                 j++;
             }
 
-            Group.DreamSpec dream = DEFAULT_GROUP.dream();
+            Group.DreamSpec dream = DEFAULT_GROUP.sleep();
             System.out.println(dream.getDreamedValue());
         }
         catch (Exception e){

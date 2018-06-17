@@ -22,6 +22,7 @@ public class WorldModel {
         int minimumBufferOverlap;
         String name;
         LearningConfiguration config;
+        int maxAllocation = -1;
 
         public GroupType(int inputOutputNodes, int memoryCellNodes, int initialAllocationWeight, int featureBufferSize, int minimumBufferOverlap, LearningConfiguration config){
             numInputOutputNodes = inputOutputNodes;
@@ -30,6 +31,20 @@ public class WorldModel {
             this.config = config;
             this.minimumBufferOverlap = minimumBufferOverlap;
             this.featureBufferSize = featureBufferSize;
+
+        }
+
+        public GroupType setMaxAllocation(int max){
+            maxAllocation = max;
+            return this;
+        }
+
+        public int getMaxAllocation(){
+            return maxAllocation;
+        }
+
+        public boolean hasMaxAllocation(){
+            return maxAllocation != -1;
         }
 
         public GroupType setName(String n){
@@ -81,7 +96,7 @@ public class WorldModel {
         }
 
         public GroupSpecification assertBoundary(){
-            _group.resetAll(false);
+            _group.resetAll();
             _boundaryCount++;
             return this;
         }

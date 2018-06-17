@@ -15,6 +15,8 @@ import java.util.HashSet;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * Created by Evolved8 on 5/28/18.
  */
@@ -102,20 +104,11 @@ public class Group {
 
     MemoryManagementListener mMemorymanagementListener = null;
 
-    HashSet<Integer> mCompleteFeatures = new HashSet<>();
-    HashSet<Integer> mInternalAvailable = new HashSet<>();
-
     FeatureModel mFocusModel = null;
     FeatureModel mBufferModel = null;
-    double mSlowLearningThresholdMultiple = 5;
-    int mMinimumTemporalSampleCount = 20;
-    boolean mAutoResetOnDurationExceptionP = false;
-
-    int mMinimumUpdateCountForRecycle = 10;
 
     int MAX_BUFFER_MILLI = 30*1000; // 30 seconds
     boolean mEnableMemoryManagmentP = true;
-    boolean mResetOnTimeoutsP = false;
     boolean mLimitBufferStateP = true;
 
 
@@ -372,7 +365,7 @@ public class Group {
         return mdata;
     }
 
-    boolean mDreamToFreeMemoryP = true;
+    boolean mSleepToFreeMemoryP = true;
     boolean mSortByUsageP = false;
     double mRecycleCutoffFraction = 0.2F;
     int mMinimumUsageForRecycle = 10;
@@ -380,14 +373,9 @@ public class Group {
     int mTemporalUpdateCount = 0;
     PriorityQueue<Integer> recycleQueue = null;
     WorldModel.GroupType mType;
-
+    ArrayList<FeatureModel> mLastProcessedFeatures = new ArrayList<FeatureModel>();
     PriorityQueue<FeatureModel> mFocusQueue;
-
-    public void updateStepLearningMilli(long time){
-        mAvgStepLearningMilli = (int)(mAvgStepLearningMilli*mTemporalUpdateCount/(1.0 + mTemporalUpdateCount) + time/(1.0 + mTemporalUpdateCount));
-        mTemporalUpdateCount++;
-    }
-
+    double mSleepCycleMultipler = 1;
 
 
     public Group(String key, LearningConfiguration configuration, WorldModel world, WorldModel.GroupType type){
@@ -412,38 +400,70 @@ public class Group {
         return this;
     }
 
-    public Group setLearningBoundaryMultiple(double multiple){
-        mSlowLearningThresholdMultiple = multiple;
+    /**
+     * Sets the maximum amount of time to try to learn the next input
+     * @param milli
+     * @return
+     */
+    public Group setMaximumAmountOfProcessTime(int milli){
+        MAX_BUFFER_MILLI = milli;
         return this;
     }
 
-    public Group setBoundaryOnOvertime(boolean enabled){
-        mAutoResetOnDurationExceptionP = enabled;
-        return this;
-    }
-
-    public Group setMinimumOvertimeSampleCount(int count){
-        mMinimumTemporalSampleCount = count;
-        return this;
-    }
-
+    /**
+     * Sets the minimum number of times processCompleteFeatures have to be run on a FeatureModel
+     * before its preference weights can be decayed
+     * @param minimumUsage
+     * @return
+     */
     public Group setMinimumRecycleUsageCount(int minimumUsage){
         mMinimumUsageForRecycle  =minimumUsage;
         return this;
     }
 
-    public Group setDreamToFreeMemory(boolean enabled){
-        mDreamToFreeMemoryP  =enabled;
+    /**
+     * Indicates whether the Group uses sleeping to free memory.  This setting only takes effect
+     * if
+     * @param enabled
+     * @return
+     */
+    public Group setSleepToFreeMemory(boolean enabled){
+        mSleepToFreeMemoryP =enabled;
         return this;
     }
 
+    /**
+     * When true, sleeping frees FeatureModels by sorting them by the number of times that they
+     * were encountered during sleep.  Otherwise, FeatureModels are sorted by their preference
+     * value
+     * @param yes
+     * @return
+     */
     public Group setSortDreamPreferencesByUsage(boolean yes){
         mSortByUsageP = yes;
         return this;
     }
 
+    /**
+     * Sets the fraction of FeatureModels that can be recycled at a time when
+     * memory management is enabled.  Defaults to 0.2
+     * @param recycleFraction
+     * @return
+     */
     public Group setMemoryRecycleFraction(double recycleFraction){
         mRecycleCutoffFraction = Math.abs(recycleFraction);
+        return this;
+    }
+
+    /**
+     * Sets the multiplier for number of times that the Group selects a FeatureModel to extrapolate
+     * over during sleeping.  The total number of sleep iteration cycles is [multipler] * {num features}
+     * [mSleepCycleMultipler] defaults to 1
+     * @param multipler
+     * @return
+     */
+    public Group setSleepCycleMultipler(double multipler){
+        mSleepCycleMultipler = multipler;
         return this;
     }
 
@@ -480,6 +500,101 @@ public class Group {
         return this;
     }
 
+    /**
+     * When [set] is true, FeatureModels can be reused if the WorldModel will not provide any more
+     * Features.  Currently, the only way to reuse FeatureModels in Groups is via sleep, so this
+     * will have no effect unless setSleepToFreeMemory was also called with true
+     * @param set
+     */
+    public void setMemoryManagement(boolean set){
+        mEnableMemoryManagmentP = set;
+    }
+
+    public MODE getMode(){
+        return mMode;
+    }
+
+    public HashMap<Integer, FeatureValueMetadata> getPreferenceMap(){
+        return mPreferenceMap;
+    }
+
+    /**
+     * Returns the Features in this Group sorted by the feature's 'match value'.  Match value
+     * is based on an absolutist measure of
+     * @return
+     */
+    public ArrayList<FeatureModel> getOrderedFeatures(){
+        ArrayList<FeatureModel> out = new ArrayList<FeatureModel>();
+        out.addAll(mFeatureMap.keySet().stream().map(i->mFeatureMap.get(i)).sorted(mPassiveValueComparator).collect(toList()));
+        return out;
+    }
+
+    public boolean isSleeping(){
+        return mMode == MODE.SLEEPING;
+    }
+
+    /**
+     * Asserts that a boundary has occurred.  Every subsequent input is causally independent
+     * of the prior ones
+     * @return
+     */
+    public Group resetAll(){
+
+        if (mBufferModel != null){
+            mBufferModel.setLabel("");
+            mBufferModel.forceComplete();
+        }
+
+        if (mFocusModel != null){
+            mFocusModel.setLabel("");
+            mFocusModel.forceComplete();
+        }
+
+        mFocusModel = null;
+        mBufferModel = null;
+
+        for (Integer index: mFeatureMap.keySet().stream().filter(i->(mFeatureMap.get(i).isComplete())).collect(toList()) ){
+            FeatureModel model = mFeatureMap.get(index);
+            model.setLabel("");
+            model.resetRecognition();
+
+        }
+
+        return this;
+    }
+
+    /**
+     * Returns all features in this Group in order of creation
+     * @return
+     */
+    public ArrayList<FeatureModel> getAllFeatures(){
+        ArrayList<FeatureModel> models = new ArrayList<FeatureModel>();
+        models.addAll(mFeatureMap.keySet().stream().sorted(Integer::compare).map(i->mFeatureMap.get(i)).collect(toList()));
+        return models;
+    }
+
+    public Integer[] getPreference(){
+        Integer[] s = mPreferenceMap.keySet().toArray(new Integer[0]);
+        Arrays.sort(s, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer left, Integer right)
+            {
+                return -1 * Double.compare(mPreferenceMap.get(left).getPreferenceFraction(), mPreferenceMap.get(right).getPreferenceFraction());
+            }
+        });
+        return s;
+    }
+
+    public FeatureModel getFeature(Integer index){
+        return mFeatureMap.get(index);
+    }
+
+    private void updateStepLearningMilli(long time){
+        mAvgStepLearningMilli = (int)(mAvgStepLearningMilli*mTemporalUpdateCount/(1.0 + mTemporalUpdateCount) + time/(1.0 + mTemporalUpdateCount));
+        mTemporalUpdateCount++;
+    }
+
+
     public MODE processInput(Vector input){
         switch (mMode){
             case LEARNING:
@@ -504,14 +619,40 @@ public class Group {
         return mMode;
     }
 
+    public MODE processInput(Vector input, HashSet<FeatureModel> exclusion){
+        switch (mMode){
+            case LEARNING:
+            {
+                mMode = learnNextInput(input);
+            }
+            break;
+            case SLEEPING:
+            case EXTRAPOLATION:
+            {
+                processAllCompleteModels(input, exclusion);
+            }
+            break;
+            case MIXED:
+            {
+                processAllCompleteModels(input, exclusion);
+                mMode = learnNextInput(input);
 
-    public MODE learnNextInput(Vector input){
+            }
+            break;
+        }
+        return mMode;
+    }
+
+    private MODE learnNextInput(Vector input){
         
         if (mFocusModel == null){
             mFocusModel = getAnotherFeature();
         }
 
         if (mFocusModel == null){
+            if (mFeatureMap.keySet().stream().map(i -> mFeatureMap.get(i)).allMatch(model->model.getState() == FeatureModel.STATE.INITIAL)){
+                System.out.println("Bad");
+            }
             return MODE.EXTRAPOLATION;
         }
 
@@ -571,12 +712,21 @@ public class Group {
             mFocusModel.setLabel("");
             mFocusModel = null;
             mMode = MODE.EXTRAPOLATION;
+
+            if (mFeatureMap.keySet().stream().map(i -> mFeatureMap.get(i)).allMatch(model->model.getState() == FeatureModel.STATE.INITIAL)){
+                System.out.println("Bad");
+            }
         }
 
         return mMode;
     }
 
-    public DreamSpec dream(){
+
+    /**
+
+     * @return
+     */
+    public DreamSpec sleep(){
         if (mFeatureMap.size() > 0){
             double maxFraction = mPreferenceMap.keySet().stream().map(i->Double.valueOf(mPreferenceMap.get(i).getPreferenceFraction())).reduce(0D, (Double left, Double right)->Math.max(left, right));
 
@@ -584,15 +734,15 @@ public class Group {
                 ArrayList<WeightedValue<Integer>> weights = new ArrayList<>();
                 weights.addAll(mPreferenceMap.keySet().stream().filter(index->mFeatureMap.get(index).isComplete()).map((Integer key)->{
                     return new WeightedValue<Integer>(key, mPreferenceMap.get(key).getPreferenceFraction());
-                }).collect(Collectors.toList()));
+                }).collect(toList()));
 
-                return dream(AITools.ChooseWeightedRandomFair(weights).GetValue());
+                return sleep(AITools.ChooseWeightedRandomFair(weights).GetValue());
             }
             else {
-                Integer[] keys = mFeatureMap.keySet().stream().filter(i -> mFeatureMap.get(i).isComplete()).collect(Collectors.toList()).toArray(new Integer[0]);
+                Integer[] keys = mFeatureMap.keySet().stream().filter(i -> mFeatureMap.get(i).isComplete()).collect(toList()).toArray(new Integer[0]);
 
                 int randomIndex = (int)(Math.random()*keys.length);
-                return dream(keys[randomIndex]);
+                return sleep(keys[randomIndex]);
             }
 
         }
@@ -606,7 +756,7 @@ public class Group {
 
         ArrayList<WeightedValue<Integer>> prefs = new ArrayList<WeightedValue<Integer>>();
 
-        for (Integer allocationIndex:mPreferenceMap.keySet().stream().filter( i->mFeatureMap.get(i).isComplete()).collect(Collectors.toList())){
+        for (Integer allocationIndex:mPreferenceMap.keySet().stream().filter( i->mFeatureMap.get(i).isComplete()).collect(toList())){
             if (mDreamWithFractionP)
                 prefs.add(new WeightedValue<Integer>(allocationIndex, mPreferenceMap.get(allocationIndex).getPreferenceFraction()));
             else
@@ -625,7 +775,14 @@ public class Group {
         return n;
     }
 
-    public DreamSpec dream(int dreamFocusIndex){
+    /**
+     * Causes the Group to go into sleep mode.  In this mode, the system reprocesses the most common
+     * FeatureModels, starting from dreamFocusIndex, and releases the least commonly used FeatureModels
+     * for future recycling
+     * @param dreamFocusIndex
+     * @return
+     */
+    public DreamSpec sleep(int dreamFocusIndex){
         MODE priorMode = mMode;
         mMode = MODE.SLEEPING;
 
@@ -638,8 +795,9 @@ public class Group {
         int maxLength = 0;
         boolean debugP = mDebugEnabledP;
         ArrayList<FeatureModel> out = null;
+        int numCycles = (int)(mFeatureMap.size() * mSleepCycleMultipler);
 
-        for (int cycle = 0; cycle < 30;cycle++){
+        for (int cycle = 0; cycle < numCycles;cycle++){
             final Integer dreamIndex = dreamFocusIndex;
             FeatureModel dreamFocus = mFeatureMap.get(dreamIndex);
             ArrayList<Vector> dreamInput = dreamFocus.extrapFeature();
@@ -723,12 +881,10 @@ public class Group {
     }
 
 
-    public void setMemoryManagement(boolean set){
-        mEnableMemoryManagmentP = set;
-    }
 
 
-    public FeatureModel getAnotherFeature(){
+
+    private FeatureModel getAnotherFeature(){
         FeatureModel model = mWorld.requestFeature(this), selected = null;
         FeatureMetaData meta = null;
         if (model == null){
@@ -741,12 +897,12 @@ public class Group {
             }
 
             if (mEnableMemoryManagmentP) {
-                if (model == null && mDreamToFreeMemoryP){
+                if (model == null && mSleepToFreeMemoryP){
                     if (mMemorymanagementListener != null){
                         mMemorymanagementListener.onStartMemoryManagement(mFeatureMap.size());
                     }
 
-                    DreamSpec dreamResult = dream();
+                    DreamSpec dreamResult = sleep();
                     HashMap<Integer, Integer> selectionCount = dreamResult.getSelectionCountMap();
                     HashMap<Integer, FeatureValueMetadata> prefs = dreamResult.getDreamPreferences();
 
@@ -785,7 +941,7 @@ public class Group {
 
                     int i = 0;
 
-                    for (Integer selectedIndex:prefs.keySet().stream().sorted(prefComparator).collect(Collectors.toList())){
+                    for (Integer selectedIndex:prefs.keySet().stream().sorted(prefComparator).collect(toList())){
                         if (i >= recycleCount){
                             break;
                         }
@@ -819,8 +975,6 @@ public class Group {
                         return null;
                 }
             }
-            else
-                return null;
 
         }
         else {
@@ -865,16 +1019,7 @@ public class Group {
         mPreferenceMap.get(b).updateInstance();
     }
 
-    public MODE getMode(){
-        return mMode;
-    }
-
-    public HashMap<Integer, FeatureValueMetadata> getPreferenceMap(){
-        return mPreferenceMap;
-    }
-
-
-    public Group addFeature(FeatureModel model){
+    private Group addFeature(FeatureModel model){
         return addFeature(model, _nextIndex);
     }
 
@@ -892,7 +1037,7 @@ public class Group {
     }
 
 
-    public Group addFeature(FeatureModel model, int index){
+    Group addFeature(FeatureModel model, int index){
         FeatureMetaData meta = getFeatureInternalMetaData(model);
         meta.setAllocationIndex(index);
 
@@ -909,36 +1054,18 @@ public class Group {
         return this;
     }
 
-    public Group removeFeature(int index){
-        mFeatureMap.remove(Integer.valueOf(index));
-        return this;
+    private void processAllCompleteModels(Vector input){
+        processAllCompleteModels(input, null);
     }
 
-//    public ArrayList<FeatureModel> getAllCompleteFeatures(){
-//
-//        return out;
-//    }
-
-    public ArrayList<FeatureModel> getOrderedFeatures(){
-        ArrayList<FeatureModel> out = new ArrayList<FeatureModel>();
-        out.addAll(mFeatureMap.keySet().stream().map(i->mFeatureMap.get(i)).sorted(mPassiveValueComparator).collect(Collectors.toList()));
-        return out;
-    }
-
-    public boolean isSleeping(){
-        return mMode == MODE.SLEEPING;
-    }
-
-    ArrayList<FeatureModel> mLastProcessedFeatures = new ArrayList<FeatureModel>();
-
-    public void processAllCompleteModels(Vector input){
+    private void processAllCompleteModels(Vector input, HashSet<FeatureModel> excluded){
         mLastProcessedFeatures = new ArrayList<>();
         mGroupHeap.clear();
         mFocusQueue.clear();
 
         for (Integer index: mFeatureMap.keySet()){
             FeatureModel model = mFeatureMap.get(index);
-            if (model.isComplete()){
+            if (model.isComplete() && (excluded == null || !excluded.contains(model))){
                 model.processNextInput(input);
                 if (!isSleeping()){
                     getFeatureInternalMetaData(model).updateUsageCount();
@@ -991,7 +1118,7 @@ public class Group {
         return this;
     }
 
-    public void decayPreferenceMap(){
+    private void decayPreferenceMap(){
         for (Integer index:mPreferenceMap.keySet()){
             FeatureModel model = mFeatureMap.get(index);
             if (model.isComplete() && getFeatureInternalMetaData(model).getAllocationIndex() > minDecayUsageCount){
@@ -1001,59 +1128,6 @@ public class Group {
         }
     }
 
-    // TODO: fix this when onlyComplete is false
-    public Group resetAll(boolean onlyComplete){
 
-        if (!onlyComplete){
-            if (mBufferModel != null){
-                mBufferModel.setLabel("");
-                mBufferModel.forceComplete();
-            }
-
-            if (mFocusModel != null){
-                mFocusModel.setLabel("");
-                mFocusModel.forceComplete();
-            }
-
-            mFocusModel = null;
-            mBufferModel = null;
-        }
-
-        for (Integer index: mFeatureMap.keySet().stream().filter(i->(mFeatureMap.get(i).isComplete())).collect(Collectors.toList()) ){
-            FeatureModel model = mFeatureMap.get(index);
-            model.setLabel("");
-            model.resetRecognition();
-
-        }
-
-        return this;
-    }
-
-    public ArrayList<FeatureModel> getAllFeatures(){
-        ArrayList<FeatureModel> models = new ArrayList<FeatureModel>();
-        Integer[] order = mFeatureMap.keySet().toArray(new Integer[0]);
-        Arrays.sort(order, Integer::compare);
-
-        for (Integer index:order){
-            models.add(mFeatureMap.get(index));
-        }
-        return models;
-    }
-
-    public Integer[] getPreference(){
-        Integer[] s = mPreferenceMap.keySet().toArray(new Integer[0]);
-        Arrays.sort(s, new Comparator<Integer>() {
-            @Override
-            public int compare(Integer left, Integer right)
-            {
-                return -1 * Double.compare(mPreferenceMap.get(left).getPreferenceFraction(), mPreferenceMap.get(right).getPreferenceFraction());
-            }
-        });
-        return s;
-    }
-
-    public FeatureModel getFeature(Integer index){
-        return mFeatureMap.get(index);
-    }
 
 }
