@@ -985,6 +985,11 @@ public class Group {
 
     int minDecayUsageCount = 40;
 
+    public Group setMinimumDecayUsageCount(int c){
+        minDecayUsageCount = c;
+        return this;
+    }
+
     public void decayPreferenceMap(){
         for (Integer index:mPreferenceMap.keySet()){
             FeatureModel model = mFeatureMap.get(index);
