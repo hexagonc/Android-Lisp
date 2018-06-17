@@ -914,28 +914,14 @@ public class Group {
         return this;
     }
 
-    public ArrayList<FeatureModel> getAllCompleteFeatures(){
-        ArrayList<FeatureModel> out = new ArrayList<FeatureModel>();
-        mGroupHeap.clear();
-        for (Integer index:mFeatureMap.keySet()){
-
-            FeatureModel model = mFeatureMap.get(index);
-            if (model.isComplete()){
-                out.add(model);
-                mGroupHeap.add(model);
-            }
-
-        }
-        return out;
-    }
+//    public ArrayList<FeatureModel> getAllCompleteFeatures(){
+//
+//        return out;
+//    }
 
     public ArrayList<FeatureModel> getOrderedFeatures(){
-        getAllCompleteFeatures();
-        ArrayList<FeatureModel> out = new ArrayList<>();
-
-        while (mGroupHeap.size() > 0){
-            out.add(mGroupHeap.poll());
-        }
+        ArrayList<FeatureModel> out = new ArrayList<FeatureModel>();
+        out.addAll(mFeatureMap.keySet().stream().map(i->mFeatureMap.get(i)).sorted(mPassiveValueComparator).collect(Collectors.toList()));
         return out;
     }
 
