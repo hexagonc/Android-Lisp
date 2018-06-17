@@ -928,8 +928,10 @@ public class Group {
         return mMode == MODE.SLEEPING;
     }
 
+    ArrayList<FeatureModel> mLastProcessedFeatures = new ArrayList<FeatureModel>();
+
     public void processAllCompleteModels(Vector input){
-        ArrayList<FeatureModel> out = new ArrayList<>();
+        mLastProcessedFeatures = new ArrayList<>();
         mGroupHeap.clear();
         mFocusQueue.clear();
 
@@ -943,7 +945,7 @@ public class Group {
                 else if (model.isMatching()){
                     mFocusQueue.add(model);
                 }
-
+                mLastProcessedFeatures.add(model);
                 mGroupHeap.add(model);
             }
         }
@@ -971,11 +973,25 @@ public class Group {
                 mFocusModel = null;
             }
         }
+
+        if (mMode == MODE.EXTRAPOLATION){
+            mUpdateCount++;
+            if (mUpdateCount == mResetInterval){
+                decayPreferenceMap();
+                mUpdateCount = 0;
+            }
+        }
     }
+
+    int minDecayUsageCount = 40;
 
     public void decayPreferenceMap(){
         for (Integer index:mPreferenceMap.keySet()){
-            mPreferenceMap.get(index).decay(DECAY_FRACTION);
+            FeatureModel model = mFeatureMap.get(index);
+            if (model.isComplete() && getFeatureInternalMetaData(model).getAllocationIndex() > minDecayUsageCount){
+                mPreferenceMap.get(index).decay(DECAY_FRACTION);
+            }
+
         }
     }
 
@@ -997,21 +1013,11 @@ public class Group {
             mBufferModel = null;
         }
 
-        boolean updateP = false;
         for (Integer index: mFeatureMap.keySet().stream().filter(i->(mFeatureMap.get(i).isComplete())).collect(Collectors.toList()) ){
             FeatureModel model = mFeatureMap.get(index);
             model.setLabel("");
-            updateP = true;
             model.resetRecognition();
 
-        }
-
-        if (updateP){
-            mUpdateCount++;
-            if (mUpdateCount == mResetInterval){
-                decayPreferenceMap();
-                mUpdateCount = 0;
-            }
         }
 
         return this;
@@ -1020,13 +1026,7 @@ public class Group {
     public ArrayList<FeatureModel> getAllFeatures(){
         ArrayList<FeatureModel> models = new ArrayList<FeatureModel>();
         Integer[] order = mFeatureMap.keySet().toArray(new Integer[0]);
-        Arrays.sort(order, new Comparator<Integer>() {
-            @Override
-            public int compare(Integer left, Integer right)
-            {
-                return Integer.compare(left.intValue(), right.intValue());
-            }
-        });
+        Arrays.sort(order, Integer::compare);
 
         for (Integer index:order){
             models.add(mFeatureMap.get(index));
