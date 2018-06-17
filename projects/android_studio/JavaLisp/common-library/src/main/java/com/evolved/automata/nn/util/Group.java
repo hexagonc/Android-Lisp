@@ -102,15 +102,6 @@ public class Group {
 
     MemoryManagementListener mMemorymanagementListener = null;
 
-    public Group setMemoryListener(MemoryManagementListener listener){
-        mMemorymanagementListener = listener;
-        return this;
-    }
-
-    public Group setDebugEnabled(boolean enabled){
-        mDebugEnabledP = enabled;
-        return this;
-    }
     HashSet<Integer> mCompleteFeatures = new HashSet<>();
     HashSet<Integer> mInternalAvailable = new HashSet<>();
 
@@ -127,20 +118,7 @@ public class Group {
     boolean mResetOnTimeoutsP = false;
     boolean mLimitBufferStateP = true;
 
-    public Group setLearningBoundaryMultiple(double multiple){
-        mSlowLearningThresholdMultiple = multiple;
-        return this;
-    }
 
-    public Group setBoundaryOnOvertime(boolean enabled){
-        mAutoResetOnDurationExceptionP = enabled;
-        return this;
-    }
-
-    public Group setMinimumOvertimeSampleCount(int count){
-        mMinimumTemporalSampleCount = count;
-        return this;
-    }
 
 
     public static class FeatureMetaData {
@@ -276,6 +254,9 @@ public class Group {
 
             boolean priorValid = mConfiguration.isValidInput(priorPrediction);
             boolean otherValid = mConfiguration.isValidInput(otherPredction);
+            updateIncidence(prior);
+            updateIncidence(other);
+
             if (priorValid && !otherValid)
             {
                 updatePreference(prior);
@@ -315,8 +296,66 @@ public class Group {
                 score = -1* Double.compare(prior.getMatchHistory().getTrend(), other.getMatchHistory().getTrend());
             }
 
+
+            if (score == -1)
+                updatePreference(prior);
+            else if (score == 1){
+                updatePreference(other);
+            }
+            return score;
+        }
+    };
+
+    Comparator<FeatureModel> mPassiveValueComparator = new Comparator<FeatureModel>() {
+        @Override
+        public int compare(FeatureModel prior, FeatureModel other)
+        {
+            float[] priorPrediction = NNTools.roundToInt(prior.getPredictedOutput().rawFloat());
+            float[] otherPredction = NNTools.roundToInt(other.getPredictedOutput().rawFloat());
+
+            boolean priorValid = mConfiguration.isValidInput(priorPrediction);
+            boolean otherValid = mConfiguration.isValidInput(otherPredction);
             updateIncidence(prior);
             updateIncidence(other);
+
+            if (priorValid && !otherValid)
+            {
+                updatePreference(prior);
+                return -1;
+            }
+            else if (otherValid && !priorValid){
+                updatePreference(other);
+                return 1;
+            }
+
+
+            int score = 0;
+            if (prior.getState() == FeatureModel.STATE.MATCHING &&
+                    other.getState() != FeatureModel.STATE.MATCHING)
+            {
+
+                score = -1;
+            }
+            else if (other.getState() == FeatureModel.STATE.MATCHING &&
+                    prior.getState() != FeatureModel.STATE.MATCHING)
+            {
+                score = 1;
+            }
+            else if (prior.getState() == FeatureModel.STATE.MATCHING &&
+                    other.getState() == FeatureModel.STATE.MATCHING)
+            {
+                if (prior.matchedLastInput() && !other.matchedLastInput()){
+                    score = -1;
+                }
+                else if (!prior.matchedLastInput() && other.matchedLastInput()){
+                    score = 1;
+                }
+                else
+                    score = -1* Double.compare(prior.getDistanceToFinalState(), other.getDistanceToFinalState());
+            }
+            else {
+                score = -1* Double.compare(prior.getMatchHistory().getTrend(), other.getMatchHistory().getTrend());
+            }
 
             if (score == -1)
                 updatePreference(prior);
@@ -360,14 +399,38 @@ public class Group {
 
         mKey = key;
         mGroupHeap = new PriorityQueue<>(10, mStandardValueComparator);
-        mFocusQueue = new PriorityQueue<>(10, mStandardValueComparator);
+        mFocusQueue = new PriorityQueue<>(10, mPassiveValueComparator);
+    }
+
+    public Group setMemoryListener(MemoryManagementListener listener){
+        mMemorymanagementListener = listener;
+        return this;
+    }
+
+    public Group setDebugEnabled(boolean enabled){
+        mDebugEnabledP = enabled;
+        return this;
+    }
+
+    public Group setLearningBoundaryMultiple(double multiple){
+        mSlowLearningThresholdMultiple = multiple;
+        return this;
+    }
+
+    public Group setBoundaryOnOvertime(boolean enabled){
+        mAutoResetOnDurationExceptionP = enabled;
+        return this;
+    }
+
+    public Group setMinimumOvertimeSampleCount(int count){
+        mMinimumTemporalSampleCount = count;
+        return this;
     }
 
     public Group setMinimumRecycleUsageCount(int minimumUsage){
         mMinimumUsageForRecycle  =minimumUsage;
         return this;
     }
-
 
     public Group setDreamToFreeMemory(boolean enabled){
         mDreamToFreeMemoryP  =enabled;
