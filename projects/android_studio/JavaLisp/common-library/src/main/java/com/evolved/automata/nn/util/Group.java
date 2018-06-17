@@ -453,15 +453,30 @@ public class Group {
     }
 
     public Group setMode(MODE mode){
-        mMode = mode;
-        if (mMode == MODE.LEARNING){
-            if (mFocusModel != null){
 
+        if (mMode != mode && (mode == MODE.EXTRAPOLATION)){
+
+            if (mFocusModel != null){
+                mFocusModel.setLabel("");
+                if (!mFocusModel.isComplete())
+                {
+                    mFocusModel.forceComplete();
+                }
             }
+
+            if (mBufferModel != null){
+                mBufferModel.setLabel("");
+                if (!mBufferModel.isComplete())
+                {
+                    mBufferModel.forceComplete();
+                }
+            }
+            
             mFocusModel = null;
             mBufferModel = null;
 
         }
+        mMode = mode;
         return this;
     }
 
