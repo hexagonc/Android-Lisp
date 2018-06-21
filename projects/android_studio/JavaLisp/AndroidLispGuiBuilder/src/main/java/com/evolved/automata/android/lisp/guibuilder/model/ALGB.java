@@ -21,6 +21,7 @@ import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.nn.GroupLispInterface;
 import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 import com.evolved.automata.lisp.vision.google.GoogleVisionEvaluator;
@@ -133,6 +134,7 @@ public class ALGB {
         GoogleVisionEvaluator.addVisionFunctions(mTop);
         MediaEvaluator.addVisionFunctions(mTop);
         Tools.addAndroidToolFunctions(mTop);
+        GroupLispInterface.addNeuralNetFunctions(mTop);
         mTop.mapFunction("println", getPrintln());
         mTop.mapFunction("log", getLog());
         mTop.mapFunction("find-page-by-name", find_page_by_name());

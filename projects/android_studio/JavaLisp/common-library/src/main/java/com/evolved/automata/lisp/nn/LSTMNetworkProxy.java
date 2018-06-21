@@ -5,6 +5,7 @@ import com.evolved.automata.nn.FastLSTMNetwork;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.OutputLayer;
+import com.evolved.automata.nn.util.FeatureModel;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -84,9 +85,9 @@ public class LSTMNetworkProxy {
         public float[] getRawActivations(){
             return _nodeActivations;
         }
-
-
     }
+
+
 
     protected LSTMNetworkProxy(float[] d)
     {

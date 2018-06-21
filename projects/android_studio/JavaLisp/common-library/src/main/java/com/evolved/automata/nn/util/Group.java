@@ -12,6 +12,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
@@ -57,6 +58,11 @@ public class Group {
 
         public FeatureValueMetadata decay(double decayFraction){
             _prefCount = _prefCount * decayFraction;
+            return this;
+        }
+
+        public FeatureValueMetadata increaseValuePercent(double fraction){
+            _incidenceCount+=(_incidenceCount - _prefCount)*fraction;
             return this;
         }
 
@@ -1019,9 +1025,7 @@ public class Group {
         mPreferenceMap.get(b).updateInstance();
     }
 
-    private Group addFeature(FeatureModel model){
-        return addFeature(model, _nextIndex);
-    }
+
 
     FeatureMetaData getFeatureInternalMetaData(FeatureModel model){
         FeatureMetaData data = (FeatureMetaData)model.getMetaData();
@@ -1031,13 +1035,37 @@ public class Group {
         return data;
     }
 
-    FeatureValueMetadata getFeatureValueMetadata(FeatureModel model){
+    public FeatureValueMetadata getFeatureValueMetadata(FeatureModel model){
         FeatureMetaData internalMeta = getFeatureInternalMetaData(model);
         return mPreferenceMap.get(internalMeta.getAllocationIndex());
     }
 
+    public Group increaseFeatureValueFraction(int index, double fraction){
+        FeatureValueMetadata meta = mPreferenceMap.get(Integer.valueOf(index));
+        if (meta != null){
+            meta.increaseValuePercent(fraction);
+            return this;
+        }
 
-    Group addFeature(FeatureModel model, int index){
+        return null;
+    }
+
+    public Group increaseFeatureValueFraction(FeatureModel model, double fraction){
+        int index = getFeatureInternalMetaData(model).getAllocationIndex();
+        FeatureValueMetadata meta = mPreferenceMap.get(Integer.valueOf(index));
+        if (meta != null){
+            meta.increaseValuePercent(fraction);
+            return this;
+        }
+
+        return null;
+    }
+
+    public Group addFeature(FeatureModel model){
+        return addFeature(model, _nextIndex);
+    }
+
+    public Group addFeature(FeatureModel model, int index){
         FeatureMetaData meta = getFeatureInternalMetaData(model);
         meta.setAllocationIndex(index);
 
@@ -1053,6 +1081,51 @@ public class Group {
         _nextIndex = i;
         return this;
     }
+
+    public Group importFeature(FeatureModel model, boolean sleepToFreeMemory){
+        Optional<FeatureModel> available = mFeatureMap.keySet().stream().map((i)->mFeatureMap.get(i)).filter(f->f.getState()== FeatureModel.STATE.INITIAL).findAny();
+        if (available.isPresent()){
+            removeFeature(available.get());
+            addFeature(model);
+            return this;
+        }
+        else if (sleepToFreeMemory){
+            sleep();
+            return importFeature(model, false);
+        }
+        else
+            return null;
+    }
+
+
+    public Group removeFeature(FeatureModel model){
+        FeatureMetaData meta = getFeatureInternalMetaData(model);
+
+        Integer index = meta.getAllocationIndex();
+        mFeatureMap.remove(index);
+        mPreferenceMap.remove(index);
+
+        int i=0;
+        for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
+
+        }
+        _nextIndex = i;
+        return this;
+    }
+
+    public Group removeFeature(Integer index){
+
+        mFeatureMap.remove(index);
+        mPreferenceMap.remove(index);
+
+        int i=0;
+        for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
+
+        }
+        _nextIndex = i;
+        return this;
+    }
+
 
     private void processAllCompleteModels(Vector input){
         processAllCompleteModels(input, null);

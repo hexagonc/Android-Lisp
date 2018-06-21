@@ -7,6 +7,7 @@ import com.evolved.automata.lisp.IncompleteLispExpressionException;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.lisp.nn.GroupLispInterface;
 import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
 
@@ -715,7 +716,7 @@ public class LispTester {
 			top.mapFunction("select-old-data-names", selectOldData(selectOldDataStatement));
 			top.mapFunction("get-all-names", selectAllDataKeys(selectAllDataKeysStatement));
 			DropboxInterface.addDefaultFunctions(top, dropboxAccessToken, dropboxAppName);
-
+			GroupLispInterface.addNeuralNetFunctions(top);
 			BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
 			String lineinput;
 			LinkedList<Value> parsedResult = null;
