@@ -3,7 +3,6 @@ package com.evolved.automata.lisp.nn;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
-import com.evolved.automata.lisp.ListValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
@@ -28,25 +27,28 @@ public class GroupLispInterface {
         env.mapFunction("model-create-world", modelCreateWorld());
         env.mapFunction("world-create-group-type", worldCreateGroupType());
         env.mapFunction("world-add-group", worldAddGroup());
-        env.mapFunction("get-set-mode", groupSetMode());
         env.mapFunction("world-get-group", worldGetGroup());
+        env.mapFunction("world-process-input", worldProcessInput());
+        env.mapFunction("group-import-feature", groupImportFeature());
+        env.mapFunction("group-set-decay-interval", groupSetDecayInterval());
+        env.mapFunction("group-get-focus-feature", groupGetFocusFeature());
+
+        env.mapFunction("group-reset", groupResetAll());
+
+        env.mapFunction("group-set-mode", groupSetMode());
+        env.mapFunction("group-toggle-memory-management", groupToggleMemoryManagement());
         env.mapFunction("group-set-max-duration-milli", groupSetMaxDurationMilli());
         env.mapFunction("group-add-feature", groupAddFeature());
         env.mapFunction("group-remove-feature", groupRemoveFeature());
         env.mapFunction("group-increase-feature-value-fraction", groupIncreaseFeatureValueFraction());
-
         env.mapFunction("group-process-input", groupProcessInput());
         env.mapFunction("group-get-ordered-processed-features", groupGetOrderedProcessedFeatures());
         env.mapFunction("feature-extrapolate-values", featureExtrapolateValues());
         env.mapFunction("feature-get-length", featureLength());
         env.mapFunction("feature-get-distance-to-final-state", featureGetDistanceToFinalState());
         env.mapFunction("feature-get-state", featureGetState());
-
-
-
-        env.mapFunction("group-toggle-memory-management", groupToggleMemoryManagement());
         env.mapFunction("feature-get-next-predicted-value", featureGetNextPredictedValue());
-        env.mapFunction("world-process-input", worldProcessInput());
+
 
     }
 
@@ -116,18 +118,18 @@ public class GroupLispInterface {
                 String name = (String)evaluatedArgs[1].getString();
                 int inputOutputNodes = (int)evaluatedArgs[2].getIntValue();
                 int memoryCellNodes = (int)evaluatedArgs[3].getIntValue();
-                int baseAllocation = (int)evaluatedArgs[4].getIntValue();
+                int defaultGroupWeight = (int)evaluatedArgs[4].getIntValue();
                 int featureBufferSize = (int)evaluatedArgs[5].getIntValue();
                 int minimumBufferOverlap  = (int)evaluatedArgs[6].getIntValue();
                 LearningConfiguration config = null;
                 if (evaluatedArgs.length>7){
-                    config = (LearningConfiguration)evaluatedArgs[6].getObjectValue();
+                    config = (LearningConfiguration)evaluatedArgs[7].getObjectValue();
                 }
                 else {
                     config = WorldModel.getFeatureLearningConfiguration();
                 }
 
-                WorldModel.GroupType type = model.createGroupType(name, inputOutputNodes, memoryCellNodes, baseAllocation, featureBufferSize, minimumBufferOverlap, config);
+                WorldModel.GroupType type = model.createGroupType(name, inputOutputNodes, memoryCellNodes, defaultGroupWeight, featureBufferSize, minimumBufferOverlap, config);
 
 
                 return ExtendedFunctions.makeValue(type);
@@ -271,6 +273,82 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate groupImportFeature()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupImportFeature();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                FeatureModel model = (FeatureModel)evaluatedArgs[1].getObjectValue();
+                boolean dreamToFreeP  = (evaluatedArgs.length > 2 && !evaluatedArgs[2].isNull());
+
+                Group result = group.importFeature(model, dreamToFreeP);
+                if (result != null)
+                    return evaluatedArgs[0];
+                else
+                    return Environment.getNull();
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate groupSetDecayInterval()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSetDecayInterval();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                int numProcessStepsPerDecay = (int)evaluatedArgs[1].getIntValue();
+
+                Group result = group.setDecayInterval(numProcessStepsPerDecay);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate groupGetFocusFeature()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupGetFocusFeature();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+
+                FeatureModel result = group.getFocusModel();
+                if (result != null)
+                    return ExtendedFunctions.makeValue(result);
+                else
+                    return Environment.getNull();
+            }
+        };
+    }
+
+
     public static SimpleFunctionTemplate groupSetMaxDurationMilli()
     {
         return new SimpleFunctionTemplate() {
@@ -330,9 +408,9 @@ public class GroupLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(1, false, false);
+                checkActualArguments(1, true, true);
                 Group group = (Group)evaluatedArgs[0].getObjectValue();
-                group.resetAll();
+                group.resetAll(evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull());
 
                 return evaluatedArgs[0];
             }
@@ -576,24 +654,4 @@ public class GroupLispInterface {
         };
     }
 
-    public static SimpleFunctionTemplate groupSpec()
-    {
-        return new SimpleFunctionTemplate() {
-            @SuppressWarnings("unchecked")
-            @Override
-            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
-            {
-                return (T) featureGetNextPredictedValue();
-            }
-
-            @Override
-            public Value evaluate(Environment env, Value[] evaluatedArgs)
-            {
-                checkActualArguments(1, false, false);
-                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
-
-                return NeuralNetLispInterface.getLispDataValue(feature.getPredictedOutput().rawFloat());
-            }
-        };
-    }
 }

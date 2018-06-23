@@ -167,8 +167,8 @@ public class WorldModel {
         mGroupTypes.put(BASIC.toString(), BASIC);
     }
 
-    public GroupType createGroupType(String name, int inputOutputNodes, int memoryCellNodes, int baseAllocation, int featureBufferSize, int minimumBufferOverlap, LearningConfiguration config){
-        GroupType type = new GroupType(inputOutputNodes, memoryCellNodes, baseAllocation, featureBufferSize, minimumBufferOverlap, config).setName(name);
+    public GroupType createGroupType(String name, int inputOutputNodes, int memoryCellNodes, int defaultGroupWeight, int featureBufferSize, int minimumBufferOverlap, LearningConfiguration config){
+        GroupType type = new GroupType(inputOutputNodes, memoryCellNodes, defaultGroupWeight, featureBufferSize, minimumBufferOverlap, config).setName(name);
         mGroupTypes.put(name, type);
         return type;
     }

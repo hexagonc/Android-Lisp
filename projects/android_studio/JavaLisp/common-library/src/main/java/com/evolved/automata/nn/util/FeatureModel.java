@@ -389,7 +389,7 @@ public class FeatureModel {
                 mCurrentRange.setLength(prior.size()-1);
             }
             else {
-                mState = STATE.MATCHING;
+                mState = STATE.NON_MATCHING;
             }
         }
         return mState;
@@ -668,7 +668,7 @@ public class FeatureModel {
                             }
 
                             if (hasMaxDurationBonus) {
-                                stopTime = System.currentTimeMillis() + configuration.getBestSolutionBonusMilli();
+                                stopTime = Math.max(stopTime, System.currentTimeMillis() + configuration.getBestSolutionBonusMilli());
                                 System.out.println("Extra time bonus: " + dateParts(stopTime));
                             }
                         }
@@ -685,7 +685,7 @@ public class FeatureModel {
                         }
 
                         if (hasMaxDurationBonus) {
-                            stopTime = System.currentTimeMillis() + configuration.getBestSolutionBonusMilli();
+                            stopTime = Math.max(stopTime, System.currentTimeMillis() + configuration.getBestSolutionBonusMilli());
                             System.out.println("Extra time bonus: " + dateParts(stopTime));
                         }
                     }

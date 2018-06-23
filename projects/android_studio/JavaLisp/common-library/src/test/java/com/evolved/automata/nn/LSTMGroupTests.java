@@ -1052,7 +1052,7 @@ public class LSTMGroupTests {
                 seed = baseSeed;
 
             int radiix = 10;
-            int numCycles = 40;
+            int numCycles = 20;
 
             int numClusters = 2;
 
@@ -1116,7 +1116,7 @@ public class LSTMGroupTests {
 
             int loopCount = 2;
             outer: for (int kk = 0;kk<numCycles;kk++){
-                if (kk > 30){
+                if (kk > 15){
                     DEFAULT_GROUP.setMemoryManagement(false);
                 }
                 for (int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++){

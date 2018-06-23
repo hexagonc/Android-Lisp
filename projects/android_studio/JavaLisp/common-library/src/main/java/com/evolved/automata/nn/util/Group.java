@@ -98,6 +98,8 @@ public class Group {
     HashMap<Integer, FeatureValueMetadata> mPreferenceMap = new HashMap<>();
 
 
+    public static final String FOCUS_LABEL = "FOCUS";
+    public static final String BUFFER_LABEL = "BUFFER";
     int mUpdateCount = 0;
     int mResetInterval = 10;
     public final double DECAY_FRACTION = 0.1;
@@ -539,30 +541,46 @@ public class Group {
         return mMode == MODE.SLEEPING;
     }
 
+    public Group setDecayInterval(int interval){
+        mResetInterval = interval;
+        return this;
+    }
+
+    public Group resetAll(){
+        return resetAll(false);
+    }
     /**
      * Asserts that a boundary has occurred.  Every subsequent input is causally independent
      * of the prior ones
      * @return
      */
-    public Group resetAll(){
+    public Group resetAll(boolean skipFocusP){
 
-        if (mBufferModel != null){
-            mBufferModel.setLabel("");
-            mBufferModel.forceComplete();
+        if (!skipFocusP) {
+            if (mBufferModel != null){
+                mBufferModel.setLabel("");
+                mBufferModel.forceComplete();
+            }
+
+            if (mFocusModel != null){
+                mFocusModel.setLabel("");
+                mFocusModel.forceComplete();
+            }
+
+            mFocusModel = null;
+            mBufferModel = null;
         }
 
-        if (mFocusModel != null){
-            mFocusModel.setLabel("");
-            mFocusModel.forceComplete();
-        }
 
-        mFocusModel = null;
-        mBufferModel = null;
+
 
         for (Integer index: mFeatureMap.keySet().stream().filter(i->(mFeatureMap.get(i).isComplete())).collect(toList()) ){
             FeatureModel model = mFeatureMap.get(index);
-            model.setLabel("");
-            model.resetRecognition();
+            if (!skipFocusP || (model != mFocusModel && model != mBufferModel)) {
+                model.setLabel("");
+                model.resetRecognition();
+            }
+
 
         }
 
@@ -666,7 +684,7 @@ public class Group {
             mBufferModel = getAnotherFeature();
         }
 
-        mFocusModel.setLabel("CURRENT");
+        mFocusModel.setLabel(FOCUS_LABEL);
         int featureBufferSize = mType.getFeatureBufferSize();
         int minimumBufferOverlap = mType.getMinimumBufferOverlap();
         long startTime, duration;
@@ -695,6 +713,7 @@ public class Group {
         }
 
         if (mBufferModel != null){
+            mBufferModel.setLabel(BUFFER_LABEL);
             if (mBufferModel.getFeatureLength() == featureBufferSize){
                 mBufferModel.shiftForward();
             }
@@ -710,7 +729,7 @@ public class Group {
             else if (mFocusModel.isFinished()){
                 mFocusModel.setLabel("");
                 mFocusModel = mBufferModel;
-                mFocusModel.setLabel("CURRENT");
+                mFocusModel.setLabel(FOCUS_LABEL);
                 mBufferModel = null;
             }
         }
@@ -1097,9 +1116,33 @@ public class Group {
             return null;
     }
 
+    public FeatureModel getFocusModel(){
+        FeatureModel out = null;
+        if (mFocusModel != null){
+            out = mFocusModel;
+        }
+        else if (mFocusQueue != null && mFocusQueue.size()>0){
+            out = mFocusQueue.peek();
+        }
+        return out;
+    }
 
     public Group removeFeature(FeatureModel model){
         FeatureMetaData meta = getFeatureInternalMetaData(model);
+
+        if (mFocusModel == model){
+            if (mBufferModel != null){
+                mFocusModel = mBufferModel;
+                mFocusModel.setLabel(FOCUS_LABEL);
+                mBufferModel = null;
+            }
+            else
+                mFocusModel = null;
+        }
+
+        if (mFocusQueue != null && mFocusQueue.size()>0 && mFocusQueue.peek() == model){
+            mFocusQueue.poll();
+        }
 
         Integer index = meta.getAllocationIndex();
         mFeatureMap.remove(index);
@@ -1115,15 +1158,7 @@ public class Group {
 
     public Group removeFeature(Integer index){
 
-        mFeatureMap.remove(index);
-        mPreferenceMap.remove(index);
-
-        int i=0;
-        for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
-
-        }
-        _nextIndex = i;
-        return this;
+        return removeFeature(mFeatureMap.get(index));
     }
 
 
@@ -1157,7 +1192,7 @@ public class Group {
                 mFocusModel.setLabel("");
             }
             mFocusModel = mFocusQueue.poll();
-            mFocusModel.setLabel("CURRENT");
+            mFocusModel.setLabel(FOCUS_LABEL);
             System.out.println("Setting recognition focus");
         }
         else if (mFocusModel != null && mFocusModel.isNonMatching()){
@@ -1166,7 +1201,7 @@ public class Group {
                 System.out.println("Using buffer as new focus");
                 mFocusModel.setLabel("");
                 mFocusModel = mBufferModel;
-                mFocusModel.setLabel("CURRENT");
+                mFocusModel.setLabel(FOCUS_LABEL);
                 mBufferModel = null;
             }
             else {
