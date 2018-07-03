@@ -1,8 +1,10 @@
 package com.evolved.automata.nn.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.ANNEALING_FRACTION;
@@ -41,30 +43,81 @@ public class LearningConfiguration {
 
 
     public enum KEY {
-        ANNEALING_FRACTION,
+        ANNEALING_FRACTION(Double.class),
         SKIP_LAMBDA,
-        MAX_DURATION_MILLI,
-        BEST_SOLUTION_BONUS_ITERATIONS,
-        BEST_SOLUTION_BONUS_MILLI,
-        EARLY_STOP_SUCCESS_FRACTION,
-        MUST_MATCH_FINAL_INPUT_PAIR,
-        INPUT_IS_PRIOR_BEST_RESULT,
-        MIN_ACCEPTABLE_SUCCESS_FRACTION,
+        MAX_DURATION_MILLI(Integer.class),
+        BEST_SOLUTION_BONUS_ITERATIONS(Integer.class),
+        BEST_SOLUTION_BONUS_MILLI(Integer.class),
+        EARLY_STOP_SUCCESS_FRACTION(Double.class),
+        MUST_MATCH_FINAL_INPUT_PAIR(Boolean.class),
+        INPUT_IS_PRIOR_BEST_RESULT(Boolean.class),
+        MIN_ACCEPTABLE_SUCCESS_FRACTION(Double.class),
         PRIOR_RESULTS,
-        MAX_ITERATIONS,
-        NUM_SOLUTION_BUFFER,
-        STATUS_RESULT_IS_VALID,
-        STATUS_SUCCESS_CRITERIA_SATISFIED,
-        RESET_ITER,
-        INITIAL_RANDOM_FRACTION,
-        DEBUG_LEVEL,
+        MAX_ITERATIONS(Integer.class),
+        NUM_SOLUTION_BUFFER(Integer.class),
+        STATUS_RESULT_IS_VALID(Boolean.class),
+        STATUS_SUCCESS_CRITERIA_SATISFIED(Boolean.class),
+        RESET_ITER(Integer.class),
+        INITIAL_RANDOM_FRACTION(Double.class),
+        DEBUG_LEVEL(Integer.class),
         DEBUG_ALLOWED_TAGS,
-        HISTORY_LENGTH,
-        MATCH_EQUALITY_ERROR,
+        HISTORY_LENGTH(Integer.class),
+        MATCH_EQUALITY_ERROR(Double.class),
         INPUT_VALIDATOR,
         SLOW_LEARNING_THRESHOLD_MULTIPLE,
         RESET_ON_SLOW_LEARNING,
-        DATA_DISPLAY_LAMBDA
+        DATA_DISPLAY_LAMBDA;
+
+        Class type = null;
+
+        boolean skip = false;
+        KEY(Class c){
+            type = c;
+        }
+
+        KEY(){
+            type = null;
+            skip = true;
+        }
+
+        public Class getType(){
+            return type;
+        }
+
+    }
+
+    public byte[] serializeBytes(){
+        int numKeys = _dataMap.size();
+        GroupSerializer.Builder b = GroupSerializer.get().serialize();
+        b.add(Integer.valueOf(numKeys));
+        for (Map.Entry<KEY, Object> pair:_dataMap.entrySet()){
+            int typeIndex = pair.getKey().ordinal();
+            b.add(Integer.valueOf(typeIndex));
+            b.add(pair.getValue());
+        }
+        return b.build();
+    }
+
+    public static LearningConfiguration deserializeBytes(byte[] data){
+        ArrayList values = GroupSerializer.get().deserialize(data);
+        HashMap<KEY, Object> map = new HashMap<KEY, Object>();
+        int size = (Integer)values.get(0);
+
+        if (size > 0){
+            KEY[] v = KEY.values();
+            KEY key = KEY.ANNEALING_FRACTION;
+            for (int i = 1;i < values.size();i++){
+
+                if (i % 2 == 1){
+                    int type = (Integer)values.get(i);
+                    key = v[type];
+                }
+                else {
+                    map.put(key, values.get(i));
+                }
+            }
+        }
+        return new LearningConfiguration(map);
     }
 
     HashMap<KEY, Object> _dataMap = new HashMap<KEY, Object>();

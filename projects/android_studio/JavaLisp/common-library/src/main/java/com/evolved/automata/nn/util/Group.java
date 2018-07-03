@@ -12,6 +12,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
@@ -23,6 +25,9 @@ import static java.util.stream.Collectors.toList;
  */
 
 public class Group {
+    public final double DECAY_FRACTION = 0.1;
+    public static final String FOCUS_LABEL = "FOCUS";
+    public static final String BUFFER_LABEL = "BUFFER";
 
     public enum MODE {
         LEARNING, EXTRAPOLATION, MIXED, SLEEPING
@@ -31,6 +36,23 @@ public class Group {
     public static class FeatureValueMetadata {
         double _prefCount = 0;
         double _incidenceCount = 1;
+
+        FeatureValueMetadata(){
+
+        }
+
+        public byte[] serializeBytes(){
+            return GroupSerializer.get().serialize().add(Double.valueOf(_prefCount)).add(Double.valueOf(_incidenceCount)).build();
+        }
+
+        public static FeatureValueMetadata deserializeBytes(byte[] data){
+            ArrayList values = GroupSerializer.get().deserialize(data);
+
+            FeatureValueMetadata meta = new FeatureValueMetadata();
+            meta._prefCount = (Double)values.get(0);
+            meta._incidenceCount = (Double)values.get(1);
+            return meta;
+        }
 
         public FeatureValueMetadata updateInstance(){
             _incidenceCount++;
@@ -57,12 +79,17 @@ public class Group {
         }
 
         public FeatureValueMetadata decay(double decayFraction){
-            _prefCount = _prefCount * decayFraction;
+            decreaseValuePercent(decayFraction);
             return this;
         }
 
         public FeatureValueMetadata increaseValuePercent(double fraction){
-            _incidenceCount+=(_incidenceCount - _prefCount)*fraction;
+            _prefCount+=(_incidenceCount - _prefCount)*fraction;
+            return this;
+        }
+
+        public FeatureValueMetadata decreaseValuePercent(double fraction){
+            _prefCount*=fraction;
             return this;
         }
 
@@ -87,48 +114,22 @@ public class Group {
 
     }
 
-
-    PriorityQueue<FeatureModel> mGroupHeap;
-    String mKey;
-    LearningConfiguration mConfiguration;
-    HashMap<Integer, FeatureModel> mFeatureMap;
-    Integer[] mIndexIterator;
-    int _nextIndex = 0;
-
-    HashMap<Integer, FeatureValueMetadata> mPreferenceMap = new HashMap<>();
-
-
-    public static final String FOCUS_LABEL = "FOCUS";
-    public static final String BUFFER_LABEL = "BUFFER";
-    int mUpdateCount = 0;
-    int mResetInterval = 10;
-    public final double DECAY_FRACTION = 0.1;
-    MODE mMode = MODE.LEARNING;
-
-    WorldModel mWorld;
-
-    boolean mDreamWithFractionP = true;
-    boolean mDebugEnabledP = false;
-
-    MemoryManagementListener mMemorymanagementListener = null;
-
-    FeatureModel mFocusModel = null;
-    FeatureModel mBufferModel = null;
-
-    int MAX_BUFFER_MILLI = 30*1000; // 30 seconds
-    boolean mEnableMemoryManagmentP = true;
-    boolean mLimitBufferStateP = true;
-
-
-
-
     public static class FeatureMetaData {
         public int _allocationIndex = 0;
-        public long _learningTime = 0;
         public int _updateCount = 0;
         public int _averageLearningTime = 0;
         public int _usageCount = 0;
+        public long _learningTime = 0;
         public boolean _isInUseP = false;
+        public Object _userObject = null;
+
+        String _serializedData = null;
+
+        StringSerializer _serializer = null;
+
+        FeatureMetaData(){
+
+        }
 
         public FeatureMetaData reset(){
             _isInUseP = false;
@@ -137,6 +138,45 @@ public class Group {
             _updateCount = 0;
             _learningTime = 0;
             return this;
+        }
+
+        public byte[] serializeBytes(){
+            GroupSerializer.Builder b = GroupSerializer.get().serialize()
+                .add(Integer.valueOf(_allocationIndex))
+                    .add(Integer.valueOf(_updateCount))
+                    .add(Integer.valueOf(_averageLearningTime))
+                    .add(Integer.valueOf(_usageCount))
+                    .add(Long.valueOf(_learningTime))
+                    .add(Boolean.valueOf(_isInUseP));
+
+            if (_serializer != null && _userObject != null){
+                b.add(_serializer.serialize(_userObject));
+            }
+            return b.build();
+        }
+
+        public static FeatureMetaData deserializeBytes(byte[] data){
+            ArrayList values = GroupSerializer.get().deserialize(data);
+            FeatureMetaData meta = new FeatureMetaData();
+            meta._allocationIndex = (Integer)values.get(0);
+            meta._updateCount = (Integer)values.get(1);
+            meta._averageLearningTime = (Integer)values.get(2);
+            meta._usageCount = (Integer)values.get(3);
+            meta._learningTime = (Long)values.get(4);
+            meta._isInUseP = (Boolean)values.get(5);
+
+            if (values.size()>6){
+                meta._serializedData = (String)values.get(6);
+            }
+            return meta;
+        }
+
+        public void setStringSerializer(StringSerializer serializer){
+            _serializer = serializer;
+            if (_serializedData != null){
+                _userObject = serializer.deserialize(_serializedData);
+                _serializedData = null;
+            }
         }
 
         public boolean isInUse(){
@@ -178,6 +218,15 @@ public class Group {
         public FeatureMetaData updateUsageCount(){
             _usageCount++;
             return this;
+        }
+
+        public FeatureMetaData setCustomMetadata(Object o){
+            _userObject = o;
+            return this;
+        }
+
+        public Object getCustomMetadata(){
+            return _userObject;
         }
     }
 
@@ -255,16 +304,22 @@ public class Group {
 
             boolean priorValid = mConfiguration.isValidInput(priorPrediction);
             boolean otherValid = mConfiguration.isValidInput(otherPredction);
-            updateIncidence(prior);
-            updateIncidence(other);
+
+            if (SUPPRESS_COMPARATOR_SIDE_EFFECTS){
+                updateIncidence(prior);
+                updateIncidence(other);
+            }
+
 
             if (priorValid && !otherValid)
             {
-                updatePreference(prior);
+                if (SUPPRESS_COMPARATOR_SIDE_EFFECTS)
+                    updatePreference(prior);
                 return -1;
             }
             else if (otherValid && !priorValid){
-                updatePreference(other);
+                if (SUPPRESS_COMPARATOR_SIDE_EFFECTS)
+                    updatePreference(other);
                 return 1;
             }
 
@@ -298,11 +353,14 @@ public class Group {
             }
 
 
-            if (score == -1)
-                updatePreference(prior);
-            else if (score == 1){
-                updatePreference(other);
+            if (SUPPRESS_COMPARATOR_SIDE_EFFECTS){
+                if (score == -1)
+                    updatePreference(prior);
+                else if (score == 1){
+                    updatePreference(other);
+                }
             }
+
             return score;
         }
     };
@@ -367,24 +425,337 @@ public class Group {
         }
     };
 
-    public FeatureMetaData createMetadata(int index){
-        FeatureMetaData mdata = new FeatureMetaData();
-        mdata._allocationIndex = index;
-        return mdata;
-    }
 
+
+    boolean mEnableMemoryManagmentP = true;
+    boolean mLimitBufferStateP = true;
     boolean mSleepToFreeMemoryP = true;
     boolean mSortByUsageP = false;
-    double mRecycleCutoffFraction = 0.2F;
+    boolean mDreamWithFractionP = true;
+    boolean mDebugEnabledP = false;
+    boolean mAllowUnlimitedFeatureImportP = false;
+
+    int mUpdateCount = 0;
+    int mResetInterval = 10;
+    int MAX_BUFFER_MILLI = 30*1000; // 30 seconds
     int mMinimumUsageForRecycle = 10;
     int mAvgStepLearningMilli = 0;
     int mTemporalUpdateCount = 0;
-    PriorityQueue<Integer> recycleQueue = null;
-    WorldModel.GroupType mType;
-    ArrayList<FeatureModel> mLastProcessedFeatures = new ArrayList<FeatureModel>();
-    PriorityQueue<FeatureModel> mFocusQueue;
-    double mSleepCycleMultipler = 1;
+    int _nextIndex = 0;
 
+    MODE mMode = MODE.LEARNING;
+
+    double mSleepCycleMultipler = 1;
+    double mRecycleCutoffFraction = 0.2F;
+
+    String mKey;
+
+    HashMap<Integer, FeatureValueMetadata> mPreferenceMap = new HashMap<>();
+    LinkedList<Integer> mRecycleQueue = null;
+    Integer[] mIndexIterator;
+
+
+
+    HashMap<Integer, FeatureModel> mFeatureMap;
+
+
+    FeatureModel mFocusModel = null;  // Set from featuremap
+    FeatureModel mBufferModel = null; // Set from featuremap
+
+    ArrayList<FeatureModel> mLastProcessedFeatures = new ArrayList<FeatureModel>(); // Set from featuremap
+    PriorityQueue<FeatureModel> mFocusQueue; // Set from featuremap
+    PriorityQueue<FeatureModel> mGroupHeap; // Set from featuremap
+
+
+    WorldModel mWorld; // set externally
+
+    MemoryManagementListener mMemorymanagementListener = null; // set externally
+
+    WorldModel.GroupType mType;
+
+    LearningConfiguration mConfiguration;
+
+    StringSerializer mUserSerializer = null;
+
+    boolean SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
+
+    public byte[] serializeBytes(){
+        GroupSerializer.Builder b = GroupSerializer.get().serialize()
+                .add(Boolean.valueOf(mEnableMemoryManagmentP))
+                .add(Boolean.valueOf(mLimitBufferStateP))
+                .add(Boolean.valueOf(mSleepToFreeMemoryP))
+                .add(Boolean.valueOf(mSortByUsageP))
+                .add(Boolean.valueOf(mDreamWithFractionP))
+                .add(Boolean.valueOf(mDebugEnabledP))
+                .add(Boolean.valueOf(mAllowUnlimitedFeatureImportP))
+
+                .add(Integer.valueOf(mUpdateCount))
+                .add(Integer.valueOf(mResetInterval))
+                .add(Integer.valueOf(MAX_BUFFER_MILLI))
+                .add(Integer.valueOf(mMinimumUsageForRecycle))
+                .add(Integer.valueOf(mAvgStepLearningMilli))
+                .add(Integer.valueOf(mTemporalUpdateCount))
+                .add(Integer.valueOf(_nextIndex))
+                .add(Integer.valueOf(mMode.ordinal()))
+
+                .add(Double.valueOf(mSleepCycleMultipler))
+                .add(Double.valueOf(mRecycleCutoffFraction))
+
+                .add(mKey);
+
+        // preference map
+        int size = mPreferenceMap.size(), i;
+        if (size > 0){
+            b.add(Integer.valueOf(size));
+
+            for (Map.Entry<Integer, FeatureValueMetadata> pair:mPreferenceMap.entrySet()){
+                b.add(pair.getKey());
+                b.add(pair.getValue());
+            }
+        }
+
+        // recyclequeue
+        size = -1;
+        if (mRecycleQueue != null){
+            size = mRecycleQueue.size();
+            b.add(Integer.valueOf(size));
+            mRecycleQueue.stream().forEach(index->b.add(index));
+        }
+        else
+            b.add(Integer.valueOf(size));
+
+        // index iterator
+        size = -1;
+        if (mIndexIterator == null)
+        {
+            size = mIndexIterator.length;
+            b.add(Integer.valueOf(size));
+            Arrays.stream(mIndexIterator).forEach(index->b.add(index));
+        }
+        else
+            b.add(Integer.valueOf(size));
+
+        // featuremap
+        size = mFeatureMap.size();
+        b.add(Integer.valueOf(size));
+        i = 0;
+        for (Map.Entry<Integer, FeatureModel> pair:mFeatureMap.entrySet()){
+            b.add(pair.getKey());
+            b.add(pair.getValue());
+        }
+
+        // focus model index
+        if (mFocusModel == null){
+            b.add(Integer.valueOf(-1));
+        }
+        else
+            b.add(Integer.valueOf(getFeatureInternalMetaData(mFocusModel).getAllocationIndex()));
+
+        // buffer model index
+        if (mBufferModel == null){
+            b.add(Integer.valueOf(-1));
+        }
+        else
+            b.add(Integer.valueOf(getFeatureInternalMetaData(mBufferModel).getAllocationIndex()));
+
+        // last processed features (currently unused)
+        size = mLastProcessedFeatures.size();
+
+        b.add(Integer.valueOf(size));
+        mLastProcessedFeatures.stream().forEach(f->b.add(Integer.valueOf(getFeatureInternalMetaData(f).getAllocationIndex())));
+
+        // focus queue
+        size = mFocusQueue.size();
+        b.add(Integer.valueOf(size));
+
+        if (size > 0){
+            PriorityQueue<FeatureModel> copyQueue = new PriorityQueue<FeatureModel>(size, mPassiveValueComparator);
+            while (mFocusQueue.size()>0){
+                FeatureModel m = mFocusQueue.poll();
+                copyQueue.add(m);
+                b.add(Integer.valueOf(getFeatureInternalMetaData(m).getAllocationIndex()));
+            }
+            mFocusQueue = copyQueue;
+        }
+
+        // Group heap (only used for the preference side-effects of using mStandardValueComparator)
+        size = mGroupHeap.size();
+        b.add(Integer.valueOf(size));
+
+        if (size > 0){
+            SUPPRESS_COMPARATOR_SIDE_EFFECTS = true;
+            PriorityQueue<FeatureModel> copyQueue = new PriorityQueue<FeatureModel>(size, mStandardValueComparator);
+            while (mGroupHeap.size()>0){
+                FeatureModel m = mGroupHeap.poll();
+                copyQueue.add(m);
+                b.add(Integer.valueOf(getFeatureInternalMetaData(m).getAllocationIndex()));
+            }
+            mGroupHeap = copyQueue;
+            SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
+        }
+
+        // group type
+        b.add(WorldModel.GroupType.class, mType);
+
+        // learning config
+        b.add(LearningConfiguration.class, mConfiguration);
+        return b.build();
+    }
+
+    public static Group deserializeBytes(byte[] data){
+        ArrayList values = GroupSerializer.get().deserialize(data);
+        Group g = new Group();
+        g.mEnableMemoryManagmentP = (Boolean)values.get(0);
+        g.mLimitBufferStateP = (Boolean)values.get(1);
+        g.mSleepToFreeMemoryP = (Boolean)values.get(2);
+        g.mSortByUsageP = (Boolean)values.get(3);
+        g.mDreamWithFractionP = (Boolean)values.get(4);
+        g.mDebugEnabledP = (Boolean)values.get(5);
+        g.mAllowUnlimitedFeatureImportP = (Boolean)values.get(6);
+
+        g.mUpdateCount = (Integer)values.get(7);
+        g.mResetInterval = (Integer)values.get(8);
+        g.MAX_BUFFER_MILLI = (Integer)values.get(9);
+        g.mMinimumUsageForRecycle = (Integer)values.get(10);
+        g.mAvgStepLearningMilli = (Integer)values.get(11);
+        g.mTemporalUpdateCount = (Integer)values.get(12);
+        g._nextIndex = (Integer)values.get(13);
+        g.mMode = MODE.values()[(Integer)values.get(14)];
+
+        g.mSleepCycleMultipler = (Double)values.get(15);
+        g.mRecycleCutoffFraction = (Double)values.get(16);
+
+        g.mKey = (String)values.get(17);
+
+        // preference map
+        int offset = 17;
+        Integer size = (Integer)values.get(offset++);
+        int i = 0;
+        Integer key = null;
+
+        if (size > 0){
+
+            for (i = 0;i<2*size;i++){
+
+                if (i % 2 == 0){
+                    key = (Integer)values.get(offset);
+                }
+                else {
+                    g.mPreferenceMap.put(key, (FeatureValueMetadata) values.get(offset));
+                }
+                offset++;
+            }
+        }
+
+        // recyclequeue
+        size = (Integer)values.get(offset++);
+        if (size == -1){
+            g.mRecycleQueue = null;
+        }
+        else {
+            g.mRecycleQueue = new LinkedList<>();
+            for (i = 0; i < size;i++){
+                g.mRecycleQueue.add((Integer)values.get(offset));
+                offset++;
+            }
+        }
+
+        // index iterator
+        size = (Integer)values.get(offset++);
+        if (size == -1){
+            g.mIndexIterator = null;
+        }
+        else {
+            g.mIndexIterator = new Integer[size];
+            for (i = 0; i < size;i++){
+                g.mIndexIterator[i] = (Integer)values.get(offset);
+                offset++;
+            }
+        }
+
+        // featuremap
+        size = (Integer)values.get(offset++);
+        g.mFeatureMap = new HashMap<>();
+        for (i = 0;i<size*2;i++){
+
+            if (i % 2 == 0){
+                key = (Integer)values.get(offset);
+            }
+            else {
+                FeatureModel model = (FeatureModel)values.get(offset);
+                model.setMetadataSerializer(
+                                (Object fMeta)-> ((FeatureMetaData)fMeta).serializeBytes(),
+                                (byte[] d)->FeatureMetaData.deserializeBytes(d));
+                
+                g.mFeatureMap.put(key, model);
+            }
+            offset++;
+        }
+
+        // focus model index
+        Integer focusId = (Integer)values.get(offset++);
+        if (focusId == -1){
+            g.mFocusModel = null;
+        }
+        else {
+            g.mFocusModel = g.mFeatureMap.get(focusId);
+        }
+
+        // buffer model index
+
+        Integer bufferId = (Integer)values.get(offset++);
+        if (bufferId != -1){
+            g.mBufferModel = null;
+        }
+        else {
+            g.mBufferModel = g.mFeatureMap.get(bufferId);
+        }
+
+        // last processed features (currently unused)
+        g.mLastProcessedFeatures = new ArrayList<>();
+        size = (Integer)values.get(offset++);
+
+        for (i = 0;i<size;i++){
+            g.mLastProcessedFeatures.add(g.mFeatureMap.get((Integer)values.get(offset)));
+            offset++;
+        }
+
+        // focus queue
+        size = (Integer)values.get(offset++);
+        for (i = 0;i<size;i++){
+            g.mFocusQueue.add(g.mFeatureMap.get((Integer)values.get(offset)));
+            offset++;
+        }
+
+        // Group heap (only used for the preference side-effects)
+        size = (Integer)values.get(offset++);
+        g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = true;
+        for (i = 0;i<size;i++){
+            g.mGroupHeap.add(g.mFeatureMap.get((Integer)values.get(offset)));
+            offset++;
+        }
+        g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
+
+        // group type
+        g.mType = (WorldModel.GroupType)values.get(offset++);
+
+        // learning config
+        g.mConfiguration = (LearningConfiguration)values.get(offset++);
+
+        return g;
+    }
+
+    Group(){
+        mFeatureMap = new HashMap<>();
+        mGroupHeap = new PriorityQueue<>(10, mStandardValueComparator);
+        mFocusQueue = new PriorityQueue<>(10, mPassiveValueComparator);
+        mIndexIterator = new Integer[0];
+    }
+
+    public Group setWorld(WorldModel model){
+        mWorld = model;
+        return this;
+    }
 
     public Group(String key, LearningConfiguration configuration, WorldModel world, WorldModel.GroupType type){
         mWorld = world;
@@ -396,6 +767,23 @@ public class Group {
         mKey = key;
         mGroupHeap = new PriorityQueue<>(10, mStandardValueComparator);
         mFocusQueue = new PriorityQueue<>(10, mPassiveValueComparator);
+    }
+
+    public Group setUserDataSerializer(StringSerializer serializer){
+        mUserSerializer = serializer;
+        if (mFeatureMap != null){
+            for (Map.Entry<Integer, FeatureModel> pair:mFeatureMap.entrySet()){
+                getFeatureInternalMetaData(pair.getValue()).setStringSerializer(mUserSerializer);
+
+            }
+        }
+        return this;
+    }
+
+    public FeatureMetaData createMetadata(int index){
+        FeatureMetaData mdata = new FeatureMetaData();
+        mdata._allocationIndex = index;
+        return mdata;
     }
 
     public Group setMemoryListener(MemoryManagementListener listener){
@@ -426,6 +814,11 @@ public class Group {
      */
     public Group setMinimumRecycleUsageCount(int minimumUsage){
         mMinimumUsageForRecycle  =minimumUsage;
+        return this;
+    }
+
+    public Group setAllowUnlimitedFeatureImports(boolean unlimited){
+        mAllowUnlimitedFeatureImportP = unlimited;
         return this;
     }
 
@@ -674,9 +1067,6 @@ public class Group {
         }
 
         if (mFocusModel == null){
-            if (mFeatureMap.keySet().stream().map(i -> mFeatureMap.get(i)).allMatch(model->model.getState() == FeatureModel.STATE.INITIAL)){
-                System.out.println("Bad");
-            }
             return MODE.EXTRAPOLATION;
         }
 
@@ -696,7 +1086,7 @@ public class Group {
             }
 
             startTime = System.currentTimeMillis();
-            System.out.println("Extending model");
+            //System.out.println("Extending model");
             mFocusModel.processNextInput(input);
             duration = System.currentTimeMillis() - startTime;
 
@@ -709,7 +1099,7 @@ public class Group {
                 mFocusModel.setLabel("");
         }
         else {
-            System.out.println("Recognition skip");
+            //System.out.println("Recognition skip");
         }
 
         if (mBufferModel != null){
@@ -718,13 +1108,13 @@ public class Group {
                 mBufferModel.shiftForward();
             }
 
-            System.out.println("Building buffer");
+            //System.out.println("Building buffer");
             mBufferModel.processNextInput(input);
 
             if (mBufferModel.isComplete()){
                 mBufferModel.setLabel("");
                 mBufferModel = null;
-                System.out.println("Buffer exhausted");
+                //System.out.println("Buffer exhausted");
             }
             else if (mFocusModel.isFinished()){
                 mFocusModel.setLabel("");
@@ -737,10 +1127,6 @@ public class Group {
             mFocusModel.setLabel("");
             mFocusModel = null;
             mMode = MODE.EXTRAPOLATION;
-
-            if (mFeatureMap.keySet().stream().map(i -> mFeatureMap.get(i)).allMatch(model->model.getState() == FeatureModel.STATE.INITIAL)){
-                System.out.println("Bad");
-            }
         }
 
         return mMode;
@@ -761,7 +1147,8 @@ public class Group {
                     return new WeightedValue<Integer>(key, mPreferenceMap.get(key).getPreferenceFraction());
                 }).collect(toList()));
 
-                return sleep(AITools.ChooseWeightedRandomFair(weights).GetValue());
+                WeightedValue<Integer> selected = AITools.ChooseWeightedRandomFair(weights);
+                return sleep(selected.GetValue());
             }
             else {
                 Integer[] keys = mFeatureMap.keySet().stream().filter(i -> mFeatureMap.get(i).isComplete()).collect(toList()).toArray(new Integer[0]);
@@ -888,7 +1275,12 @@ public class Group {
                 }
 
                 WeightedValue<Integer> selected = AITools.ChooseWeightedRandomFair(prefs);
-                dreamFocusIndex = selected.GetValue();
+
+                if (selected == null && prefs.size()>0){
+                    dreamFocusIndex = prefs.get((int)(Math.random()*prefs.size())).GetValue();
+                }
+                else
+                    dreamFocusIndex = selected.GetValue();
             }
         }
 
@@ -906,19 +1298,109 @@ public class Group {
     }
 
 
+    /**
+     * Enhances related features without removing features
+     * @param dreamFocusIndex
+     * @return
+     */
+    public DreamSpec dayDream(int dreamFocusIndex, int numCycles){
+
+        boolean scaleDreamsByFeatureLength = true;
+
+        DreamSpec dreamedOutput = new DreamSpec();
+
+        int maxLength = 0;
+        boolean debugP = mDebugEnabledP;
+        ArrayList<FeatureModel> out = null;
+
+        for (int cycle = 0; cycle < numCycles;cycle++){
+            final Integer dreamIndex = dreamFocusIndex;
+            FeatureModel dreamFocus = mFeatureMap.get(dreamIndex);
+            ArrayList<Vector> dreamInput = dreamFocus.extrapFeature();
+            dreamedOutput.updateInput(dreamIndex, dreamInput, mConfiguration);
+
+
+            final HashSet<Integer> exclusion = new HashSet<>();
+            exclusion.add(dreamIndex);
+            if (mFocusModel != null){
+                exclusion.add(getFeatureInternalMetaData(mFocusModel)._allocationIndex);
+            }
+            if (mBufferModel != null){
+                exclusion.add(getFeatureInternalMetaData(mBufferModel)._allocationIndex);
+            }
+
+            ArrayList<FeatureModel> dreamModels = new ArrayList<>();
+            mPreferenceMap.keySet().stream().filter((Integer i)->!exclusion.contains(i) && mFeatureMap.get(i).isComplete()).forEach((Integer i)->{
+                FeatureModel m = mFeatureMap.get(i);
+                dreamModels.add(m);
+                m.resetRecognition();
+
+            });
+
+            PriorityQueue<FeatureModel> dreamQueue = new PriorityQueue<>(10, mStandardValueComparator);
+
+            int len = dreamInput.size(), i = 1;
+            for (Vector input:dreamInput){
+
+                for (FeatureModel dreamModel:dreamModels){
+                    dreamModel.processNextInput(input);
+                    if (i == len){
+                        dreamQueue.add(dreamModel);
+                    }
+                }
+                i++;
+            }
+
+            FeatureModel best = dreamQueue.peek();
+            if (best.isMatching())
+            {
+                dreamFocusIndex = getFeatureInternalMetaData(best).getAllocationIndex();
+            }
+            else {
+                ArrayList<WeightedValue<Integer>> prefs = new ArrayList<WeightedValue<Integer>>();
+
+                double weight;
+                if (scaleDreamsByFeatureLength){
+                    maxLength = dreamModels.stream().map(m->m.getFeatureLength()).reduce(0, (l,r)->Math.max(l, r));
+                }
+
+                for (FeatureModel model:dreamModels){
+                    Integer modelIndex = getFeatureInternalMetaData(model).getAllocationIndex();
+
+                    if (scaleDreamsByFeatureLength)
+                        weight = model.getFeatureLength()/maxLength;
+                    else
+                        weight = 1;
+
+                    if (mDreamWithFractionP)
+                        prefs.add(new WeightedValue<Integer>(modelIndex, weight* mPreferenceMap.get(modelIndex).getPreferenceFraction()));
+                    else
+                        prefs.add(new WeightedValue<Integer>(modelIndex, weight* mPreferenceMap.get(modelIndex).getPreferenceCount()));
+                }
+
+                WeightedValue<Integer> selected = AITools.ChooseWeightedRandomFair(prefs);
+                dreamFocusIndex = selected.GetValue();
+            }
+        }
+
+        dreamedOutput.setDreamPrefs(mPreferenceMap);
+
+        return dreamedOutput;
+    }
 
 
 
     private FeatureModel getAnotherFeature(){
-        FeatureModel model = mWorld.requestFeature(this), selected = null;
+
+        FeatureModel model = null, selected = null;
+        if (mWorld != null){
+            model = mWorld.requestFeature(this);
+        }
+
         FeatureMetaData meta = null;
         if (model == null){
-            if (recycleQueue!= null && recycleQueue.size() > 0){
-                model = mFeatureMap.get(recycleQueue.poll());
-            }
-
-            if (recycleQueue != null && recycleQueue.size() > 0 && model == null){
-                System.out.println("RFucdskf");
+            if (mRecycleQueue!= null && mRecycleQueue.size() > 0){
+                model = mFeatureMap.get(mRecycleQueue.removeFirst());
             }
 
             if (mEnableMemoryManagmentP) {
@@ -957,7 +1439,7 @@ public class Group {
                     else
                         selectedComparator = prefComparator;
 
-                    recycleQueue = new PriorityQueue<>(10, selectedComparator);
+                    PriorityQueue<Integer> recycleQueue = new PriorityQueue<>(10, selectedComparator);
                     int length = prefs.size();
                     int recycleCount = (int)Math.round(length * mRecycleCutoffFraction);
 
@@ -994,8 +1476,20 @@ public class Group {
                         i++;
                     }
 
+                    if (mMemorymanagementListener != null){
+                        mMemorymanagementListener.onFinishedMemoryManagement(managementResults);
+                    }
+
                     if (recycleQueue.size()>0)
+                    {
                         model = mFeatureMap.get(recycleQueue.poll());
+                        while (recycleQueue.size()>0)
+                        {
+                            if (mRecycleQueue == null)
+                                mRecycleQueue = new LinkedList<>();
+                            mRecycleQueue.add(recycleQueue.poll());
+                        }
+                    }
                     else
                         return null;
                 }
@@ -1015,9 +1509,14 @@ public class Group {
             }
 
             meta = getFeatureInternalMetaData(model);
+            meta.setStringSerializer(mUserSerializer);
             meta.reset();
             meta.setInUse(true);
             model.setLabel("");
+            model.setMetadataSerializer(
+                    (Object fMeta)-> ((FeatureMetaData)fMeta).serializeBytes(),
+                    (byte[] data)->FeatureMetaData.deserializeBytes(data));
+
         }
         return model;
     }
@@ -1050,6 +1549,7 @@ public class Group {
         FeatureMetaData data = (FeatureMetaData)model.getMetaData();
         if (data == null){
             model.setMetaData(data = new FeatureMetaData());
+            data.setStringSerializer(mUserSerializer);
         }
         return data;
     }
@@ -1080,6 +1580,28 @@ public class Group {
         return null;
     }
 
+    public Group decreaseFeatureValueFraction(FeatureModel model, double fraction){
+        int index = getFeatureInternalMetaData(model).getAllocationIndex();
+        FeatureValueMetadata meta = mPreferenceMap.get(Integer.valueOf(index));
+        if (meta != null){
+            meta.decreaseValuePercent(fraction);
+            return this;
+        }
+
+        return null;
+    }
+
+    public Group setCustomMetadata(FeatureModel model, Object data){
+        getFeatureInternalMetaData(model).setCustomMetadata(data);
+
+        return this;
+    }
+
+    public Object getCustomMetadata(FeatureModel model){
+        return getFeatureInternalMetaData(model).getCustomMetadata();
+
+    }
+
     public Group addFeature(FeatureModel model){
         return addFeature(model, _nextIndex);
     }
@@ -1087,6 +1609,7 @@ public class Group {
     public Group addFeature(FeatureModel model, int index){
         FeatureMetaData meta = getFeatureInternalMetaData(model);
         meta.setAllocationIndex(index);
+        meta.setStringSerializer(mUserSerializer);
 
         mFeatureMap.put(Integer.valueOf(index), model);
 
@@ -1103,17 +1626,22 @@ public class Group {
 
     public Group importFeature(FeatureModel model, boolean sleepToFreeMemory){
         Optional<FeatureModel> available = mFeatureMap.keySet().stream().map((i)->mFeatureMap.get(i)).filter(f->f.getState()== FeatureModel.STATE.INITIAL).findAny();
+
         if (available.isPresent()){
             removeFeature(available.get());
-            addFeature(model);
-            return this;
         }
-        else if (sleepToFreeMemory){
-            sleep();
-            return importFeature(model, false);
+        else if (!mAllowUnlimitedFeatureImportP && mWorld != null && !mWorld.canAllocateAnotherFeature(mType.getName())) {
+
+            if (sleepToFreeMemory){
+                sleep();
+                return importFeature(model, false);
+            }
+            else
+                return null;
         }
-        else
-            return null;
+        addFeature(model);
+        return this;
+
     }
 
     public FeatureModel getFocusModel(){
@@ -1132,12 +1660,16 @@ public class Group {
 
         if (mFocusModel == model){
             if (mBufferModel != null){
+                mFocusModel.setLabel("");
                 mFocusModel = mBufferModel;
                 mFocusModel.setLabel(FOCUS_LABEL);
+
                 mBufferModel = null;
             }
             else
+            {
                 mFocusModel = null;
+            }
         }
 
         if (mFocusQueue != null && mFocusQueue.size()>0 && mFocusQueue.peek() == model){
@@ -1178,7 +1710,8 @@ public class Group {
                 if (!isSleeping()){
                     getFeatureInternalMetaData(model).updateUsageCount();
                 }
-                else if (model.isMatching()){
+
+                if (model.isMatching()){
                     mFocusQueue.add(model);
                 }
                 mLastProcessedFeatures.add(model);
@@ -1186,27 +1719,28 @@ public class Group {
             }
         }
 
-        if (mFocusQueue.size()>0 && (mFocusModel==null || mFocusModel.isNonMatching())){
-            if (mFocusModel!=null && mFocusModel.isNonMatching())
-            {
-                mFocusModel.setLabel("");
-            }
-            mFocusModel = mFocusQueue.poll();
-            mFocusModel.setLabel(FOCUS_LABEL);
-            System.out.println("Setting recognition focus");
-        }
-        else if (mFocusModel != null && mFocusModel.isNonMatching()){
-            System.out.println("Discarding prior focus");
-            if (mBufferModel != null){
-                System.out.println("Using buffer as new focus");
-                mFocusModel.setLabel("");
-                mFocusModel = mBufferModel;
+        if (!isSleeping()){
+            if (mFocusQueue.size()>0 && (mFocusModel==null || mFocusModel.isNonMatching())){
+                if (mFocusModel!=null && mFocusModel.isNonMatching())
+                {
+                    mFocusModel.setLabel("");
+                }
+                mFocusModel = mFocusQueue.poll();
                 mFocusModel.setLabel(FOCUS_LABEL);
-                mBufferModel = null;
             }
-            else {
-                mFocusModel.setLabel("");
-                mFocusModel = null;
+            else if (mFocusModel != null && mFocusModel.isNonMatching()){
+                //System.out.println("Discarding prior focus");
+                if (mBufferModel != null){
+                    //System.out.println("Using buffer as new focus");
+                    mFocusModel.setLabel("");
+                    mFocusModel = mBufferModel;
+                    mFocusModel.setLabel(FOCUS_LABEL);
+                    mBufferModel = null;
+                }
+                else {
+                    mFocusModel.setLabel("");
+                    mFocusModel = null;
+                }
             }
         }
 

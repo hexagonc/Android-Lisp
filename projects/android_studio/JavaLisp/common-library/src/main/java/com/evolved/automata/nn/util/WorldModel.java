@@ -20,9 +20,39 @@ public class WorldModel {
         int initiaWeight;
         int featureBufferSize;
         int minimumBufferOverlap;
+        int maxAllocation = -1;
         String name;
         LearningConfiguration config;
-        int maxAllocation = -1;
+
+        GroupType(){
+
+        }
+
+        public byte[] serializeBytes(){
+            return GroupSerializer.get().serialize()
+                    .add(Integer.valueOf(numInputOutputNodes))
+                    .add(Integer.valueOf(numMemoryCellNodes))
+                    .add(Integer.valueOf(initiaWeight))
+                    .add(Integer.valueOf(featureBufferSize))
+                    .add(Integer.valueOf(minimumBufferOverlap))
+                    .add(Integer.valueOf(maxAllocation))
+                    .add(String.class, name)
+                    .add(LearningConfiguration.class, config).build();
+        }
+
+        public static GroupType deserializeBytes(byte[] data){
+            ArrayList values = GroupSerializer.get().deserialize(data);
+            GroupType g = new GroupType();
+            g.numInputOutputNodes = (Integer)values.get(0);
+            g.numMemoryCellNodes = (Integer)values.get(1);
+            g.initiaWeight = (Integer)values.get(2);
+            g.featureBufferSize = (Integer)values.get(3);
+            g.minimumBufferOverlap = (Integer)values.get(4);
+            g.maxAllocation = (Integer)values.get(5);
+            g.name = (String)values.get(6);
+            g.config = (LearningConfiguration)values.get(7);
+            return g;
+        }
 
         public GroupType(int inputOutputNodes, int memoryCellNodes, int initialAllocationWeight, int featureBufferSize, int minimumBufferOverlap, LearningConfiguration config){
             numInputOutputNodes = inputOutputNodes;
@@ -177,7 +207,7 @@ public class WorldModel {
         LearningConfiguration configuration = new LearningConfiguration();
         configuration.set(LearningConfiguration.KEY.ANNEALING_FRACTION, Double.valueOf(0.1F));
         configuration.set(LearningConfiguration.KEY.BEST_SOLUTION_BONUS_MILLI, Integer.valueOf(500));
-        configuration.set(LearningConfiguration.KEY.NUM_SOLUTION_BUFFER, Integer.valueOf(10));
+        configuration.set(LearningConfiguration.KEY.NUM_SOLUTION_BUFFER, Math.max(1, Integer.valueOf(Math.round(10.0F/FeatureModel.THREAD_COUNT))));
         configuration.set(LearningConfiguration.KEY.INITIAL_RANDOM_FRACTION, Float.valueOf(0.5F));
         configuration.set(LearningConfiguration.KEY.MAX_DURATION_MILLI, Integer.valueOf(3000));
         configuration.setMatchEqualityError(0.1);

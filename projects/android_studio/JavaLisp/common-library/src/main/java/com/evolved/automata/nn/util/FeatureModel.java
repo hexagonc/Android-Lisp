@@ -1,5 +1,7 @@
 package com.evolved.automata.nn.util;
 
+import com.evolved.automata.ConcurrentGenerator;
+import com.evolved.automata.InterruptibleResultProducer;
 import com.evolved.automata.lisp.nn.LSTMNetworkProxy;
 import com.evolved.automata.nn.LSTMNetwork;
 import com.evolved.automata.nn.NNTools;
@@ -7,6 +9,7 @@ import com.evolved.automata.nn.Vector;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -20,6 +23,10 @@ import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
  */
 
 public class FeatureModel {
+
+    public static int THREAD_COUNT = 1;
+    public static final String STASHED_STATE = "STASH";
+    HashMap<String, LSTMNetworkProxy.NodeState> mStashedState = new HashMap<String, LSTMNetworkProxy.NodeState>();
 
     public enum STATE {
         INITIAL,
@@ -39,6 +46,9 @@ public class FeatureModel {
         public boolean _isMatch;
         public double _matchFraction = 0;
 
+        Similarity(){
+
+        }
         private Similarity(int matches, float[] mask){
             _numMatches = matches;
             _numMisses = mask.length - matches;
@@ -46,6 +56,40 @@ public class FeatureModel {
             _isMatch = _numMisses == 0;
             _matchFraction = _numMatches/mask.length;
         }
+
+        public byte[] serializeBytes(){
+            GroupSerializer.Builder b = GroupSerializer.get().serialize()
+                    .add(Double.valueOf(_numMisses))
+                    .add(Double.valueOf(_numMatches))
+                    .add(Double.valueOf(_matchFraction))
+                    .add(Boolean.valueOf(_isMatch));
+            if (_mask == null){
+                b.add(Integer.valueOf(0));
+                return b.build();
+            }
+
+            for (int i = 0;i<_mask.length;i++){
+                b.add(Float.valueOf(_mask[i]));
+            }
+            return b.build();
+        }
+
+        public static Similarity deserializeBytes(byte[] data){
+            Similarity s = new Similarity();
+            ArrayList values = GroupSerializer.get().deserialize(data);
+            s._numMisses = (Double)values.get(0);
+            s._numMatches = (Double)values.get(1);
+            s._matchFraction = (Double)values.get(2);
+            s._isMatch = (Boolean)values.get(3);
+
+            int len = (Integer)values.get(4);
+            s._mask = new float[len];
+            for (int i = 5; i < values.size();i++){
+                s._mask[i-5] = (Float)values.get(i);
+            }
+            return s;
+        }
+
 
         public static Similarity getSimilarity(float[] v1, float[] v2){
             float[] matches = new float[v1.length];
@@ -70,9 +114,52 @@ public class FeatureModel {
         double _trend = 0;
         int _index = 0;
         boolean allowStateWithoutFullHistoryP= true;
+
+        SimilaryHistory(){
+
+        }
+
         public SimilaryHistory(int size, double equalityFraction){
             _equalityFraction = equalityFraction;
             _history = new  Similarity[size];
+        }
+
+        public byte[] serializeBytes(){
+            GroupSerializer.Builder b = GroupSerializer.get().serialize()
+                    .add(Double.valueOf(_equalityFraction))
+                    .add(Double.valueOf(_trend))
+                    .add(Integer.valueOf(_index))
+                    .add(Integer.valueOf(_state.ordinal()));
+
+            int size = -1;
+            if (_history != null)
+                size = _history.length;
+            b.add(Integer.valueOf(size));
+            for (int i = 0;i<size;i++){
+                b.add(Similarity.class, _history[i]);
+            }
+            return b.build();
+        }
+
+        public static SimilaryHistory deserializeBytes(byte[] data){
+            ArrayList values = GroupSerializer.get().deserialize(data);
+            SimilaryHistory history = new SimilaryHistory();
+            history._equalityFraction = (Double)values.get(0);
+            history._trend = (Double)values.get(1);
+            history._index = (Integer)values.get(2);
+            history._state = HISTORY_STATE.values()[(Integer)values.get(3)];
+            int size = (Integer)values.get(4);
+            if (size == -1)
+                history._history = null;
+            else
+            {
+                history._history = new Similarity[size];
+                for (int i = 5; i < 5 + size;i++){
+                    history._history[i-5] = (Similarity)values.get(i);
+                }
+            }
+
+            return history;
         }
 
         public SimilaryHistory clear(){
@@ -146,19 +233,79 @@ public class FeatureModel {
     SimilaryHistory mSimilarityHistory;
     IncrementalUpdateSpec mCurrentRange;
     LearningConfiguration mConfiguration;
-    LSTMNetworkProxy mNetwork;
-    STATE mState;
+    LSTMNetworkProxy mNetwork; // set from mCurrentRange
     String mLabel = "";
 
-    public static final String STASHED_STATE = "STASH";
-    HashMap<String, LSTMNetworkProxy.NodeState> mStashedState = new HashMap<String, LSTMNetworkProxy.NodeState>();
+
 
     int mMatchCount = 0;
     int mFailureCount = 0;
     int MAX_FAILURE_COUNT = 1;
     boolean mExtrapPredictionP = true;
-    Object mMetaData;
     boolean mMatchedLast = false;
+    Object mMetaData; // serialized as string
+    Serializer mCustomDataSerializer = null;
+    Deserializer mCustomDataDeserializer = null;
+    STATE mState;
+
+    byte[] __rawSerializedCustomData = null;
+
+    public byte[] serializeBytes(){
+        GroupSerializer.Builder b = GroupSerializer.get().serialize();
+
+        b.add(SimilaryHistory.class, mSimilarityHistory);
+        b.add(IncrementalUpdateSpec.class, mCurrentRange);
+        b.add(LearningConfiguration.class, mConfiguration);
+
+        b.add(String.class, mLabel);
+        b.add(Integer.class, Integer.valueOf(mMatchCount));
+        b.add(Integer.class, Integer.valueOf(mFailureCount));
+        b.add(Integer.class, Integer.valueOf(MAX_FAILURE_COUNT));
+        b.add(Boolean.class, Boolean.valueOf(mExtrapPredictionP));
+        b.add(Boolean.class, Boolean.valueOf(mMatchedLast));
+        b.add(Integer.class, Integer.valueOf(mState.ordinal()));
+
+        if (mCustomDataSerializer != null && mMetaData != null){
+            b.add(ByteBuffer.class, ByteBuffer.wrap(mCustomDataSerializer.serialize(mMetaData)));
+        }
+        return b.build();
+    }
+
+    public static FeatureModel deserializeBytes(byte[] data){
+        FeatureModel model = new FeatureModel();
+
+        ArrayList values = GroupSerializer.get().deserialize(data);
+        model.mSimilarityHistory = (SimilaryHistory)values.get(0);
+        model.mCurrentRange = (IncrementalUpdateSpec)values.get(1);
+        model.mConfiguration = (LearningConfiguration)values.get(2);
+        if (model.mCurrentRange != null)
+            model.mNetwork = model.mCurrentRange._bestNetwork;
+        model.mLabel = (String)values.get(3);
+        model.mMatchCount = (Integer)values.get(4);
+        model.mFailureCount = (Integer)values.get(5);
+        model.MAX_FAILURE_COUNT = (Integer)values.get(6);
+        model.mExtrapPredictionP = (Boolean)values.get(7);
+        model.mMatchedLast = (Boolean)values.get(8);
+
+        int stateOrdinal = (Integer)values.get(9);
+        model.mState = STATE.values()[stateOrdinal];
+
+        if (values.size()>10)
+        {
+            model.__rawSerializedCustomData = ((ByteBuffer)values.get(10)).array();
+        }
+        return model;
+    }
+
+
+
+    public FeatureModel setMetadataSerializer(Serializer serializer, Deserializer deserializer){
+        mCustomDataSerializer = serializer;
+        mCustomDataDeserializer = deserializer;
+        if (__rawSerializedCustomData != null)
+            mMetaData = deserializer.deserialize(__rawSerializedCustomData);
+        return this;
+    }
 
     public Object getMetaData(){
         return mMetaData;
@@ -204,6 +351,10 @@ public class FeatureModel {
     }
 
 
+    FeatureModel(){
+
+    }
+
     public FeatureModel(LSTMNetworkProxy network, LearningConfiguration configuration){
         mConfiguration = configuration;
         mNetwork = network;
@@ -230,6 +381,8 @@ public class FeatureModel {
         mConfiguration = config;
         return this;
     }
+
+
 
     public LearningConfiguration getConfiguration(){
         return mConfiguration;
@@ -352,7 +505,7 @@ public class FeatureModel {
 
 
     public STATE tryLearnNextData(Vector vectorData){
-        ArrayList<Pair<Vector, Vector>> inputOutputSpec = null;
+        final ArrayList<Pair<Vector, Vector>> inputOutputSpec =new ArrayList<Pair<Vector, Vector>>();
         if (isComplete())
             return mState;
         if (mState == STATE.INITIAL){
@@ -365,9 +518,21 @@ public class FeatureModel {
             initialConfig.set(LearningConfiguration.KEY.NUM_SOLUTION_BUFFER, Integer.valueOf(5));
             initialConfig.set(LearningConfiguration.KEY.INITIAL_RANDOM_FRACTION, Float.valueOf(0.5F));
 
-            inputOutputSpec = new ArrayList<Pair<Vector, Vector>>();
             inputOutputSpec.add(point);
-            IncrementalUpdateSpec spec = simpleLearnSequence(mNetwork, inputOutputSpec, initialConfig);
+            IncrementalUpdateSpec spec = null;
+            ConcurrentGenerator<IncrementalUpdateSpec> generator = new ConcurrentGenerator<>((IncrementalUpdateSpec s)->s.successCriteriaSatisfied());
+
+            for (int i=0;i<THREAD_COUNT;i++){
+                generator.addSupplier(new InterruptibleResultProducer<IncrementalUpdateSpec>() {
+                    @Override
+                    public IncrementalUpdateSpec evaluate()
+                    {
+                        return simpleLearnSequence(LSTMNetworkProxy.duplicate(mNetwork), inputOutputSpec, initialConfig);
+                    }
+                });
+            }
+
+            spec = generator.getResult();
 
             if (spec.successCriteriaSatisfied()){
                 mState = STATE.BUILDING;
@@ -379,9 +544,23 @@ public class FeatureModel {
         else {
             ArrayList<Vector> prior = mCurrentRange.extrapolateRange(true);
             prior.add(vectorData);
-            inputOutputSpec =  getInputOututSpec(prior);
+            inputOutputSpec.addAll(getInputOututSpec(prior));
 
-            IncrementalUpdateSpec spec = simpleLearnSequence(LSTMNetworkProxy.duplicate(mNetwork), inputOutputSpec, mConfiguration);
+
+            IncrementalUpdateSpec spec = null;
+            ConcurrentGenerator<IncrementalUpdateSpec> generator = new ConcurrentGenerator<>((IncrementalUpdateSpec s)->s.successCriteriaSatisfied());
+
+            for (int i=0;i<THREAD_COUNT;i++){
+                generator.addSupplier(new InterruptibleResultProducer<IncrementalUpdateSpec>() {
+                    @Override
+                    public IncrementalUpdateSpec evaluate()
+                    {
+                        return simpleLearnSequence(LSTMNetworkProxy.duplicate(mNetwork).randomizeNetworkWeights(), inputOutputSpec, mConfiguration);
+                    }
+                });
+            }
+
+            spec = generator.getResult();
 
             if (spec.successCriteriaSatisfied()){
                 mCurrentRange = spec;
@@ -404,6 +583,7 @@ public class FeatureModel {
     }
 
     public FeatureModel forceComplete(){
+        resetRecognition();
         mState = STATE.NON_MATCHING;
         return this;
     }
@@ -502,6 +682,9 @@ public class FeatureModel {
         System.out.println(log);
     }
 
+
+
+
     public IncrementalUpdateSpec simpleLearnSequence(LSTMNetworkProxy network, ArrayList<Pair<Vector, Vector>> inputOutputSpec, LearningConfiguration configuration){
         String message = null;
         long startTime = System.currentTimeMillis();
@@ -572,6 +755,9 @@ public class FeatureModel {
                 (!configuration.hasMaxIterations() || i < maxIterations))
         {
 
+            if (Thread.currentThread().isInterrupted())
+                return null;
+
             Double sequenceError = null;
             Double pairError = null;
             allSegmentsMatchedP = true;
@@ -584,6 +770,8 @@ public class FeatureModel {
             // Process all segments of the input sequence
             int j = 0;
             for (Pair<Vector, Vector> inputOutputPair:inputOutputSpec) {
+                if (Thread.currentThread().isInterrupted())
+                    return null;
                 float[] input = inputOutputPair.getLeft().rawFloat();
                 float[] expectedOutput = inputOutputPair.getRight().rawFloat();
                 isFirstPair = j == 0;

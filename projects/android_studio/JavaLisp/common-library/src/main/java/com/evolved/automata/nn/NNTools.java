@@ -4,14 +4,21 @@ import com.evolved.automata.AITools;
 import com.evolved.automata.ArrayMapper;
 import com.evolved.automata.IndexedValueMapper;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by Evolved8 on 12/16/16.
@@ -62,6 +69,88 @@ public class NNTools {
         return j;
     }
 
+    public static byte[] compressBytes(byte[] b){
+        try
+        {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            GZIPOutputStream g = new GZIPOutputStream(baos);
+            g.write(b);
+            g.finish();
+            return baos.toByteArray();
+        }
+        catch (IOException ie){
+            throw new RuntimeException(ie);
+        }
+    }
+
+    public static byte[] decompressBytes(byte[] b){
+        try
+        {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1000];
+
+            GZIPInputStream ginput = new GZIPInputStream(new ByteArrayInputStream(b));
+            int len = 0;
+            while ((len = ginput.read(buffer, 0, buffer.length))>0){
+                baos.write(buffer, 0, len);
+            }
+            ginput.close();
+            return baos.toByteArray();
+        }
+        catch (IOException ie){
+            throw new RuntimeException(ie);
+        }
+    }
+
+    public static byte[] compressString(String raw) throws IOException
+    {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        GZIPOutputStream g = new GZIPOutputStream(baos);
+        g.write(raw.getBytes("UTF-8"));
+        g.finish();
+        return baos.toByteArray();
+    }
+
+    public static String decompressToString(byte[] compressed)  throws IOException{
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1000];
+
+        GZIPInputStream ginput = new GZIPInputStream(new ByteArrayInputStream(compressed));
+        int len = 0;
+        while ((len = ginput.read(buffer, 0, buffer.length))>0){
+            baos.write(buffer, 0, len);
+        }
+        ginput.close();
+        return new String(baos.toByteArray(), "UTF-8");
+    }
+
+    public static String encodeBase64(byte[] data){
+        return Base64.encodeBase64String(data);
+    }
+
+    public static byte[] decodeBase64(String data){
+        return Base64.decodeBase64(data);
+    }
+
+    public static byte[] floatsToBytes(float[] data){
+        ByteBuffer byteBuffer = ByteBuffer.allocate(data.length*4);
+        for (int i = 0;i<data.length;i++){
+            byteBuffer.putFloat(data[i]);
+        }
+        return byteBuffer.array();
+    }
+
+    public static float[] bytesToFloats(byte[] bytes){
+
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        int flength = bytes.length/4;
+        float[] output = new float[flength];
+
+        for (int i = 0;i < flength;i++){
+            output[i] = bb.getFloat();
+        }
+        return output;
+    }
 
     public static Vector[] stringToVArray(String serialized)
     {

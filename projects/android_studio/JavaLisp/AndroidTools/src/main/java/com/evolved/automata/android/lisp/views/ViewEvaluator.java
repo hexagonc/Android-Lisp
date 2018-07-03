@@ -195,6 +195,7 @@ public class ViewEvaluator  {
 		env.mapFunction("set-batch-ui-updates", set_batch_ui_updates());
 		
 		env.mapFunction("set-seek-value", setSeekValue());
+		env.mapFunction("get-seek-value", getSeekValue());
 		env.mapFunction("get-view-height", get_view_height(activity));
 		env.mapFunction("get-view-width", get_view_width(activity));
 
@@ -2453,6 +2454,30 @@ public class ViewEvaluator  {
 				
 				proxy.setCurrentValue(value.getFloatValue());
 				return ExtendedFunctions.makeValue(proxy);
+			}
+		};
+	}
+
+	public static ViewFunctionTemplate getSeekValue()
+	{
+		return new ViewFunctionTemplate()
+		{
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+			{
+				return (T)getSeekValue();
+			}
+
+			@Override
+			public Value evaluate(Environment env, Value[] args) {
+				KeyValuePair<Value[], HashMap<String, Value>> kv = NLispTools.getPartitionValues(args);
+				Value[] evaluatedArgs = getEvaluatedValues(kv.GetKey());
+
+				SeekBarViewProxy proxy = (SeekBarViewProxy)evaluatedArgs[0].getObjectValue();
+
+				return NLispTools.makeValue(proxy.getCurrentValue());
 			}
 		};
 	}

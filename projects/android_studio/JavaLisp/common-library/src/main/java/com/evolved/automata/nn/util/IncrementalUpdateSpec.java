@@ -25,6 +25,10 @@ public class IncrementalUpdateSpec {
     int _length = 0;
     Double mMinValue = null;
 
+    IncrementalUpdateSpec(){
+
+    }
+
     public IncrementalUpdateSpec(boolean isValid, boolean successCriteriaSatisfiedP, LSTMNetworkProxy bestNetwork, boolean copyNetworkP, LSTMNetworkProxy.NodeState initialState, LSTMNetworkProxy.NodeState finalState, float successFraction){
         if (copyNetworkP) {
             _bestNetwork = bestNetwork.duplicate(bestNetwork);
@@ -37,9 +41,34 @@ public class IncrementalUpdateSpec {
         _initialState = initialState;
         _finalState = finalState;
         _successFraction = successFraction;
-
-
     }
+
+    public byte[] serializeBytes(){
+        return GroupSerializer.get().serialize()
+                .add(LSTMNetworkProxy.class, _bestNetwork)
+                .add(LSTMNetworkProxy.NodeState.class, _initialState)
+                .add(LSTMNetworkProxy.NodeState.class, _finalState)
+                .add(Float.valueOf(_successFraction))
+                .add(Boolean.valueOf(_isValid))
+                .add(Boolean.valueOf(_successCriteriaSatisfiedP))
+                .add(Integer.valueOf(_length))
+                .add(Double.class, mMinValue).build();
+    }
+
+    public static IncrementalUpdateSpec deserializeBytes(byte[] b){
+        IncrementalUpdateSpec spec = new IncrementalUpdateSpec();
+        ArrayList components = GroupSerializer.get().deserialize(b);
+        spec._bestNetwork = (LSTMNetworkProxy)components.get(0);
+        spec._initialState = (LSTMNetworkProxy.NodeState)components.get(1);
+        spec._finalState = (LSTMNetworkProxy.NodeState)components.get(2);
+        spec._successFraction = (Float)components.get(3);
+        spec._isValid = (Boolean)components.get(4);
+        spec._successCriteriaSatisfiedP = (Boolean)components.get(5);
+        spec._length = (Integer)components.get(6);
+        spec.mMinValue = (Double)components.get(7);
+        return spec;
+    }
+
 
     public IncrementalUpdateSpec copyUsing(IncrementalUpdateSpec other){
         float[] otherNetwork = other.getNetwork().getNetwork();

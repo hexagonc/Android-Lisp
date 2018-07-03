@@ -3,6 +3,8 @@ package com.evolved.automata.lisp.nn;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
+import com.evolved.automata.lisp.Lambda;
+import com.evolved.automata.lisp.LambdaValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
@@ -11,6 +13,8 @@ import com.evolved.automata.nn.util.FeatureModel;
 import com.evolved.automata.nn.util.Group;
 import com.evolved.automata.nn.util.LearningConfiguration;
 import com.evolved.automata.nn.util.WorldModel;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -25,6 +29,8 @@ public class GroupLispInterface {
     {
         env.mapFunction("model-get-default-config", modelGetDefaultLearningConfig());
         env.mapFunction("model-create-world", modelCreateWorld());
+        env.mapFunction("model-set-thread-count", modelSetThreadCount());
+
         env.mapFunction("world-create-group-type", worldCreateGroupType());
         env.mapFunction("world-add-group", worldAddGroup());
         env.mapFunction("world-get-group", worldGetGroup());
@@ -32,8 +38,12 @@ public class GroupLispInterface {
         env.mapFunction("group-import-feature", groupImportFeature());
         env.mapFunction("group-set-decay-interval", groupSetDecayInterval());
         env.mapFunction("group-get-focus-feature", groupGetFocusFeature());
-
         env.mapFunction("group-reset", groupResetAll());
+
+        env.mapFunction("group-set-sleep-listener", groupSetSleepListener());
+        env.mapFunction("group-force-sleep", groupForceSleep());
+        env.mapFunction("group-set-sleep-cycle-multiplier", groupSetSleepCycleMultiplier());
+        env.mapFunction("group-set-feature-recycle-fraction", groupSetFeatureRecycleFraction());
 
         env.mapFunction("group-set-mode", groupSetMode());
         env.mapFunction("group-toggle-memory-management", groupToggleMemoryManagement());
@@ -41,10 +51,14 @@ public class GroupLispInterface {
         env.mapFunction("group-add-feature", groupAddFeature());
         env.mapFunction("group-remove-feature", groupRemoveFeature());
         env.mapFunction("group-increase-feature-value-fraction", groupIncreaseFeatureValueFraction());
+        env.mapFunction("group-decrease-feature-value-fraction", groupDecreaseFeatureValueFraction());
+        env.mapFunction("group-set-feature-metadata", groupSetCustomMetadata());
+        env.mapFunction("group-get-feature-metadata", groupGetCustomMetadata());
         env.mapFunction("group-process-input", groupProcessInput());
         env.mapFunction("group-get-ordered-processed-features", groupGetOrderedProcessedFeatures());
         env.mapFunction("feature-extrapolate-values", featureExtrapolateValues());
         env.mapFunction("feature-get-length", featureLength());
+        env.mapFunction("feature-force-complete", featureForceComplete());
         env.mapFunction("feature-get-distance-to-final-state", featureGetDistanceToFinalState());
         env.mapFunction("feature-get-state", featureGetState());
         env.mapFunction("feature-get-next-predicted-value", featureGetNextPredictedValue());
@@ -96,6 +110,29 @@ public class GroupLispInterface {
                     return ExtendedFunctions.makeValue(new WorldModel(allocation));
                 }
 
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate modelSetThreadCount()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) modelSetThreadCount();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                int count = (int)evaluatedArgs[0].getIntValue();
+                FeatureModel.THREAD_COUNT = count;
+
+                return evaluatedArgs[0];
             }
         };
     }
@@ -408,9 +445,85 @@ public class GroupLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(1, true, true);
+                checkActualArguments(2, true, true);
                 Group group = (Group)evaluatedArgs[0].getObjectValue();
                 group.resetAll(evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull());
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate groupSetSleepListener()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSetSleepListener();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                final Lambda listener = (Lambda) evaluatedArgs[1].getLambda();
+
+                Group.MemoryManagementListener memoryListener = new Group.MemoryManagementListener() {
+                    @Override
+                    public void onStartMemoryManagement(int totalAllocation)
+                    {
+                        listener.setActualParameters(new Value[]{NLispTools.makeValue(totalAllocation), NLispTools.makeValue(totalAllocation)});
+                        try
+                        {
+                            listener.evaluate(env, false);
+                        } catch (Exception e)
+                        {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    @Override
+                    public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                    {
+                        Value[] out = recycled.stream().map((Pair<String, ArrayList<Vector>> p)-> NLispTools.makeValue(p.getLeft())).collect(Collectors.toList()).toArray(new Value[0]);
+
+                        listener.setActualParameters(new Value[]{NLispTools.makeValue(false), NLispTools.makeValue(out)});
+                        try
+                        {
+                            listener.evaluate(env, false);
+                        }  catch (Exception e)
+                        {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+
+                group.setMemoryListener(memoryListener);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate groupForceSleep()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupForceSleep();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                group.sleep();
 
                 return evaluatedArgs[0];
             }
@@ -466,6 +579,55 @@ public class GroupLispInterface {
     }
 
 
+    // Set the number of sleep feature iterations as a multiple of the number
+    // of complete features
+    public static SimpleFunctionTemplate groupSetSleepCycleMultiplier()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSetSleepCycleMultiplier();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                double multiplier = evaluatedArgs[1].getFloatValue();
+                group.setSleepCycleMultipler(multiplier);
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate groupSetFeatureRecycleFraction()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSetFeatureRecycleFraction();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                double fraction = evaluatedArgs[1].getFloatValue();
+                group.setMemoryRecycleFraction(fraction);
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+
     public static SimpleFunctionTemplate featureExtrapolateValues()
     {
         return new SimpleFunctionTemplate() {
@@ -506,6 +668,27 @@ public class GroupLispInterface {
                 checkActualArguments(1, false, false);
                 FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
 
+                return NLispTools.makeValue(feature.getFeatureLength());
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate featureForceComplete()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureForceComplete();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                feature.forceComplete();
                 return NLispTools.makeValue(feature.getFeatureLength());
             }
         };
@@ -579,6 +762,82 @@ public class GroupLispInterface {
         };
     }
 
+
+    public static SimpleFunctionTemplate groupDecreaseFeatureValueFraction()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupDecreaseFeatureValueFraction();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                FeatureModel feature = (FeatureModel)evaluatedArgs[1].getObjectValue();
+                double fraction = evaluatedArgs[2].getFloatValue();
+                group.decreaseFeatureValueFraction(feature, fraction);
+
+                return NLispTools.makeValue(feature.getState().name());
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate groupSetCustomMetadata()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSetCustomMetadata();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                FeatureModel feature = (FeatureModel)evaluatedArgs[1].getObjectValue();
+
+                group.setCustomMetadata(feature, evaluatedArgs[2]);
+
+                return evaluatedArgs[2];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate groupGetCustomMetadata()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupGetCustomMetadata();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                FeatureModel feature = (FeatureModel)evaluatedArgs[1].getObjectValue();
+
+                Object v = group.getCustomMetadata(feature);
+
+                if (v == null)
+                    return Environment.getNull();
+                else
+                    return (Value)v;
+            }
+        };
+    }
 
 
     public static SimpleFunctionTemplate groupRemoveFeature()

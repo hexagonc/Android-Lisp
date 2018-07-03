@@ -1,5 +1,7 @@
 package com.evolved.automata.nn;
 
+import com.evolved.automata.ConcurrentGenerator;
+import com.evolved.automata.InterruptibleResultProducer;
 import com.evolved.automata.lisp.nn.LSTMNetworkProxy;
 import com.evolved.automata.nn.util.FeatureModel;
 import com.evolved.automata.nn.util.Group;
@@ -11,6 +13,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -302,6 +307,91 @@ public class LSTMGroupTests {
             e.printStackTrace();
             Assert.assertTrue(errorMessage, false);
         }
+    }
+
+    @Test
+    public void testFeatureSerialization(){
+        String errorMessage = "";
+
+        try
+        {
+            errorMessage = "Failed to create feature model";
+
+            boolean useCustomSeed = true;
+            long priorSeed = 1530494192910L;
+            long seed = System.currentTimeMillis();
+
+            if (useCustomSeed)
+                seed = priorSeed;
+
+            int radiix = 10;
+            int size = 25;
+            int prefixSize = 3;
+            System.out.println("trying prefix extrapolation with seed [" + seed + "] and radiix " + radiix);
+
+            int[] rawInput = getRandomTestInput(size,radiix,  seed);
+
+            System.out.println("Trying to learn: " + Arrays.toString(rawInput));
+            int inputNodeCode = 10;
+            int numMemoryCellStates = 30;
+
+            FeatureModel model = new FeatureModel(inputNodeCode, numMemoryCellStates, WorldModel.getFeatureLearningConfiguration().setDebugLevel(0));
+
+            errorMessage = "Failed to learn any of " + Arrays.toString(rawInput);
+
+            ArrayList<Vector> learned = trainFeature(model, convert(rawInput, 10), 2*prefixSize);
+
+            int[] output = vectorsToInts(learned);
+            System.out.println("Feature consists of: " + Arrays.toString(output));
+
+            if (output.length > 2 * prefixSize){
+                errorMessage = "Failed to serialize feature model";
+
+                byte[] serialized = model.serializeBytes();
+
+                Assert.assertTrue(errorMessage, serialized != null && serialized.length>0);
+
+                errorMessage = "Failed to deserialize feature model";
+                FeatureModel deserialized = FeatureModel.deserializeBytes(serialized);
+
+                Assert.assertTrue(errorMessage, deserialized != null);
+
+                errorMessage = "failed to extrapolate deserialized data";
+                ArrayList<Vector> data = deserialized.extrapFeature();
+
+                errorMessage = "Failed to match new vs old extrapolated value size";
+                Assert.assertTrue(errorMessage, data != null && data.size() == learned.size());
+
+                int[] items = vectorsToInts(data);
+
+                for (int i = 0;i<items.length;i++){
+                    errorMessage = "Failed to match extrapolated item values: i = " + i + " expectd " + output[i] + " but found " + items[i];
+                    Assert.assertTrue(errorMessage, items[i] == output[i]);
+                }
+
+                System.out.println("Output: " + Arrays.toString(items));
+
+            }
+            else {
+                System.out.println("Insufficient learning");
+            }
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+
+
+
+
+    @Test
+    public void testFloatToBytes(){
+
+
     }
 
 
@@ -715,7 +805,7 @@ public class LSTMGroupTests {
         String errorMessage = "Failed to create Initial input sequence";
         try
         {
-
+            FeatureModel.THREAD_COUNT = 2;
             System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
             int maxAllocation = 20;
             int initialGroupWeight = 1;
@@ -1187,6 +1277,354 @@ public class LSTMGroupTests {
     }
 
 
+    @Test
+    public void testConcurrentLearningUnlimitedSequencesWithDreamingAndClustering(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+            FeatureModel.THREAD_COUNT = 4;
+            long start = System.currentTimeMillis();
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 30;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528684442328L;
+
+            boolean useSeed = true;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 20;
+
+            int numClusters = 2;
+
+            int[][] rawInput = new int[numClusters][size];
+
+            for (int i = 0; i < numClusters;i++){
+                rawInput[i] = getRandomTestInput(size, radiix, seed);
+                seed++;
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setSleepToFreeMemory(true);
+            DEFAULT_GROUP.setDebugEnabled(false);
+
+            DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
+
+            ArrayList<String> recycledNames = new ArrayList<String>();
+            Group.MemoryManagementListener managementListener = new Group.MemoryManagementListener() {
+                @Override
+                public void onStartMemoryManagement(int totalAllocation)
+                {
+                    System.out.println(".i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.");
+                    System.out.println("Staring memory management: total allocation: " + totalAllocation);
+                }
+
+                @Override
+                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                {
+                    System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
+                    System.out.println("Finished memory managements");
+                    System.out.println("Recycled: " + recycled);
+                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft());
+                    });
+                }
+            };
+
+            DEFAULT_GROUP.setMemoryListener(managementListener);
+
+
+            int j = 0;
+
+            int testIndex = 0;
+
+            int loopCount = 2;
+            outer: for (int kk = 0;kk<numCycles;kk++){
+                if (kk > 15){
+                    DEFAULT_GROUP.setMemoryManagement(false);
+                }
+                for (int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++){
+                    System.out.println("<o><o><o><o><o><o><o><o><o><o><o><o>");
+                    System.out.println("Learning cluster (" + (1 + clusterIndex) + "): " + Arrays.toString(rawInput[clusterIndex]));
+
+                    for (int k = 0;k < loopCount;k++){
+                        for (int i = 0; i < rawInput[clusterIndex].length; i++){
+                            testIndex++;
+                            Vector input = intToTallyVector(rawInput[clusterIndex][i], radiix);
+
+                            errorMessage = "Failed to process input " + rawInput[clusterIndex][i];
+                            System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[clusterIndex][i]);
+
+                            // Step (3) process all group types that you want
+                            ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                            errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                            Assert.assertTrue(errorMessage, results.size() == 1);
+                            WorldModel.GroupSpecification result = results.get(0);
+                            j = 0;
+                            errorMessage = "Failed to get all features";
+                            ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                            for (FeatureModel feature: existingModels){
+
+                                System.out.println("" + j + ") " + feature.toString());
+                                j++;
+                            }
+
+                            if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                                System.out.println("......................................");
+                                System.out.println("Memory allocation exhausted, finished");
+                                System.out.println("......................................");
+                                break outer;
+                            }
+                        }
+                    }
+
+                    DEFAULT_GROUP.resetAll();
+                }
+            }
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Seed: " + seed);
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            Group.DreamSpec dream = DEFAULT_GROUP.sleep();
+            System.out.println(dream.getDreamedValue());
+
+            long finished = (System.currentTimeMillis() - start)/1000;
+            System.out.println("Finished after " + finished + " seconds using " + FeatureModel.THREAD_COUNT + " threads");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testSerializationOfGroups(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+            FeatureModel.THREAD_COUNT = 2;
+            long start = System.currentTimeMillis();
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 30;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528684442328L;
+
+            boolean useSeed = false;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 20;
+
+            int numClusters = 2;
+
+            int[][] rawInput = new int[numClusters][size];
+
+            for (int i = 0; i < numClusters;i++){
+                rawInput[i] = getRandomTestInput(size, radiix, seed);
+                seed++;
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setSleepToFreeMemory(true);
+            DEFAULT_GROUP.setDebugEnabled(false);
+
+            DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
+
+            ArrayList<String> recycledNames = new ArrayList<String>();
+            Group.MemoryManagementListener managementListener = new Group.MemoryManagementListener() {
+                @Override
+                public void onStartMemoryManagement(int totalAllocation)
+                {
+                    System.out.println(".i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.");
+                    System.out.println("Staring memory management: total allocation: " + totalAllocation);
+                }
+
+                @Override
+                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                {
+                    System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
+                    System.out.println("Finished memory managements");
+                    System.out.println("Recycled: " + recycled);
+                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft());
+                    });
+                }
+            };
+
+            DEFAULT_GROUP.setMemoryListener(managementListener);
+
+
+            int j = 0;
+
+            int testIndex = 0;
+
+            int loopCount = 2;
+            outer: for (int kk = 0;kk<numCycles;kk++){
+                if (kk > 15){
+                    DEFAULT_GROUP.setMemoryManagement(false);
+                }
+                for (int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++){
+                    System.out.println("<o><o><o><o><o><o><o><o><o><o><o><o>");
+                    System.out.println("Learning cluster (" + (1 + clusterIndex) + "): " + Arrays.toString(rawInput[clusterIndex]));
+
+                    for (int k = 0;k < loopCount;k++){
+                        for (int i = 0; i < rawInput[clusterIndex].length; i++){
+                            testIndex++;
+                            Vector input = intToTallyVector(rawInput[clusterIndex][i], radiix);
+
+                            errorMessage = "Failed to process input " + rawInput[clusterIndex][i];
+                            System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[clusterIndex][i]);
+
+                            // Step (3) process all group types that you want
+                            ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                            errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                            Assert.assertTrue(errorMessage, results.size() == 1);
+                            WorldModel.GroupSpecification result = results.get(0);
+                            j = 0;
+                            errorMessage = "Failed to get all features";
+                            ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                            for (FeatureModel feature: existingModels){
+
+                                System.out.println("" + j + ") " + feature.toString());
+                                j++;
+                            }
+
+                            if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                                System.out.println("......................................");
+                                System.out.println("Memory allocation exhausted, finished");
+                                System.out.println("......................................");
+                                break outer;
+                            }
+                        }
+                    }
+
+                    DEFAULT_GROUP.resetAll();
+                }
+            }
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Seed: " + seed);
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            Group.DreamSpec dream = DEFAULT_GROUP.sleep();
+            System.out.println(dream.getDreamedValue());
+
+            long finished = (System.currentTimeMillis() - start)/1000;
+            System.out.println("Finished base Group after " + finished + " seconds using " + FeatureModel.THREAD_COUNT + " threads");
+
+
+            errorMessage = "Failed to serialize group";
+            byte[] serializedGroupData = DEFAULT_GROUP.serializeBytes();
+
+            errorMessage = "failed to deserialize group";
+            Group deserializedGroup = Group.deserializeBytes(serializedGroupData);
+            System.out.println("Showing deserialized group state");
+
+            ArrayList<FeatureModel> deserializedModels = deserializedGroup.getAllFeatures();
+
+            errorMessage = "Failed to get deserialized models";
+
+            Assert.assertTrue(errorMessage, deserializedModels!=null && deserializedModels.size() == existingModels.size());
+            j = 0;
+            for (FeatureModel feature: deserializedModels){
+                errorMessage = "failed to get model meta-data: " + feature;
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            System.out.println("Successfully deserialized group");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
     int[] vectorsToInts(Vector[] in){
         int[] out = new int[in.length];
 
@@ -1254,8 +1692,210 @@ public class LSTMGroupTests {
         return j;
     }
 
+    @Test
+    public void testSingleConcurrentGenerators(){
+        String errorMessage = "Failed to create concurrent generator";
+
+        try
+        {
+            ConcurrentGenerator<Long> generator = new ConcurrentGenerator<Long>();
+
+            Long result = null;
+            generator.addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    int maxValue = 100000000;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+
+                    }
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            });
+
+            errorMessage = "Failed to get result";
+            result = generator.getResult();
+            errorMessage = "Failed to compute result";
+
+            Assert.assertTrue(result != null);
+            System.out.println("Result is: " + result);
+        }
+        catch (Exception e){
+            Assert.assertTrue(errorMessage,false);
+        }
+
+    }
 
 
+    @Test
+    public void testMultipleConcurrentGenerators(){
+        String errorMessage = "Failed to create concurrent generator";
+
+        try
+        {
+
+            ConcurrentGenerator<Long> generator = new ConcurrentGenerator<Long>();
+
+            Long result = null;
+            generator.addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    int maxValue = 100000000;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+                        if (Thread.currentThread().isInterrupted())
+                            return null;
+                    }
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            }).addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    int maxValue = 100000000;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+                        if (Thread.currentThread().isInterrupted())
+                            return null;
+                    }
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            }).addSupplier(new InterruptibleResultProducer<Long>() {
+                    @Override
+                    public Long evaluate()
+                    {
+                        Long time = System.nanoTime();
+                        int maxValue = 100000000;
+                        int max = (int)(maxValue*Math.random());
+                        for (int i = 0;i < max;i++){
+                            if (Thread.currentThread().isInterrupted())
+                                return null;
+                        }
+                        return Long.valueOf(System.nanoTime() - time);
+                    }
+                }).addSupplier(new InterruptibleResultProducer<Long>() {
+                    @Override
+                    public Long evaluate()
+                    {
+                        Long time = System.nanoTime();
+                        int maxValue = 100000000;
+                        int max = (int)(maxValue*Math.random());
+                        for (int i = 0;i < max;i++){
+                            if (Thread.currentThread().isInterrupted())
+                                return null;
+                        }
+
+                        return Long.valueOf(System.nanoTime() - time);
+                    }
+                });
+
+            errorMessage = "Failed to get result";
+            result = generator.getResult();
+            errorMessage = "Failed to compute result";
+
+            Assert.assertTrue(errorMessage, result != null);
+            System.out.println("Result is: " + result);
+
+            boolean isValid = generator.isResultValid();
+            errorMessage = "Result not valid";
+            Assert.assertTrue(errorMessage, isValid);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage,false);
+        }
+
+    }
+
+    @Test
+    public void testMultipleConcurrentGeneratorsWithConditions(){
+        String errorMessage = "Failed to create concurrent generator";
+
+        try
+        {
+            long MaxValue = 100000000;
+            long cutoffValid = System.currentTimeMillis();
+            ConcurrentGenerator<Long> generator = new ConcurrentGenerator<Long>((Long result)->result>cutoffValid);
+
+            Long result = null;
+            generator.addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    long maxValue = MaxValue;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+                        if (Thread.currentThread().isInterrupted())
+                            return null;
+                    }
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            }).addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    int maxValue = 100000000;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+                        if (Thread.currentThread().isInterrupted())
+                            return null;
+                    }
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            }).addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    int maxValue = 100000000;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+                        if (Thread.currentThread().isInterrupted())
+                            return null;
+                    }
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            }).addSupplier(new InterruptibleResultProducer<Long>() {
+                @Override
+                public Long evaluate()
+                {
+                    Long time = System.nanoTime();
+                    int maxValue = 100000000;
+                    int max = (int)(maxValue*Math.random());
+                    for (int i = 0;i < max;i++){
+                        if (Thread.currentThread().isInterrupted())
+                            return null;
+                    }
+
+                    return Long.valueOf(System.nanoTime() - time);
+                }
+            });
+
+            errorMessage = "Failed to get result";
+            result = generator.getResult();
+            errorMessage = "Failed to compute result";
+
+            Assert.assertTrue(errorMessage, result != null);
+            System.out.println("Result is: " + result);
+
+            boolean isValid = generator.isResultValid();
+            errorMessage = "Result not valid";
+            Assert.assertTrue(errorMessage, isValid && result>cutoffValid || !isValid && result<cutoffValid);
+            System.out.println("Result is valid: " + isValid + " cutoff" + cutoffValid);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage,false);
+        }
+
+    }
 
 
     public LearningConfiguration getSimpleLearningConfiguration(){

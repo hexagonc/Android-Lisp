@@ -9,9 +9,15 @@ import com.evolved.automata.nn.util.FeatureModel;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
 
@@ -42,12 +48,10 @@ public class LSTMNetworkProxy {
 
     public static class NodeState {
         final float[] _nodeActivations;
-        float[] _network;
 
-        private NodeState(float[] network)
+        private NodeState(float[] state)
         {
-            _nodeActivations = network;
-            _network = network;
+            _nodeActivations = state;
         }
 
         public float[] getState()
@@ -57,7 +61,18 @@ public class LSTMNetworkProxy {
 
         public String serialize()
         {
-            return serializeFloats(_network);
+            return serializeFloats(_nodeActivations);
+        }
+
+        public byte[] serializeBytes(){
+            //return NNTools.compressBytes(NNTools.floatsToBytes(_nodeActivations));
+            return NNTools.floatsToBytes(_nodeActivations);
+        }
+
+        public static NodeState deserializeBytes(byte[] serialized){
+            //byte[] decompress = NNTools.decompressBytes(serialized);
+            float[] data = NNTools.bytesToFloats(serialized);
+            return createNodeState(data);
         }
 
         public static NodeState createNodeState(float[] d)
@@ -254,6 +269,16 @@ public class LSTMNetworkProxy {
         return serializeFloats(mNetwork);
     }
 
+    public byte[] serializeBytes()
+    {
+        //return NNTools.compressBytes(NNTools.floatsToBytes(mNetwork));
+        return NNTools.floatsToBytes(mNetwork);
+    }
+
+    public static LSTMNetworkProxy deserializeBytes(byte[] data){
+        float[] floats = NNTools.bytesToFloats(data);
+        return make(floats);
+    }
 
 
     // <(--~o~--)> <(--~o~--)> <(--~o~--)> <(--~o~--)> <(--~o~--)> <(--~o~--)>
