@@ -162,6 +162,8 @@ public class GroupSerializer {
         }, (byte[] b)->{
             try
             {
+                if (b.length == 0)
+                    return "";
                 return new String(b, "UTF-8");
             }
             catch (Exception e){
@@ -246,7 +248,7 @@ public class GroupSerializer {
 
         registerSerializer(Group.class,
                 (Object o)->((Group)o).serializeBytes(),
-                (byte[] b)->Group.deserializeBytes(b));
+                (byte[] b)->Group.deserializeBytes(b, null));
 
     }
 
@@ -260,7 +262,7 @@ public class GroupSerializer {
             int typeIndex = (int)buffer.get();
             int size = buffer.getInt();
 
-            if (size <= 0){
+            if (size < 0){
                 out.add(null);
             }
             else {

@@ -87,11 +87,15 @@ public class LearningConfiguration {
     }
 
     public byte[] serializeBytes(){
-        int numKeys = _dataMap.size();
+        int numKeys = (int)_dataMap.entrySet().stream().filter(pair->!pair.getKey().skip).count();
         GroupSerializer.Builder b = GroupSerializer.get().serialize();
         b.add(Integer.valueOf(numKeys));
         for (Map.Entry<KEY, Object> pair:_dataMap.entrySet()){
-            int typeIndex = pair.getKey().ordinal();
+            KEY key = pair.getKey();
+            if (key.skip)
+                continue;
+            int typeIndex = key.ordinal();
+
             b.add(Integer.valueOf(typeIndex));
             b.add(pair.getValue());
         }

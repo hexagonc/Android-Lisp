@@ -64,9 +64,11 @@ public class FeatureModel {
                     .add(Double.valueOf(_matchFraction))
                     .add(Boolean.valueOf(_isMatch));
             if (_mask == null){
-                b.add(Integer.valueOf(0));
+                b.add(Integer.valueOf(-1));
                 return b.build();
             }
+            else
+                b.add(Integer.valueOf(_mask.length));
 
             for (int i = 0;i<_mask.length;i++){
                 b.add(Float.valueOf(_mask[i]));
@@ -83,6 +85,11 @@ public class FeatureModel {
             s._isMatch = (Boolean)values.get(3);
 
             int len = (Integer)values.get(4);
+            if (len == -1)
+            {
+                s._mask = null;
+                return s;
+            }
             s._mask = new float[len];
             for (int i = 5; i < values.size();i++){
                 s._mask[i-5] = (Float)values.get(i);
@@ -303,7 +310,10 @@ public class FeatureModel {
         mCustomDataSerializer = serializer;
         mCustomDataDeserializer = deserializer;
         if (__rawSerializedCustomData != null)
+        {
             mMetaData = deserializer.deserialize(__rawSerializedCustomData);
+            __rawSerializedCustomData = null;
+        }
         return this;
     }
 
@@ -352,7 +362,7 @@ public class FeatureModel {
 
 
     FeatureModel(){
-
+        mLabel = "";
     }
 
     public FeatureModel(LSTMNetworkProxy network, LearningConfiguration configuration){
@@ -548,7 +558,7 @@ public class FeatureModel {
 
 
             IncrementalUpdateSpec spec = null;
-            ConcurrentGenerator<IncrementalUpdateSpec> generator = new ConcurrentGenerator<>((IncrementalUpdateSpec s)->s.successCriteriaSatisfied());
+            ConcurrentGenerator<IncrementalUpdateSpec> generator = new ConcurrentGenerator<>((IncrementalUpdateSpec s)->s!=null &&s.successCriteriaSatisfied());
 
             for (int i=0;i<THREAD_COUNT;i++){
                 generator.addSupplier(new InterruptibleResultProducer<IncrementalUpdateSpec>() {
@@ -562,7 +572,7 @@ public class FeatureModel {
 
             spec = generator.getResult();
 
-            if (spec.successCriteriaSatisfied()){
+            if (spec != null && spec.successCriteriaSatisfied()){
                 mCurrentRange = spec;
                 mNetwork = mCurrentRange.getNetwork();
                 mCurrentRange.setLength(prior.size()-1);

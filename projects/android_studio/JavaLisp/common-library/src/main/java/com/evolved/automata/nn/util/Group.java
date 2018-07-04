@@ -535,13 +535,16 @@ public class Group {
         else
             b.add(Integer.valueOf(size));
 
+        // learning config
+        b.add(LearningConfiguration.class, mConfiguration);
+
         // featuremap
         size = mFeatureMap.size();
         b.add(Integer.valueOf(size));
         i = 0;
         for (Map.Entry<Integer, FeatureModel> pair:mFeatureMap.entrySet()){
             b.add(pair.getKey());
-            b.add(pair.getValue());
+            b.add(FeatureModel.class, pair.getValue());
         }
 
         // focus model index
@@ -597,12 +600,11 @@ public class Group {
         // group type
         b.add(WorldModel.GroupType.class, mType);
 
-        // learning config
-        b.add(LearningConfiguration.class, mConfiguration);
+
         return b.build();
     }
 
-    public static Group deserializeBytes(byte[] data){
+    public static Group deserializeBytes(byte[] data, LearningConfiguration.InputValidator validator){
         ArrayList values = GroupSerializer.get().deserialize(data);
         Group g = new Group();
         g.mEnableMemoryManagmentP = (Boolean)values.get(0);
@@ -628,7 +630,7 @@ public class Group {
         g.mKey = (String)values.get(17);
 
         // preference map
-        int offset = 17;
+        int offset = 18;
         Integer size = (Integer)values.get(offset++);
         int i = 0;
         Integer key = null;
@@ -673,6 +675,10 @@ public class Group {
             }
         }
 
+        // learning config
+        g.mConfiguration = (LearningConfiguration)values.get(offset++);
+        g.mConfiguration.setInputValidator(validator);
+
         // featuremap
         size = (Integer)values.get(offset++);
         g.mFeatureMap = new HashMap<>();
@@ -686,7 +692,7 @@ public class Group {
                 model.setMetadataSerializer(
                                 (Object fMeta)-> ((FeatureMetaData)fMeta).serializeBytes(),
                                 (byte[] d)->FeatureMetaData.deserializeBytes(d));
-                
+
                 g.mFeatureMap.put(key, model);
             }
             offset++;
@@ -739,9 +745,6 @@ public class Group {
         // group type
         g.mType = (WorldModel.GroupType)values.get(offset++);
 
-        // learning config
-        g.mConfiguration = (LearningConfiguration)values.get(offset++);
-
         return g;
     }
 
@@ -767,6 +770,10 @@ public class Group {
         mKey = key;
         mGroupHeap = new PriorityQueue<>(10, mStandardValueComparator);
         mFocusQueue = new PriorityQueue<>(10, mPassiveValueComparator);
+    }
+
+    public LearningConfiguration getLearningConfig(){
+        return mConfiguration;
     }
 
     public Group setUserDataSerializer(StringSerializer serializer){
