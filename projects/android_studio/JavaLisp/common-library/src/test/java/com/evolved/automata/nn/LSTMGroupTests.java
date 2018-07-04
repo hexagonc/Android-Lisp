@@ -13,9 +13,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -1017,14 +1014,14 @@ public class LSTMGroupTests {
                             errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
                             Assert.assertTrue(errorMessage, results.size() == 1);
                             WorldModel.GroupSpecification result = results.get(0);
-                            j = 0;
+                            int jj = 0;
                             errorMessage = "Failed to get all features";
                             ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
 
                             for (FeatureModel feature: existingModels){
 
-                                System.out.println("" + j + ") " + feature.toString());
-                                j++;
+                                System.out.println("" + jj + ") " + feature.toString());
+                                jj++;
                             }
 
                             if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
@@ -1594,14 +1591,17 @@ public class LSTMGroupTests {
             byte[] serializedGroupData = DEFAULT_GROUP.serializeBytes();
 
             errorMessage = "failed to deserialize group";
-            Group deserializedGroup = Group.deserializeBytes(serializedGroupData);
+            Group deserializedGroup = Group.deserializeBytes(serializedGroupData, DEFAULT_GROUP.getLearningConfig().getInputValidator());
             System.out.println("Showing deserialized group state");
+
+            deserializedGroup.getLearningConfig().setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
 
             ArrayList<FeatureModel> deserializedModels = deserializedGroup.getAllFeatures();
 
             errorMessage = "Failed to get deserialized models";
 
             Assert.assertTrue(errorMessage, deserializedModels!=null && deserializedModels.size() == existingModels.size());
+
             j = 0;
             for (FeatureModel feature: deserializedModels){
                 errorMessage = "failed to get model meta-data: " + feature;
