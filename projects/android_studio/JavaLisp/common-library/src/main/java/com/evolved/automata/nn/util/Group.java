@@ -454,8 +454,6 @@ public class Group {
     LinkedList<Integer> mRecycleQueue = null;
     Integer[] mIndexIterator;
 
-
-
     HashMap<Integer, FeatureModel> mFeatureMap;
 
 
@@ -466,8 +464,6 @@ public class Group {
     PriorityQueue<FeatureModel> mFocusQueue; // Set from featuremap
     PriorityQueue<FeatureModel> mGroupHeap; // Set from featuremap
 
-
-    WorldModel mWorld; // set externally
 
     MemoryManagementListener mMemorymanagementListener = null; // set externally
 
@@ -535,8 +531,6 @@ public class Group {
         else
             b.add(Integer.valueOf(size));
 
-        // learning config
-        b.add(LearningConfiguration.class, mConfiguration);
 
         // featuremap
         size = mFeatureMap.size();
@@ -597,14 +591,11 @@ public class Group {
             SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
         }
 
-        // group type
-        b.add(WorldModel.GroupType.class, mType);
-
 
         return b.build();
     }
 
-    public static Group deserializeBytes(byte[] data, LearningConfiguration.InputValidator validator){
+    public static Group deserializeBytes(byte[] data, WorldModel.GroupType type){
         ArrayList values = GroupSerializer.get().deserialize(data);
         Group g = new Group();
         g.mEnableMemoryManagmentP = (Boolean)values.get(0);
@@ -675,9 +666,10 @@ public class Group {
             }
         }
 
-        // learning config
-        g.mConfiguration = (LearningConfiguration)values.get(offset++);
-        g.mConfiguration.setInputValidator(validator);
+        // Load from type
+        g.mType = type;
+        g.mConfiguration = type.getLearningConfig();
+        g.mUserSerializer = type.getCustomDataStringSerializer();
 
         // featuremap
         size = (Integer)values.get(offset++);
@@ -742,8 +734,6 @@ public class Group {
         }
         g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
 
-        // group type
-        g.mType = (WorldModel.GroupType)values.get(offset++);
 
         return g;
     }
@@ -755,37 +745,26 @@ public class Group {
         mIndexIterator = new Integer[0];
     }
 
-    public Group setWorld(WorldModel model){
-        mWorld = model;
-        return this;
-    }
-
-    public Group(String key, LearningConfiguration configuration, WorldModel world, WorldModel.GroupType type){
-        mWorld = world;
+    public Group(String key, WorldModel.GroupType type){
+        mConfiguration = type.getLearningConfig();
         mType = type;
         mFeatureMap = new HashMap<>();
         mIndexIterator = new Integer[0];
-        mConfiguration = configuration;
 
         mKey = key;
         mGroupHeap = new PriorityQueue<>(10, mStandardValueComparator);
         mFocusQueue = new PriorityQueue<>(10, mPassiveValueComparator);
     }
 
+    public WorldModel.GroupType getType(){
+        return mType;
+    }
+
     public LearningConfiguration getLearningConfig(){
         return mConfiguration;
     }
 
-    public Group setUserDataSerializer(StringSerializer serializer){
-        mUserSerializer = serializer;
-        if (mFeatureMap != null){
-            for (Map.Entry<Integer, FeatureModel> pair:mFeatureMap.entrySet()){
-                getFeatureInternalMetaData(pair.getValue()).setStringSerializer(mUserSerializer);
 
-            }
-        }
-        return this;
-    }
 
     public FeatureMetaData createMetadata(int index){
         FeatureMetaData mdata = new FeatureMetaData();
@@ -1400,9 +1379,7 @@ public class Group {
     private FeatureModel getAnotherFeature(){
 
         FeatureModel model = null, selected = null;
-        if (mWorld != null){
-            model = mWorld.requestFeature(this);
-        }
+        model = mType.requestFeature(this);
 
         FeatureMetaData meta = null;
         if (model == null){
@@ -1637,7 +1614,7 @@ public class Group {
         if (available.isPresent()){
             removeFeature(available.get());
         }
-        else if (!mAllowUnlimitedFeatureImportP && mWorld != null && !mWorld.canAllocateAnotherFeature(mType.getName())) {
+        else if (!mAllowUnlimitedFeatureImportP && mType.canAllocateAnotherFeature(mType.getName())) {
 
             if (sleepToFreeMemory){
                 sleep();

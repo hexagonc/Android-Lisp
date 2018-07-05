@@ -242,13 +242,7 @@ public class GroupSerializer {
                 (Object o)->((Group.FeatureMetaData)o).serializeBytes(),
                 (byte[] b)->Group.FeatureMetaData.deserializeBytes(b));
 
-        registerSerializer(WorldModel.GroupType.class,
-                (Object o)->((WorldModel.GroupType)o).serializeBytes(),
-                (byte[] b)->WorldModel.GroupType.deserializeBytes(b));
 
-        registerSerializer(Group.class,
-                (Object o)->((Group)o).serializeBytes(),
-                (byte[] b)->Group.deserializeBytes(b, null));
 
     }
 

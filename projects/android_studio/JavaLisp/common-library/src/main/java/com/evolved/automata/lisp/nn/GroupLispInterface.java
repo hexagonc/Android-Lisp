@@ -216,9 +216,11 @@ public class GroupLispInterface {
             {
                 checkActualArguments(1, false, false);
                 WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
-                String groupName = (String)evaluatedArgs[1].getString();
+                String typeName = evaluatedArgs[1].getString();
+                String groupName = (String)evaluatedArgs[2].getString();
 
-                return ExtendedFunctions.makeValue(model.getGroup(groupName));
+
+                return ExtendedFunctions.makeValue(model.getGroup(typeName, groupName));
             }
         };
     }

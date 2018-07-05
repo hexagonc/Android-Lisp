@@ -382,16 +382,6 @@ public class LSTMGroupTests {
 
 
 
-
-
-
-    @Test
-    public void testFloatToBytes(){
-
-
-    }
-
-
     @Test
     public void testLimitedFeatures(){
 
@@ -1591,10 +1581,213 @@ public class LSTMGroupTests {
             byte[] serializedGroupData = DEFAULT_GROUP.serializeBytes();
 
             errorMessage = "failed to deserialize group";
-            Group deserializedGroup = Group.deserializeBytes(serializedGroupData, DEFAULT_GROUP.getLearningConfig().getInputValidator());
+            Group deserializedGroup = Group.deserializeBytes(serializedGroupData, DEFAULT_GROUP.getType());
             System.out.println("Showing deserialized group state");
 
             deserializedGroup.getLearningConfig().setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+
+            ArrayList<FeatureModel> deserializedModels = deserializedGroup.getAllFeatures();
+
+            errorMessage = "Failed to get deserialized models";
+
+            Assert.assertTrue(errorMessage, deserializedModels!=null && deserializedModels.size() == existingModels.size());
+
+            j = 0;
+            for (FeatureModel feature: deserializedModels){
+                errorMessage = "failed to get model meta-data: " + feature;
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            System.out.println("Successfully deserialized group");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
+    @Test
+    public void testSerializationOfWorld(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+            FeatureModel.THREAD_COUNT = 2;
+            long start = System.currentTimeMillis();
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 30;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528684442328L;
+
+            boolean useSeed = false;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+
+            int radiix = 10;
+            int numCycles = 20;
+
+            int numClusters = 2;
+
+            int[][] rawInput = new int[numClusters][size];
+
+            for (int i = 0; i < numClusters;i++){
+                rawInput[i] = getRandomTestInput(size, radiix, seed);
+                seed++;
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setSleepToFreeMemory(true);
+            DEFAULT_GROUP.setDebugEnabled(false);
+
+            DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
+
+            ArrayList<String> recycledNames = new ArrayList<String>();
+            Group.MemoryManagementListener managementListener = new Group.MemoryManagementListener() {
+                @Override
+                public void onStartMemoryManagement(int totalAllocation)
+                {
+                    System.out.println(".i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.");
+                    System.out.println("Staring memory management: total allocation: " + totalAllocation);
+                }
+
+                @Override
+                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                {
+                    System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
+                    System.out.println("Finished memory managements");
+                    System.out.println("Recycled: " + recycled);
+                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft());
+                    });
+                }
+            };
+
+            DEFAULT_GROUP.setMemoryListener(managementListener);
+
+            int j = 0;
+
+            int testIndex = 0;
+
+            int loopCount = 2;
+            outer: for (int kk = 0;kk<numCycles;kk++){
+                if (kk > 15){
+                    DEFAULT_GROUP.setMemoryManagement(false);
+                }
+                for (int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++){
+                    System.out.println("<o><o><o><o><o><o><o><o><o><o><o><o>");
+                    System.out.println("Learning cluster (" + (1 + clusterIndex) + "): " + Arrays.toString(rawInput[clusterIndex]));
+
+                    for (int k = 0;k < loopCount;k++){
+                        for (int i = 0; i < rawInput[clusterIndex].length; i++){
+                            testIndex++;
+                            Vector input = intToTallyVector(rawInput[clusterIndex][i], radiix);
+
+                            errorMessage = "Failed to process input " + rawInput[clusterIndex][i];
+                            System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[clusterIndex][i]);
+
+                            // Step (3) process all group types that you want
+                            ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                            errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                            Assert.assertTrue(errorMessage, results.size() == 1);
+                            WorldModel.GroupSpecification result = results.get(0);
+                            j = 0;
+                            errorMessage = "Failed to get all features";
+                            ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                            for (FeatureModel feature: existingModels){
+
+                                System.out.println("" + j + ") " + feature.toString());
+                                j++;
+                            }
+
+                            if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                                System.out.println("......................................");
+                                System.out.println("Memory allocation exhausted, finished");
+                                System.out.println("......................................");
+                                break outer;
+                            }
+                        }
+                    }
+
+                    DEFAULT_GROUP.resetAll();
+                }
+            }
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Seed: " + seed);
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            Group.DreamSpec dream = DEFAULT_GROUP.sleep();
+            System.out.println(dream.getDreamedValue());
+
+            long finished = (System.currentTimeMillis() - start)/1000;
+            System.out.println("Finished base Group after " + finished + " seconds using " + FeatureModel.THREAD_COUNT + " threads");
+
+
+            errorMessage = "Failed to serialize group data";
+            byte[] serializedGroupData = world.serializeGroupBytes();
+
+
+            // Standard way of
+            WorldModel worldCopy = new WorldModel(maxAllocation);
+            WorldModel.GroupType newType = worldCopy.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap);
+            newType.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            newType.getLearningConfig().setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+
+            errorMessage = "Failed to load group data";
+
+            worldCopy.deserializeGroups(serializedGroupData);
+
+            errorMessage = "Failed to retrieve reconstructed groups";
+            ArrayList<WorldModel.GroupSpecification> groups = worldCopy.getGroups(newType);
+
+            Assert.assertTrue(errorMessage, groups != null && groups.size() == 1);
+
+            Group deserializedGroup = groups.get(0).getGroup();
 
             ArrayList<FeatureModel> deserializedModels = deserializedGroup.getAllFeatures();
 

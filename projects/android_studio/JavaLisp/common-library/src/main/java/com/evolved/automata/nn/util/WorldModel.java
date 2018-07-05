@@ -3,9 +3,13 @@ package com.evolved.automata.nn.util;
 import com.evolved.automata.lisp.nn.LSTMNetworkProxy;
 import com.evolved.automata.nn.Vector;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Created by Evolved8 on 6/6/18.
@@ -13,7 +17,7 @@ import java.util.HashSet;
 
 public class WorldModel {
 
-    public static class GroupType {
+    public class GroupType {
 
         int numInputOutputNodes;
         int numMemoryCellNodes;
@@ -23,35 +27,91 @@ public class WorldModel {
         int maxAllocation = -1;
         String name;
         LearningConfiguration config;
+        StringSerializer _serializer;
 
-        GroupType(){
+        HashMap<String, GroupSpecification> _groupMap = new HashMap<>();
 
+        LearningConfiguration.InputValidator _validator = null;
+
+
+        public byte[] serializeGroups(){
+            GroupSerializer.Builder b = GroupSerializer.get().serialize();
+            b.add(_groupMap.size());
+            for (Map.Entry<String, GroupSpecification> pair:_groupMap.entrySet()){
+                b.add(pair.getKey());
+                b.add(ByteBuffer.class, ByteBuffer.wrap(pair.getValue().serializeBytes()));
+            }
+            return b.build();
         }
 
-        public byte[] serializeBytes(){
-            return GroupSerializer.get().serialize()
-                    .add(Integer.valueOf(numInputOutputNodes))
-                    .add(Integer.valueOf(numMemoryCellNodes))
-                    .add(Integer.valueOf(initiaWeight))
-                    .add(Integer.valueOf(featureBufferSize))
-                    .add(Integer.valueOf(minimumBufferOverlap))
-                    .add(Integer.valueOf(maxAllocation))
-                    .add(String.class, name)
-                    .add(LearningConfiguration.class, config).build();
+        public GroupType fillGroups(byte[] groupMap){
+            ArrayList values = GroupSerializer.get().deserialize(groupMap);
+            int size = (Integer)values.get(0);
+            int j = 1;
+            for (int i = 0;i<size*2;i++){
+                String groupName = null;
+                if (i % 2 == 0){
+                    groupName = (String)values.get(j++);
+                }
+                else {
+                    ByteBuffer buffer = (ByteBuffer)values.get(j++);
+                    GroupSpecification spec = GroupSpecification.deserializeBytes(buffer.array(), this);
+                    _groupMap.put(groupName, spec);
+                }
+            }
+            return this;
         }
 
-        public static GroupType deserializeBytes(byte[] data){
-            ArrayList values = GroupSerializer.get().deserialize(data);
-            GroupType g = new GroupType();
-            g.numInputOutputNodes = (Integer)values.get(0);
-            g.numMemoryCellNodes = (Integer)values.get(1);
-            g.initiaWeight = (Integer)values.get(2);
-            g.featureBufferSize = (Integer)values.get(3);
-            g.minimumBufferOverlap = (Integer)values.get(4);
-            g.maxAllocation = (Integer)values.get(5);
-            g.name = (String)values.get(6);
-            g.config = (LearningConfiguration)values.get(7);
+        public Group addGroup(String name){
+            Group g = new Group(name, this);
+            _groupMap.put(name, new GroupSpecification(this, g));
+            mTotalWeight+=initiaWeight;
             return g;
+        }
+
+        public HashMap<String, GroupSpecification> getGroups(){
+            return _groupMap;
+        }
+
+        public boolean canAllocateAnotherFeature(String groupKey){
+
+            GroupSpecification mySpec = _groupMap.get(groupKey);
+            double weight = mySpec.getWeight();
+
+            int maxAllocations = (int)(mTotalAllocation*weight/mTotalWeight);
+            return maxAllocations > mySpec.getNumAllocations();
+        }
+
+        public FeatureModel requestFeature(String groupName){
+            GroupSpecification spec = _groupMap.get(groupName);
+            if (canAllocateAnotherFeature(groupName)){
+                spec.incrementAllocations();
+
+                FeatureModel model = new FeatureModel(getInputOutputNodes(), getNumMemoryCellStates(), getLearningConfig().copy());
+                mNumAllocated++;
+                return model;
+            }
+            else
+                return null;
+        }
+
+        public FeatureModel requestFeature(Group g){
+            return requestFeature(g.getName());
+        }
+
+        public GroupType setInputValidator(LearningConfiguration.InputValidator validator){
+            _validator = validator;
+            config.setInputValidator(validator);
+            return this;
+        }
+
+        public GroupType setCustomDataStringSerializer(StringSerializer serializer){
+            _serializer = serializer;
+            return this;
+        }
+
+        public StringSerializer getCustomDataStringSerializer(){
+            return _serializer;
         }
 
         public GroupType(int inputOutputNodes, int memoryCellNodes, int initialAllocationWeight, int featureBufferSize, int minimumBufferOverlap, LearningConfiguration config){
@@ -118,6 +178,26 @@ public class WorldModel {
         GroupType _type;
         int _boundaryCount = 0;
 
+        public byte[] serializeBytes(){
+            return GroupSerializer.get().serialize().add(ByteBuffer.class, ByteBuffer.wrap(_group.serializeBytes())).add(_numAllocations).add(_weight).add(_boundaryCount).build();
+        }
+
+        public static GroupSpecification deserializeBytes(byte[] data, GroupType type){
+            GroupSpecification spec = new GroupSpecification();
+            ArrayList values = GroupSerializer.get().deserialize(data);
+            ByteBuffer buffer = (ByteBuffer)values.get(0);
+            spec._group = Group.deserializeBytes(buffer.array(), type);
+            spec._numAllocations = (Integer)values.get(1);
+            spec._weight = (Integer)values.get(2);
+            spec._boundaryCount = (Integer)values.get(3);
+            spec._type = type;
+            return spec;
+        }
+
+        GroupSpecification(){
+
+        }
+
         public GroupSpecification(GroupType type, Group group){
             _group = group;
             _type = type;
@@ -173,16 +253,15 @@ public class WorldModel {
             return setWeight(Math.max(1, getWeight() - 1));
         }
 
-
     }
 
     HashMap<String, GroupType> mGroupTypes = new HashMap<String, GroupType>();
 
     public final GroupType BASIC;
 
-    HashMap<String, GroupSpecification> mGroups = new HashMap<String, GroupSpecification>();
-
-    int mTotalAllocation;
+    int mTotalAllocation = 0;
+    int mNumAllocated = 0;
+    int mTotalWeight = 0;
 
     LearningConfiguration mBaseLearningConfiguration;
 
@@ -193,14 +272,63 @@ public class WorldModel {
     public WorldModel(int allocation, LearningConfiguration baseLearningConfig){
         mTotalAllocation = allocation;
         mBaseLearningConfiguration = baseLearningConfig;
+
         BASIC = new GroupType(10,30, 1, 4, 3, mBaseLearningConfiguration);
-        mGroupTypes.put(BASIC.toString(), BASIC);
+        BASIC.setName("BASIC");
+        mGroupTypes.put("BASIC", BASIC);
     }
+
+    public byte[] serializeGroupBytes(){
+        GroupSerializer.Builder b = GroupSerializer.get().serialize()
+                .add(mTotalAllocation)
+                .add(mNumAllocated)
+                .add(mTotalWeight);
+
+        int size = mGroupTypes.size();
+        b.add(size);
+        for (Map.Entry<String, GroupType> pair:mGroupTypes.entrySet()){
+            String typeName = pair.getKey();
+            GroupType type = pair.getValue();
+            b.add(typeName);
+            b.add(ByteBuffer.class, ByteBuffer.wrap(type.serializeGroups()));
+        }
+        return b.build();
+    }
+
+    public WorldModel deserializeGroups(byte[] groupData){
+        ArrayList values = GroupSerializer.get().deserialize(groupData);
+        mTotalAllocation = (Integer)values.get(0);
+        mNumAllocated = (Integer)values.get(1);
+        mTotalWeight = (Integer)values.get(2);
+        int size = (Integer)values.get(3);
+        int j = 4;
+        String typeName = null;
+        for (int i = 0;i<2*size;i++){
+
+            ByteBuffer typeGroupsData = null;
+            if (i % 2 == 0){
+                typeName = (String)values.get(j++);
+            }
+            else {
+                typeGroupsData = (ByteBuffer)values.get(j++);
+                GroupType type = mGroupTypes.get(typeName);
+                type.fillGroups(typeGroupsData.array());
+            }
+        }
+        return this;
+
+    }
+
+
 
     public GroupType createGroupType(String name, int inputOutputNodes, int memoryCellNodes, int defaultGroupWeight, int featureBufferSize, int minimumBufferOverlap, LearningConfiguration config){
         GroupType type = new GroupType(inputOutputNodes, memoryCellNodes, defaultGroupWeight, featureBufferSize, minimumBufferOverlap, config).setName(name);
         mGroupTypes.put(name, type);
         return type;
+    }
+
+    public GroupType createGroupType(String name, int inputOutputNodes, int memoryCellNodes, int defaultGroupWeight, int featureBufferSize, int minimumBufferOverlap){
+        return createGroupType(name, inputOutputNodes, memoryCellNodes, defaultGroupWeight, featureBufferSize, minimumBufferOverlap, mBaseLearningConfiguration);
     }
 
     public static LearningConfiguration getFeatureLearningConfiguration(){
@@ -217,74 +345,49 @@ public class WorldModel {
         return configuration;
     }
 
-    public boolean canAllocateAnotherFeature(String groupKey){
-        double totalWeight = 0;
-        double myWeight = 0;
-        GroupSpecification mySpec = null;
-        for (String key:mGroups.keySet()){
-            int weight = mGroups.get(key).getWeight();
-            if (key.equals(groupKey)){
-                mySpec = mGroups.get(key);
-                myWeight = weight;
-            }
-
-            totalWeight+=weight;
-        }
-
-        int maxAllocations = (int)(mTotalAllocation*myWeight/totalWeight);
-        return maxAllocations > mySpec.getNumAllocations();
-    }
 
     public WorldModel incrementGroupAllocationCount(String groupKey){
-        mGroups.get(groupKey).incrementAllocations();
+        mGroupTypes.entrySet().stream().map(pair->pair.getValue()).forEach(type->{
+            type.getGroups().entrySet().stream().filter(epair->epair.getKey().equals(groupKey)).map(epair->epair.getValue()).forEach(spec->spec.incrementAllocations());
+        });
+
+
         return this;
     }
 
-    public Group addGroup(String name, LearningConfiguration configuration,  GroupType type){
-        Group group = new Group(name, configuration, this, type);
-
-        mGroups.put(name, new GroupSpecification(type, group));
-        return group;
-    }
-
-    public Group addGroup(String name, LearningConfiguration configuration,  String type){
-        return addGroup(name, configuration, mGroupTypes.get(type));
-    }
-
     public Group addGroup(String name, GroupType type){
-        return addGroup(name, mBaseLearningConfiguration, type);
+
+        return mGroupTypes.get(type.getName()).addGroup(name);
     }
+
 
     public Group addGroup(String name, String type){
-        return addGroup(name, mBaseLearningConfiguration,mGroupTypes.get(type));
-    }
-
-    public FeatureModel requestFeature(Group group){
-        return requestFeature(group.getName());
-    }
-
-    public FeatureModel requestFeature(String groupName){
-        GroupSpecification spec = mGroups.get(groupName);
-        if (canAllocateAnotherFeature(groupName)){
-            spec.incrementAllocations();
-            GroupType type = spec.getType();
-
-            FeatureModel model = new FeatureModel(type.getInputOutputNodes(), type.getNumMemoryCellStates(), type.getLearningConfig().copy());
-            return model;
-        }
-        else
-            return null;
+        return addGroup(name, mGroupTypes.get(type));
     }
 
 
-    public Group getGroup(String name){
-        return mGroups.get(name).getGroup();
+
+    public ArrayList<GroupSpecification> findGroups(String name){
+        ArrayList<GroupSpecification> g = new ArrayList<>();
+        mGroupTypes.entrySet().stream().map(p->p.getValue()).filter(type->type.getGroups().containsKey(name)).forEach(type->g.add(type.getGroups().get(name)));
+        return g;
     }
 
     public ArrayList<GroupSpecification> getGroups(GroupType type){
-        return findGroups(0, new GroupType[]{type}, null);
+        ArrayList<GroupSpecification> o = new ArrayList<>();
+        o.addAll(mGroupTypes.get(type.getName()).getGroups().entrySet().stream().map(pair->pair.getValue()).collect(Collectors.toList()));
+        return o;
     }
 
+    public GroupSpecification getGroup(GroupType type, String name){
+
+        return getGroup(type.getName(), name);
+    }
+
+    public GroupSpecification getGroup(String typename, String name){
+
+        return mGroupTypes.get(typename).getGroups().get(name);
+    }
 
     public ArrayList<GroupSpecification> findGroups(int inputWidth, GroupType[] groupTypes, String[] groupNames) {
         String[] typeNames = null;
@@ -301,35 +404,22 @@ public class WorldModel {
         GroupSpecification spec;
 
 
-        if (groupNames != null && groupNames.length > 0)
-        {
+        HashSet<String> groupNameSet = new HashSet<>();
+        if (groupTypeNames == null){
+            groupNameSet.addAll(mGroupTypes.keySet());
+        }
+        else
+            groupNameSet.addAll(Arrays.stream(groupTypeNames).collect(Collectors.toList()));
+
+        if (groupNames != null && groupNames.length>0){
             for (String s:groupNames){
-                spec = mGroups.get(s);
-                if (spec!= null && spec.getType().getInputOutputNodes() == inputWidth){
-                    out.add(spec);
-                }
+                out.addAll(findGroups(s).stream().filter(Spec->groupNameSet.contains(s)&&Spec.getType().getInputOutputNodes()==inputWidth).collect(Collectors.toList()));
             }
         }
-
-        if (out.size() > 0){
-            return out;
-        }
-
-        HashSet<String> filterTypes = new HashSet<>();
-        if (groupTypeNames == null || groupTypeNames.length == 0){
-            groupTypeNames = mGroupTypes.keySet().toArray(new String[0]);
-        }
-
-        for (String groupTypeName:groupTypeNames){
-            filterTypes.add(groupTypeName);
-        }
-
-        for (String groupName:mGroups.keySet()){
-            spec = mGroups.get(groupName);
-            if ((inputWidth <= 0 || spec.getType().getInputOutputNodes() == inputWidth) && (filterTypes.size() == 0 || filterTypes.contains(spec.getType().getName()))){
-                out.add(spec);
-            }
-
+        else {
+            groupNameSet.stream().map(n->mGroupTypes.get(n)).filter(type->type.getInputOutputNodes()==inputWidth).forEach(type->{
+                out.addAll(getGroups(type));
+            });
         }
 
         return out;
