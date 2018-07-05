@@ -8,6 +8,7 @@ import com.evolved.automata.lisp.LambdaValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
+import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.Vector;
 import com.evolved.automata.nn.util.FeatureModel;
 import com.evolved.automata.nn.util.Group;
@@ -30,11 +31,15 @@ public class GroupLispInterface {
         env.mapFunction("model-get-default-config", modelGetDefaultLearningConfig());
         env.mapFunction("model-create-world", modelCreateWorld());
         env.mapFunction("model-set-thread-count", modelSetThreadCount());
+        env.mapFunction("world-serialized-group-data", worldSerializeGroupData());
 
         env.mapFunction("world-create-group-type", worldCreateGroupType());
+        env.mapFunction("world-load-serialized-group-data", worldLoadSerializedGroupData());
+
         env.mapFunction("world-add-group", worldAddGroup());
         env.mapFunction("world-get-group", worldGetGroup());
         env.mapFunction("world-process-input", worldProcessInput());
+
         env.mapFunction("group-import-feature", groupImportFeature());
         env.mapFunction("group-set-decay-interval", groupSetDecayInterval());
         env.mapFunction("group-get-focus-feature", groupGetFocusFeature());
@@ -174,6 +179,62 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate worldLoadSerializedGroupData()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) worldLoadSerializedGroupData();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+                WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
+                String serialized = (String)evaluatedArgs[1].getString();
+
+                try
+                {
+                    byte[] data = NNTools.decodeBase64(serialized);
+                    model.deserializeGroups(data);
+                }
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate worldSerializeGroupData()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) worldSerializeGroupData();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
+
+                byte[] data = model.serializeGroupBytes();
+                String serialized = NNTools.encodeBase64(data);
+
+                return NLispTools.makeValue(serialized);
+            }
+        };
+    }
+
     public static SimpleFunctionTemplate worldAddGroup()
     {
         return new SimpleFunctionTemplate() {
@@ -214,13 +275,13 @@ public class GroupLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(1, false, false);
+                checkActualArguments(3, false, false);
                 WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
                 String typeName = evaluatedArgs[1].getString();
                 String groupName = (String)evaluatedArgs[2].getString();
 
 
-                return ExtendedFunctions.makeValue(model.getGroup(typeName, groupName));
+                return ExtendedFunctions.makeValue(model.getGroup(typeName, groupName).getGroup());
             }
         };
     }
@@ -258,7 +319,7 @@ public class GroupLispInterface {
                 }
 
                 if (spec != null){
-                    Value[] outv= spec.stream().map(v->ExtendedFunctions.makeValue(v)).collect(Collectors.toList()).toArray(new Value[0]);
+                    Value[] outv= spec.stream().map(v->ExtendedFunctions.makeValue(v.getGroup())).collect(Collectors.toList()).toArray(new Value[0]);
                     return NLispTools.makeValue(outv);
                 }
                 else
@@ -447,7 +508,7 @@ public class GroupLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, true, true);
+                checkActualArguments(1, true, true);
                 Group group = (Group)evaluatedArgs[0].getObjectValue();
                 group.resetAll(evaluatedArgs.length > 1 && !evaluatedArgs[1].isNull());
 

@@ -11,7 +11,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -131,6 +133,15 @@ public class NNTools {
     public static byte[] decodeBase64(String data){
         return Base64.decodeBase64(data);
     }
+
+//    public static String encodeBase64(byte[] data){
+//        return new String(java.util.Base64.getEncoder().encode(data), StandardCharsets.ISO_8859_1);
+//    }
+//
+//    public static byte[] decodeBase64(String data) throws UnsupportedEncodingException
+//    {
+//        return java.util.Base64.getDecoder().decode(data);
+//    }
 
     public static byte[] floatsToBytes(float[] data){
         ByteBuffer byteBuffer = ByteBuffer.allocate(data.length*4);

@@ -48,8 +48,9 @@ public class WorldModel {
             ArrayList values = GroupSerializer.get().deserialize(groupMap);
             int size = (Integer)values.get(0);
             int j = 1;
+            String groupName = null;
             for (int i = 0;i<size*2;i++){
-                String groupName = null;
+
                 if (i % 2 == 0){
                     groupName = (String)values.get(j++);
                 }
@@ -404,20 +405,20 @@ public class WorldModel {
         GroupSpecification spec;
 
 
-        HashSet<String> groupNameSet = new HashSet<>();
+        HashSet<String> groupTypeNameSet = new HashSet<>();
         if (groupTypeNames == null){
-            groupNameSet.addAll(mGroupTypes.keySet());
+            groupTypeNameSet.addAll(mGroupTypes.keySet());
         }
         else
-            groupNameSet.addAll(Arrays.stream(groupTypeNames).collect(Collectors.toList()));
+            groupTypeNameSet.addAll(Arrays.stream(groupTypeNames).collect(Collectors.toList()));
 
         if (groupNames != null && groupNames.length>0){
             for (String s:groupNames){
-                out.addAll(findGroups(s).stream().filter(Spec->groupNameSet.contains(s)&&Spec.getType().getInputOutputNodes()==inputWidth).collect(Collectors.toList()));
+                out.addAll(findGroups(s).stream().filter(Spec->groupTypeNameSet.contains(Spec.getType().getName())&&Spec.getType().getInputOutputNodes()==inputWidth).collect(Collectors.toList()));
             }
         }
         else {
-            groupNameSet.stream().map(n->mGroupTypes.get(n)).filter(type->type.getInputOutputNodes()==inputWidth).forEach(type->{
+            groupTypeNameSet.stream().map(n->mGroupTypes.get(n)).filter(type->type.getInputOutputNodes()==inputWidth).forEach(type->{
                 out.addAll(getGroups(type));
             });
         }
