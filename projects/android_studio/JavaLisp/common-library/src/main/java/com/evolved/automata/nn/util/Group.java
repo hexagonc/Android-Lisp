@@ -6,6 +6,7 @@ import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.Vector;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -110,7 +111,7 @@ public class Group {
 
     public interface MemoryManagementListener {
         void onStartMemoryManagement(int totalAllocation);
-        void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled);
+        void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> recycled);
 
     }
 
@@ -171,12 +172,13 @@ public class Group {
             return meta;
         }
 
-        public void setStringSerializer(StringSerializer serializer){
+        public FeatureMetaData setStringSerializer(StringSerializer serializer){
             _serializer = serializer;
-            if (_serializedData != null){
+            if (_serializedData != null && serializer != null){
                 _userObject = serializer.deserialize(_serializedData);
                 _serializedData = null;
             }
+            return this;
         }
 
         public boolean isInUse(){
@@ -471,7 +473,6 @@ public class Group {
 
     LearningConfiguration mConfiguration;
 
-    StringSerializer mUserSerializer = null;
 
     boolean SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
 
@@ -669,7 +670,6 @@ public class Group {
         // Load from type
         g.mType = type;
         g.mConfiguration = type.getLearningConfig();
-        g.mUserSerializer = type.getCustomDataStringSerializer();
 
         // featuremap
         size = (Integer)values.get(offset++);
@@ -683,9 +683,13 @@ public class Group {
                 FeatureModel model = (FeatureModel)values.get(offset);
                 model.setMetadataSerializer(
                                 (Object fMeta)-> ((FeatureMetaData)fMeta).serializeBytes(),
-                                (byte[] d)->FeatureMetaData.deserializeBytes(d));
+                                (byte[] d)->{
+                                    FeatureMetaData m = FeatureMetaData.deserializeBytes(d);
+                                    return m.setStringSerializer(type.getCustomDataStringSerializer());
+                                });
 
                 g.mFeatureMap.put(key, model);
+
             }
             offset++;
         }
@@ -1427,7 +1431,7 @@ public class Group {
                     int length = prefs.size();
                     int recycleCount = (int)Math.round(length * mRecycleCutoffFraction);
 
-                    ArrayList<Pair<String, ArrayList<Vector>>> managementResults = new ArrayList<>();
+                    ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> managementResults = new ArrayList<>();
                     ArrayList<FeatureModel> freed = new ArrayList<>();
 
                     int i = 0;
@@ -1445,7 +1449,7 @@ public class Group {
                             ArrayList<String> sResult = new ArrayList<String>();
                             rawExtra.forEach((Vector v)->sResult.add(mConfiguration.getInputString(v.rawFloat())));
                             String displayForm = model.toString() + " -> " + sResult.toString();
-                            managementResults.add(Pair.of(displayForm, rawExtra));
+                            managementResults.add(Triple.of(model, displayForm, rawExtra));
 
                         }
 
@@ -1493,7 +1497,7 @@ public class Group {
             }
 
             meta = getFeatureInternalMetaData(model);
-            meta.setStringSerializer(mUserSerializer);
+            meta.setStringSerializer(mType.getCustomDataStringSerializer());
             meta.reset();
             meta.setInUse(true);
             model.setLabel("");
@@ -1533,7 +1537,7 @@ public class Group {
         FeatureMetaData data = (FeatureMetaData)model.getMetaData();
         if (data == null){
             model.setMetaData(data = new FeatureMetaData());
-            data.setStringSerializer(mUserSerializer);
+            data.setStringSerializer(mType.getCustomDataStringSerializer());
         }
         return data;
     }
@@ -1593,7 +1597,7 @@ public class Group {
     public Group addFeature(FeatureModel model, int index){
         FeatureMetaData meta = getFeatureInternalMetaData(model);
         meta.setAllocationIndex(index);
-        meta.setStringSerializer(mUserSerializer);
+        meta.setStringSerializer(mType.getCustomDataStringSerializer());
 
         mFeatureMap.put(Integer.valueOf(index), model);
 

@@ -587,7 +587,9 @@ public class FeatureModel {
     public FeatureModel forceInitialState(){
         mState = STATE.INITIAL;
         if (mCurrentRange != null)
+        {
             mCurrentRange.setLength(0);
+        }
         mSimilarityHistory.clear();
         return this;
     }
@@ -862,12 +864,12 @@ public class FeatureModel {
                         if (hasMaxIterationBonus || hasMaxDurationBonus) {
                             if (hasMaxIterationBonus) {
                                 maxIterations = i + maxIterations;
-                                System.out.println("Extra iteration bonus: " + maxIterations);
+                                //System.out.println("Extra iteration bonus: " + maxIterations);
                             }
 
                             if (hasMaxDurationBonus) {
                                 stopTime = Math.max(stopTime, System.currentTimeMillis() + configuration.getBestSolutionBonusMilli());
-                                System.out.println("Extra time bonus: " + dateParts(stopTime));
+                                //System.out.println("Extra time bonus: " + dateParts(stopTime));
                             }
                         }
                         else {
@@ -879,12 +881,12 @@ public class FeatureModel {
                     else {
                         if (hasMaxIterationBonus) {
                             maxIterations = i + maxIterations;
-                            System.out.println("Extra iteration bonus: " + maxIterations);
+                            //System.out.println("Extra iteration bonus: " + maxIterations);
                         }
 
                         if (hasMaxDurationBonus) {
                             stopTime = Math.max(stopTime, System.currentTimeMillis() + configuration.getBestSolutionBonusMilli());
-                            System.out.println("Extra time bonus: " + dateParts(stopTime));
+                            //System.out.println("Extra time bonus: " + dateParts(stopTime));
                         }
                     }
                 }

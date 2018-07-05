@@ -10,6 +10,7 @@ import com.evolved.automata.nn.util.LearningConfiguration;
 import com.evolved.automata.nn.util.WorldModel;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -1173,13 +1174,13 @@ public class LSTMGroupTests {
                 }
 
                 @Override
-                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                public void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> recycled)
                 {
                     System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
                     System.out.println("Finished memory managements");
                     System.out.println("Recycled: " + recycled);
-                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
-                        recycledNames.add(pair.getLeft());
+                    recycled.stream().forEach((Triple<FeatureModel,String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft().toString());
                     });
                 }
             };
@@ -1330,13 +1331,13 @@ public class LSTMGroupTests {
                 }
 
                 @Override
-                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                public void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel,String, ArrayList<Vector>>> recycled)
                 {
                     System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
                     System.out.println("Finished memory managements");
                     System.out.println("Recycled: " + recycled);
-                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
-                        recycledNames.add(pair.getLeft());
+                    recycled.stream().forEach((Triple<FeatureModel,String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft().toString());
                     });
                 }
             };
@@ -1489,13 +1490,13 @@ public class LSTMGroupTests {
                 }
 
                 @Override
-                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                public void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel,String, ArrayList<Vector>>> recycled)
                 {
                     System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
                     System.out.println("Finished memory managements");
                     System.out.println("Recycled: " + recycled);
-                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
-                        recycledNames.add(pair.getLeft());
+                    recycled.stream().forEach((Triple<FeatureModel,String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft().toString());
                     });
                 }
             };
@@ -1681,13 +1682,13 @@ public class LSTMGroupTests {
                 }
 
                 @Override
-                public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                public void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel,String, ArrayList<Vector>>> recycled)
                 {
                     System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
                     System.out.println("Finished memory managements");
                     System.out.println("Recycled: " + recycled);
-                    recycled.stream().forEach((Pair<String, ArrayList<Vector>> pair)->{
-                        recycledNames.add(pair.getLeft());
+                    recycled.stream().forEach((Triple<FeatureModel,String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft().toString());
                     });
                 }
             };

@@ -27,9 +27,32 @@ import java.util.zip.GZIPOutputStream;
  */
 public class NNTools {
 
+    public interface Base64Interface {
+        String encodeBase64(byte[] data);
+
+        byte[] decodeBase64(String data);
+
+    }
+
+    public static Base64Interface BASE64 = new Base64Interface() {
+        @Override
+        public String encodeBase64(byte[] data)
+        {
+            return Base64.encodeBase64String(data);
+        }
+
+        @Override
+        public byte[] decodeBase64(String data)
+        {
+             return Base64.decodeBase64(data);
+        }
+    };
+
     public static final String LSTM_DATA_SEPARATOR = "(*)";
     public static final String LSTM_WEIGHT_NODE_SEPARATOR = "(<>)";
     public static final String _VDELIMITER = "~.~";
+
+
     public static String toString(List<Vector> vlist)
     {
         return vArrayToString(vlist.toArray(new Vector[0]));
@@ -125,23 +148,6 @@ public class NNTools {
         ginput.close();
         return new String(baos.toByteArray(), "UTF-8");
     }
-
-    public static String encodeBase64(byte[] data){
-        return Base64.encodeBase64String(data);
-    }
-
-    public static byte[] decodeBase64(String data){
-        return Base64.decodeBase64(data);
-    }
-
-//    public static String encodeBase64(byte[] data){
-//        return new String(java.util.Base64.getEncoder().encode(data), StandardCharsets.ISO_8859_1);
-//    }
-//
-//    public static byte[] decodeBase64(String data) throws UnsupportedEncodingException
-//    {
-//        return java.util.Base64.getDecoder().decode(data);
-//    }
 
     public static byte[] floatsToBytes(float[] data){
         ByteBuffer byteBuffer = ByteBuffer.allocate(data.length*4);

@@ -6,8 +6,10 @@ import com.evolved.automata.android.DeviceInfo;
 
 import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
+import com.evolved.automata.nn.NNTools;
 
 import android.support.multidex.MultiDexApplication;
+import android.util.Base64;
 
 public class ALGBApplication extends MultiDexApplication
 {
@@ -20,6 +22,21 @@ public class ALGBApplication extends MultiDexApplication
 	public void onCreate() {
 		
 		super.onCreate();
+
+		NNTools.BASE64 = new NNTools.Base64Interface() {
+			@Override
+			public String encodeBase64(byte[] data)
+			{
+				return Base64.encodeToString(data, Base64.DEFAULT);
+			}
+
+			@Override
+			public byte[] decodeBase64(String data)
+			{
+				return Base64.decode(data, Base64.DEFAULT);
+			}
+		};
+
 		try
 		{
 			Tools.mApplication = this;

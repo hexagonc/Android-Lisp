@@ -13,9 +13,11 @@ import com.evolved.automata.nn.Vector;
 import com.evolved.automata.nn.util.FeatureModel;
 import com.evolved.automata.nn.util.Group;
 import com.evolved.automata.nn.util.LearningConfiguration;
+import com.evolved.automata.nn.util.StringSerializer;
 import com.evolved.automata.nn.util.WorldModel;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -39,6 +41,8 @@ public class GroupLispInterface {
         env.mapFunction("world-add-group", worldAddGroup());
         env.mapFunction("world-get-group", worldGetGroup());
         env.mapFunction("world-process-input", worldProcessInput());
+
+        env.mapFunction("group-type-set-default-string-serializer", groupTypeSetDefaultStringSerializer());
 
         env.mapFunction("group-import-feature", groupImportFeature());
         env.mapFunction("group-set-decay-interval", groupSetDecayInterval());
@@ -66,7 +70,10 @@ public class GroupLispInterface {
         env.mapFunction("feature-force-complete", featureForceComplete());
         env.mapFunction("feature-get-distance-to-final-state", featureGetDistanceToFinalState());
         env.mapFunction("feature-get-state", featureGetState());
+        env.mapFunction("feature-get-group-allocation-index", featureGetGroupAllocationIndex());
         env.mapFunction("feature-get-next-predicted-value", featureGetNextPredictedValue());
+        env.mapFunction("feature-set-custom-meta-data", featureSetCustomMetadata());
+        env.mapFunction("feature-get-custom-meta-data", featureGetCustomMetadata());
 
 
     }
@@ -198,7 +205,7 @@ public class GroupLispInterface {
 
                 try
                 {
-                    byte[] data = NNTools.decodeBase64(serialized);
+                    byte[] data = NNTools.BASE64.decodeBase64(serialized);
                     model.deserializeGroups(data);
                 }
                 catch (Exception e)
@@ -228,7 +235,7 @@ public class GroupLispInterface {
                 WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
 
                 byte[] data = model.serializeGroupBytes();
-                String serialized = NNTools.encodeBase64(data);
+                String serialized = NNTools.BASE64.encodeBase64(data);
 
                 return NLispTools.makeValue(serialized);
             }
@@ -517,6 +524,53 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate groupTypeSetDefaultStringSerializer()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupTypeSetDefaultStringSerializer();
+            }
+
+            @Override
+            public Value evaluate(final Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                WorldModel.GroupType type = (WorldModel.GroupType)evaluatedArgs[0].getObjectValue();
+                type.setCustomDataStringSerializer(new StringSerializer() {
+                    @Override
+                    public String serialize(Object o)
+                    {
+                        if (o == null)
+                            return "F";
+                        else
+                            return ((Value)o).serializedForm();
+                    }
+
+                    @Override
+                    public Object deserialize(String data)
+                    {
+                        if (data == null)
+                            return Environment.getNull();
+                        else
+                        {
+                            try
+                            {
+                                return env.evaluate(data, false);
+                            } catch (Exception e)
+                            {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                });
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
 
     public static SimpleFunctionTemplate groupSetSleepListener()
     {
@@ -550,9 +604,9 @@ public class GroupLispInterface {
                     }
 
                     @Override
-                    public void onFinishedMemoryManagement(ArrayList<Pair<String, ArrayList<Vector>>> recycled)
+                    public void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> recycled)
                     {
-                        Value[] out = recycled.stream().map((Pair<String, ArrayList<Vector>> p)-> NLispTools.makeValue(p.getLeft())).collect(Collectors.toList()).toArray(new Value[0]);
+                        Value[] out = recycled.stream().map((Triple<FeatureModel, String, ArrayList<Vector>> p)-> ExtendedFunctions.makeValue(p.getLeft())).collect(Collectors.toList()).toArray(new Value[0]);
 
                         listener.setActualParameters(new Value[]{NLispTools.makeValue(false), NLispTools.makeValue(out)});
                         try
@@ -976,4 +1030,70 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate featureSetCustomMetadata()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureSetCustomMetadata();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                Group.FeatureMetaData meta = (Group.FeatureMetaData)feature.getMetaData();
+                meta.setCustomMetadata(evaluatedArgs[1]);
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate featureGetCustomMetadata()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureGetCustomMetadata();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                Group.FeatureMetaData meta = (Group.FeatureMetaData)feature.getMetaData();
+                if (meta.getCustomMetadata() != null)
+                    return (Value)meta.getCustomMetadata();
+                else
+                    return Environment.getNull();
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate featureGetGroupAllocationIndex()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureGetGroupAllocationIndex();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                Group.FeatureMetaData meta = (Group.FeatureMetaData)feature.getMetaData();
+                return NLispTools.makeValue(meta.getAllocationIndex());
+            }
+        };
+    }
 }
