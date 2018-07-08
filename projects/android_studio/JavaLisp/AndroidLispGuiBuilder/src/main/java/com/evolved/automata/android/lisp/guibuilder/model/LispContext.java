@@ -16,6 +16,7 @@ import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 
 import com.evolved.automata.android.lisp.guibuilder.ALGBBaseActivity;
+import com.evolved.automata.android.lisp.guibuilder.AndroidLispDAI;
 import com.evolved.automata.android.lisp.guibuilder.BackgroundLispService;
 import com.evolved.automata.android.lisp.guibuilder.DropboxManager;
 import com.evolved.automata.android.lisp.guibuilder.EventLog;
@@ -1390,47 +1391,6 @@ public class LispContext implements SpeechListener{
     }
 
 
-    SimpleFunctionTemplate getObjectDataValue()
-    {
-        return new SimpleFunctionTemplate()
-        {
-            @SuppressWarnings("unchecked")
-            @Override
-            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
-            {
-                return (T)getObjectDataValue();
-            }
-
-            @Override
-            public Value evaluate(Environment env,Value[] evaluatedArgs) {
-                checkActualArguments(1, true, true);
-
-                String name = evaluatedArgs[0].getString();
-                String context = _DEFAULT_CONTEXT;
-                if (evaluatedArgs.length>1)
-                    context = evaluatedArgs[1].getString();
-                boolean updateLastAccess =false;
-                updateLastAccess =  evaluatedArgs.length > 2 && !evaluatedArgs[2].isNull();
-                try
-                {
-
-                    String serializedData = mDAI.getData(name, context, updateLastAccess);
-                    if (serializedData == null)
-                        return Environment.getNull();
-                    //serializedData = StringUtils.replace(serializedData, "\\\\\"\\\"", "\\\"");
-                    LinkedList<Value> out = env.parse(serializedData, true);
-                    if (out.size() == 0)
-                        return Environment.getNull();
-                    return env.evaluate(out.getFirst());
-                }
-                catch (Exception e)
-                {
-                    throw new RuntimeException(e);
-                }
-            }
-        };
-    }
-
     SimpleFunctionTemplate deleteDataValue()
     {
         return new SimpleFunctionTemplate()
@@ -1509,16 +1469,95 @@ public class LispContext implements SpeechListener{
                 String name = evaluatedArgs[0].getString();
                 String value = evaluatedArgs[1].serializedForm();
                 String context = _DEFAULT_CONTEXT;
+                String segment;
                 if (evaluatedArgs.length>2)
                     context = evaluatedArgs[2].getString();
 
-                int rowId;
-
+                int rowId=0;
+                int valueIndex = 0;
                 try
                 {
-                    rowId = mDAI.setData(name, context, value);
+                    String realName;
+                    StringBuffer buffer = new StringBuffer();
+                    int i = 0;
+                    for (i = 1;i<=value.length();i++){
+                        buffer.append(value.charAt(i-1));
+                        if (i % AndroidLispDAI.BUFFER_SIZE == 0){
+                            if (valueIndex == 0)
+                                realName = name;
+                            else
+                                realName = name + "_-*"+valueIndex+"*-_";
+                            rowId = mDAI.setData(realName, context, buffer.toString());
+                            buffer = new StringBuffer();
+                            valueIndex++;
+                        }
+                    }
+
+                    if (buffer.length()>0){
+                        if (valueIndex == 0)
+                            realName = name;
+                        else
+                            realName = name + "_-*"+valueIndex+"*-_";
+                        rowId = mDAI.setData(realName, context, buffer.toString());
+
+                    }
 
                     return NLispTools.makeValue(rowId);
+                }
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+    }
+
+    SimpleFunctionTemplate getObjectDataValue()
+    {
+        return new SimpleFunctionTemplate()
+        {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T)getObjectDataValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                checkActualArguments(1, true, true);
+
+                String name = evaluatedArgs[0].getString();
+                String context = _DEFAULT_CONTEXT;
+                if (evaluatedArgs.length>1)
+                    context = evaluatedArgs[1].getString();
+                boolean updateLastAccess =false;
+                updateLastAccess =  evaluatedArgs.length > 2 && !evaluatedArgs[2].isNull();
+                try
+                {
+
+                    int valueIndex = 0;
+                    String realName = name; //
+
+                    StringBuffer buffer = new StringBuffer();
+                    String segment = null;
+                    while ((segment = mDAI.getData(realName, context, updateLastAccess))!=null){
+                        buffer.append(segment);
+                        valueIndex++;
+                        realName = name + "_-*"+valueIndex+"*-_";
+                        if (segment.length()< AndroidLispDAI.BUFFER_SIZE)
+                            break;
+                    }
+
+                    if (buffer.length() == 0)
+                        return Environment.getNull();
+
+
+                    //serializedData = StringUtils.replace(serializedData, "\\\\\"\\\"", "\\\"");
+                    LinkedList<Value> out = env.parse(buffer.toString(), true);
+                    if (out.size() == 0)
+                        return Environment.getNull();
+                    return env.evaluate(out.getFirst());
                 }
                 catch (Exception e)
                 {

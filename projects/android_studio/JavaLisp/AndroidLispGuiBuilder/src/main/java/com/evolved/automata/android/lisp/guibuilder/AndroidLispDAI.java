@@ -16,6 +16,8 @@ import java.util.Locale;
 
 public class AndroidLispDAI implements LispDataAccessInterface {
 
+    public static int BUFFER_SIZE = 1024*1024;
+
     static String _DEFAULT_CONTEXT = "default";
     static String _INSERT_KEY = "insert into objects (name, context, value, last_access) values (?,?, ?, ?)"; // 1
 

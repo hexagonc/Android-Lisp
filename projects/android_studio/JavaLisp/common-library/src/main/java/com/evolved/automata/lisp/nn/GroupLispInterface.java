@@ -33,6 +33,7 @@ public class GroupLispInterface {
         env.mapFunction("model-get-default-config", modelGetDefaultLearningConfig());
         env.mapFunction("model-create-world", modelCreateWorld());
         env.mapFunction("model-set-thread-count", modelSetThreadCount());
+        env.mapFunction("model-set-serialization-buffer-size", modelSetSerialializeCacheSize());
         env.mapFunction("world-serialized-group-data", worldSerializeGroupData());
 
         env.mapFunction("world-create-group-type", worldCreateGroupType());
@@ -149,6 +150,28 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate modelSetSerialializeCacheSize()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) modelSetSerialializeCacheSize();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                int count = (int)evaluatedArgs[0].getIntValue();
+                NNTools.BASE64.setSerializationCacheSize(count);
+
+                return evaluatedArgs[0];
+            }
+        };
+    }
+
     public static SimpleFunctionTemplate worldCreateGroupType()
     {
         return new SimpleFunctionTemplate() {
@@ -206,7 +229,8 @@ public class GroupLispInterface {
                 try
                 {
                     byte[] data = NNTools.BASE64.decodeBase64(serialized);
-                    model.deserializeGroups(data);
+                    byte[] unzipped = NNTools.decompressBytes(data);
+                    model.deserializeGroups(unzipped);
                 }
                 catch (Exception e)
                 {
@@ -235,7 +259,9 @@ public class GroupLispInterface {
                 WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
 
                 byte[] data = model.serializeGroupBytes();
-                String serialized = NNTools.BASE64.encodeBase64(data);
+                byte[] zipped = NNTools.compressBytes(data);
+
+                String serialized = NNTools.BASE64.encodeBase64(zipped);
 
                 return NLispTools.makeValue(serialized);
             }

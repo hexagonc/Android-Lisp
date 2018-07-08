@@ -32,6 +32,8 @@ public class NNTools {
 
         byte[] decodeBase64(String data);
 
+        void setSerializationCacheSize(int size);
+
     }
 
     public static Base64Interface BASE64 = new Base64Interface() {
@@ -45,6 +47,11 @@ public class NNTools {
         public byte[] decodeBase64(String data)
         {
              return Base64.decodeBase64(data);
+        }
+
+        public void setSerializationCacheSize(int size)
+        {
+
         }
     };
 

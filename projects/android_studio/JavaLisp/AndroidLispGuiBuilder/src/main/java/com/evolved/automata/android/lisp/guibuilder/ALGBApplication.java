@@ -35,6 +35,11 @@ public class ALGBApplication extends MultiDexApplication
 			{
 				return Base64.decode(data, Base64.DEFAULT);
 			}
+
+			public void setSerializationCacheSize(int size)
+			{
+				AndroidLispDAI.BUFFER_SIZE = size;
+			}
 		};
 
 		try
