@@ -240,6 +240,7 @@ public class Group {
         HashMap<Integer, FeatureValueMetadata> _dreamPrefs;
         boolean _includeReps = false;
         HashSet<Integer> _dreamedValues;
+        ArrayList<FeatureModel> _redundant = new ArrayList<>();
 
         public DreamSpec(){
             _dreamedValues = new HashSet<Integer>();
@@ -288,6 +289,15 @@ public class Group {
 
         public DreamSpec setDreamPrefs(HashMap<Integer, FeatureValueMetadata> s){
             _dreamPrefs = s;
+            return this;
+        }
+
+        public ArrayList<FeatureModel> getRedundantFeatures(){
+            return _redundant;
+        }
+
+        public DreamSpec addRedundantModel(FeatureModel model){
+            _redundant.add(model);
             return this;
         }
 
@@ -436,6 +446,8 @@ public class Group {
     boolean mDreamWithFractionP = true;
     boolean mDebugEnabledP = false;
     boolean mAllowUnlimitedFeatureImportP = false;
+    boolean mRemoveDuplicatesDuringSleep = true;
+
 
     int mUpdateCount = 0;
     int mResetInterval = 10;
@@ -485,6 +497,8 @@ public class Group {
                 .add(Boolean.valueOf(mDreamWithFractionP))
                 .add(Boolean.valueOf(mDebugEnabledP))
                 .add(Boolean.valueOf(mAllowUnlimitedFeatureImportP))
+                .add(Boolean.valueOf(mRemoveDuplicatesDuringSleep))
+
 
                 .add(Integer.valueOf(mUpdateCount))
                 .add(Integer.valueOf(mResetInterval))
@@ -599,30 +613,32 @@ public class Group {
     public static Group deserializeBytes(byte[] data, WorldModel.GroupType type){
         ArrayList values = GroupSerializer.get().deserialize(data);
         Group g = new Group();
-        g.mEnableMemoryManagmentP = (Boolean)values.get(0);
-        g.mLimitBufferStateP = (Boolean)values.get(1);
-        g.mSleepToFreeMemoryP = (Boolean)values.get(2);
-        g.mSortByUsageP = (Boolean)values.get(3);
-        g.mDreamWithFractionP = (Boolean)values.get(4);
-        g.mDebugEnabledP = (Boolean)values.get(5);
-        g.mAllowUnlimitedFeatureImportP = (Boolean)values.get(6);
+        int offset = 0;
+        g.mEnableMemoryManagmentP = (Boolean)values.get(offset++);
+        g.mLimitBufferStateP = (Boolean)values.get(offset++);
+        g.mSleepToFreeMemoryP = (Boolean)values.get(offset++);
+        g.mSortByUsageP = (Boolean)values.get(offset++);
+        g.mDreamWithFractionP = (Boolean)values.get(offset++);
+        g.mDebugEnabledP = (Boolean)values.get(offset++);
+        g.mAllowUnlimitedFeatureImportP = (Boolean)values.get(offset++);
+        g.mRemoveDuplicatesDuringSleep = (Boolean)values.get(offset++);
 
-        g.mUpdateCount = (Integer)values.get(7);
-        g.mResetInterval = (Integer)values.get(8);
-        g.MAX_BUFFER_MILLI = (Integer)values.get(9);
-        g.mMinimumUsageForRecycle = (Integer)values.get(10);
-        g.mAvgStepLearningMilli = (Integer)values.get(11);
-        g.mTemporalUpdateCount = (Integer)values.get(12);
-        g._nextIndex = (Integer)values.get(13);
-        g.mMode = MODE.values()[(Integer)values.get(14)];
+        g.mUpdateCount = (Integer)values.get(offset++);
+        g.mResetInterval = (Integer)values.get(offset++);
+        g.MAX_BUFFER_MILLI = (Integer)values.get(offset++);
+        g.mMinimumUsageForRecycle = (Integer)values.get(offset++);
+        g.mAvgStepLearningMilli = (Integer)values.get(offset++);
+        g.mTemporalUpdateCount = (Integer)values.get(offset++);
+        g._nextIndex = (Integer)values.get(offset++);
+        g.mMode = MODE.values()[(Integer)values.get(offset++)];
 
-        g.mSleepCycleMultipler = (Double)values.get(15);
-        g.mRecycleCutoffFraction = (Double)values.get(16);
+        g.mSleepCycleMultipler = (Double)values.get(offset++);
+        g.mRecycleCutoffFraction = (Double)values.get(offset++);
 
-        g.mKey = (String)values.get(17);
+        g.mKey = (String)values.get(offset++);
 
         // preference map
-        int offset = 18;
+
         Integer size = (Integer)values.get(offset++);
         int i = 0;
         Integer key = null;
@@ -783,6 +799,11 @@ public class Group {
 
     public Group setDebugEnabled(boolean enabled){
         mDebugEnabledP = enabled;
+        return this;
+    }
+
+    public Group setDeleteDuplicatesDuringSleep(boolean b){
+        mRemoveDuplicatesDuringSleep = b;
         return this;
     }
 
@@ -1177,6 +1198,9 @@ public class Group {
         return n;
     }
 
+
+
+
     /**
      * Causes the Group to go into sleep mode.  In this mode, the system reprocesses the most common
      * FeatureModels, starting from dreamFocusIndex, and releases the least commonly used FeatureModels
@@ -1199,12 +1223,18 @@ public class Group {
         ArrayList<FeatureModel> out = null;
         int numCycles = (int)(mFeatureMap.size() * mSleepCycleMultipler);
 
+        HashSet<FeatureModel> redundantModels = new HashSet<>();
+
+
         for (int cycle = 0; cycle < numCycles;cycle++){
             final Integer dreamIndex = dreamFocusIndex;
             FeatureModel dreamFocus = mFeatureMap.get(dreamIndex);
             ArrayList<Vector> dreamInput = dreamFocus.extrapFeature();
             dreamedOutput.updateInput(dreamIndex, dreamInput, mConfiguration);
 
+
+            HashMap<Integer, Boolean> cooccuringFeatures = new HashMap<Integer, Boolean>();
+            cooccuringFeatures.put(getFeatureInternalMetaData(dreamFocus).getAllocationIndex(), true);
 
             final HashSet<Integer> exclusion = new HashSet<>();
             exclusion.add(dreamIndex);
@@ -1226,10 +1256,19 @@ public class Group {
             PriorityQueue<FeatureModel> dreamQueue = new PriorityQueue<>(10, mStandardValueComparator);
 
             int len = dreamInput.size(), i = 1;
+
             for (Vector input:dreamInput){
 
-                for (FeatureModel dreamModel:dreamModels){
+                for (FeatureModel dreamModel:dreamModels) {
                     dreamModel.processNextInput(input);
+                    if (i <= dreamModel.getFeatureLength()){
+                        Integer allocIndex = getFeatureInternalMetaData(dreamModel).getAllocationIndex();
+                        boolean isMatchingP = dreamModel.isMatching();
+                        Boolean cooccuring = isMatchingP && (i==1 && !cooccuringFeatures.containsKey(allocIndex) || cooccuringFeatures.get(allocIndex));
+
+                        cooccuringFeatures.put(allocIndex, cooccuring);
+                    }
+
                     if (i == len){
                         dreamQueue.add(dreamModel);
                     }
@@ -1237,8 +1276,45 @@ public class Group {
                 i++;
             }
 
-            FeatureModel best = dreamQueue.peek();
-            if (best.isMatching())
+            if (mRemoveDuplicatesDuringSleep && cooccuringFeatures.size()>0){
+
+                FeatureModel selectedFeature = null;
+                Integer selectedLength = 0;
+                for (Map.Entry<Integer, Boolean> pair:cooccuringFeatures.entrySet()){
+                    if (pair.getValue()){
+                        FeatureModel model = mFeatureMap.get(pair.getKey());
+                        len =  model.getFeatureLength();
+                        if (len > selectedLength || selectedFeature == null || ((len == selectedLength) && getFeatureValueMetadata(selectedFeature).getPreferenceFraction()< getFeatureValueMetadata(model).getPreferenceFraction())) {
+                            if (selectedFeature != null)
+                            {
+                                FeatureValueMetadata value = mPreferenceMap.get(getFeatureInternalMetaData(selectedFeature).getAllocationIndex());
+                                value.reset();
+                                selectedFeature.forceInitialState();
+                            }
+                            selectedFeature = model;
+                            selectedLength = len;
+                        }
+                        else {
+                            model.forceInitialState();
+                            FeatureValueMetadata value = mPreferenceMap.get(getFeatureInternalMetaData(model).getAllocationIndex());
+                            value.reset();
+                            dreamedOutput.addRedundantModel(model);
+                        }
+                    }
+                }
+                maxLength = cooccuringFeatures.entrySet().stream().filter(pair->pair.getValue()).map(pair->mFeatureMap.get(pair.getKey()).getFeatureLength()).reduce(0, (l,r)->Math.max(l, r));
+
+            }
+
+
+            FeatureModel best = null;
+            while (dreamQueue.size()>0 && dreamQueue.peek().getState() == FeatureModel.STATE.INITIAL){
+                dreamQueue.poll();
+            }
+            if (dreamQueue.size()>0)
+                best = dreamQueue.peek();
+
+            if (best != null && best.isMatching())
             {
                 dreamFocusIndex = getFeatureInternalMetaData(best).getAllocationIndex();
             }
@@ -1287,6 +1363,233 @@ public class Group {
         return dreamedOutput;
     }
 
+    public void removeDuplicates(int loopCount){
+
+        if (mMemorymanagementListener != null){
+            mMemorymanagementListener.onStartMemoryManagement(mFeatureMap.size());
+        }
+        ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> managementResults = new ArrayList<>();
+
+        for (int j = 0;j < loopCount;j++){
+            FeatureModel dreamFeature = selectedGoodModel();
+            HashMap<Integer, Boolean> cooccuringFeatures = new HashMap<Integer, Boolean>();
+            Integer dreamIndex = getFeatureInternalMetaData(dreamFeature).getAllocationIndex();
+            cooccuringFeatures.put(dreamIndex, true);
+
+            final HashSet<Integer> exclusion = new HashSet<>();
+            exclusion.add(dreamIndex);
+            if (mFocusModel != null){
+                exclusion.add(getFeatureInternalMetaData(mFocusModel)._allocationIndex);
+            }
+            if (mBufferModel != null){
+                exclusion.add(getFeatureInternalMetaData(mBufferModel)._allocationIndex);
+            }
+
+            ArrayList<FeatureModel> dreamModels = new ArrayList<>();
+            mPreferenceMap.keySet().stream().filter((Integer i)->!exclusion.contains(i) && mFeatureMap.get(i).isComplete()).forEach((Integer i)->{
+                FeatureModel m = mFeatureMap.get(i);
+                dreamModels.add(m);
+                m.resetRecognition();
+
+            });
+
+            PriorityQueue<FeatureModel> dreamQueue = new PriorityQueue<>(10, mPassiveValueComparator);
+            ArrayList<Vector> dreamInput = dreamFeature.extrapFeature();
+            int len = dreamInput.size(), i = 1;
+
+            for (Vector input:dreamInput){
+
+                for (FeatureModel dreamModel:dreamModels) {
+                    dreamModel.processNextInput(input);
+                    if (i <= dreamModel.getFeatureLength()){
+                        Integer allocIndex = getFeatureInternalMetaData(dreamModel).getAllocationIndex();
+                        boolean isMatchingP = dreamModel.isMatching();
+                        Boolean cooccuring = isMatchingP && (i==1 && !cooccuringFeatures.containsKey(allocIndex) || cooccuringFeatures.get(allocIndex));
+
+                        cooccuringFeatures.put(allocIndex, cooccuring);
+                    }
+
+                    if (i == len){
+                        dreamQueue.add(dreamModel);
+                    }
+                }
+                i++;
+            }
+
+            FeatureModel selectedFeature = null;
+            Integer selectedLength = 0;
+            for (Map.Entry<Integer, Boolean> pair:cooccuringFeatures.entrySet()){
+                if (pair.getValue()){
+                    FeatureModel model = mFeatureMap.get(pair.getKey());
+                    len =  model.getFeatureLength();
+                    if (len > selectedLength || selectedFeature == null || ((len == selectedLength) && getFeatureValueMetadata(selectedFeature).getPreferenceFraction()< getFeatureValueMetadata(model).getPreferenceFraction())){
+                        if (selectedFeature != null)
+                        {
+                            Integer alloc = getFeatureInternalMetaData(selectedFeature).getAllocationIndex();
+                            FeatureValueMetadata value = mPreferenceMap.get(alloc);
+                            value.reset();
+                            selectedFeature.forceInitialState();
+                            if (mRecycleQueue == null) mRecycleQueue = new LinkedList<Integer>();
+                            mRecycleQueue.add(alloc);
+                        }
+                        selectedFeature = model;
+                        selectedLength = len;
+                    }
+                    else {
+                        Integer alloc = getFeatureInternalMetaData(model).getAllocationIndex();
+                        FeatureValueMetadata value = mPreferenceMap.get(alloc);
+                        value.reset();
+                        model.forceInitialState();
+
+                        if (mMemorymanagementListener != null){
+
+                            ArrayList<Vector> rawExtra = model.extrapFeature();
+
+                            ArrayList<String> sResult = new ArrayList<String>();
+                            rawExtra.forEach((Vector v)->sResult.add(mConfiguration.getInputString(v.rawFloat())));
+                            String displayForm = model.toString() + " -> " + sResult.toString();
+                            managementResults.add(Triple.of(model, displayForm, rawExtra));
+
+                        }
+                    }
+                }
+            }
+        }
+
+        if (mMemorymanagementListener != null){
+            mMemorymanagementListener.onFinishedMemoryManagement(managementResults);
+        }
+
+
+    }
+
+
+    public Pair<FeatureModel, ArrayList<Vector>> confabulateFeature(int maxDurationMilli,  boolean chunkedP, int count, boolean preserveFocus, FeatureModel model){
+        LearningConfiguration config = mConfiguration.copy();
+        config.setMaxDurationMilli(maxDurationMilli);
+        model.setConfiguration(config);
+
+        ArrayList<Vector> imaginedInput = confabulate(chunkedP, count, preserveFocus);
+
+        return learnData(maxDurationMilli, imaginedInput, model);
+    }
+
+    public Pair<FeatureModel, ArrayList<Vector>> learnData(int maxDurationMilli,  ArrayList<Vector> data, FeatureModel model){
+
+        LearningConfiguration config = mConfiguration.copy();
+        config.setMaxDurationMilli(maxDurationMilli);
+        model.setConfiguration(config);
+
+
+        ArrayList<Vector> remaining = new ArrayList<>();
+        remaining.addAll(data);
+        model.forceInitialState();
+        model.processNextInput(remaining.remove(0));
+        while (model.isBuilding()){
+            model.processNextInput(remaining.remove(0));
+        }
+        model.setConfiguration(mConfiguration);
+        return Pair.of(model, remaining);
+    }
+
+
+    public Pair<FeatureModel, ArrayList<Vector>> confabulateFeature(int maxDurationMilli,  boolean chunkedP, int count, boolean preserveFocus, boolean onlyRecycle)
+    {
+        FeatureModel imagined = null;
+        if (onlyRecycle) {
+            if (mRecycleQueue.size() > 0)
+            {
+                imagined = mFeatureMap.get(mRecycleQueue.removeFirst());
+            }
+        }
+        else
+            imagined = getAnotherFeature();
+
+        if (imagined == null)
+            return null;
+
+        return confabulateFeature(maxDurationMilli, chunkedP, count, preserveFocus, imagined);
+    }
+
+
+    public ArrayList<Vector> confabulate(FeatureModel initial, boolean continueFeature, boolean chunkedP, int count, boolean preserveFocus) {
+        ArrayList<Vector> output = new ArrayList<>();
+        ArrayList<Vector> inputBuffer = new ArrayList<>();
+
+        FeatureModel focus = (initial != null)?initial:selectedGoodModel();
+        if (focus == null)
+            return output;
+        ArrayList<Vector> seed = null;
+        if (continueFeature)
+            seed = initial.continueFeature();
+        else
+            seed = initial.extrapFeature();
+
+        if (seed.size() == 0)
+            return output;
+
+        if (chunkedP){
+            inputBuffer.addAll(seed);
+        }
+        else {
+            inputBuffer.add(seed.get(0));
+        }
+
+        resetAll();
+
+        byte[] priorFocusData = null;
+        byte[] priorBufferData = null;
+        if (preserveFocus && mFocusModel != null){
+            priorFocusData = mFocusModel.serializeBytes();
+            if (mBufferModel != null){
+                priorBufferData = mBufferModel.serializeBytes();
+            }
+        }
+
+        HashSet<FeatureModel> excluded = new HashSet<>();
+        excluded.add(focus);
+        while (count > 0 && inputBuffer.size()>0){
+            while(inputBuffer.size()>0){
+                count--;
+                Vector input = inputBuffer.remove(0);
+                output.add(input);
+                if (chunkedP)
+                    processAllCompleteModels(input, excluded);
+                else
+                    processAllCompleteModels(input);
+            }
+            if (count > 0 && mGroupHeap.size()>0){
+                focus = mGroupHeap.peek();
+                excluded.add(focus);
+                if (chunkedP){
+                    seed = focus.extrapFeature();
+                    output.add(null);
+                    inputBuffer.addAll(seed.subList(1, seed.size()));
+                }
+                else {
+                    inputBuffer.add(focus.getPredictedOutput());
+                }
+            }
+        }
+
+        if (priorBufferData != null)
+            mBufferModel = FeatureModel.deserializeBytes(priorBufferData);
+        if (priorFocusData != null){
+            mFocusModel = FeatureModel.deserializeBytes(priorFocusData);
+
+        }
+        return output;
+    }
+
+
+    /**
+     * This loses the focus
+     * @param count
+     * @return
+     */
+    public ArrayList<Vector> confabulate(boolean chunkedP, int count, boolean preserveFocus) {
+        return confabulate(null, false, chunkedP, count, preserveFocus);
+     }
 
     /**
      * Enhances related features without removing features
@@ -1429,7 +1732,7 @@ public class Group {
 
                     PriorityQueue<Integer> recycleQueue = new PriorityQueue<>(10, selectedComparator);
                     int length = prefs.size();
-                    int recycleCount = (int)Math.round(length * mRecycleCutoffFraction);
+                    int recycleCount = (int)Math.round(length * mRecycleCutoffFraction) + dreamResult.getRedundantFeatures().size();
 
                     ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> managementResults = new ArrayList<>();
                     ArrayList<FeatureModel> freed = new ArrayList<>();
@@ -1618,7 +1921,7 @@ public class Group {
         if (available.isPresent()){
             removeFeature(available.get());
         }
-        else if (!mAllowUnlimitedFeatureImportP && mType.canAllocateAnotherFeature(mType.getName())) {
+        else if (!mAllowUnlimitedFeatureImportP && mType.canAllocateAnotherFeature(getName())) {
 
             if (sleepToFreeMemory){
                 sleep();

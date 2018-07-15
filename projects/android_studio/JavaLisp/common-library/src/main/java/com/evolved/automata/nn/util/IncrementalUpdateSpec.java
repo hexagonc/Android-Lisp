@@ -210,6 +210,27 @@ public class IncrementalUpdateSpec {
         return out;
     }
 
+    public ArrayList<Vector> extrapolateContinuation(boolean includeInitialValue){
+        int maxLength = getLength();
+        ArrayList<Vector> out = new ArrayList<Vector>();
+        float[] v;
+        if (includeInitialValue){
+            v = NNTools.roundToInt(_bestNetwork.getLastInput());
+            out.add(new Vector(v));
+        }
+
+        while (maxLength > 0 && !_bestNetwork.getCurrentNodeState().compare(_finalState, 0)){
+            v = NNTools.roundToInt(_bestNetwork.getOutputVaues());
+            out.add(new Vector(v));
+
+            _bestNetwork.executeForwardPass(v);
+            maxLength--;
+        }
+        v = NNTools.roundToInt(_bestNetwork.getOutputVaues());
+        out.add(new Vector(v));
+        return out;
+    }
+
     public void setInitialState(){
         if (_initialState != null){
             _bestNetwork.setNodeState(_initialState);

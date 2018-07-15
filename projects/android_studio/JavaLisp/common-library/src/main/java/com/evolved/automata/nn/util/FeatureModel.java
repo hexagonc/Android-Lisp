@@ -623,6 +623,13 @@ public class FeatureModel {
         return null;
     }
 
+    public ArrayList<Vector> continueFeature(){
+        if (mCurrentRange != null){
+            return mCurrentRange.extrapolateContinuation(false);
+        }
+        return null;
+    }
+
     @Override
     public String toString(){
         StringBuilder s = new StringBuilder(getLabel()).append("[");
