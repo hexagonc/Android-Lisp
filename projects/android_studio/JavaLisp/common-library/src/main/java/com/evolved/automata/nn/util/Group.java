@@ -1921,15 +1921,21 @@ public class Group {
         if (available.isPresent()){
             removeFeature(available.get());
         }
-        else if (!mAllowUnlimitedFeatureImportP && mType.canAllocateAnotherFeature(getName())) {
+        else
+        {
+            if (!mAllowUnlimitedFeatureImportP && !mType.canAllocateAnotherFeature(getName())) {
 
-            if (sleepToFreeMemory){
-                sleep();
-                return importFeature(model, false);
+                if (sleepToFreeMemory){
+                    sleep();
+                    return importFeature(model, false);
+                }
+                else
+                    return null;
             }
-            else
-                return null;
+            mType.incrementAllocation(getName());
         }
+
+
         addFeature(model);
         return this;
 
@@ -1976,6 +1982,7 @@ public class Group {
 
         }
         _nextIndex = i;
+        mType.decrementAllocation(getName());
         return this;
     }
 

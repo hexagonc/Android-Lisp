@@ -83,6 +83,18 @@ public class WorldModel {
             return maxAllocations > mySpec.getNumAllocations();
         }
 
+        public GroupType incrementAllocation(String groupKey){
+            GroupSpecification mySpec = _groupMap.get(groupKey);
+            mySpec.incrementAllocations();
+            return this;
+        }
+
+        public GroupType decrementAllocation(String groupKey){
+            GroupSpecification mySpec = _groupMap.get(groupKey);
+            mySpec.decrementAllocations();
+            return this;
+        }
+
         public FeatureModel requestFeature(String groupName){
             GroupSpecification spec = _groupMap.get(groupName);
             if (canAllocateAnotherFeature(groupName)){
@@ -222,6 +234,10 @@ public class WorldModel {
 
         public GroupSpecification incrementAllocations(){
             return setNumAllocations(getNumAllocations()+ 1);
+        }
+
+        public GroupSpecification decrementAllocations(){
+            return setNumAllocations(Math.max(0, getNumAllocations() - 1));
         }
 
         public GroupSpecification setNumAllocations(int allocations){
