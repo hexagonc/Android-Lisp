@@ -14,8 +14,7 @@ import org.apache.commons.math3.random.RandomDataGenerator;
 import com.evolved.automata.KeyValuePair;
 
 
-
-public class NLispTools 
+public class NLispTools
 {
 	public static final String _FREEZE_PARENT_VALUE_INDICATOR = "*";
 	public static final Class stackTraceClass = FunctionTemplate.class;
@@ -4081,11 +4080,27 @@ public class NLispTools
 
 
         env.mapFunction("get-env-map", getEnvironmentMap());
+		env.mapFunction("newline", new_line());
 
 		
 		return env;
 	}
-	
+
+	public static SimpleFunctionTemplate new_line()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				return makeValue(System.lineSeparator());
+
+			}
+
+		};
+
+	}
+
 	public static SimpleFunctionTemplate set_nth()
 	{
 		return new SimpleFunctionTemplate()

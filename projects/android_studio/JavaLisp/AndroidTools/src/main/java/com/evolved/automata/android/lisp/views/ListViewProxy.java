@@ -34,6 +34,9 @@ public class ListViewProxy extends ViewProxy {
     public static final String _ON_ITEM_CLICK_LISTENER = ":on-item-clicked";
     public static final String _ON_ITEM_SELECT_LISTENER = ":on-item-selected";
     public static final String _ON_ITEM_LONG_CLICK_LISTENER = ":on-item-long-click";
+    public static final String _STACK_FROM_BOTTOM = ":reverse-list";
+
+    protected boolean mReverseList = false;
 
     public ListViewProxy(final Context con, HashMap<String, Value> keys, ArrayList<ViewProxy> children)
     {
@@ -172,6 +175,18 @@ public class ListViewProxy extends ViewProxy {
         }
     }
 
+    public void processStackDirection(HashMap<String, Value> keys, View actual){
+        Value stackReverse = keys.get(_STACK_FROM_BOTTOM);
+
+        if (stackReverse != null && stackReverse.isString()){
+            mReverseList = "true".equals(stackReverse.getString());
+            if (actual != null){
+                ((ListView)actual).setStackFromBottom(mReverseList);
+            }
+        }
+
+    }
+
     @Override
     protected void baseUpdate(View view)
     {
@@ -179,7 +194,10 @@ public class ListViewProxy extends ViewProxy {
         processItemSelectListenerKeywords(_keys, view);
         processItemClickListenerKeywords(_keys, view);
         processItemLongClickListenerKeywords(_keys, view);
+        processStackDirection(_keys, view);
     }
+
+
 
     public void updateListItems(ArrayList<ViewProxy> children)
     {

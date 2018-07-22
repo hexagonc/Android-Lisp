@@ -1403,7 +1403,7 @@ public class LSTMGroupTests {
             for (FeatureModel feature: existingModels){
                 Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
                 if (feature.isComplete()){
-                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature.toString() + ": " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
                 }
                 else {
                     System.out.println("" + data.getAllocationIndex() + ") " + feature);
@@ -1818,11 +1818,216 @@ public class LSTMGroupTests {
         }
     }
 
+    @Test
+    public void testConfabulation(){
+        String errorMessage = "Failed to create Initial input sequence";
+        try
+        {
+            FeatureModel.THREAD_COUNT = 4;
+            long start = System.currentTimeMillis();
+            System.out.println(String.format("%1$.3f, %1$.7f  %2$02d, %3$02d", 2.3455, 1, 22));
+            int maxAllocation = 30;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            long baseSeed = 1528684442328L;
+
+            boolean useSeed = false;
+            int size = 25;
+            long seed = System.currentTimeMillis();
+            if (useSeed)
+                seed = baseSeed;
+            else
+                seed = 0;
+
+            int radiix = 10;
+            int numCycles = 20;
+
+            int numClusters = 2;
+
+            int[][] rawInput = new int[numClusters][size];
+
+            for (int i = 0; i < numClusters;i++){
+                rawInput[i] = getRandomTestInput(size, radiix, seed);
+                seed++;
+            }
+
+            errorMessage = "Failed to create World Model";
+            // using default LearningConfiguration
+
+            // Step (1) - Create WorldModel
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator((float[] input) -> (tallyVectorToInteger(input) != null));
+            base.setInputToStringConverter((float[] input) -> ("" + tallyVectorToInteger(NNTools.roundToInt(input))));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group type";
+
+            // Step (2) - Create the Group type if not using the predefined BASIC (world.BASIC)
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", radiix, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setSleepToFreeMemory(true);
+            DEFAULT_GROUP.setDebugEnabled(false);
+
+            DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+            DEFAULT_GROUP.setMode(Group.MODE.MIXED);
+
+            ArrayList<FeatureModel> recycledNames = new ArrayList<FeatureModel>();
+            Group.MemoryManagementListener managementListener = new Group.MemoryManagementListener() {
+                @Override
+                public void onStartMemoryManagement(int totalAllocation)
+                {
+                    System.out.println(".i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.i!i.");
+                    System.out.println("Staring memory management: total allocation: " + totalAllocation);
+                }
+
+                @Override
+                public void onFinishedMemoryManagement(ArrayList<Triple<FeatureModel, String, ArrayList<Vector>>> recycled)
+                {
+                    System.out.println("~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~o).(o~");
+                    System.out.println("Finished memory managements");
+                    System.out.println("Recycled: " + recycled);
+                    recycled.stream().forEach((Triple<FeatureModel, String, ArrayList<Vector>> pair)->{
+                        recycledNames.add(pair.getLeft());
+                    });
+                }
+            };
+
+            DEFAULT_GROUP.setMemoryListener(managementListener);
+
+            int j = 0;
+
+            int testIndex = 0;
+
+            int loopCount = 2;
+            outer: for (int kk = 0;kk<numCycles;kk++){
+                if (kk > 15){
+                    DEFAULT_GROUP.setMemoryManagement(false);
+                }
+                for (int clusterIndex = 0; clusterIndex < numClusters; clusterIndex++){
+                    System.out.println("<o><o><o><o><o><o><o><o><o><o><o><o>");
+                    System.out.println("Learning cluster (" + (1 + clusterIndex) + "): " + Arrays.toString(rawInput[clusterIndex]));
+
+                    for (int k = 0;k < loopCount;k++){
+                        for (int i = 0; i < rawInput[clusterIndex].length; i++){
+                            testIndex++;
+                            Vector input = intToTallyVector(rawInput[clusterIndex][i], radiix);
+
+                            errorMessage = "Failed to process input " + rawInput[clusterIndex][i];
+                            System.out.println("Test (" + testIndex + "): Trying to learn: " + rawInput[clusterIndex][i]);
+
+                            // Step (3) process all group types that you want
+                            ArrayList<WorldModel.GroupSpecification> results = world.processNextInput(input, DEFAULT_TYPE);
+
+                            errorMessage = "Failed to obtain correct result size.  Expected 1 but found " + results.size();
+                            Assert.assertTrue(errorMessage, results.size() == 1);
+                            WorldModel.GroupSpecification result = results.get(0);
+                            j = 0;
+                            errorMessage = "Failed to get all features";
+                            ArrayList<FeatureModel> existingModels = result.getGroup().getAllFeatures();
+
+                            for (FeatureModel feature: existingModels){
+
+                                System.out.println("" + j + ") " + feature.toString());
+                                j++;
+                            }
+
+                            if (result.getGroup().getMode() == Group.MODE.EXTRAPOLATION){
+                                System.out.println("......................................");
+                                System.out.println("Memory allocation exhausted, finished");
+                                System.out.println("......................................");
+                                break outer;
+                            }
+                        }
+                    }
+
+                    DEFAULT_GROUP.resetAll();
+                }
+            }
+
+            System.out.println("(-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-) (-+-)");
+            System.out.println("Seed: " + seed);
+            ArrayList<FeatureModel> existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            Group.DreamSpec dream = DEFAULT_GROUP.sleep();
+            System.out.println(dream.getDreamedValue());
+
+            long finished = (System.currentTimeMillis() - start)/1000;
+            System.out.println("Finished after " + finished + " seconds using " + FeatureModel.THREAD_COUNT + " threads");
+
+            for (int i = 0;i < numClusters;i++){
+                System.out.println("Learned cluster (" + (1 + i) + "): " + Arrays.toString(rawInput[i]));
+            }
+
+            errorMessage = "Failed to remove redundant patterns";
+            DEFAULT_GROUP.removeDuplicates(20);
+
+            System.out.println("..........................................");
+            System.out.println("After cleanup");
+            existingModels = DEFAULT_GROUP.getAllFeatures();
+
+            j = 0;
+            for (FeatureModel feature: existingModels){
+                Group.FeatureMetaData data = (Group.FeatureMetaData)feature.getMetaData();
+                if (feature.isComplete()){
+                    System.out.println("" + data.getAllocationIndex() + ") " + Arrays.toString(vectorsToInts(feature.extrapFeature())));
+                }
+                else {
+                    System.out.println("" + data.getAllocationIndex() + ") " + feature);
+                }
+
+                j++;
+            }
+
+            errorMessage = "Failed to do chunked confabulation";
+
+            ArrayList<Vector> confabulated = DEFAULT_GROUP.confabulate(true, 30, false);
+            Assert.assertTrue(errorMessage, confabulated.size()>0);
+            System.out.println("Confabulated chunked: " + Arrays.toString(vectorsToInts(confabulated)));
+
+
+            confabulated = DEFAULT_GROUP.confabulate(false, 40, false);
+            errorMessage = "Failed to do unchunked confabulation";
+            Assert.assertTrue(errorMessage, confabulated.size()>0);
+
+            System.out.println("Confabulated imaginmation: " + Arrays.toString(vectorsToInts(confabulated)));
+
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
 
     int[] vectorsToInts(Vector[] in){
         int[] out = new int[in.length];
 
         for (int i = 0; i < out.length;i++){
+            if (in[i] == null)
+            {
+                out[i] = -1;
+                continue;
+            }
             out[i] = tallyVectorToInteger(in[i].rawFloat());
         }
         return out;
