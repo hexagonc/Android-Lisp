@@ -516,8 +516,8 @@ public class Group {
 
         // preference map
         int size = mPreferenceMap.size(), i;
+        b.add(Integer.valueOf(size));
         if (size > 0){
-            b.add(Integer.valueOf(size));
 
             for (Map.Entry<Integer, FeatureValueMetadata> pair:mPreferenceMap.entrySet()){
                 b.add(pair.getKey());
@@ -605,7 +605,6 @@ public class Group {
             mGroupHeap = copyQueue;
             SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
         }
-
 
         return b.build();
     }
@@ -753,7 +752,6 @@ public class Group {
             offset++;
         }
         g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
-
 
         return g;
     }
