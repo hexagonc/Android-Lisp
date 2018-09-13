@@ -1,10 +1,12 @@
 package com.evolved.automata.lisp.nn;
 
+import com.evolved.automata.VectorMap;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.Lambda;
 import com.evolved.automata.lisp.LambdaValue;
+import com.evolved.automata.lisp.ListValue;
 import com.evolved.automata.lisp.NLispTools;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
@@ -19,6 +21,9 @@ import com.evolved.automata.nn.util.WorldModel;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -41,11 +46,16 @@ public class GroupLispInterface {
 
         env.mapFunction("world-add-group", worldAddGroup());
         env.mapFunction("world-get-group", worldGetGroup());
+
         env.mapFunction("world-process-input", worldProcessInput());
 
         env.mapFunction("group-type-set-default-string-serializer", groupTypeSetDefaultStringSerializer());
 
         env.mapFunction("group-import-feature", groupImportFeature());
+        env.mapFunction("group-serialize", groupSerialize());
+        env.mapFunction("group-deserialize", groupDeserialize());
+        env.mapFunction("group-sync-with-type", groupSyncWithType());
+
         env.mapFunction("group-set-decay-interval", groupSetDecayInterval());
         env.mapFunction("group-get-focus-feature", groupGetFocusFeature());
         env.mapFunction("group-reset", groupResetAll());
@@ -72,7 +82,19 @@ public class GroupLispInterface {
         env.mapFunction("group-get-feature-metadata", groupGetCustomMetadata());
         env.mapFunction("group-process-input", groupProcessInput());
         env.mapFunction("group-get-ordered-processed-features", groupGetOrderedProcessedFeatures());
+        env.mapFunction("group-get-features", groupGetAllFeatures());
+
+
         env.mapFunction("feature-extrapolate-values", featureExtrapolateValues());
+        env.mapFunction("feature-get-lstm", featureGetLSTM());
+        env.mapFunction("feature-stash-lstm-state", featureStashCurrentLSTMState());
+        env.mapFunction("feature-restore-lstm-state", featureRestoreLSTMState());
+        env.mapFunction("feature-has-stashed-state", featureHasStashedState());
+        env.mapFunction("feature-get-stashed-state-names", featureGetStashedLSTMStates());
+        env.mapFunction("feature-delete-stashed-state", featureDeleteStashedState());
+        env.mapFunction("feature-clear-nodestate-stash", featureClearStateStash());
+
+        env.mapFunction("feature-process-input", featureProcessInput());
         env.mapFunction("feature-get-length", featureLength());
         env.mapFunction("feature-force-complete", featureForceComplete());
         env.mapFunction("feature-get-distance-to-final-state", featureGetDistanceToFinalState());
@@ -83,6 +105,11 @@ public class GroupLispInterface {
         env.mapFunction("feature-set-custom-meta-data", featureSetCustomMetadata());
         env.mapFunction("feature-get-custom-meta-data", featureGetCustomMetadata());
 
+        env.mapFunction("make-vector-map", makeVectorMap());
+        env.mapFunction("vector-map-get-value", getVectorValue());
+        env.mapFunction("vector-map-set-value", setVectorValue());
+        env.mapFunction("get-vector-map-keys", getVectorMapKeys());
+        env.mapFunction("remove-vector-key", removeVectorKey());
 
     }
 
@@ -317,11 +344,47 @@ public class GroupLispInterface {
             {
                 checkActualArguments(3, false, false);
                 WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
-                String typeName = evaluatedArgs[1].getString();
-                String groupName = (String)evaluatedArgs[2].getString();
+                Value typeSpecifier = evaluatedArgs[1]; // can be either the type name or the type itself
+                String groupName = evaluatedArgs[2].getString();
+                WorldModel.GroupSpecification spec = null;
+                if (typeSpecifier.isString())
+                    spec = model.getGroup(typeSpecifier.getString(), groupName);
+                else if (typeSpecifier.isUserObject() &&  typeSpecifier.getObjectValue() instanceof WorldModel.GroupType){
+                    spec = model.getGroup((WorldModel.GroupType)typeSpecifier.getObjectValue(), groupName);
+                }
+                else
+                    throw new RuntimeException("Group type argument must be the GroupType's name or the GroupType itself");
 
+                if (spec != null)
+                    return ExtendedFunctions.makeValue(spec.getGroup());
+                else
+                    return Environment.getNull();
+            }
+        };
+    }
 
-                return ExtendedFunctions.makeValue(model.getGroup(typeName, groupName).getGroup());
+    public static SimpleFunctionTemplate groupSyncWithType()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSyncWithType();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+
+                WorldModel.GroupType type = group.getType();
+
+                type.importGroup(group, true);
+
+                return evaluatedArgs[0];
             }
         };
     }
@@ -440,6 +503,52 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate groupSerialize()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupSerialize();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                byte[] data = group.serializeBytes();
+                return ExtendedFunctions.makeValue(data);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate groupDeserialize()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupDeserialize();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, true);
+
+                WorldModel.GroupType type = (WorldModel.GroupType)evaluatedArgs[0].getObjectValue();
+                byte[] data = (byte[])evaluatedArgs[1].getObjectValue();
+
+                Group group = Group.deserializeBytes(data, type);
+                return ExtendedFunctions.makeValue(group);
+            }
+        };
+    }
+
+
     public static SimpleFunctionTemplate groupSetDecayInterval()
     {
         return new SimpleFunctionTemplate() {
@@ -526,9 +635,10 @@ public class GroupLispInterface {
             @Override
             public Value evaluate(Environment env, Value[] evaluatedArgs)
             {
-                checkActualArguments(2, false, false);
+                checkActualArguments(2, true, true);
                 Group group = (Group)evaluatedArgs[0].getObjectValue();
-                Group.MODE mode = group.processInput(NeuralNetLispInterface.listToVector(evaluatedArgs[1]));
+                Vector mask = (evaluatedArgs.length>2 && !evaluatedArgs[2].isNull())?NeuralNetLispInterface.listToVector(evaluatedArgs[2]):null;
+                Group.MODE mode = group.processInput(NeuralNetLispInterface.listToVector(evaluatedArgs[1]), mask);
 
                 return NLispTools.makeValue(mode.name());
             }
@@ -727,6 +837,31 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate groupGetAllFeatures()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupGetAllFeatures();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+                ArrayList<FeatureModel> features = group.getAllFeatures();
+
+                Value[] v = features.stream().map(f-> ExtendedFunctions.makeValue(f)).collect(Collectors.toList()).toArray(new Value[0]);
+
+                return NLispTools.makeValue(v);
+            }
+        };
+    }
+
+
     public static SimpleFunctionTemplate groupToggleMemoryManagement()
     {
         return new SimpleFunctionTemplate() {
@@ -847,6 +982,189 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate featureGetLSTM()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureGetLSTM();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+
+                return ExtendedFunctions.makeValue(feature.getLSTM());
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate featureStashCurrentLSTMState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureStashCurrentLSTMState();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                String key = evaluatedArgs[1].getString();
+
+                return ExtendedFunctions.makeValue(feature.markCurrentState(key));
+            }
+        };
+    }
+
+
+
+
+    public static SimpleFunctionTemplate featureRestoreLSTMState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureRestoreLSTMState();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                String key = evaluatedArgs[1].getString();
+                boolean popP = evaluatedArgs.length > 2 && !evaluatedArgs[2].isNull();
+                return ExtendedFunctions.makeValue(feature.restoreState(key, popP));
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate featureHasStashedState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureHasStashedState();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                String key = evaluatedArgs[1].getString();
+                return NLispTools.makeValue(feature.hasMarkedState(key));
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate featureGetStashedLSTMStates()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureGetStashedLSTMStates();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                String[] stateKeys = feature.getSavedStateNames();
+
+                Value[] v = new Value[stateKeys.length];
+                for (int i = 0;i < v.length;i++){
+                    v[i] = NLispTools.makeValue(stateKeys[i]);
+                }
+                return NLispTools.makeValue(v);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate featureDeleteStashedState()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureDeleteStashedState();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                String key = evaluatedArgs[1].getString();
+
+                return ExtendedFunctions.makeValue(feature.deleteStashedState(key));
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate featureClearStateStash()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureClearStateStash();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+
+                return ExtendedFunctions.makeValue(feature.clearNodestateStash());
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate featureProcessInput()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) featureProcessInput();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, false);
+                FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
+                Vector input = NeuralNetLispInterface.listToVector(evaluatedArgs[1]);
+                Vector mask = (evaluatedArgs.length>2 && !evaluatedArgs[2].isNull())?NeuralNetLispInterface.listToVector(evaluatedArgs[2]):null;
+                return NLispTools.makeValue(feature.processNextInput(input, mask).name());
+            }
+        };
+    }
+
     public static SimpleFunctionTemplate featureLength()
     {
         return new SimpleFunctionTemplate() {
@@ -867,6 +1185,7 @@ public class GroupLispInterface {
             }
         };
     }
+
 
     public static SimpleFunctionTemplate featureForceComplete()
     {
@@ -1311,6 +1630,142 @@ public class GroupLispInterface {
                 FeatureModel feature = (FeatureModel)evaluatedArgs[0].getObjectValue();
                 Group.FeatureMetaData meta = (Group.FeatureMetaData)feature.getMetaData();
                 return NLispTools.makeValue(meta.getAllocationIndex());
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate makeVectorMap()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) makeVectorMap();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                VectorMap vmap = new VectorMap();
+                if (evaluatedArgs.length == 1){
+                    Value[] items = evaluatedArgs[0].getList();
+                    for (Value v:items){
+                        Value[] pair = v.getList();
+                        Value vecKey = pair[0];
+                        Value item = pair[1];
+
+                        float[] key = NeuralNetLispInterface.getFloatData(vecKey);
+                        vmap.mapVectorToValue(key, item);
+                    }
+                }
+                return ExtendedFunctions.makeValue(vmap);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate setVectorValue()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) setVectorValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, false, false);
+                VectorMap vmap = (VectorMap)evaluatedArgs[0].getObjectValue();
+                float[] key = NeuralNetLispInterface.getFloatData(evaluatedArgs[1]);
+                vmap.mapVectorToValue(key, evaluatedArgs[2]);
+                return evaluatedArgs[2];
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate getVectorValue()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) getVectorValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                VectorMap vmap = (VectorMap)evaluatedArgs[0].getObjectValue();
+                float[] key = NeuralNetLispInterface.getFloatData(evaluatedArgs[1]);
+                Value result = (Value)vmap.getVectorValue(key);
+                if (result == null)
+                    return Environment.getNull();
+                else
+                    return result;
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate getVectorMapKeys()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) getVectorMapKeys();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, false);
+                VectorMap vmap = (VectorMap)evaluatedArgs[0].getObjectValue();
+                ArrayList<VectorMap.Entry> entries = vmap.getEntryList();
+                Value[] out = new Value[entries.size()];
+
+                for (int i = 0;i<entries.size();i++){
+                    VectorMap.Entry entry = entries.get(i);
+                    Value[] spec = new Value[2];
+                    spec[0] = NeuralNetLispInterface.getLispDataValue(entry._vectorKey);
+                    spec[1] = (Value)entry._data;
+                    out[i] = new ListValue(spec);
+                }
+
+                return new ListValue(out);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate removeVectorKey()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) removeVectorKey();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, false);
+                VectorMap vmap = (VectorMap)evaluatedArgs[0].getObjectValue();
+                float[] key = NeuralNetLispInterface.getFloatData(evaluatedArgs[1]);
+
+                Object prior = vmap.removeKey(key);
+                if (prior != null)
+                    return (Value)prior;
+                else
+                    return Environment.getNull();
             }
         };
     }

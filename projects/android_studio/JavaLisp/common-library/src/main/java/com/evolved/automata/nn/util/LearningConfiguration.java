@@ -1,5 +1,7 @@
 package com.evolved.automata.nn.util;
 
+import com.evolved.automata.nn.Vector;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,6 +18,7 @@ import static com.evolved.automata.nn.util.LearningConfiguration.KEY.DEBUG_LEVEL
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.EARLY_STOP_SUCCESS_FRACTION;
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.HISTORY_LENGTH;
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.INITIAL_RANDOM_FRACTION;
+import static com.evolved.automata.nn.util.LearningConfiguration.KEY.INPUT_MASK;
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.INPUT_VALIDATOR;
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.MATCH_EQUALITY_ERROR;
 import static com.evolved.automata.nn.util.LearningConfiguration.KEY.MAX_DURATION_MILLI;
@@ -66,7 +69,8 @@ public class LearningConfiguration {
         INPUT_VALIDATOR,
         SLOW_LEARNING_THRESHOLD_MULTIPLE,
         RESET_ON_SLOW_LEARNING,
-        DATA_DISPLAY_LAMBDA;
+        DATA_DISPLAY_LAMBDA,
+        INPUT_MASK;
 
         Class type = null;
 
@@ -132,6 +136,25 @@ public class LearningConfiguration {
 
     public LearningConfiguration setInputToStringConverter(InputToStringConverter displayRunnable){
         _dataMap.put(DATA_DISPLAY_LAMBDA, displayRunnable);
+        return this;
+    }
+
+    public Vector getInputMask(){
+        if (_dataMap.containsKey(INPUT_MASK)){
+            return (Vector)_dataMap.get(INPUT_MASK);
+        }
+        else
+        {
+            return null;
+        }
+    }
+
+    public LearningConfiguration setInputMask(Vector v){
+        if (v == null){
+            _dataMap.remove(INPUT_MASK);
+        }
+        else
+            _dataMap.put(INPUT_MASK, v);
         return this;
     }
 

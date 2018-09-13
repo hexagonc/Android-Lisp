@@ -70,6 +70,21 @@ public class WorldModel {
             return g;
         }
 
+        public GroupType importGroup(Group g, boolean updateExisting){
+            GroupSpecification prior = _groupMap.get(g.getName());
+
+            if (updateExisting && prior != null) {
+                prior._group = g;
+            }
+            else {
+                _groupMap.put(g.getName(), new GroupSpecification(this, g));
+                mTotalWeight+=initiaWeight;
+            }
+
+            return this;
+        }
+
+
         public HashMap<String, GroupSpecification> getGroups(){
             return _groupMap;
         }

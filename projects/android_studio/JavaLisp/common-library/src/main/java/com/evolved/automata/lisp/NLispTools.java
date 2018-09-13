@@ -949,7 +949,7 @@ public class NLispTools
 								_isListIteration = false;
 							}
 							else 
-								throw new RuntimeException("Second argument to 'for' must be a list or a non-negative number");
+								throw new RuntimeException("Second argument to 'minimal-value-map' must be a list or a non-negative number");
 							 _currentState = BINDING_VARIABLES;
 							 _loopIndex = 0;
 							 break;
@@ -1132,7 +1132,7 @@ public class NLispTools
 								_isListIteration = false;
 							}
 							else 
-								throw new RuntimeException("Second argument to 'for' must be a list or a non-negative number");
+								throw new RuntimeException("Second argument to 'maximal-value-map' must be a list or a non-negative number");
 							 _currentState = BINDING_VARIABLES;
 							 _loopIndex = 0;
 							 break;
@@ -4085,6 +4085,22 @@ public class NLispTools
 		
 		return env;
 	}
+
+	public static SimpleFunctionTemplate makeVectorMap()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				return makeValue(System.lineSeparator());
+
+			}
+
+		};
+
+	}
+
 
 	public static SimpleFunctionTemplate new_line()
 	{

@@ -55,6 +55,20 @@ public class IncrementalUpdateSpec {
                 .add(Double.class, mMinValue).build();
     }
 
+    public IncrementalUpdateSpec restore(byte[] b){
+        ArrayList components = GroupSerializer.get().deserialize(b);
+        _bestNetwork = (LSTMNetworkProxy)components.get(0);
+        _initialState = (LSTMNetworkProxy.NodeState)components.get(1);
+        _finalState = (LSTMNetworkProxy.NodeState)components.get(2);
+
+        _successFraction = (Float)components.get(3);
+        _isValid = (Boolean)components.get(4);
+        _successCriteriaSatisfiedP = (Boolean)components.get(5);
+        _length = (Integer)components.get(6);
+        mMinValue = (Double)components.get(7);
+        return this;
+    }
+
     public static IncrementalUpdateSpec deserializeBytes(byte[] b){
         IncrementalUpdateSpec spec = new IncrementalUpdateSpec();
         ArrayList components = GroupSerializer.get().deserialize(b);

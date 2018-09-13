@@ -99,10 +99,15 @@ public class FeatureModel {
 
 
         public static Similarity getSimilarity(float[] v1, float[] v2){
+            return getSimilarity(v1, v2, null);
+        }
+
+        public static Similarity getSimilarity(float[] v1, float[] v2, Vector mask){
+            float[] rawMask = (mask != null)?mask.rawFloat():null;
             float[] matches = new float[v1.length];
             int matchCount = 0;
             for (int i= 0;i<v1.length;i++){
-                if (NNTools.roundToInt(v1[i]) == NNTools.roundToInt(v2[i])){
+                if (NNTools.roundToInt(v1[i]) == NNTools.roundToInt(v2[i]) || (rawMask != null && i < rawMask.length && rawMask[i] == 0.0)){
                     matches[i] = 1;
                     matchCount++;
                 }
@@ -278,6 +283,30 @@ public class FeatureModel {
         return b.build();
     }
 
+    public FeatureModel restore(byte[] data){
+        ArrayList values = GroupSerializer.get().deserialize(data);
+        mSimilarityHistory = (SimilaryHistory)values.get(0);
+        mCurrentRange = (IncrementalUpdateSpec)values.get(1);
+        mConfiguration = (LearningConfiguration)values.get(2);
+        if (mCurrentRange != null)
+            mNetwork = mCurrentRange._bestNetwork;
+        mLabel = (String)values.get(3);
+        mMatchCount = (Integer)values.get(4);
+        mFailureCount = (Integer)values.get(5);
+        MAX_FAILURE_COUNT = (Integer)values.get(6);
+        mExtrapPredictionP = (Boolean)values.get(7);
+        mMatchedLast = (Boolean)values.get(8);
+
+        int stateOrdinal = (Integer)values.get(9);
+        mState = STATE.values()[stateOrdinal];
+
+        if (values.size()>10)
+        {
+            __rawSerializedCustomData = ((ByteBuffer)values.get(10)).array();
+        }
+        return this;
+    }
+
     public static FeatureModel deserializeBytes(byte[] data){
         FeatureModel model = new FeatureModel();
 
@@ -333,10 +362,47 @@ public class FeatureModel {
     public FeatureModel markCurrentState(String key){
         if (mNetwork != null){
 
+
             mStashedState.put(key, mNetwork.getCurrentNodeState());
+            return this;
         }
+        else
+            return null;
+    }
+
+    public LSTMNetworkProxy getLSTM(){
+        return mNetwork;
+    }
+
+    public FeatureModel deleteStashedState(String key){
+        if (mStashedState.containsKey(key)){
+            mStashedState.remove(key);
+            return this;
+        }
+        else
+            return null;
+    }
+
+    public FeatureModel clearNodestateStash(){
+        mStashedState.clear();
         return this;
     }
+
+    public FeatureModel restoreState(String key, boolean pop){
+        if (mStashedState.containsKey(key)){
+            mNetwork.setNodeState(mStashedState.get(key));
+            if (pop)
+                mStashedState.remove(key);
+            return this;
+        }
+        else
+            return null;
+    }
+
+    public String[] getSavedStateNames(){
+        return mStashedState.keySet().toArray(new String[0]);
+    }
+
 
     public String getLabel(){
         return mLabel;
@@ -347,13 +413,8 @@ public class FeatureModel {
         return this;
     }
 
-    public boolean restoreState(String key){
-        LSTMNetworkProxy.NodeState state = mStashedState.get(key);
-        if (state != null){
-            mNetwork.setNodeState(state);
-            return true;
-        }
-        return false;
+    public FeatureModel restoreState(String key){
+        return restoreState(key, false);
     }
 
     public boolean hasMarkedState(String key){
@@ -448,13 +509,18 @@ public class FeatureModel {
     }
 
     public STATE processNextInput(Vector input){
+        return processNextInput(input, null);
+    }
+
+
+    public STATE processNextInput(Vector input, Vector mask){
         float[] rawInput = input.rawFloat();
         if (!isComplete()) {
-            return tryLearnNextData(input);
+            return tryLearnNextData(input, mask);
         }
         else {
             float[] predictedOutput = mNetwork.getOutputVaues();
-            mSimilarityHistory.updateState(Similarity.getSimilarity(predictedOutput, rawInput));
+            mSimilarityHistory.updateState(Similarity.getSimilarity(predictedOutput, rawInput, mask));
             boolean matchedPrediction = mMatchedLast = mSimilarityHistory.getCurrentSimilarity()._isMatch;
             switch (mState) {
                 case MATCHING:
@@ -515,6 +581,11 @@ public class FeatureModel {
 
 
     public STATE tryLearnNextData(Vector vectorData){
+        return tryLearnNextData(vectorData, null);
+    }
+
+
+    public STATE tryLearnNextData(Vector vectorData, Vector mask){
         final ArrayList<Pair<Vector, Vector>> inputOutputSpec =new ArrayList<Pair<Vector, Vector>>();
         if (isComplete())
             return mState;
@@ -523,6 +594,7 @@ public class FeatureModel {
 
             LearningConfiguration initialConfig = new LearningConfiguration();
             initialConfig.setDebugLevel(mConfiguration.getDebugLevel());
+            initialConfig.setInputMask(mask);
             initialConfig.set(LearningConfiguration.KEY.ANNEALING_FRACTION, Double.valueOf(0.1F));
             initialConfig.set(LearningConfiguration.KEY.BEST_SOLUTION_BONUS_MILLI, Integer.valueOf(1000));
             initialConfig.set(LearningConfiguration.KEY.NUM_SOLUTION_BUFFER, Integer.valueOf(5));
@@ -565,7 +637,7 @@ public class FeatureModel {
                     @Override
                     public IncrementalUpdateSpec evaluate()
                     {
-                        return simpleLearnSequence(LSTMNetworkProxy.duplicate(mNetwork).randomizeNetworkWeights(), inputOutputSpec, mConfiguration);
+                        return simpleLearnSequence(LSTMNetworkProxy.duplicate(mNetwork).randomizeNetworkWeights(), inputOutputSpec, mConfiguration.setInputMask(mask));
                     }
                 });
             }
@@ -729,6 +801,7 @@ public class FeatureModel {
         int segmentMatchCount = 0;
         int numInputOutputPairs = inputOutputSpec.size();
         int newSolutionFailureCount = 0;
+        Vector inputMask = configuration.getInputMask();
 
         int maxFailureCount = 0;
         boolean isFirstPair = true;
@@ -818,7 +891,7 @@ public class FeatureModel {
 
                 float[] predictedOutput = currentNetwork.getOutputVaues();
 
-                if (roundedEquals(predictedOutput, expectedOutput)) {
+                if (roundedEquals(predictedOutput, expectedOutput, inputMask)) {
                     segmentMatchCount++;
                     if (isFirstPair) {
                         firstPairMatchedP = true;
@@ -1021,15 +1094,21 @@ public class FeatureModel {
     }
 
     public static boolean roundedEquals(float[] first, float[] second) {
+        return roundedEquals(first, second, null);
+    }
+
+    public static boolean roundedEquals(float[] first, float[] second, Vector mask) {
+        float[] rawMask = (mask != null)?mask.rawFloat():null;
         if (first.length != second.length)
             return false;
         for (int i = 0;i < first.length;i++)
         {
-            if (roundToInt(first[i]) != roundToInt(second[i]))
+            if (roundToInt(first[i]) != roundToInt(second[i]) && (rawMask == null || (i >= rawMask.length  || rawMask[i] == 1.0F)))
                 return false;
         }
         return true;
     }
+
 
     public static ArrayList<Pair<Vector, Vector>> getInputOututSpec(Vector[] raw){
         ArrayList<Pair<Vector, Vector>> output = new ArrayList<Pair<Vector, Vector>>();

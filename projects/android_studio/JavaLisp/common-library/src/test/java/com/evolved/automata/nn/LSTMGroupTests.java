@@ -95,6 +95,53 @@ public class LSTMGroupTests {
         }
     }
 
+
+
+    @Test
+    public void testLearningRepetitiveSequence(){
+
+        String errorMessage = "failed to create network";
+        try
+        {
+            int[] rawInput = new int[]{5, 5, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 6,6,6, 10, 10, 5, 3};
+            int inputNodeCode = 10;
+            int outputNodeCode = 10;
+            int numMemoryCellStates = 30;
+            int flags = 0;
+            long start = System.currentTimeMillis();
+            LSTMNetworkProxy networkProxy = LSTMNetworkProxy.makeStandardBinarySequenceNetwork(inputNodeCode, numMemoryCellStates, flags);
+
+            LearningConfiguration context = getSimpleLearningConfiguration();
+
+            int subSequence = rawInput.length;
+
+            ArrayList<Vector> inputVector = convert(rawInput, inputNodeCode, subSequence);
+
+            errorMessage = "Failed to get input output spec";
+            ArrayList<Pair<Vector, Vector>> inputOutputSpec =  getInputOututSpec(inputVector);
+
+            start = System.currentTimeMillis();
+            errorMessage = "Failed to learn sequence";
+            IncrementalUpdateSpec result = simpleLearnSequence(networkProxy, inputOutputSpec, context);
+            long duration = (System.currentTimeMillis() - start);
+            ArrayList<Vector> extrapolated = null;
+            if (result.successCriteriaSatisfied()) {
+                errorMessage = "Failed to extrapolate output";
+                extrapolated = result.extrapolateRange();
+                int[] extrapolatedValue = vectorsToInts(extrapolated);
+                System.out.println("After: (" + duration + ") Successfully extrapolated: " + Arrays.toString(extrapolatedValue));
+            }
+            else {
+                System.out.println("|" + subSequence +  "| After: (" + duration + ") Failed to extrapolate");
+            }
+
+        }
+        catch (Exception e){
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+
     @Test
     public void testStagedSequence(){
 

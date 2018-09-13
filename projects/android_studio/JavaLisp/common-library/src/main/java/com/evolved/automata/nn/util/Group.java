@@ -537,7 +537,7 @@ public class Group {
 
         // index iterator
         size = -1;
-        if (mIndexIterator == null)
+        if (mIndexIterator != null)
         {
             size = mIndexIterator.length;
             b.add(Integer.valueOf(size));
@@ -753,6 +753,7 @@ public class Group {
         }
         g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
 
+        type.importGroup(g, true);
         return g;
     }
 
@@ -973,9 +974,6 @@ public class Group {
             mBufferModel = null;
         }
 
-
-
-
         for (Integer index: mFeatureMap.keySet().stream().filter(i->(mFeatureMap.get(i).isComplete())).collect(toList()) ){
             FeatureModel model = mFeatureMap.get(index);
             if (!skipFocusP || (model != mFocusModel && model != mBufferModel)) {
@@ -1021,23 +1019,29 @@ public class Group {
     }
 
 
+
     public MODE processInput(Vector input){
+        return processInput(input, null, null);
+    }
+
+
+    public MODE processInput(Vector input,  Vector mask){
         switch (mMode){
             case LEARNING:
             {
-                mMode = learnNextInput(input);
+                mMode = learnNextInput(input, mask);
             }
             break;
             case SLEEPING:
             case EXTRAPOLATION:
             {
-                processAllCompleteModels(input);
+                processAllCompleteModels(input, mask);
             }
             break;
             case MIXED:
             {
-                processAllCompleteModels(input);
-                mMode = learnNextInput(input);
+                processAllCompleteModels(input, mask);
+                mMode = learnNextInput(input, mask);
 
             }
             break;
@@ -1045,23 +1049,23 @@ public class Group {
         return mMode;
     }
 
-    public MODE processInput(Vector input, HashSet<FeatureModel> exclusion){
+    public MODE processInput(Vector input, HashSet<FeatureModel> exclusion,  Vector mask){
         switch (mMode){
             case LEARNING:
             {
-                mMode = learnNextInput(input);
+                mMode = learnNextInput(input, mask);
             }
             break;
             case SLEEPING:
             case EXTRAPOLATION:
             {
-                processAllCompleteModels(input, exclusion);
+                processAllCompleteModels(input, exclusion, mask);
             }
             break;
             case MIXED:
             {
-                processAllCompleteModels(input, exclusion);
-                mMode = learnNextInput(input);
+                processAllCompleteModels(input, exclusion, mask);
+                mMode = learnNextInput(input, mask);
 
             }
             break;
@@ -1069,7 +1073,7 @@ public class Group {
         return mMode;
     }
 
-    private MODE learnNextInput(Vector input){
+    private MODE learnNextInput(Vector input, Vector mask){
         
         if (mFocusModel == null){
             mFocusModel = getAnotherFeature();
@@ -1096,7 +1100,7 @@ public class Group {
 
             startTime = System.currentTimeMillis();
             //System.out.println("Extending model");
-            mFocusModel.processNextInput(input);
+            mFocusModel.processNextInput(input, mask);
             duration = System.currentTimeMillis() - startTime;
 
             if (mFocusModel.isBuilding()){
@@ -1118,7 +1122,7 @@ public class Group {
             }
 
             //System.out.println("Building buffer");
-            mBufferModel.processNextInput(input);
+            mBufferModel.processNextInput(input, mask);
 
             if (mBufferModel.isComplete()){
                 mBufferModel.setLabel("");
@@ -1991,10 +1995,20 @@ public class Group {
 
 
     private void processAllCompleteModels(Vector input){
-        processAllCompleteModels(input, null);
+        processAllCompleteModels(input, null, null);
     }
 
-    private void processAllCompleteModels(Vector input, HashSet<FeatureModel> excluded){
+    private void processAllCompleteModels(Vector input, HashSet<FeatureModel> excluded)
+    {
+        processAllCompleteModels(input, excluded, null);
+    }
+
+    private void processAllCompleteModels(Vector input, Vector mask)
+    {
+        processAllCompleteModels(input, null, mask);
+    }
+
+    private void processAllCompleteModels(Vector input, HashSet<FeatureModel> excluded, Vector mask){
         mLastProcessedFeatures = new ArrayList<>();
         mGroupHeap.clear();
         mFocusQueue.clear();
@@ -2002,7 +2016,7 @@ public class Group {
         for (Integer index: mFeatureMap.keySet()){
             FeatureModel model = mFeatureMap.get(index);
             if (model.isComplete() && (excluded == null || !excluded.contains(model))){
-                model.processNextInput(input);
+                model.processNextInput(input, mask);
                 if (!isSleeping()){
                     getFeatureInternalMetaData(model).updateUsageCount();
                 }

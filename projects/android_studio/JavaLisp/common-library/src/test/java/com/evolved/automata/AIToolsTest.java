@@ -1,6 +1,7 @@
 package com.evolved.automata;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import junit.framework.Assert;
 
@@ -15,6 +16,81 @@ public class AIToolsTest {
 
 
 
+	String getInputString(float[][] s){
+		StringBuffer buffer = new StringBuffer();
+		int l = s.length;
+		for (int i = 0;i < l;i++){
+			if (buffer.length() > 0){
+				buffer.append(", ");
+			}
+			buffer.append(Arrays.toString(s[i]));
+		}
+		return buffer.toString();
+	}
+
+	@Test
+	public void testVectorMaps(){
+
+		String errorMessage = "Failed to create Vector map";
+
+		try
+		{
+			VectorMap vmap = new VectorMap();
+			float[][] tests = new float[][] { {}, {1F}, {0F}, {1F, 1F}, {0F, 0F}, {1F, 0F}, {0F, 1F}};
+			String[] values = new String[]{"Top", "yes", "no", "yes, yes", "no no", null, null};
+
+
+			int testLength = tests.length;
+			System.out.println("Testing adding: " + getInputString(tests) + " up to " + testLength);
+
+			for (int i = 0;i <testLength;i++){
+				errorMessage = "Failed to put vector: " + Arrays.toString(tests[i]);
+				float[] testVector = tests[i];
+				String expected = values[i];
+				if (expected != null){
+					vmap.mapVectorToValue(testVector, expected);
+				}
+			}
+
+
+			System.out.println("Testing retrieving: " + getInputString(tests) + " up to " + testLength);
+
+			for (int i = 0;i <testLength;i++){
+
+				float[] testVector = tests[i];
+				String expected = values[i];
+				if (expected != null)
+					errorMessage = "Failed to retrieve vector: " + Arrays.toString(tests[i]) + " expected " + expected;
+				else
+					errorMessage = "Failed to retrieve vector: " + Arrays.toString(tests[i]) + " expected nothing";
+				Object retrieved = vmap.getVectorValue(testVector);
+				Assert.assertTrue(errorMessage, expected!=null && expected.equals(retrieved) || expected == null && retrieved == null);
+
+			}
+
+			errorMessage = "Failed to extract entry list";
+			ArrayList<VectorMap.Entry> entries = vmap.getEntryList();
+
+			Assert.assertTrue(errorMessage, entries!= null && entries.size() == 5);
+			System.out.println("Entries: " + entries);
+
+			float[] removeKey = new float[]{1.0F, 1.0F};
+
+
+			errorMessage = "Failed to remove key: " + Arrays.toString(removeKey);
+
+            Object p = vmap.removeKey(removeKey);
+
+            Assert.assertTrue(errorMessage, p != null);
+            System.out.println("Removed: " + p + ".  Updated Entries: " + vmap.getEntryList());
+
+		}
+		catch (Exception e){
+			e.printStackTrace();
+			Assert.assertTrue(errorMessage, false);
+		}
+
+	}
 
 	
 	@Test
