@@ -270,7 +270,8 @@ public class AITools {
 			return null;
 		else
 		{
-			
+			if (itemList.size() == 1)
+				return itemList.get(0);
 			double cutoff;
 			double totalWeight=0;
 			double minTotal = 0.000001D;

@@ -14,11 +14,24 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.ADDING_DEFAULT_PREF_METADATA;
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.CORRECTING_ALLOCATION_INDEX_METADATA;
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.FREEING_MODEL;
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.REMOVING_FOCUS_LABEL;
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.SETTING_FOCUS_LABEL;
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.SETTING_GROUP_BUFFER;
+import static com.evolved.automata.nn.util.Group.STANDARD_LOG_MESSAGES.SETTING_GROUP_FOCUS;
+import static com.evolved.automata.nn.util.Group.STANDARD_WARNINGS.BUFFER_MODEL_DEFINED_WITHOUT_FOCUS;
+import static com.evolved.automata.nn.util.Group.STANDARD_WARNINGS.BUFFER_MODEL_IS_EQUAL_TO_FOCUS;
+import static com.evolved.automata.nn.util.Group.STANDARD_WARNINGS.UNDEFINED_GROUP_FOCUS_STATE;
+import static com.evolved.automata.nn.util.Group.UPDATE_TYPE.FEATURE_RECYCLED;
+import static com.evolved.automata.nn.util.Group.UPDATE_TYPE.FEATURE_REMOVED;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -32,6 +45,601 @@ public class Group {
 
     public enum MODE {
         LEARNING, EXTRAPOLATION, MIXED, SLEEPING
+    }
+
+    public enum STANDARD_WARNINGS {
+        DUPLICATE_FOCUS,
+        DUPLICATE_BUFFER,
+        FOCUS_DEFINED_BUT_UNLABLED,
+        BUFFER_DEFINED_BUT_UNLABLED,
+        MODEL_HAS_PREF_METADATA_BUT_IS_INCOMPLETE,
+        MODEL_IS_COMPLETE_BUT_HAS_NO_PREF_METADATA,
+        UNINITIALIZED_MODEL_IS_IN_USE,
+        UNLABELED_BUILDING_MODEL,
+        BUFFER_MODEL_DEFINED_WITHOUT_FOCUS,
+        BUFFER_MODEL_IS_EQUAL_TO_FOCUS,
+        FOUND_DUPLICATE_FOCUS_MODEL,
+        INVAID_BUFFER_MODEL,
+        INVALID_FOCUS_MODEL,
+        MISSING_PREF_METADATA,
+        INCONSISTENT_ALLOCATION_INDEX_METADATA,
+        UNDEFINED_GROUP_FOCUS_STATE
+    }
+
+    public enum STANDARD_LOG_MESSAGES {
+        DEFINING_GROUP_FOCUS,
+        CLEARING_INVALID_FOCUS_LABEL,
+        CLEARING_INVALID_BUFFER_LABEL,
+        SETTING_GROUP_FOCUS,
+        CLEARING_GROUP_BUFFER,
+        REMOVING_FEATURE_FROM_PREF_MAP,
+        FREEING_MODEL,
+        REMOVING_BUFFER_LABEL,
+        REMOVING_FOCUS_LABEL,
+        SETTING_FOCUS_LABEL,
+        ADDING_DEFAULT_PREF_METADATA,
+        CORRECTING_ALLOCATION_INDEX_METADATA,
+        REASSIGNING_FEATURE_ALLOCATION_INDEX,
+        SETTING_GROUP_BUFFER
+    }
+
+    enum UPDATE_TYPE {
+        FEATURE_REMOVED,
+        FEATURE_RECYCLED,
+        FEATURE_ADDED
+
+    }
+
+
+    // Save this for the future
+//    enum SUB_SYSTEM {
+//        FOCUS_FEATURES
+//    }
+//
+//    enum CONTEXT_KEY {
+//        FEATURE_MODEL,
+//        REMOVED_FEATURE_MODEL
+//    }
+//    public boolean checkConsistency(SUB_SYSTEM system, HashMap<CONTEXT_KEY, Object> context, boolean tryRepair, MemoryReport report){
+//        switch (system){
+//            case FOCUS_FEATURES:
+//                FeatureModel
+//
+//                break;
+//        }
+//    }
+
+    public class MemoryReport {
+
+
+
+        String _textForm;
+        MODE _currentMode;
+        FeatureModel _focusModel;
+        FeatureModel _bufferModel;
+        int _numModels;
+        int _numComplete;
+
+
+        boolean _monitorConstraintsP = false;
+        boolean _tryRepairInconsistenciesP = false;
+
+        LinkedList<FeatureModel> _matchingFeatures = new LinkedList<>();
+        LinkedList<FeatureModel> _reusableFeatures = new LinkedList<>();
+        LinkedList<FeatureModel> _completeFeatures = new LinkedList<>();
+        LinkedList<String> _warnings = new LinkedList<>();
+        LinkedList<String> _internalLog = new LinkedList<>();
+
+        int _numUnavailableInitialStateModels = 0;
+
+        LinkedList<FeatureModel> _unlabeledBuilders = new LinkedList<>();
+        LinkedList<FeatureModel> _otherFocusClaims = new LinkedList<>();
+
+        public MemoryReport(){
+
+        }
+
+        public MemoryReport log(String entry, boolean reset){
+            if (reset)
+                _internalLog.clear();
+            _internalLog.add(entry);
+            return this;
+        }
+
+        public MemoryReport log(STANDARD_LOG_MESSAGES type, FeatureModel model){
+            return log(type.toString()  + ((model != null)?"[" + model.toString()+"]":""), false);
+        }
+
+        public MemoryReport log(STANDARD_LOG_MESSAGES type){
+            return log(type, null);
+        }
+
+
+        public LinkedList<String> getLog(){
+            return _internalLog;
+        }
+
+
+        public MemoryReport shouldMonitorConstraints(boolean enable){
+            _monitorConstraintsP = enable;
+            return this;
+        }
+
+        public MemoryReport shouldTryRepairingInconsistenies(boolean enable){
+            _tryRepairInconsistenciesP = enable;
+            return this;
+        }
+
+
+        public MemoryReport setFocusModel(FeatureModel model){
+            _focusModel = model;
+            return this;
+        }
+
+        public MemoryReport setBufferModel(FeatureModel model){
+            _bufferModel = model;
+            return this;
+        }
+
+        public MemoryReport setNumFeatures(int count){
+            _numModels = count;
+            return this;
+        }
+
+        public MemoryReport setMatchingFeatures(List<FeatureModel> features){
+            _matchingFeatures.clear();
+            _matchingFeatures.addAll(features);
+            return this;
+        }
+
+        public MemoryReport setReusableFeatures(List<FeatureModel> features){
+            _reusableFeatures.clear();
+            _reusableFeatures.addAll(features);
+            return this;
+        }
+
+
+        public MemoryReport setCompleteFeatures(List<FeatureModel> features){
+            _completeFeatures.clear();
+            _completeFeatures.addAll(features);
+            return this;
+        }
+
+
+        public MemoryReport setNumComplete(int count){
+            _numComplete = count;
+            return this;
+        }
+
+        public MemoryReport setTextForm(String text){
+            _textForm = text;
+            return this;
+        }
+
+
+        public MemoryReport finalizeReport(){
+
+
+            if (_otherFocusClaims.size()>0 && _tryRepairInconsistenciesP){
+                // resolve this by finding the longest building feature claiming to be a
+                int buildingOffset = 100;
+                int maxLenth = _focusModel.getFeatureLength() + ((_focusModel.isBuilding())?buildingOffset:0);
+                FeatureModel longestModel = _focusModel;
+
+                for (FeatureModel model:_otherFocusClaims){
+                    if (model.isBuilding()) {
+                        if (model.getFeatureLength() + buildingOffset > maxLenth){
+                            longestModel = model;
+                            maxLenth = model.getFeatureLength() + buildingOffset;
+                        }
+                    }
+                    else if (model.getFeatureLength() > maxLenth){
+                        longestModel = model;
+                        maxLenth = model.getFeatureLength();
+                    }
+                }
+
+                if (_focusModel != longestModel){
+                    _focusModel.setLabel("");
+                    log(REMOVING_FOCUS_LABEL, _focusModel);
+                }
+
+                for (FeatureModel model:_otherFocusClaims){
+                    if (model != longestModel){
+                        _focusModel.setLabel("");
+                        log(REMOVING_FOCUS_LABEL, model);
+                    }
+                }
+
+                _focusModel = longestModel;
+            }
+
+
+
+            if (_bufferModel != null && _focusModel == null){
+                addWarning(BUFFER_MODEL_DEFINED_WITHOUT_FOCUS, _bufferModel);
+                if (_tryRepairInconsistenciesP){
+
+                }
+            }
+
+            if (_bufferModel != null && _bufferModel == _focusModel){
+                addWarning(BUFFER_MODEL_IS_EQUAL_TO_FOCUS, _focusModel);
+                if (_tryRepairInconsistenciesP){
+
+                }
+            }
+
+            LinkedList<FeatureModel> building = new LinkedList<>();
+
+            int longestBuilding = 0;
+            FeatureModel longestBuildingModel = null;
+            for (FeatureModel model:(mFeatureMap.keySet().stream().map(index->mFeatureMap.get(index)).filter(f->f.isBuilding()).collect(toList()))){
+                building.add(model);
+                if (model.getFeatureLength() > longestBuilding || longestBuildingModel == null){
+                    longestBuilding = model.getFeatureLength();
+                    longestBuildingModel = model;
+                }
+            }
+
+
+            if (mMode == MODE.LEARNING && mFocusModel == null && mBufferModel == null){
+                addWarning(UNDEFINED_GROUP_FOCUS_STATE);
+                if (_tryRepairInconsistenciesP){
+                    if (longestBuildingModel != null){
+                        for (FeatureModel m:building){
+                            if (m == longestBuildingModel){
+                                _focusModel = longestBuildingModel;
+                                _focusModel.setLabel(FOCUS_LABEL);
+                                log(SETTING_GROUP_FOCUS, longestBuildingModel);
+                            }
+                            else {
+                                onFreedModel(m, getFeatureInternalMetaData(m), getFeatureInternalMetaData(m).getAllocationIndex());
+
+                            }
+                        }
+                        _bufferModel = null;
+
+                    }
+                }
+            }
+
+            if (_tryRepairInconsistenciesP) {
+                if (mBufferModel != _bufferModel){
+                    log(SETTING_GROUP_BUFFER, _bufferModel);
+                    mBufferModel = _bufferModel;
+                }
+
+                if (mFocusModel != _focusModel) {
+                    log(SETTING_GROUP_FOCUS, _focusModel);
+                    mFocusModel = _focusModel;
+                }
+
+            }
+
+            return this;
+        }
+
+        public MemoryReport addFeatureModel(FeatureModel model, boolean reset){
+            if (reset){
+                resetReport();
+            }
+            _numModels++;
+
+            FeatureMetaData meta = (FeatureMetaData)model.getMetaData();
+            Integer allocationIndex = meta.getAllocationIndex();
+            FeatureValueMetadata valueMeta = mPreferenceMap.get(allocationIndex);
+
+            if (mFeatureMap.get(allocationIndex) != model){
+                addWarning(STANDARD_WARNINGS.INCONSISTENT_ALLOCATION_INDEX_METADATA, model);
+                if (_tryRepairInconsistenciesP) {
+                    if (!mFeatureMap.containsKey(allocationIndex)) {
+                        meta.setAllocationIndex(_nextIndex);
+                        mFeatureMap.put(allocationIndex = _nextIndex, model);
+                        log(CORRECTING_ALLOCATION_INDEX_METADATA, model);
+                        int i=0;
+                        for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
+
+                        }
+                        _nextIndex = i;
+                    }
+                    else {
+                        FeatureModel other = mFeatureMap.get(allocationIndex);
+                        FeatureMetaData otherMeta = (FeatureMetaData)other.getMetaData();
+                        if (otherMeta.getAllocationIndex() == allocationIndex.intValue()){
+                            meta.setAllocationIndex(_nextIndex);
+                            mFeatureMap.put(allocationIndex = _nextIndex, model);
+                            log(CORRECTING_ALLOCATION_INDEX_METADATA, model);
+                            int i=0;
+                            for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
+
+                            }
+                            _nextIndex = i;
+                        }
+                    }
+                }
+            }
+
+            switch (model.getState()){
+                case INITIAL:
+                {
+                    if (valueMeta != null){
+                        log(STANDARD_WARNINGS.MODEL_HAS_PREF_METADATA_BUT_IS_INCOMPLETE.name(), false);
+
+                        // Revisit this
+//                        if (_tryRepairInconsistenciesP){
+//                            mPreferenceMap.remove(allocationIndex);
+//                            log(STANDARD_LOG_MESSAGES.REMOVING_FEATURE_FROM_PREF_MAP, model);
+//                        }
+                    }
+
+//                    if (meta.isInUse())
+//                    {
+//                        if (_numUnavailableInitialStateModels == 0){
+//
+//                            _numUnavailableInitialStateModels++;
+//                        }
+//                        else {
+//                            addWarning(STANDARD_WARNINGS.UNINITIALIZED_MODEL_IS_IN_USE, model);
+//                            if (_tryRepairInconsistenciesP) {
+//                                onFreedModel(model, meta, allocationIndex);
+//                            }
+//                        }
+//                    }
+//                    else
+                        addResuableModel(model);
+                }
+                break;
+                case BUILDING:
+                {
+                    String label = model.getLabel();
+                    if (label == null || label.length()==0){
+                        _unlabeledBuilders.add(model);
+                        addWarning(STANDARD_WARNINGS.UNLABELED_BUILDING_MODEL, model);
+                    }
+                    else if (label.equals(BUFFER_LABEL)) {
+                        if (_bufferModel != null){
+                            if (model != _bufferModel){
+                                addWarning(STANDARD_WARNINGS.DUPLICATE_BUFFER, model);
+                                if (_tryRepairInconsistenciesP){
+                                    onFreedModel(model, meta, allocationIndex);
+                                    addResuableModel(model);
+                                }
+                            }
+                        }
+                        else {
+                            _bufferModel = model;
+                        }
+
+                    }
+                    else if (label.equals(FOCUS_LABEL)){
+                        if (_focusModel != null && _focusModel != model){
+                            _otherFocusClaims.add(model);
+                            addWarning(STANDARD_WARNINGS.FOUND_DUPLICATE_FOCUS_MODEL);
+                        }
+                        else
+                            _focusModel = model;
+                    }
+
+                }
+                break;
+                case MATCHING:
+                {
+                    String label = model.getLabel();
+                    if (BUFFER_LABEL.equals(label)) {
+                        addWarning(STANDARD_WARNINGS.INVAID_BUFFER_MODEL, model);
+                        if (_tryRepairInconsistenciesP){
+                            log(STANDARD_LOG_MESSAGES.REMOVING_BUFFER_LABEL);
+                            model.setLabel("");
+                            if (_bufferModel == model){
+                                _bufferModel = null;
+                            }
+
+                            if (_focusModel == model) {
+                                log(SETTING_FOCUS_LABEL, model);
+                                model.setLabel(FOCUS_LABEL);
+                                _otherFocusClaims.add(model);
+                            }
+                        }
+
+                    }
+                    else if (FOCUS_LABEL.equals(label)) {
+
+                        if (_focusModel != null && _focusModel != model){
+                            _otherFocusClaims.add(model);
+                            addWarning(STANDARD_WARNINGS.FOUND_DUPLICATE_FOCUS_MODEL);
+                        }
+                        else
+                            _focusModel = model;
+                    }
+
+                    if (valueMeta == null){
+                        addWarning(STANDARD_WARNINGS.MISSING_PREF_METADATA, model);
+                        if (_tryRepairInconsistenciesP) {
+                            valueMeta = new FeatureValueMetadata();
+                            valueMeta.reset();
+                            setPreference(model, valueMeta);
+
+                            log(ADDING_DEFAULT_PREF_METADATA, model);
+                        }
+                    }
+
+                    addMatchingModel(model);
+                    addCompleteModel(model);
+                    _numComplete++;
+                }
+                break;
+                case NON_MATCHING:
+                {
+                    String label = model.getLabel();
+                    if (BUFFER_LABEL.equals(label)) {
+                        addWarning(STANDARD_WARNINGS.INVAID_BUFFER_MODEL, model);
+                        if (_tryRepairInconsistenciesP){
+                            log(STANDARD_LOG_MESSAGES.REMOVING_BUFFER_LABEL);
+                            model.setLabel("");
+                            if (_bufferModel == model){
+                                _bufferModel = null;
+                            }
+                        }
+                    } else if (FOCUS_LABEL.equals(label)) {
+                        addWarning(STANDARD_WARNINGS.INVALID_FOCUS_MODEL, model);
+
+                        if (_tryRepairInconsistenciesP){
+                            log(STANDARD_LOG_MESSAGES.REMOVING_FOCUS_LABEL, model);
+                            model.setLabel("");
+                            if (_focusModel == model) {
+                                _focusModel = null;
+                            }
+                        }
+                    }
+
+                    if (valueMeta == null){
+                        addWarning(STANDARD_WARNINGS.MISSING_PREF_METADATA, model);
+                        if (_tryRepairInconsistenciesP) {
+                            valueMeta = new FeatureValueMetadata();
+                            valueMeta.reset();
+                            setPreference(model, valueMeta);
+
+                            log(ADDING_DEFAULT_PREF_METADATA, model);
+                        }
+                    }
+                    addCompleteModel(model);
+                    _numComplete++;
+                }
+                break;
+
+            }
+
+            return this;
+        }
+
+        void onFreedModel(FeatureModel model, FeatureMetaData meta, Integer allocationIndex){
+            log(FREEING_MODEL, model);
+            if (mPreferenceMap.containsKey(allocationIndex)){
+                log(STANDARD_LOG_MESSAGES.REMOVING_FEATURE_FROM_PREF_MAP);
+                mPreferenceMap.remove(allocationIndex);
+            }
+            if (_focusModel == model)
+                _focusModel = null;
+
+            if (_bufferModel == model)
+                _bufferModel = null;
+
+            model.setLabel("");
+            model.forceInitialState();
+            meta.setInUse(false);
+
+            if (!mRecycleQueue.stream().anyMatch(i->i.intValue() == allocationIndex.intValue())) {
+                mRecycleQueue.add(allocationIndex);
+            }
+
+        }
+
+        public MemoryReport resetReport(){
+            _warnings.clear();
+            _completeFeatures.clear();
+            _reusableFeatures.clear();
+            _matchingFeatures.clear();
+            _unlabeledBuilders.clear();
+            _otherFocusClaims.clear();
+            _focusModel = null;
+            _bufferModel = null;
+            _numComplete = 0;
+            _numModels = 0;
+            _numUnavailableInitialStateModels = 0;
+            return this;
+        }
+
+        public LinkedList<FeatureModel> matchingFeatures(){
+            return _matchingFeatures;
+        }
+
+        public MemoryReport resetReport(boolean monitorConstraints){
+            resetReport();
+            return shouldMonitorConstraints(monitorConstraints);
+        }
+
+        public MemoryReport addWarning(STANDARD_WARNINGS warning){
+            return addWarning(warning, null);
+        }
+
+        public MemoryReport addWarning(STANDARD_WARNINGS warning, FeatureModel model){
+            return addWarning(warning.toString() + ((model != null)?" " + model.toString():""), false);
+        }
+
+        public MemoryReport addWarning(String warning){
+            return addWarning(warning, false);
+        }
+
+        public MemoryReport addWarning(String warning, boolean reset){
+            if (reset)
+                _warnings.clear();
+            _warnings.add(warning);
+            return this;
+        }
+
+        public MemoryReport addCompleteModel(FeatureModel model){
+            return addCompleteModel(model, false);
+        }
+
+        public MemoryReport addMatchingModel(FeatureModel model){
+            return addMatchingModel(model, false);
+        }
+
+        public MemoryReport addResuableModel(FeatureModel model){
+            return addResuableModel(model, false);
+        }
+
+        public MemoryReport addCompleteModel(FeatureModel model, boolean reset){
+            if (reset)
+                _completeFeatures.clear();
+            _completeFeatures.add(model);
+            return this;
+        }
+
+        public MemoryReport addMatchingModel(FeatureModel model, boolean reset){
+            if (reset)
+                _matchingFeatures.clear();
+            _matchingFeatures.add(model);
+            return this;
+        }
+
+        public MemoryReport addResuableModel(FeatureModel model, boolean reset){
+            if (reset)
+                _reusableFeatures.clear();
+            _reusableFeatures.add(model);
+            return this;
+        }
+
+
+        public LinkedList<String> getWarnings(){
+            return _warnings;
+        }
+
+
+        public MemoryReport(String text){
+            _textForm = text;
+        }
+
+        public String getTextReport(){
+            StringBuilder builder = new StringBuilder();
+            String pattern = "Mode: %s Num features: %d, Num complete: %d, Num matching: %d, Focus: %s Buffer: %s Warnings: %s, Total log: %s";
+            return String.format(pattern,
+                    mMode.name(),
+                    _numModels,
+                    _numComplete,
+                    _matchingFeatures.size(),
+                    (_focusModel == null)?"none":_focusModel.toString(),
+                    (_bufferModel == null)?"none":_bufferModel.toString(),
+                    _warnings,
+                    _internalLog
+            );
+        }
+
+        public String toString(){
+            return getTextReport();
+        }
+
     }
 
     public static class FeatureValueMetadata {
@@ -132,12 +740,17 @@ public class Group {
 
         }
 
+        /**
+         * Doesn't change allocation index
+         * @return
+         */
         public FeatureMetaData reset(){
             _isInUseP = false;
             _usageCount = 0;
             _averageLearningTime = 0;
             _updateCount = 0;
             _learningTime = 0;
+            _userObject = null;
             return this;
         }
 
@@ -317,7 +930,7 @@ public class Group {
             boolean priorValid = mConfiguration.isValidInput(priorPrediction);
             boolean otherValid = mConfiguration.isValidInput(otherPredction);
 
-            if (SUPPRESS_COMPARATOR_SIDE_EFFECTS){
+            if (!SUPPRESS_COMPARATOR_SIDE_EFFECTS){
                 updateIncidence(prior);
                 updateIncidence(other);
             }
@@ -325,12 +938,12 @@ public class Group {
 
             if (priorValid && !otherValid)
             {
-                if (SUPPRESS_COMPARATOR_SIDE_EFFECTS)
+                if (!SUPPRESS_COMPARATOR_SIDE_EFFECTS)
                     updatePreference(prior);
                 return -1;
             }
             else if (otherValid && !priorValid){
-                if (SUPPRESS_COMPARATOR_SIDE_EFFECTS)
+                if (!SUPPRESS_COMPARATOR_SIDE_EFFECTS)
                     updatePreference(other);
                 return 1;
             }
@@ -365,7 +978,7 @@ public class Group {
             }
 
 
-            if (SUPPRESS_COMPARATOR_SIDE_EFFECTS){
+            if (!SUPPRESS_COMPARATOR_SIDE_EFFECTS){
                 if (score == -1)
                     updatePreference(prior);
                 else if (score == 1){
@@ -386,16 +999,12 @@ public class Group {
 
             boolean priorValid = mConfiguration.isValidInput(priorPrediction);
             boolean otherValid = mConfiguration.isValidInput(otherPredction);
-            updateIncidence(prior);
-            updateIncidence(other);
 
             if (priorValid && !otherValid)
             {
-                updatePreference(prior);
                 return -1;
             }
             else if (otherValid && !priorValid){
-                updatePreference(other);
                 return 1;
             }
 
@@ -427,12 +1036,6 @@ public class Group {
             else {
                 score = -1* Double.compare(prior.getMatchHistory().getTrend(), other.getMatchHistory().getTrend());
             }
-
-            if (score == -1)
-                updatePreference(prior);
-            else if (score == 1){
-                updatePreference(other);
-            }
             return score;
         }
     };
@@ -441,7 +1044,7 @@ public class Group {
 
     boolean mEnableMemoryManagmentP = true;
     boolean mLimitBufferStateP = true;
-    boolean mSleepToFreeMemoryP = true;
+    boolean mSleepToFreeMemoryP = false;
     boolean mSortByUsageP = false;
     boolean mDreamWithFractionP = true;
     boolean mDebugEnabledP = false;
@@ -456,6 +1059,8 @@ public class Group {
     int mAvgStepLearningMilli = 0;
     int mTemporalUpdateCount = 0;
     int _nextIndex = 0;
+    boolean mInternalReportingEnabledP = false;
+
 
     MODE mMode = MODE.LEARNING;
 
@@ -465,7 +1070,7 @@ public class Group {
     String mKey;
 
     HashMap<Integer, FeatureValueMetadata> mPreferenceMap = new HashMap<>();
-    LinkedList<Integer> mRecycleQueue = null;
+    LinkedList<Integer> mRecycleQueue = new LinkedList<>();
     Integer[] mIndexIterator;
 
     HashMap<Integer, FeatureModel> mFeatureMap;
@@ -475,7 +1080,15 @@ public class Group {
     FeatureModel mBufferModel = null; // Set from featuremap
 
     ArrayList<FeatureModel> mLastProcessedFeatures = new ArrayList<FeatureModel>(); // Set from featuremap
+
+    /**
+     * Contains all matching features from last process step ordered by pref
+     */
     PriorityQueue<FeatureModel> mFocusQueue; // Set from featuremap
+
+    /**
+     * Contains all complete features from last process step ordered by pref
+     */
     PriorityQueue<FeatureModel> mGroupHeap; // Set from featuremap
 
 
@@ -484,7 +1097,7 @@ public class Group {
     WorldModel.GroupType mType;
 
     LearningConfiguration mConfiguration;
-
+    MemoryReport mLastProcessMemoryReport = new MemoryReport();
 
     boolean SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
 
@@ -650,6 +1263,7 @@ public class Group {
                     key = (Integer)values.get(offset);
                 }
                 else {
+
                     g.mPreferenceMap.put(key, (FeatureValueMetadata) values.get(offset));
                 }
                 offset++;
@@ -659,7 +1273,7 @@ public class Group {
         // recyclequeue
         size = (Integer)values.get(offset++);
         if (size == -1){
-            g.mRecycleQueue = null;
+            g.mRecycleQueue = new LinkedList<>();
         }
         else {
             g.mRecycleQueue = new LinkedList<>();
@@ -704,9 +1318,22 @@ public class Group {
                                 });
 
                 g.mFeatureMap.put(key, model);
+                FeatureMetaData prefsMeta = g.getFeatureInternalMetaData(model);
+                if (prefsMeta.getAllocationIndex() != key){
+                    prefsMeta.setAllocationIndex(key);
+                }
 
             }
             offset++;
+        }
+
+        // TODO:
+        // remove this code when data is cleaned up
+
+        for (Integer k:g.mPreferenceMap.keySet().toArray(new Integer[0])){
+            if (!g.mFeatureMap.containsKey(k)){
+                g.mPreferenceMap.remove(k);
+            }
         }
 
         // focus model index
@@ -733,14 +1360,30 @@ public class Group {
         size = (Integer)values.get(offset++);
 
         for (i = 0;i<size;i++){
-            g.mLastProcessedFeatures.add(g.mFeatureMap.get((Integer)values.get(offset)));
+            Integer k = (Integer)values.get(offset);
+            if (g.mFeatureMap.containsKey(k)){
+                g.mLastProcessedFeatures.add(g.mFeatureMap.get(k));
+            }
+            else
+            {
+                // this shouldn't happen unless there is a serialization bug
+            }
+
+
             offset++;
         }
 
         // focus queue
         size = (Integer)values.get(offset++);
         for (i = 0;i<size;i++){
-            g.mFocusQueue.add(g.mFeatureMap.get((Integer)values.get(offset)));
+            Integer k = (Integer)values.get(offset);
+            if (g.mFeatureMap.containsKey(k)){
+                g.mFocusQueue.add(g.mFeatureMap.get(k));
+            }
+            else
+            {
+                // this shouldn't happen unless there is a serialization bug
+            }
             offset++;
         }
 
@@ -748,7 +1391,14 @@ public class Group {
         size = (Integer)values.get(offset++);
         g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = true;
         for (i = 0;i<size;i++){
-            g.mGroupHeap.add(g.mFeatureMap.get((Integer)values.get(offset)));
+            Integer k = (Integer)values.get(offset);
+            if (g.mFeatureMap.containsKey(k)){
+                g.mGroupHeap.add(g.mFeatureMap.get(k));
+            }
+            else
+            {
+                // this shouldn't happen unless there is a serialization bug
+            }
             offset++;
         }
         g.SUPPRESS_COMPARATOR_SIDE_EFFECTS = false;
@@ -843,6 +1493,16 @@ public class Group {
         return this;
     }
 
+    public Group toggleInternalReporting(boolean enabled){
+        mInternalReportingEnabledP = enabled;
+        return this;
+    }
+
+
+    private void reportToLog(String message){
+        if (mInternalReportingEnabledP)
+            mLastProcessMemoryReport.log(message, false);
+    }
     /**
      * When true, sleeping frees FeatureModels by sorting them by the number of times that they
      * were encountered during sleep.  Otherwise, FeatureModels are sorted by their preference
@@ -929,6 +1589,32 @@ public class Group {
         return mPreferenceMap;
     }
 
+    public MemoryReport fixMemory(){
+        MemoryReport report = new MemoryReport();
+        report.resetReport().shouldTryRepairingInconsistenies(true);
+
+        mFeatureMap.keySet().stream().map(i->mFeatureMap.get(i)).forEach(model->report.addFeatureModel(model, false));
+        report.finalizeReport();
+        return report;
+    }
+
+    public MemoryReport getMemoryReport(boolean current){
+
+        if (current){
+            return mLastProcessMemoryReport;
+        }
+        else
+        {
+            MemoryReport report = new MemoryReport();
+            report.resetReport();
+
+            mFeatureMap.keySet().stream().map(i->mFeatureMap.get(i)).forEach(model->report.addFeatureModel(model, false));
+            report.finalizeReport();
+            return report;
+        }
+
+    }
+
     /**
      * Returns the Features in this Group sorted by the feature's 'match value'.  Match value
      * is based on an absolutist measure of
@@ -937,6 +1623,17 @@ public class Group {
     public ArrayList<FeatureModel> getOrderedFeatures(){
         ArrayList<FeatureModel> out = new ArrayList<FeatureModel>();
         out.addAll(mFeatureMap.keySet().stream().map(i->mFeatureMap.get(i)).sorted(mPassiveValueComparator).collect(toList()));
+        return out;
+    }
+
+    /**
+     * Returns the Features in this Group sorted by the feature's 'match value'.  Match value
+     * is based on an absolutist measure of
+     * @return
+     */
+    public ArrayList<FeatureModel> getOrderedCompleteFeatures(){
+        ArrayList<FeatureModel> out = new ArrayList<FeatureModel>();
+        out.addAll(mFeatureMap.entrySet().stream().map(entry->entry.getValue()).filter(f->f.isComplete()).sorted(mPassiveValueComparator).collect(toList()));
         return out;
     }
 
@@ -1026,10 +1723,13 @@ public class Group {
 
 
     public MODE processInput(Vector input,  Vector mask){
+        mLastProcessMemoryReport = getMemoryReport(false);
+
         switch (mMode){
             case LEARNING:
             {
                 mMode = learnNextInput(input, mask);
+                getOrderedCompleteFeatures().stream().forEach(m->m.processNextInput(input, mask));
             }
             break;
             case SLEEPING:
@@ -1087,6 +1787,10 @@ public class Group {
             mBufferModel = getAnotherFeature();
         }
 
+        if (mFocusModel == null){
+            reportToLog("**ERROR** impossible state. FeatureMap: " + mFeatureMap);
+            reportToLog(mLastProcessMemoryReport.toString());
+        }
         mFocusModel.setLabel(FOCUS_LABEL);
         int featureBufferSize = mType.getFeatureBufferSize();
         int minimumBufferOverlap = mType.getMinimumBufferOverlap();
@@ -1109,7 +1813,10 @@ public class Group {
                 featureMetaData.updateStepLearningMilli(duration);
             }
             else
+            {
                 mFocusModel.setLabel("");
+                setPreference(mFocusModel, new FeatureValueMetadata());
+            }
         }
         else {
             //System.out.println("Recognition skip");
@@ -1127,7 +1834,7 @@ public class Group {
             if (mBufferModel.isComplete()){
                 mBufferModel.setLabel("");
                 mBufferModel = null;
-                //System.out.println("Buffer exhausted");
+                setPreference(mBufferModel, new FeatureValueMetadata());
             }
             else if (mFocusModel.isFinished()){
                 mFocusModel.setLabel("");
@@ -1150,8 +1857,8 @@ public class Group {
 
      * @return
      */
-    public DreamSpec sleep(){
-        if (mFeatureMap.size() > 0){
+    public DreamSpec sleep() {
+        if (mPreferenceMap.size() > 0){
             double maxFraction = mPreferenceMap.keySet().stream().map(i->Double.valueOf(mPreferenceMap.get(i).getPreferenceFraction())).reduce(0D, (Double left, Double right)->Math.max(left, right));
 
             if (maxFraction > 0){
@@ -1161,6 +1868,15 @@ public class Group {
                 }).collect(toList()));
 
                 WeightedValue<Integer> selected = AITools.ChooseWeightedRandomFair(weights);
+                if (selected == null){
+
+                    // This should only happen if total weight is less than a threshold defined in ChooseWeightedRandomFair
+                    // Add logging when this gets ported into a self-contained agent
+                    List<Integer> filterd = mPreferenceMap.keySet().stream().filter(index->mFeatureMap.get(index).isComplete()).collect(Collectors.toList());
+                    if (filterd.size() == 0) // This shouldn't be possible
+                        return null;
+                    return sleep(AITools.ChooseRandom(filterd));
+                }
                 return sleep(selected.GetValue());
             }
             else {
@@ -1202,6 +1918,9 @@ public class Group {
 
 
 
+    public void setPreference(FeatureModel model, FeatureValueMetadata meta){
+        mPreferenceMap.put(getFeatureInternalMetaData(model).getAllocationIndex(), meta);
+    }
 
     /**
      * Causes the Group to go into sleep mode.  In this mode, the system reprocesses the most common
@@ -1211,6 +1930,7 @@ public class Group {
      * @return
      */
     public DreamSpec sleep(int dreamFocusIndex){
+        int initFocus = dreamFocusIndex;
         MODE priorMode = mMode;
         mMode = MODE.SLEEPING;
 
@@ -1226,7 +1946,7 @@ public class Group {
         int numCycles = (int)(mFeatureMap.size() * mSleepCycleMultipler);
 
         HashSet<FeatureModel> redundantModels = new HashSet<>();
-
+        HashSet<Integer> releasedModels = new HashSet<>();
 
         for (int cycle = 0; cycle < numCycles;cycle++){
             final Integer dreamIndex = dreamFocusIndex;
@@ -1292,6 +2012,7 @@ public class Group {
                                 FeatureValueMetadata value = mPreferenceMap.get(getFeatureInternalMetaData(selectedFeature).getAllocationIndex());
                                 value.reset();
                                 selectedFeature.forceInitialState();
+                                releasedModels.add(getFeatureInternalMetaData(selectedFeature).getAllocationIndex());
                             }
                             selectedFeature = model;
                             selectedLength = len;
@@ -1301,6 +2022,7 @@ public class Group {
                             FeatureValueMetadata value = mPreferenceMap.get(getFeatureInternalMetaData(model).getAllocationIndex());
                             value.reset();
                             dreamedOutput.addRedundantModel(model);
+                            releasedModels.add(getFeatureInternalMetaData(model).getAllocationIndex());
                         }
                     }
                 }
@@ -1347,8 +2069,14 @@ public class Group {
                 if (selected == null && prefs.size()>0){
                     dreamFocusIndex = prefs.get((int)(Math.random()*prefs.size())).GetValue();
                 }
-                else
+                else if (selected != null){
                     dreamFocusIndex = selected.GetValue();
+                }
+                else {
+                    exclusion.clear();
+                    dreamFocusIndex = initFocus;
+                }
+
             }
         }
 
@@ -1357,6 +2085,14 @@ public class Group {
         for (Integer k:prefKeys){
             if (!mFeatureMap.get(k).isComplete()){
                 mPreferenceMap.remove(k);
+                FeatureModel model = mFeatureMap.get(k);
+
+
+                FeatureMetaData imeta = getFeatureInternalMetaData(model);
+                if (imeta != null){
+                    imeta.setInUse(false);
+                }
+
             }
         }
 
@@ -1591,113 +2327,66 @@ public class Group {
      */
     public ArrayList<Vector> confabulate(boolean chunkedP, int count, boolean preserveFocus) {
         return confabulate(null, false, chunkedP, count, preserveFocus);
-     }
-
-    /**
-     * Enhances related features without removing features
-     * @param dreamFocusIndex
-     * @return
-     */
-    public DreamSpec dayDream(int dreamFocusIndex, int numCycles){
-
-        boolean scaleDreamsByFeatureLength = true;
-
-        DreamSpec dreamedOutput = new DreamSpec();
-
-        int maxLength = 0;
-        boolean debugP = mDebugEnabledP;
-        ArrayList<FeatureModel> out = null;
-
-        for (int cycle = 0; cycle < numCycles;cycle++){
-            final Integer dreamIndex = dreamFocusIndex;
-            FeatureModel dreamFocus = mFeatureMap.get(dreamIndex);
-            ArrayList<Vector> dreamInput = dreamFocus.extrapFeature();
-            dreamedOutput.updateInput(dreamIndex, dreamInput, mConfiguration);
-
-
-            final HashSet<Integer> exclusion = new HashSet<>();
-            exclusion.add(dreamIndex);
-            if (mFocusModel != null){
-                exclusion.add(getFeatureInternalMetaData(mFocusModel)._allocationIndex);
-            }
-            if (mBufferModel != null){
-                exclusion.add(getFeatureInternalMetaData(mBufferModel)._allocationIndex);
-            }
-
-            ArrayList<FeatureModel> dreamModels = new ArrayList<>();
-            mPreferenceMap.keySet().stream().filter((Integer i)->!exclusion.contains(i) && mFeatureMap.get(i).isComplete()).forEach((Integer i)->{
-                FeatureModel m = mFeatureMap.get(i);
-                dreamModels.add(m);
-                m.resetRecognition();
-
-            });
-
-            PriorityQueue<FeatureModel> dreamQueue = new PriorityQueue<>(10, mStandardValueComparator);
-
-            int len = dreamInput.size(), i = 1;
-            for (Vector input:dreamInput){
-
-                for (FeatureModel dreamModel:dreamModels){
-                    dreamModel.processNextInput(input);
-                    if (i == len){
-                        dreamQueue.add(dreamModel);
-                    }
-                }
-                i++;
-            }
-
-            FeatureModel best = dreamQueue.peek();
-            if (best.isMatching())
-            {
-                dreamFocusIndex = getFeatureInternalMetaData(best).getAllocationIndex();
-            }
-            else {
-                ArrayList<WeightedValue<Integer>> prefs = new ArrayList<WeightedValue<Integer>>();
-
-                double weight;
-                if (scaleDreamsByFeatureLength){
-                    maxLength = dreamModels.stream().map(m->m.getFeatureLength()).reduce(0, (l,r)->Math.max(l, r));
-                }
-
-                for (FeatureModel model:dreamModels){
-                    Integer modelIndex = getFeatureInternalMetaData(model).getAllocationIndex();
-
-                    if (scaleDreamsByFeatureLength)
-                        weight = model.getFeatureLength()/maxLength;
-                    else
-                        weight = 1;
-
-                    if (mDreamWithFractionP)
-                        prefs.add(new WeightedValue<Integer>(modelIndex, weight* mPreferenceMap.get(modelIndex).getPreferenceFraction()));
-                    else
-                        prefs.add(new WeightedValue<Integer>(modelIndex, weight* mPreferenceMap.get(modelIndex).getPreferenceCount()));
-                }
-
-                WeightedValue<Integer> selected = AITools.ChooseWeightedRandomFair(prefs);
-                dreamFocusIndex = selected.GetValue();
-            }
-        }
-
-        dreamedOutput.setDreamPrefs(mPreferenceMap);
-
-        return dreamedOutput;
     }
 
 
 
+    boolean mSimpleMemoryManagementP = true;
+
+
+
+    public boolean trySimpleMemoryManagement(){
+        int recycleCount = Math.max(1, (int)mRecycleCutoffFraction*mFeatureMap.size());
+
+        if (recycleCount == mFeatureMap.size() || mRecycleQueue.size() > recycleCount)
+            return false;
+
+        int numToFree = recycleCount -  mRecycleQueue.size();
+
+        ArrayList<FeatureModel> sortedCompletedFeatures = getOrderedCompleteFeatures();
+        int sLength = sortedCompletedFeatures.size();
+        if (sLength >= numToFree){
+            for (int i = 0;i < numToFree;i++){
+                FeatureModel recycled = sortedCompletedFeatures.get(sLength - 1 - i);
+                recycleFeature(recycled);
+            }
+            return true;
+        }
+        else
+            return false;
+    }
+
+    public Group toggleSimpleMemoryManagement(boolean enable){
+        mSimpleMemoryManagementP = enable;
+        if (enable)
+        {
+            mSleepToFreeMemoryP = false;
+            mEnableMemoryManagmentP = true;
+        }
+        return this;
+    }
+
     private FeatureModel getAnotherFeature(){
 
-        FeatureModel model = null, selected = null;
-        model = mType.requestFeature(this);
-
         FeatureMetaData meta = null;
-        if (model == null){
-            if (mRecycleQueue!= null && mRecycleQueue.size() > 0){
-                model = mFeatureMap.get(mRecycleQueue.removeFirst());
-            }
+        FeatureModel model = mType.requestFeature(this), selected = null;
 
-            if (mEnableMemoryManagmentP) {
-                if (model == null && mSleepToFreeMemoryP){
+        if (model == null) {
+            if (mRecycleQueue.size() == 0){
+                if (mSimpleMemoryManagementP && mEnableMemoryManagmentP && trySimpleMemoryManagement()){
+                    model = mFeatureMap.get(mRecycleQueue.removeFirst());
+                }
+            }
+            else
+                model = mFeatureMap.get(mRecycleQueue.removeFirst());
+        }
+
+        if (model == null) {
+
+            if (model == null && mEnableMemoryManagmentP) {
+                // Most of this code not satisfactorily tested
+
+                if (model == null && mSleepToFreeMemoryP) {
                     if (mMemorymanagementListener != null){
                         mMemorymanagementListener.onStartMemoryManagement(mFeatureMap.size());
                     }
@@ -1789,9 +2478,6 @@ public class Group {
             }
 
         }
-        else {
-            addFeature(model);
-        }
 
         if (model != null){
             if (mLimitBufferStateP) {
@@ -1801,15 +2487,7 @@ public class Group {
                 model.setConfiguration(mConfiguration.getUnlimitedConfiguration());
             }
 
-            meta = getFeatureInternalMetaData(model);
-            meta.setStringSerializer(mType.getCustomDataStringSerializer());
-            meta.reset();
-            meta.setInUse(true);
-            model.setLabel("");
-            model.setMetadataSerializer(
-                    (Object fMeta)-> ((FeatureMetaData)fMeta).serializeBytes(),
-                    (byte[] data)->FeatureMetaData.deserializeBytes(data));
-
+            addFeature(model, true);
         }
         return model;
     }
@@ -1820,7 +2498,7 @@ public class Group {
         Integer b = Integer.valueOf(meta.getAllocationIndex());
 
         if (!mPreferenceMap.containsKey(b)){
-            mPreferenceMap.put(b, new FeatureValueMetadata());
+            setPreference(best, new FeatureValueMetadata());
         }
         mPreferenceMap.get(b).updatePreference();
     }
@@ -1831,14 +2509,14 @@ public class Group {
         Integer b = Integer.valueOf(meta.getAllocationIndex());
 
         if (!mPreferenceMap.containsKey(b)){
-            mPreferenceMap.put(b, new FeatureValueMetadata());
+            setPreference(best, new FeatureValueMetadata());
         }
         mPreferenceMap.get(b).updateInstance();
     }
 
 
 
-    FeatureMetaData getFeatureInternalMetaData(FeatureModel model){
+    public FeatureMetaData getFeatureInternalMetaData(FeatureModel model){
         FeatureMetaData data = (FeatureMetaData)model.getMetaData();
         if (data == null){
             model.setMetaData(data = new FeatureMetaData());
@@ -1895,19 +2573,34 @@ public class Group {
 
     }
 
-    public Group addFeature(FeatureModel model){
-        return addFeature(model, _nextIndex);
+    public Group addFeature(FeatureModel model, boolean resetMetaP){
+        return addFeature(model, _nextIndex, resetMetaP);
     }
 
-    public Group addFeature(FeatureModel model, int index){
+    // TODO: incorporate this into processGroupUpdate
+    public Group addFeature(FeatureModel model, int index, boolean resetMetaP){
+
         FeatureMetaData meta = getFeatureInternalMetaData(model);
+        Object priorCustome = meta.getCustomMetadata();
+        meta.reset();
+        if (!resetMetaP)
+            meta.setCustomMetadata(priorCustome);
         meta.setAllocationIndex(index);
         meta.setStringSerializer(mType.getCustomDataStringSerializer());
+        model.setMetadataSerializer(
+                (Object fMeta)-> ((FeatureMetaData)fMeta).serializeBytes(),
+                (byte[] data)->FeatureMetaData.deserializeBytes(data));
+        model.setLabel("");
 
         mFeatureMap.put(Integer.valueOf(index), model);
 
         FeatureValueMetadata valueMetadata = new FeatureValueMetadata();
-        mPreferenceMap.put(Integer.valueOf(index), valueMetadata);
+        if (model.isComplete()){
+            setPreference(model, valueMetadata);
+        }
+        else {
+            removeFeaturePreference(index);
+        }
 
         int i=0;
         for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
@@ -1917,18 +2610,29 @@ public class Group {
         return this;
     }
 
-    public Group importFeature(FeatureModel model, boolean sleepToFreeMemory){
-        Optional<FeatureModel> available = mFeatureMap.keySet().stream().map((i)->mFeatureMap.get(i)).filter(f->f.getState()== FeatureModel.STATE.INITIAL).findAny();
+    // TODO: incorporate this into processGroupUpdate
+    public Group importFeature(FeatureModel model, boolean freeMemoryIfPossible){
 
-        if (available.isPresent()){
-            removeFeature(available.get());
+        boolean tryKeepTotalFeatureCountTheSameP = true;
+
+        if (model.isBuilding()){
+            model.setLabel("");
+            model.forceComplete();
+        }
+
+        if (tryKeepTotalFeatureCountTheSameP && mRecycleQueue.size() > 0) {
+            mRecycleQueue.removeFirst();
         }
         else
         {
             if (!mAllowUnlimitedFeatureImportP && !mType.canAllocateAnotherFeature(getName())) {
 
-                if (sleepToFreeMemory){
-                    sleep();
+                if (freeMemoryIfPossible){
+                    if (mSleepToFreeMemoryP)
+                        sleep();
+                    else if (mSimpleMemoryManagementP){
+                        trySimpleMemoryManagement();
+                    }
                     return importFeature(model, false);
                 }
                 else
@@ -1937,10 +2641,8 @@ public class Group {
             mType.incrementAllocation(getName());
         }
 
-
-        addFeature(model);
+        addFeature(model, false);
         return this;
-
     }
 
     public FeatureModel getFocusModel(){
@@ -1954,8 +2656,133 @@ public class Group {
         return out;
     }
 
-    public Group removeFeature(FeatureModel model){
+    protected void removeFeaturePreference(int allocationIndex){
+        mPreferenceMap.remove(allocationIndex);
+    }
+
+    protected void removeFeaturePreference(FeatureModel model){
+        removeFeaturePreference( getFeatureInternalMetaData(model).getAllocationIndex());
+    }
+
+    protected void removeFeaturePreference(FeatureMetaData meta){
+        mPreferenceMap.remove(meta.getAllocationIndex());
+    }
+
+    protected void resetFeatureCustomMetaData(FeatureModel model){
+        FeatureMetaData meta = getFeatureInternalMetaData(model).reset();
+        meta.setCustomMetadata(null);
+    }
+
+    protected boolean processImpactToCore(UPDATE_TYPE type, FeatureModel model){
+
         FeatureMetaData meta = getFeatureInternalMetaData(model);
+        if (meta == null)
+            return false;
+
+        int allocationIndex = meta.getAllocationIndex();
+
+        if (mFeatureMap.get(allocationIndex) != model)
+            return false;
+
+        boolean updatedP = false;
+
+        switch (type){
+            case FEATURE_REMOVED:
+                // Separates this FeatureModel from the Group
+                mFeatureMap.remove(allocationIndex);
+                if (mRecycleQueue.contains(allocationIndex)){
+                    mRecycleQueue.remove(allocationIndex);
+                }
+
+                if (model.isComplete())
+                    mGroupHeap.remove(allocationIndex);
+                updatedP = true;
+                break;
+            case FEATURE_RECYCLED:
+                if (model.isComplete())
+                {
+                    updatedP = updatedP || mGroupHeap.remove(allocationIndex);
+                    removeFeaturePreference(allocationIndex);
+                }
+
+                resetFeatureCustomMetaData(model);
+
+                if (!mRecycleQueue.contains(allocationIndex)){
+                    mRecycleQueue.add(allocationIndex);
+                    updatedP = true;
+                }
+                break;
+
+        }
+        return updatedP;
+    }
+
+    /**
+     * If model is defined then it must map to the appropriate model in mFeatureMap,
+     * otherwise this method does nothing
+     * @param type
+     * @param model
+     * @param updateDiagnostics
+     * @return
+     */
+    public boolean processGroupUpdate(UPDATE_TYPE type, FeatureModel model, boolean updateDiagnostics){
+        boolean affectedFocusP = false;
+        boolean impactedCoreP = false;
+        boolean impactedDiagnosticsP = false;
+        boolean impactedFeatureModelP = false;
+
+        FeatureMetaData meta = null;
+        int allocationIndex = -1;
+        if (model != null){
+            meta = getFeatureInternalMetaData(model);
+            if (meta == null)
+                return false;
+            allocationIndex = meta.getAllocationIndex();
+            if (mFeatureMap.get(allocationIndex) != model)
+                return false;
+        }
+
+
+        switch (type)
+        {
+            case FEATURE_RECYCLED:
+                impactedFeatureModelP = true;
+                model.forceInitialState();
+                model.setLabel("");
+            case FEATURE_REMOVED:
+
+                processFocusImpactOfRecycledOrRemovedFeature(model, null);
+
+                impactedCoreP = processImpactToCore(UPDATE_TYPE.FEATURE_RECYCLED, model);
+
+                impactedDiagnosticsP = processUpdateToDiagnostics(UPDATE_TYPE.FEATURE_RECYCLED, model, allocationIndex, updateDiagnostics);
+
+                break;
+        }
+        return impactedFeatureModelP || impactedDiagnosticsP || affectedFocusP || impactedCoreP;
+    }
+
+
+    protected boolean processUpdateToDiagnostics(UPDATE_TYPE type, FeatureModel model, int originalAllocationIndex, boolean updateDiagnostics){
+        if (!updateDiagnostics){
+            return false;
+        }
+        boolean wasUpdatedP = false;
+        switch (type){
+            case FEATURE_RECYCLED:
+            case FEATURE_REMOVED:
+                wasUpdatedP = wasUpdatedP || mFocusQueue.remove(originalAllocationIndex) || mLastProcessedFeatures.remove(model);
+                break;
+        }
+
+        return wasUpdatedP;
+    }
+
+
+
+    protected boolean processFocusImpactOfRecycledOrRemovedFeature(FeatureModel model, MemoryReport report){
+        boolean updatedP = mFocusQueue.remove(model);
+
 
         if (mFocusModel == model){
             if (mBufferModel != null){
@@ -1967,30 +2794,43 @@ public class Group {
             }
             else
             {
+                model.setLabel("");
                 mFocusModel = null;
+
             }
+            updatedP = true;
+        } else if (mBufferModel == model){
+            // this shouldn't happen normally
+            mBufferModel = null;
+            updatedP = true;
         }
 
-        if (mFocusQueue != null && mFocusQueue.size()>0 && mFocusQueue.peek() == model){
-            mFocusQueue.poll();
-        }
+        return updatedP;
+    }
 
-        Integer index = meta.getAllocationIndex();
-        mFeatureMap.remove(index);
-        mPreferenceMap.remove(index);
 
-        int i=0;
-        for (;mFeatureMap.containsKey(Integer.valueOf(i)); i++){
 
-        }
-        _nextIndex = i;
-        mType.decrementAllocation(getName());
+    public Group recycleFeature(FeatureModel model, boolean updateDiagnosticsP){
+        processGroupUpdate(UPDATE_TYPE.FEATURE_RECYCLED, model, updateDiagnosticsP);
+        return this;
+    }
+
+    public Group recycleFeature(FeatureModel model){
+        processGroupUpdate(UPDATE_TYPE.FEATURE_RECYCLED, model, false);
+        return this;
+    }
+
+
+    public Group removeFeature(FeatureModel model){
+        processGroupUpdate(UPDATE_TYPE.FEATURE_REMOVED, model, true);
         return this;
     }
 
     public Group removeFeature(Integer index){
-
-        return removeFeature(mFeatureMap.get(index));
+        if (mFeatureMap.containsKey(index))
+            return removeFeature(mFeatureMap.get(index));
+        else
+            return this;
     }
 
 
@@ -2045,6 +2885,7 @@ public class Group {
                     mFocusModel.setLabel("");
                     mFocusModel = mBufferModel;
                     mFocusModel.setLabel(FOCUS_LABEL);
+
                     mBufferModel = null;
                 }
                 else {

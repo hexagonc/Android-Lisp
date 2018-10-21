@@ -1036,15 +1036,7 @@ public class ExtendedFunctions
 				{
 					if (functionSpec.isString())
 					{
-						
-						try {
-							f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
-						}
+						f = env.getFunction(functionSpec.getString());
 						if (f == null)
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}
@@ -1111,15 +1103,7 @@ public class ExtendedFunctions
 				{
 					if (functionSpec.isString())
 					{
-						
-						try {
-							f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
-						}
+						f = env.getFunction(functionSpec.getString());
 						if (f == null)
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}

@@ -774,6 +774,16 @@ public class FeatureModel {
     }
 
 
+    @Override
+    public Object clone(){
+        FeatureModel cloned = deserializeBytes(serializeBytes());
+        cloned.setMetadataSerializer(mCustomDataSerializer, mCustomDataDeserializer);
+
+        if (mMetaData != null && mCustomDataDeserializer != null && mCustomDataSerializer != null){
+            cloned.setMetaData(mCustomDataDeserializer.deserialize(mCustomDataSerializer.serialize(mMetaData)));
+        }
+        return cloned;
+    }
 
 
     public IncrementalUpdateSpec simpleLearnSequence(LSTMNetworkProxy network, ArrayList<Pair<Vector, Vector>> inputOutputSpec, LearningConfiguration configuration){

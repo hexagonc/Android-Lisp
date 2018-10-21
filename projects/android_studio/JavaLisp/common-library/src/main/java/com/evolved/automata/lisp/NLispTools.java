@@ -300,14 +300,7 @@ public class NLispTools
 				if (evaluatedArgs[0].isString())
 				{
 					FunctionTemplate template = null;
-					try {
-						template = env.getFunction(evaluatedArgs[0].getString());
-					} catch (InstantiationException e) {
-						
-						throw new RuntimeException(e);
-					} catch (IllegalAccessException e) {
-						throw new RuntimeException(e);
-					}
+					template = env.getFunction(evaluatedArgs[0].getString());
 					if (template == null)
 						return Environment.getNull();
 					return new LambdaValue(template);
@@ -335,15 +328,8 @@ public class NLispTools
 				{
 					if (functionSpec.isString())
 					{
-						
-						try {
-							f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
-						}
+
+						f = env.getFunction(functionSpec.getString());
 						if (f == null)
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}
@@ -383,21 +369,15 @@ public class NLispTools
 				{
 					if (functionSpec.isString())
 					{
-						
-						try {
-							if (!object.isNull())
-							{
-								Lambda l = (Lambda)object.getLambda();
-								f = l.getInnerEnvironment().getFunction(functionSpec.getString());
-							}
-							else
-								f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
+
+						if (!object.isNull())
+						{
+							Lambda l = (Lambda)object.getLambda();
+							f = l.getInnerEnvironment().getFunction(functionSpec.getString());
 						}
+						else
+							f = env.getFunction(functionSpec.getString());
+
 						if (f == null)
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}
@@ -437,15 +417,8 @@ public class NLispTools
 				{
 					if (functionSpec.isString())
 					{
-						
-						try {
-							f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
-						}
+
+						f = env.getFunction(functionSpec.getString());
 						if (f == null)
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}
@@ -484,21 +457,14 @@ public class NLispTools
 				{
 					if (functionSpec.isString())
 					{
-						
-						try {
-							if (!object.isNull())
-							{
-								Lambda l = (Lambda)object.getLambda();
-								f = l.getInnerEnvironment().getFunction(functionSpec.getString());
-							}
-							else
-								f = env.getFunction(functionSpec.getString());
-						} catch (InstantiationException e) {
-							
-							throw new RuntimeException(e);
-						} catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
+
+						if (!object.isNull())
+						{
+							Lambda l = (Lambda)object.getLambda();
+							f = l.getInnerEnvironment().getFunction(functionSpec.getString());
 						}
+						else
+							f = env.getFunction(functionSpec.getString());
 						if (f == null)
 							throw new RuntimeException("Undefined function name for apply: " + functionSpec.getString());
 					}
@@ -4081,6 +4047,7 @@ public class NLispTools
 
         env.mapFunction("get-env-map", getEnvironmentMap());
 		env.mapFunction("newline", new_line());
+		env.mapFunction("unbind-function", unbindFunction());
 
 		
 		return env;
@@ -4095,6 +4062,38 @@ public class NLispTools
 			public Value evaluate(Environment env,Value[] evaluatedArgs) {
 				return makeValue(System.lineSeparator());
 
+			}
+
+		};
+
+	}
+
+	public static SimpleFunctionTemplate unbindFunction()
+	{
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env,Value[] evaluatedArgs) {
+				checkActualArguments(1, true, false);
+				String functionName = evaluatedArgs[0].getString();
+				boolean onlyUserCreated = evaluatedArgs.length == 2 && !evaluatedArgs[1].isNull();
+
+				Environment currentEnv = env;
+				do
+				{
+					if (env.hasFunction(functionName)) {
+						FunctionTemplate function = env.getFunction(functionName);
+						if (!onlyUserCreated || function instanceof Lambda){
+							return evaluatedArgs[0];
+						}
+
+					}
+					currentEnv = currentEnv.getParent();
+
+				}while (currentEnv != null);
+
+				return Environment.getNull();
 			}
 
 		};

@@ -154,7 +154,7 @@ public class Environment
 		_macroMap.put(name,  f);
 	}
 	
-	public synchronized FunctionTemplate getFunction(String name) throws InstantiationException, IllegalAccessException
+	public synchronized FunctionTemplate getFunction(String name)
 	{
 		if (hasFunction(name))
 			return (FunctionTemplate)_functionMap.get(name).clone();
@@ -168,7 +168,7 @@ public class Environment
 		return _functionMap.containsKey(name);
 	}
 	
-	public synchronized MacroTemplate getMacro(String name) throws InstantiationException, IllegalAccessException
+	public synchronized MacroTemplate getMacro(String name)
 	{
 		if (hasMacro(name))
 			return (MacroTemplate)_macroMap.get(name).clone();

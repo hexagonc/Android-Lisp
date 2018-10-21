@@ -398,6 +398,9 @@ public class WorldModel {
     }
 
 
+    public GroupType getGroupType(String name){
+        return mGroupTypes.get(name);
+    }
 
     public ArrayList<GroupSpecification> findGroups(String name){
         ArrayList<GroupSpecification> g = new ArrayList<>();
