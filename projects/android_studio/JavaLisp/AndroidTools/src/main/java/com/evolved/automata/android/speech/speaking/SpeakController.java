@@ -2,7 +2,7 @@ package com.evolved.automata.android.speech.speaking;
 import android.content.*;
 import android.speech.tts.*;
 import android.speech.tts.TextToSpeech.OnUtteranceCompletedListener;
-import android.test.IsolatedContext;
+
 
 import java.util.concurrent.*;
 import java.util.*;

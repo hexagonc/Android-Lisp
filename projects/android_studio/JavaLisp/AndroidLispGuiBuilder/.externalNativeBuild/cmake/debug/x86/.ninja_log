@@ -1,0 +1,25 @@
+# ninja log v5
+7	469	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	94c37acb922c81c2
+11	482	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	bbd5a09ab506593f
+1	648	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	2009378afc9ec0e3
+648	794	0	../../../../build/intermediates/cmake/debug/obj/x86/libneural_tools.so	29805030e9903a51
+24	351	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	94c37acb922c81c2
+5	413	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	bbd5a09ab506593f
+26	502	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	2009378afc9ec0e3
+502	721	0	../../../../build/intermediates/cmake/debug/obj/x86/libneural_tools.so	29805030e9903a51
+8	158	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	94c37acb922c81c2
+2	172	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	bbd5a09ab506593f
+5	251	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	2009378afc9ec0e3
+251	334	0	../../../../build/intermediates/cmake/debug/obj/x86/libneural_tools.so	29805030e9903a51
+7	160	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	94c37acb922c81c2
+5	167	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	bbd5a09ab506593f
+2	264	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	2009378afc9ec0e3
+264	350	0	../../../../build/intermediates/cmake/debug/obj/x86/libneural_tools.so	29805030e9903a51
+6	672	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	94c37acb922c81c2
+3	673	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	bbd5a09ab506593f
+10	758	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	2009378afc9ec0e3
+758	1019	0	../../../../build/intermediates/cmake/debug/obj/x86/libneural_tools.so	29805030e9903a51
+4	718	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	94c37acb922c81c2
+17	719	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	bbd5a09ab506593f
+8	844	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	2009378afc9ec0e3
+845	1144	0	../../../../build/intermediates/cmake/debug/obj/x86/libneural_tools.so	29805030e9903a51

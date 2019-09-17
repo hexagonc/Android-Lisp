@@ -17,8 +17,20 @@ import java.util.stream.Collectors;
 
 public class WorldModel {
 
+    public enum GroupTypeFlag {
+        CUSTOM_DATA_IS_LISP,
+        CUSTOM_DATA_IS_LISP_HASHTABLE,
+        GET_FOCUS_FROM_LISP_HASHTABLE
+
+
+    }
+
+
+
+
     public class GroupType {
 
+        int typeFlags;
         int numInputOutputNodes;
         int numMemoryCellNodes;
         int initiaWeight;
@@ -28,6 +40,28 @@ public class WorldModel {
         String name;
         LearningConfiguration config;
         StringSerializer _serializer;
+
+        int DEFAULT_TYPE_FLAGS = 7;
+
+        public int getTypeFlags(){
+            if (typeFlags == 0)
+                return getTypeFlagsFromName();
+            return typeFlags;
+        }
+
+        public int getTypeFlagsFromName(){
+            String[] parts = name.split("_");
+            if (parts.length < 2){
+                return DEFAULT_TYPE_FLAGS;
+            }
+            else {
+                return Integer.valueOf(parts[1]);
+            }
+        }
+
+        public boolean hasGroupFlag(GroupTypeFlag flag){
+            return (getTypeFlags() & (long)(Math.pow(2, flag.ordinal()))) > 0;
+        }
 
         HashMap<String, GroupSpecification> _groupMap = new HashMap<>();
 

@@ -347,7 +347,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 			{
 				_currentState = getDisconnectedFromDeviceState();
 				notifyConnectionListeners();
-				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+				NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 			}
 			throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 		}
@@ -368,7 +368,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 			}
@@ -390,7 +390,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw e;
 			}
@@ -413,7 +413,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 			}
@@ -433,7 +433,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 			}
@@ -453,7 +453,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 			}
@@ -473,7 +473,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 			}
@@ -495,7 +495,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				{
 					_currentState = getDisconnectedFromDeviceState();
 					notifyConnectionListeners();
-					NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+					NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 				}
 				throw new UnexpectedDisconnectFromNXTException(e, getDeviceName());
 			}
@@ -542,7 +542,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 			{
 				_currentState = getDisconnectedFromDeviceState();
 				notifyConnectionListeners();
-				NXTBluetoothManager.getInstance().showBluetoothNotification(true, false, getDeviceName());
+				NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false, getDeviceName());
 			}
 			return false;
 		}
@@ -706,7 +706,7 @@ public class NXTBluetoothInterface implements NXTBluetoothService.BluetoothStatu
 				_ostream = _socket.getOutputStream();
 				_currentState = getConnectedToDeviceState();
 				notifyConnectionListeners();
-				NXTBluetoothManager.getInstance().showBluetoothNotification(true, true, getDeviceName());
+				NXTBluetoothManager.getInstance().updateBluetoothNotification(true, true, getDeviceName());
 				return true;
 			} catch (IOException e) {
 				AppStateManager.getInstance().onError(

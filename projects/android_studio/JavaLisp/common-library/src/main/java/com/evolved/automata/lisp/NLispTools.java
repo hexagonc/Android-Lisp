@@ -1707,17 +1707,49 @@ public class NLispTools
 		env.mapFunction("unless", new FunctionTemplate()
 		{
 
+			Value _conditionContinuation = null;
+
+			@Override
+			public void resetFunctionTemplate()
+			{
+				_lastFunctionReturn = null;
+				_instructionPointer = 0;
+				_argumentInstructionPointer = 0;
+				_conditionContinuation = null;
+
+			}
+
 			@Override
 			public Value evaluate(Environment env, boolean resume)
 					throws InstantiationException, IllegalAccessException {
+
 				checkActualArguments(1, true, true);
 				
 				if (!resume)
 					resetFunctionTemplate();
 				
 				Value result = Environment.getNull();
+
+				if (_instructionPointer > 0){
+
+					if (resume && _conditionContinuation != null && _conditionContinuation.getContinuingFunction() != null)
+						_conditionContinuation = _conditionContinuation.getContinuingFunction().evaluate(env, resume);
+					else
+						_conditionContinuation = env.evaluate(_actualParameters[0], false);
+
+					if (_conditionContinuation.isContinuation())
+						return continuationReturn(_conditionContinuation);
+					if (!_conditionContinuation.isNull() || result.isReturn() || result.isSignal() || result.isSignalOut())
+						return resetReturn(_conditionContinuation);
+
+					if (_conditionContinuation.isBreak())
+						return resetReturn(_conditionContinuation.setBreak(false));
+					_conditionContinuation = null;
+				}
+
 				for (;_instructionPointer<_actualParameters.length;_instructionPointer++)
 				{
+
 					if (resume && _lastFunctionReturn.getContinuingFunction() != null)
 						result = _lastFunctionReturn = _lastFunctionReturn.getContinuingFunction().evaluate(env, resume);
 					else
@@ -3225,11 +3257,11 @@ public class NLispTools
 			@Override
 			public Value evaluate(Environment env,Value[] evaluatedArgs) {
 				checkActualArguments(2, true, true);
-				
+
 				String separator = evaluatedArgs[1].getString();
 				StringBuilder sBuilder = new StringBuilder();
 				String[] parts = getStringArrayFromValue(evaluatedArgs[0]);
-				
+
 				for (int i=0;i<parts.length;i++)
 				{
 					if (i==0)
@@ -4894,6 +4926,15 @@ public class NLispTools
 	public static Value makeValue(Value[] args)
 	{
 		return new ListValue(args);
+	}
+
+	public static Value makeValue(String[] args)
+	{
+		Value[] o = new Value[args.length];
+		for (int i = 0; i < args.length;i++){
+			o[i] = NLispTools.makeValue(args[i]);
+		}
+		return makeValue(o);
 	}
 	
 	public static Value makeValue(long args)

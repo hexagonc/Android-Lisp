@@ -1,4 +1,6 @@
 package com.evolved.automata.lisp;
+import com.evolved.automata.parser.math.Function;
+
 import java.util.*;
 
 
@@ -13,8 +15,11 @@ public class Environment
 	volatile HashMap<String, Value> _environmentProperties = new HashMap<String, Value>();
 	boolean _throwExceptionOnUndefinedP = true;
 	volatile Environment _parentEnv = null;
+	boolean _isReadOnlyP = false;
 	
 	static LinkedList<String> logs = new LinkedList<String>();
+
+	RuntimeFunctions.LispInterface _runtimeInterface = null;
 	
 	public final String _NULL_NAME = "F";
 	
@@ -31,7 +36,14 @@ public class Environment
 			endIndex=end;
 		}
 	}
-	
+
+	public Environment(RuntimeFunctions.LispInterface runtime)
+	{
+		mapValue(_NULL_NAME, getNull());
+		_runtimeInterface = runtime;
+		//
+	}
+
 	
 	public Environment()
 	{
@@ -46,7 +58,55 @@ public class Environment
 	{
 		_parentEnv = parent;
 	}
-	
+
+	public Environment bindVariablesInto(Environment env){
+		for (String var:_valueMap.keySet()){
+			env.mapValue(var, _valueMap.get(var).clone());
+		}
+		return env;
+	}
+
+	public RuntimeFunctions.LispInterface getRuntimeInterface(){
+		if (_runtimeInterface != null){
+			return _runtimeInterface;
+		}
+		else if (_parentEnv != null){
+			return _parentEnv.getRuntimeInterface();
+		}
+		else
+			return null;
+	}
+
+	public Environment setRuntimeInterface(RuntimeFunctions.LispInterface runtime)
+	{
+		_runtimeInterface = runtime;
+		return this;
+	}
+
+
+
+	public Environment getCleanEnvironment(boolean cleanRootP){
+		Environment cleanedMe = new Environment();
+		for (String function:_functionMap.keySet()){
+			cleanedMe.mapFunction(function, (FunctionTemplate) _functionMap.get(function).clone());
+		}
+
+		for (String macro:_macroMap.keySet()){
+		    cleanedMe.mapMacro(macro, (MacroTemplate) _macroMap.get(macro).clone());
+        }
+
+        bindVariablesInto(cleanedMe);
+
+		if (cleanRootP || _parentEnv != null){
+			cleanedMe.setReadyOnly();
+		}
+
+		if (_parentEnv != null){
+			cleanedMe._parentEnv = _parentEnv.getCleanEnvironment(cleanRootP);
+		}
+		return cleanedMe;
+	}
+
 	public static Value getNull()
 	{
 		return new Value()
@@ -89,7 +149,8 @@ public class Environment
 		};
 	}
 	
-	
+
+
 	public static void warn(String message)
 	{
 		System.out.println(message);
@@ -106,6 +167,9 @@ public class Environment
 	
 	public synchronized Value mapValue(String name, Value v)
 	{
+	    if (_isReadOnlyP){
+	        throw new ConcurrentModificationException("Cannot modify variables in read-only environment");
+        }
 		_valueMap.put(name, v);
 		return v;
 	}
@@ -136,6 +200,9 @@ public class Environment
 	
 	public synchronized FunctionTemplate mapFunction(String name, FunctionTemplate f)
 	{
+        if (_isReadOnlyP){
+            throw new ConcurrentModificationException("Cannot modify functions in read-only environment");
+        }
 		f.setName(name);
 		_functionMap.put(name,  f);
 		return f;
@@ -143,6 +210,9 @@ public class Environment
 
 	public synchronized FunctionTemplate removeFunction(String name)
 	{
+        if (_isReadOnlyP){
+            throw new ConcurrentModificationException("Cannot remove functions in read-only environment");
+        }
 		FunctionTemplate  f = _functionMap.remove(name);
 
 		return f;
@@ -151,6 +221,9 @@ public class Environment
 	
 	public synchronized void mapMacro(String name, MacroTemplate f)
 	{
+        if (_isReadOnlyP){
+            throw new ConcurrentModificationException("Cannot modify macros in read-only environment");
+        }
 		_macroMap.put(name,  f);
 	}
 	
@@ -204,6 +277,11 @@ public class Environment
 			start = start._parentEnv;
 		return start;
 	}
+
+	public Environment setReadyOnly(){
+        _isReadOnlyP = true;
+        return this;
+    }
 
 	public Value loadFromFileLines(String[] dataLines)
 	{

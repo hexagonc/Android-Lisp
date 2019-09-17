@@ -150,7 +150,7 @@ public class ExtendedFunctions
 
 
 		
-		env.mapFunction("sample-distribution", new SimpleFunctionTemplate()
+		env.mapFunction("vectorToValue-distribution", new SimpleFunctionTemplate()
 		{
 
 			/**
@@ -230,7 +230,7 @@ public class ExtendedFunctions
 							
 						}
 						else 
-							throw new RuntimeException("Second argument to sample-distribution must be a hashtable or a key-value list");
+							throw new RuntimeException("Second argument to vectorToValue-distribution must be a hashtable or a key-value list");
 						i++;
 					}
 
@@ -257,7 +257,7 @@ public class ExtendedFunctions
 							totalWeight+=weight;
 						}
 						else 
-							throw new RuntimeException("Second argument to sample-distribution must be a hashtable or a key-value list");
+							throw new RuntimeException("Second argument to vectorToValue-distribution must be a hashtable or a key-value list");
 					}
 					return lastValue;
 					

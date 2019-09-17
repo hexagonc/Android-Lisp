@@ -2824,6 +2824,8 @@ public class FastLSTMNetwork extends LSTMNetwork{
 
 
 
+
+
     // ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~ ~+~
     //                  Java Interface
     // All static methods above this can be ported to c/c++

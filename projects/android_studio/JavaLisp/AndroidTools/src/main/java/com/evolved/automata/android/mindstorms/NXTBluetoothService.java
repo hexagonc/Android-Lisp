@@ -2,6 +2,10 @@ package com.evolved.automata.android.mindstorms;
 
 import java.util.LinkedList;
 
+import android.annotation.SuppressLint;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothSocket;
@@ -9,14 +13,21 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.support.v4.app.NotificationCompat;
+
+import com.evolved.automata.android.tools.R;
+
+import static com.evolved.automata.android.mindstorms.NXTBluetoothManager._NOTIFICATION_ID;
 
 public class NXTBluetoothService extends Service implements NXTServiceInterface
 {
 	
 	
-	
+	static boolean sConfiguredChannelP = false;
+
 	public interface BluetoothStatusListener
 	{
 		public void onStatusChange(int state);
@@ -50,11 +61,16 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 	static Object _interfaceMutex = new Object();
 	
 	private static NXTBluetoothService _instance = null;
+
+	public static final String _EXTRA_NOTIFICATION_TITLE = "NXT_SERVICE_TITLE";
+	public static final String _EXTRA_NOTIFICATION_CONTENT = "NXT_SERVICE_CONTENT";
+	public static final String _EXTRA_NOTIFICATION_ICON = "NXT_SERVICE_ICON";
+	public static final String _EXTRA_NOTIFICATION_CHANNEL = "NXT_SERVICE_CHANNEL";
 	
 	@Override
 	public void onCreate()
 	{
-		super.onCreate();
+
 		PowerManager pmanager = (PowerManager)getSystemService(Context.POWER_SERVICE);
 		_serviceLock = pmanager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mindstorms");
 		_serviceLock.acquire();
@@ -79,8 +95,8 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 		
 		notifyListeners(_UPDATE_ALL);
 		_serviceInteface = this;
-		NXTBluetoothManager.getInstance().showBluetooNotification(true);
 		_instance = this;
+
 	}
 	
 	
@@ -91,10 +107,31 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 	}
 
 
+	@SuppressLint("NewApi")
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		
-		return super.onStartCommand(intent, flags, startId);
+		String title = intent.getStringExtra(_EXTRA_NOTIFICATION_TITLE);
+		String content = intent.getStringExtra(_EXTRA_NOTIFICATION_CONTENT);
+
+		// Notification must exist before starting
+		if (!sConfiguredChannelP){
+			if (Build.VERSION.SDK_INT>=26){
+				int importance = NotificationManager.IMPORTANCE_LOW;
+				String channelName = intent.getStringExtra(NXTBluetoothManager._EXTRA_NOTIFICATION_CHANNEL_NAME);
+				String channelId = intent.getStringExtra(NXTBluetoothManager._EXTRA_NOTIFICATION_CHANNEL_ID);
+
+				NotificationChannel channel = new NotificationChannel(channelId, channelName, importance);
+				channel.setDescription(NXTBluetoothManager._EXTRA_NOTIFICATION_CHANNEL_DESCRIPTION);
+				NotificationManager manager = (NotificationManager)getSystemService(Context.NOTIFICATION_SERVICE);
+				manager.createNotificationChannel(channel);
+			}
+			sConfiguredChannelP = true;
+		}
+
+		Notification notification = NXTBluetoothManager.getInstance().updateBluetoothNotification(true, false);
+
+		startForeground(_NOTIFICATION_ID, notification);
+		return Service.START_NOT_STICKY;
 	}
 
 
@@ -105,7 +142,7 @@ public class NXTBluetoothService extends Service implements NXTServiceInterface
 		
 		notifyListeners(_UPDATE_ALL);
 		clearServiceInterface();
-		NXTBluetoothManager.getInstance().showBluetooNotification(false);
+		NXTBluetoothManager.getInstance().updateBluetoothNotification(false, false);
 		
 		try
 		{

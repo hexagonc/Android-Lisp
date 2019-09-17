@@ -1,0 +1,53 @@
+
+{
+	"buildFiles" : 
+	[
+		"C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/CMakeLists.txt"
+	],
+	"cFileExtensions" : [ "c" ],
+	"cleanCommands" : 
+	[
+		"C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\release\\x86 --target clean"
+	],
+	"libraries" : 
+	{
+		"neural_tools-Release-x86" : 
+		{
+			"abi" : "x86",
+			"artifactName" : "neural_tools",
+			"buildCommand" : "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\release\\x86 --target neural_tools",
+			"buildType" : "release",
+			"files" : 
+			[
+				
+				{
+					"flags" : "  --target=i686-none-linux-android24 --gcc-toolchain=C:/Android/sdk/ndk-bundle/toolchains/x86-4.9/prebuilt/windows-x86_64 --sysroot=C:/Android/sdk/ndk-bundle/sysroot -Dneural_tools_EXPORTS -I..\\..\\..\\..\\src\\main\\c  -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC      -c ",
+					"src" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/c/com_evolved_automata_nn_NativeTools.c",
+					"workingDirectory" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/release/x86"
+				},
+				
+				{
+					"flags" : "  --target=i686-none-linux-android24 --gcc-toolchain=C:/Android/sdk/ndk-bundle/toolchains/x86-4.9/prebuilt/windows-x86_64 --sysroot=C:/Android/sdk/ndk-bundle/sysroot -Dneural_tools_EXPORTS -I..\\..\\..\\..\\src\\main\\c  -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC      -c ",
+					"src" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/c/neural_library.c",
+					"workingDirectory" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/release/x86"
+				},
+				
+				{
+					"flags" : "  --target=i686-none-linux-android24 --gcc-toolchain=C:/Android/sdk/ndk-bundle/toolchains/x86-4.9/prebuilt/windows-x86_64 --sysroot=C:/Android/sdk/ndk-bundle/sysroot -Dneural_tools_EXPORTS -I..\\..\\..\\..\\src\\main\\c  -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC      -c ",
+					"src" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/c/tools.c",
+					"workingDirectory" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/release/x86"
+				}
+			],
+			"output" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/build/intermediates/cmake/release/obj/x86/libneural_tools.so",
+			"toolchain" : "1629680541"
+		}
+	},
+	"toolchains" : 
+	{
+		"1629680541" : 
+		{
+			"cCompilerExecutable" : "C:/Android/sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe",
+			"cppCompilerExecutable" : "C:/Android/sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/bin/clang++.exe"
+		}
+	}
+}

@@ -7,3 +7,9 @@ allprojects {
         }
     }
 }
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+}

@@ -25,9 +25,17 @@ import com.evolved.automata.nn.Vector;
 import com.evolved.automata.nn.VectorValueMapper;
 import com.evolved.automata.nn.VectorViewer;
 import com.evolved.automata.nn.WeightMatrix;
+import com.evolved.automata.nn.util.EnumVector;
+import com.evolved.automata.nn.util.ScaledNumVector;
+import com.evolved.automata.nn.util.SetVector;
+import com.evolved.automata.nn.util.StructVector;
+import com.evolved.automata.nn.util.TallyVector;
+import com.evolved.automata.nn.util.VectorType;
+import com.evolved.automata.parser.math.Argument;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
 
@@ -35,9 +43,34 @@ import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
  * Created by Evolved8 on 12/19/16.
  */
 public class NeuralNetLispInterface {
+
     public static void addNeuralNetFunctions(Environment env)
     {
+        env.mapFunction("set-type-get-possible-values",setTypeGetPossibleValues());
+        env.mapFunction("enum-type-get-possible-values",enumTypeGetPossibleValues());
+        env.mapFunction("tally-type-get-max-value",tallyTypeGetMaxValue());
+        env.mapFunction("scaled-number-get-max",scaledNumberGetMaxValue());
+        env.mapFunction("scaled-number-get-min",scaledNumberGetMinValue());
+        env.mapFunction("scaled-number-get-num-steps",scaledNumberGetNumSteps());
+        env.mapFunction("vector-type-get-width", vectorTypeGetWidth());
+        env.mapFunction("vector-type-get-name", vectorTypeGetTypeName());
+        env.mapFunction("vector-type-sample", vectorTypeSample());
+        env.mapFunction("vector-type-get-mask", vectorTypeMask());
+        env.mapFunction("vector-type-value-to-vector", vectorTypeValueToVector());
+        env.mapFunction("vector-type-vector-to-value", vectorTypeVectorToValue());
+        env.mapFunction("struct-type-get-field-type", structTypeGetFieldType());
+        env.mapFunction("struct-type-get-field-names", structTypeGetFieldNames());
+        env.mapFunction("vector-type-create-scaled-number", vectorTypeCreateScaledNumber());
+        env.mapFunction("vector-type-create-set", vectorTypeCreateSet());
+        env.mapFunction("vector-type-create-struct", vectorTypeCreateStruct());
+
+        env.mapFunction("vector-type-create-tally-number", vectorTypeCreateTallyNumber());
+        env.mapFunction("vector-type-create-enum", vectorTypeCreateEnum());
+
         env.mapFunction("create-simple-lstm-network", createSimpleLSTMNetwork());
+
+
+
         env.mapFunction("create-simple-classification-lstm-network", createSimpleClassificationLSTMNetwork());
         env.mapFunction("create-simple-sequence-lstm", createSimpleSequenceLSTMNetwork());
 
@@ -139,6 +172,633 @@ public class NeuralNetLispInterface {
         env.mapFunction("fast-clear-output-error-mask", FastClearOutputErrorMask());
     }
 
+
+
+
+    public static SimpleFunctionTemplate scaledNumberGetNumSteps()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) scaledNumberGetNumSteps();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                ScaledNumVector type = (ScaledNumVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getNumSteps());
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate scaledNumberGetMinValue()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) scaledNumberGetMinValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                ScaledNumVector type = (ScaledNumVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getMinValue());
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate scaledNumberGetMaxValue()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) scaledNumberGetMaxValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                ScaledNumVector type = (ScaledNumVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getMaxValue());
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate tallyTypeGetMaxValue()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) tallyTypeGetMaxValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                TallyVector type = (TallyVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getMaxValue());
+
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate enumTypeGetPossibleValues()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) enumTypeGetPossibleValues();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                EnumVector type = (EnumVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getPossibleValues());
+
+            }
+        };
+    }
+
+
+
+
+    public static SimpleFunctionTemplate setTypeGetPossibleValues()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) setTypeGetPossibleValues();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                SetVector type = (SetVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getPossibleValues());
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate structTypeGetFieldNames()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) structTypeGetFieldNames();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                StructVector type = (StructVector)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getFieldNames());
+
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate structTypeGetFieldType()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) structTypeGetFieldType();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                StructVector type = (StructVector)evaluatedArgs[0].getObjectValue();
+                String key = evaluatedArgs[1].getString();
+                VectorType fieldType = type.getFieldType(key);
+                if (fieldType == null)
+                    return Environment.getNull();
+
+                return ExtendedFunctions.makeValue(fieldType);
+
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate vectorTypeGetWidth()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeGetWidth();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                VectorType type = (VectorType)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getWidth());
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate vectorTypeGetTypeName()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeGetTypeName();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                VectorType type = (VectorType)evaluatedArgs[0].getObjectValue();
+
+                return NLispTools.makeValue(type.getType().name());
+
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate vectorTypeSample()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeSample();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+
+                VectorType type = (VectorType)evaluatedArgs[0].getObjectValue();
+                Object arg = null;
+                if (evaluatedArgs.length>1)
+                    arg = getVectorTypeMaskSpec(type, evaluatedArgs[1]);
+                float[] vector = type.sampleMask(arg);
+                return getLispDataValue(vector);
+
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate vectorTypeMask()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeMask();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                VectorType type = (VectorType)evaluatedArgs[0].getObjectValue();
+                Object arg = getVectorTypeMaskSpec(type, evaluatedArgs[1]);
+                float[] vector = type.getMask(arg);
+                return getLispDataValue(vector);
+
+            }
+        };
+    }
+
+
+
+    public static SimpleFunctionTemplate vectorTypeValueToVector()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeValueToVector();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                VectorType type = (VectorType)evaluatedArgs[0].getObjectValue();
+                Object arg = getVectorTypeArgument(type, evaluatedArgs[1]);
+                float[] vector = type.valueToVector(arg);
+                return getLispDataValue(vector);
+
+            }
+        };
+    }
+
+
+
+
+
+
+    public static SimpleFunctionTemplate vectorTypeVectorToValue()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeVectorToValue();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, false, true);
+
+                VectorType type = (VectorType)evaluatedArgs[0].getObjectValue();
+                float[] vector = getFloatData(evaluatedArgs[1]);
+
+                return wrapVectorTypeValue(type, type.vectorToValue(vector));
+
+            }
+        };
+    }
+
+    static Object getVectorTypeMaskSpec(VectorType type, Value lispValue){
+        if (lispValue.isNull())
+            return null;
+
+        switch (type.getType()){
+            case UNSIGNED_TALLY:
+                return Integer.valueOf((int)lispValue.getIntValue());
+            case SET:
+            {
+                HashSet<String> itemSet = new HashSet<>();
+                String[] items = null;
+                if (lispValue.isList()){
+                    items = NLispTools.getStringArrayFromValue(lispValue);
+                }
+                else {
+                    items = lispValue.getStringHashtable().keySet().toArray(new String[0]);
+                }
+                itemSet.addAll(Arrays.asList(items));
+                return itemSet;
+            }
+            case ENUM:
+            {
+                HashSet<String> itemSet = new HashSet<>();
+                String[] items = null;
+                if (lispValue.isList()){
+                    items = NLispTools.getStringArrayFromValue(lispValue);
+                }
+                else {
+                    items = lispValue.getStringHashtable().keySet().toArray(new String[0]);
+                }
+                itemSet.addAll(Arrays.asList(items));
+                return itemSet;
+            }
+            case STRUCT:
+            {
+                HashMap<String, Object> finalargMap = new HashMap<String, Object>();
+                HashMap<String, Value> map = lispValue.getStringHashtable();
+                StructVector struct = (StructVector)type;
+                for (String key:map.keySet()){
+                    VectorType fieldType = struct.getFieldType(key);
+                    finalargMap.put(key, getVectorTypeMaskSpec(fieldType, map.get(key)));
+                }
+                return finalargMap;
+            }
+            case SCALED_VALUE:
+        }
+        return null;
+    }
+
+
+    static Value wrapVectorTypeValue(VectorType type, Object rawValue){
+        switch (type.getType()){
+            case UNSIGNED_TALLY:
+                return NLispTools.makeValue(((Integer)rawValue).intValue());
+            case SET: {
+                HashSet<String> result = (HashSet<String>)rawValue;
+                HashMap<String, Value> hash = new HashMap<>();
+                for (String key:result){
+                    hash.put(key, NLispTools.makeValue(1));
+                }
+                return new StringHashtableValue(hash);
+            }
+            case ENUM: {
+                return NLispTools.makeValue((String)rawValue);
+            }
+            case SCALED_VALUE:
+                return NLispTools.makeValue (((Double)rawValue).doubleValue());
+            case STRUCT:
+            {
+                HashMap<String, Object> rawMap = (HashMap<String, Object>)rawValue;
+                HashMap<String, Value> finalResult = new HashMap<>();
+                StructVector struct = (StructVector)type;
+                for (String key:rawMap.keySet()){
+                    finalResult.put(key, wrapVectorTypeValue(struct.getFieldType(key), rawMap.get(key)));
+                }
+                return new StringHashtableValue(finalResult);
+            }
+        }
+        return Environment.getNull();
+    }
+
+
+
+    /**
+     * The return object, X, has the property that:
+     * X = getVectorTypeArgument(type, wrapVectorTypeValue(type, X)))
+     *
+     *
+     */
+    static Object getVectorTypeArgument(VectorType type, Value value){
+        switch (type.getType()){
+            case SET:
+            {
+                HashSet<String> itemSet = new HashSet<>();
+                String[] items = null;
+                if (value.isList()){
+                    items = NLispTools.getStringArrayFromValue(value);
+                }
+                else {
+                    items = value.getStringHashtable().keySet().toArray(new String[0]);
+                }
+                itemSet.addAll(Arrays.asList(items));
+                return itemSet;
+            }
+            case ENUM:
+            {
+                return value.getString();
+            }
+            case UNSIGNED_TALLY:
+            {
+                Integer nvalue = Integer.valueOf((int)value.getIntValue());
+                return nvalue;
+            }
+            case SCALED_VALUE:
+            {
+                Double nvalue = Double.valueOf(value.getFloatValue());
+                return nvalue;
+            }
+            case STRUCT:
+            {
+                HashMap<String, Value> baseInput = value.getStringHashtable();
+                HashMap<String, Object> finalArgs = new HashMap<>();
+                for (String key:baseInput.keySet()){
+                    StructVector structVector = (StructVector)type;
+                    VectorType keyType = structVector.getFieldType(key);
+                    if (keyType == null)
+                        return null;
+                    else
+                        finalArgs.put(key, getVectorTypeArgument(keyType, baseInput.get(key)));
+                }
+                return finalArgs;
+
+            }
+
+        }
+        return null;
+    }
+
+
+//    static Object getVectorTypeArgument(VectorType type, Value value){
+//        switch (type.getType()){
+//            case SET:
+//            {
+//                HashSet<String> itemSet = new HashSet<>();
+//                String[] items = null;
+//                if (value.isList()){
+//                    items = NLispTools.getStringArrayFromValue(value);
+//                }
+//                else {
+//                    items = value.getStringHashtable().keySet().toArray(new String[0]);
+//                }
+//                itemSet.addAll(Arrays.asList(items));
+//                return getLispDataValue(type.valueToVector(itemSet));
+//            }
+//            case ENUM:
+//            {
+//                return NLispTools.makeValue(value.getString());
+//            }
+//            case UNSIGNED_TALLY:
+//            {
+//                Integer nvalue = Integer.valueOf((int)value.getIntValue());
+//                return getLispDataValue(type.valueToVector(nvalue));
+//            }
+//            case SCALED_VALUE:
+//            {
+//                Double nvalue = Double.valueOf(value.getFloatValue());
+//                return getLispDataValue(type.valueToVector(nvalue));
+//            }
+//            case STRUCT:
+//            {
+//                HashMap<String, Value> baseInput = value.getStringHashtable();
+//                HashMap<String, Object> finalArgs = new HashMap<>();
+//                for (String key:baseInput.keySet()){
+//                    StructVector structVector = (StructVector)type;
+//                    VectorType keyType = structVector.getFieldType(key);
+//                    if (keyType == null)
+//                        return null;
+//                    else
+//                        finalArgs.put(key, getVectorTypeArgument(keyType, baseInput.get(key)));
+//                }
+//                return finalArgs;
+//
+//            }
+//
+//        }
+//        return null;
+//    }
+//
+    public static SimpleFunctionTemplate vectorTypeCreateStruct()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeCreateStruct();
+            }
+
+            // First argument is the LSTM
+
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                HashMap<String, Value> map = evaluatedArgs[0].getStringHashtable();
+                HashMap<String, VectorType> tmap = new HashMap<>();
+                for (String key:map.keySet()){
+                    tmap.put(key, (VectorType)map.get(key).getObjectValue());
+                }
+                VectorType type = new StructVector(tmap);
+                return ExtendedFunctions.makeValue(type);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate vectorTypeCreateSet()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeCreateSet();
+            }
+
+            // First argument is the LSTM
+
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                String[] items = NLispTools.getStringArrayFromValue(evaluatedArgs[0]);
+                VectorType type = new SetVector(items);
+                return ExtendedFunctions.makeValue(type);
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate vectorTypeCreateScaledNumber()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeCreateScaledNumber();
+            }
+
+            // First argument is the LSTM
+            // Second argument is an error vector
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(3, false, true);
+
+                double minValue = evaluatedArgs[0].getFloatValue();
+                double maxValue = evaluatedArgs[1].getFloatValue();
+                int numSteps = (int)evaluatedArgs[2].getIntValue();
+                VectorType type = new ScaledNumVector(minValue, maxValue, numSteps);
+
+                return ExtendedFunctions.makeValue(type);
+            }
+        };
+    }
+
+
     public static SimpleFunctionTemplate FastSetOutputErrorMask()
     {
         return new SimpleFunctionTemplate() {
@@ -165,6 +825,59 @@ public class NeuralNetLispInterface {
             }
         };
     }
+
+    public static SimpleFunctionTemplate vectorTypeCreateTallyNumber()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeCreateTallyNumber();
+            }
+
+            // First argument is the LSTM
+            // Second argument is an error vector
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                int size = (int)evaluatedArgs[0].getIntValue();
+                VectorType type = new TallyVector(size);
+
+                return ExtendedFunctions.makeValue(type);
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate vectorTypeCreateEnum()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) vectorTypeCreateEnum();
+            }
+
+            // First argument is the LSTM
+
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, false, true);
+
+                String[] items = NLispTools.getStringArrayFromValue(evaluatedArgs[0]);
+                VectorType type = new EnumVector(items);
+                return ExtendedFunctions.makeValue(type);
+            }
+        };
+    }
+
 
     public static SimpleFunctionTemplate FastClearOutputErrorMask()
     {

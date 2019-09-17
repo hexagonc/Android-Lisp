@@ -1,0 +1,3 @@
+C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/debug/armeabi/CMakeFiles/neural_tools.dir
+C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/debug/armeabi/CMakeFiles/edit_cache.dir
+C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/debug/armeabi/CMakeFiles/rebuild_cache.dir

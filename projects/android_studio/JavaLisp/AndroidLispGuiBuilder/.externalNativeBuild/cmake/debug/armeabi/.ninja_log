@@ -1,0 +1,5 @@
+# ninja log v5
+683	2360	0	CMakeFiles/neural_tools.dir/src/main/c/tools.c.o	1b4639a16a671405
+1	2424	0	CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o	a258d493dfe0c7de
+1319	3315	0	CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o	24729330c48b3a73
+3315	4037	0	../../../../build/intermediates/cmake/debug/obj/armeabi/libneural_tools.so	a563c8f46968fbc4

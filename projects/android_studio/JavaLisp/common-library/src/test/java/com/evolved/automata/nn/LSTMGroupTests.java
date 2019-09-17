@@ -2,6 +2,10 @@ package com.evolved.automata.nn;
 
 import com.evolved.automata.ConcurrentGenerator;
 import com.evolved.automata.InterruptibleResultProducer;
+import com.evolved.automata.lisp.ListValue;
+import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.StringHashtableValue;
+import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.nn.LSTMNetworkProxy;
 import com.evolved.automata.nn.util.FeatureModel;
 import com.evolved.automata.nn.util.Group;
@@ -19,7 +23,9 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
 
 import static com.evolved.automata.nn.FastLSTMNetwork.roundToInt;
 
@@ -2064,6 +2070,417 @@ public class LSTMGroupTests {
         }
     }
 
+    @Test
+    public void testCustomFeatureModelFocus(){
+        int[][] focusTest = {{1, 9}, {2,8}, {3, 7}, {4, 6}, {5, 5}, {6, 4}, {7, 3}, {8, 2}, {9,1}};
+
+
+        String errorMessage = null;
+
+        try
+        {
+            errorMessage = "Failed to create augmented vector list";
+            int radiix = 10;
+            Vector[] augmented = getAugmentedVectors(focusTest, radiix);
+
+            int bDim = 2*radiix;
+            int maxAllocation = 25;
+            int initialGroupWeight = 1;
+            int featureBufferSize = 4;
+            int minimumBufferOverlap = 3;
+
+            errorMessage = "Failed to create world model";
+
+            LearningConfiguration base = WorldModel.getFeatureLearningConfiguration();
+            base.setInputValidator(getAugmentedVectorInputValidator(radiix ,radiix));
+            base.setInputToStringConverter(getInputToStringConverter(radiix, radiix));
+            WorldModel world = new WorldModel(maxAllocation, base);
+
+            errorMessage = "Failed to create new group";
+
+            WorldModel.GroupType DEFAULT_TYPE = world.createGroupType("DEFAULT", bDim, 30, initialGroupWeight, featureBufferSize, minimumBufferOverlap, base);
+
+            Group DEFAULT_GROUP = world.addGroup("DEFAULT", DEFAULT_TYPE);
+
+            DEFAULT_GROUP.setDebugEnabled(true);
+
+            DEFAULT_GROUP.setMinimumRecycleUsageCount(0);
+            DEFAULT_GROUP.setMode(Group.MODE.LEARNING);
+
+            // Learn the pattern focusing on the increasing
+            float[] maskIncreasing = getMask(new int[]{0}, radiix, radiix);
+            float[] maskDecreasing = getMask(new int[]{1}, radiix, radiix);
+
+            Value[] lispIncreasingMask = new Value[maskIncreasing.length];
+            Value[] lispDecreasingMask = new Value[maskDecreasing.length];
+
+            for (int i = 0;i<lispDecreasingMask.length;i++){
+                lispDecreasingMask[i] = NLispTools.makeValue(maskDecreasing[i]);
+            }
+
+            for (int i = 0;i<lispIncreasingMask.length;i++){
+                lispIncreasingMask[i] = NLispTools.makeValue(maskIncreasing[i]);
+            }
+
+            Value increasingMaskValue = new ListValue(lispIncreasingMask);
+            Value decreasingMaskValue = new ListValue(lispDecreasingMask);
+
+            final String INCREASING_TYPE_KEY = "increasing";
+            final String DECREASING_TYPE_KEY = "decreasing";
+            HashMap<String, Value> increasingModelMetaMap = new HashMap<String, Value>(){
+                {
+                    put(Group.FOCUS_KEY, increasingMaskValue);
+                    put("TYPE", NLispTools.makeValue(INCREASING_TYPE_KEY));
+
+                }
+            };
+
+            HashMap<String, Value> decreasingModelMetaMap = new HashMap<String, Value>(){
+                {
+                    put(Group.FOCUS_KEY, decreasingMaskValue);
+                    put("TYPE", NLispTools.makeValue(DECREASING_TYPE_KEY));
+                }
+            };
+
+            StringHashtableValue increasingModelMeta = new StringHashtableValue(increasingModelMetaMap);
+            StringHashtableValue decreasingModelMeta = new StringHashtableValue(decreasingModelMetaMap);
+
+
+            // Train the group on the increasing mask
+
+            errorMessage = "Errors processing input";
+
+            FeatureModel focus = null, prevFocus = null;
+            for (Vector input:augmented){
+                DEFAULT_GROUP.processInput(input);
+                focus = DEFAULT_GROUP.getFocusModel();
+                if (focus != null){
+                    DEFAULT_GROUP.setCustomMetadata(focus, increasingModelMeta);
+                }
+            }
+            DEFAULT_GROUP.resetAll(false);
+
+            for (Vector input:augmented){
+                DEFAULT_GROUP.processInput(input);
+                focus = DEFAULT_GROUP.getFocusModel();
+                if (focus != null){
+                    DEFAULT_GROUP.setCustomMetadata(focus, decreasingModelMeta);
+
+                }
+            }
+            DEFAULT_GROUP.resetAll(false);
+
+            // Now extrapolate using the corrupted inputs
+
+            errorMessage = "Faild to generate random inputs";
+            long seed = System.currentTimeMillis();
+
+            System.out.println("Using seed: " + seed);
+            Random ranGen = new Random();
+            ranGen.setSeed(seed);
+
+            int[][] noisyIncreasing = new int[focusTest.length][];
+
+            int[][] noisyDecreasing = new int[focusTest.length][];
+
+
+            for (int k = 0; k < focusTest.length;k++){
+                int[] element = focusTest[k];
+                int sample1 = (int)(ranGen.nextDouble()*radiix);
+                int sample2 = (int)(ranGen.nextDouble()*radiix);
+
+                noisyIncreasing[k] = new int[]{element[0], sample1};
+                noisyDecreasing[k] = new int[]{sample2, element[1]};
+            }
+
+            System.out.println("Constructed noisy increasing input: " + displayIntGroup(noisyIncreasing));
+            System.out.println("Constructed noisy decreasing input: " + displayIntGroup(noisyDecreasing));
+
+            errorMessage = "Failed to create augmented inputs";
+
+            Vector[] noisyIncVectorSeq = getAugmentedVectors(noisyIncreasing, radiix);
+
+            Vector[] noisyDecVectorSeq = getAugmentedVectors(noisyDecreasing, radiix);
+
+            System.out.println("Constructed noisy augmented increasing input: " + Arrays.toString(noisyIncVectorSeq));
+            System.out.println("Constructed noisy augmented decreasing input: " + Arrays.toString(noisyDecVectorSeq));
+
+            int increasingCount = 0, decreasingCount = 0;
+
+            int totalSteps = focusTest.length;
+
+            boolean resetFirstP = false;
+
+            if (resetFirstP)
+                DEFAULT_GROUP.resetAll(false);
+
+            System.out.println("Extrapolating from increasing noisy sequence: " + displayIntGroup(noisyIncreasing));
+            DEFAULT_GROUP.setMode(Group.MODE.EXTRAPOLATION);
+            {
+                errorMessage = "Failed to tally increasing/decreasing recognition counts";
+                for (int k = 0; k<totalSteps;k++){
+                    DEFAULT_GROUP.processInput(noisyIncVectorSeq[k]);
+                    FeatureModel model = DEFAULT_GROUP.getFocusModel();
+                    if (model != null) {
+                        StringHashtableValue metaMap = (StringHashtableValue)DEFAULT_GROUP.getCustomMetadata(model);
+                        if (metaMap != null){
+                            String type = metaMap.getStringHashtable().get("TYPE").getString();
+                            if (INCREASING_TYPE_KEY.equals(type)){
+                                increasingCount++;
+                            }
+
+                            if (DECREASING_TYPE_KEY.equals(type)){
+                                decreasingCount++;
+                            }
+                        }
+
+                    }
+                }
+
+                Assert.assertTrue(errorMessage, increasingCount > decreasingCount);
+
+                System.out.println(String.format("For increasing sequence, increasing/decreasing (%1$d, %2$d)", increasingCount, decreasingCount));
+            }
+
+            increasingCount = 0;
+            decreasingCount = 0;
+            if (resetFirstP)
+                DEFAULT_GROUP.resetAll(false);
+
+            System.out.println("Extrapolating from decreasing noisy sequence: " + displayIntGroup(noisyDecreasing));
+            DEFAULT_GROUP.setMode(Group.MODE.EXTRAPOLATION);
+            {
+                errorMessage = "Failed to tally increasing/decreasing recognition counts";
+                for (int k = 0; k<totalSteps;k++){
+                    DEFAULT_GROUP.processInput(noisyDecVectorSeq[k]);
+                    FeatureModel model = DEFAULT_GROUP.getFocusModel();
+                    if (model != null){
+                        StringHashtableValue metaMap = (StringHashtableValue)DEFAULT_GROUP.getCustomMetadata(model);
+                        if (metaMap != null){
+                            String type = metaMap.getStringHashtable().get("TYPE").getString();
+                            if (INCREASING_TYPE_KEY.equals(type)){
+                                increasingCount++;
+                            }
+
+                            if (DECREASING_TYPE_KEY.equals(type)){
+                                decreasingCount++;
+                            }
+                        }
+
+                    }
+                }
+
+                Assert.assertTrue(errorMessage, increasingCount < decreasingCount);
+
+                System.out.println(String.format("For decreasing sequence, increasing/decreasing (%1$d, %2$d)", increasingCount, decreasingCount));
+            }
+
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testAugmentedVectorViewer(){
+        String errorMessage = null;
+        try
+        {
+            int[] input = {5, 2};
+            int radiix = 10;
+            errorMessage = "Failed to create augmented vector from " + Arrays.toString(input);
+            Vector augmented = getAugmentedVector(input, radiix);
+            errorMessage = "Failed to get string form";
+            LearningConfiguration.InputToStringConverter converter = getInputToStringConverter(radiix, radiix);
+
+            String toString = converter.toString(augmented.rawFloat());
+            System.out.println("Created: " + toString);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testAugmentedVector(){
+        int[] input = {1, 9};
+
+        String errorMessage = null;
+        try
+        {
+            int radiix = 10;
+            errorMessage = "Failed to get augmented vector";
+            Vector v = getAugmentedVector(input, radiix);
+            System.out.println(Arrays.toString(input) + "->" + v);
+
+            errorMessage = "Failed to recover int vector";
+            int[] recovered = getIntVectorFromAugmentedVector(v, radiix);
+            errorMessage = "Failed to match input.  Expected " + Arrays.toString(input) + " but found: " + Arrays.toString(recovered);
+
+            Assert.assertTrue(errorMessage, recovered != null && recovered.length == input.length);
+            for (int j = 0;j<input.length;j++){
+                Assert.assertTrue(errorMessage, recovered[j] == input[j]);
+            }
+
+        }
+        catch(Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testAugmentedVectors(){
+        String errorMessage = "Failed to construct augmented vectors";
+        int[][] focusTest = {{1, 9}, {2,8}, {3, 7}, {4, 6}, {5, 5}, {6, 4}, {7, 3}, {8, 2}, {9,1}};
+        int radiix = 10;
+        try{
+
+            Vector[] augmented = getAugmentedVectors(focusTest, radiix);
+
+            Assert.assertTrue(errorMessage, augmented != null && augmented.length == focusTest.length);
+            for (int i = 0; i < augmented.length;i++){
+                errorMessage = "Failed to recover int vector: " + Arrays.toString(focusTest[i]);
+
+                int[] recovered = getIntVectorFromAugmentedVector(augmented[i], radiix);
+
+                Assert.assertTrue(errorMessage, recovered != null && recovered.length == focusTest[i].length);
+
+                errorMessage = "Failed to recover int vector.  Expected " + Arrays.toString(focusTest[i]) + " but found: " + Arrays.toString(recovered);
+                for (int j = 0; j < recovered.length;j++){
+
+                    Assert.assertTrue(errorMessage, recovered[j] == focusTest[i][j]);
+                }
+
+
+            }
+
+            Vector[] reconstructed = reconstructFromPackedIntVectors(augmented, radiix);
+
+            System.out.println("Recovered: " + Arrays.toString(reconstructed));
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    @Test
+    public void testAugmentedVectorValidator(){
+        String errorMessage = null;
+
+        try
+        {
+            long seed = 1543001323604L;
+            Random r = new Random();
+            r.setSeed(seed);
+
+            System.out.println("Using seed: " + seed);
+            int radiix = 10;
+            int[] intInput = {1, 9};
+            errorMessage = "Failed to create augmented vector from " + Arrays.toString(intInput);
+            Vector augmentedVector = getAugmentedVector(intInput, radiix);
+            errorMessage = "Failed to create input validator";
+            LearningConfiguration.InputValidator validator = getAugmentedVectorInputValidator(radiix ,radiix);
+            errorMessage = "Failed to validate input: " + augmentedVector;
+            Assert.assertTrue(errorMessage, validator.isValid(augmentedVector.rawFloat()));
+            float[] dat = augmentedVector.rawFloat();
+            errorMessage = "Failed to introduce noise into input";
+
+            int seletedIndex = (int)(dat.length*r.nextDouble());
+            System.out.println("Corrupting bit: " + seletedIndex);
+            dat[seletedIndex] = 1 - dat[seletedIndex];
+
+            errorMessage = "Failed to invalidate: " + Arrays.toString(dat);
+            Assert.assertTrue(errorMessage, !validator.isValid(dat));
+            System.out.println("Verified with noisy input: " + Arrays.toString(dat));
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            Assert.assertTrue(errorMessage, false);
+        }
+    }
+
+    public LearningConfiguration.InputToStringConverter getInputToStringConverter(int... dimen){
+        return (float[] input)->{
+            int width = input.length;
+            int index = 0, total = 0;
+            int[] out = new int[dimen.length];
+            float[] buffer = new float[dimen[index]];
+            for (int i = 0; i < width;i++){
+                if (i >= total + dimen[index]){
+                    total+=dimen[index];
+                    out[index] = tallyVectorToInteger(NNTools.roundToInt(buffer));
+                    index++;
+
+                    buffer = new float[dimen[index]];
+                }
+                buffer[i - total] = input[i];
+            }
+            out[dimen.length - 1] = tallyVectorToInteger(NNTools.roundToInt(buffer));
+            return Arrays.toString(out);
+        };
+    }
+
+    public LearningConfiguration.InputValidator getAugmentedVectorInputValidator(int...dimen){
+
+        return (float[] input)->{
+
+            int index = 0;
+            int total = 0;
+            boolean seenZero = false;
+            boolean isZero = false;
+
+            for (int i =0; i < input.length;i++){
+                if (i >= total + dimen[index]){
+                    total+=dimen[index];
+                    seenZero = false;
+                    index++;
+                }
+                isZero = Math.round(input[i]) == 0F;
+                if (seenZero && !isZero)
+                    return false;
+
+                seenZero = seenZero || isZero;
+
+            }
+            return true;
+        };
+    }
+
+    float[] getMask(int[] includedDimens, int... dimen){
+        HashSet<Integer> inclusion = new HashSet<>();
+        Arrays.stream(includedDimens).forEach((x)->inclusion.add(x));
+        HashSet<Integer> ones = new HashSet<>();
+        int index = 0;
+        for (int i = 0; i < dimen.length;i++){
+            if (inclusion.contains(i)){
+                for (int j = 0; j < dimen[i];j++){
+                    ones.add(index);
+                    index++;
+                }
+            }
+            else {
+                for (int j = 0; j < dimen[i];j++){
+                    index++;
+                }
+            }
+
+        }
+
+        float[] mask = new float[index];
+        for (int j = 0; j < index;j++){
+            if (ones.contains(j))
+                mask[j]=1.0F;
+            else
+                mask[j]=0.0F;
+        }
+        return mask;
+    }
 
 
     int[] vectorsToInts(Vector[] in){
@@ -2075,8 +2492,79 @@ public class LSTMGroupTests {
                 out[i] = -1;
                 continue;
             }
-            out[i] = tallyVectorToInteger(in[i].rawFloat());
+            out[i] = tallyVectorToInteger(NNTools.roundToInt(in[i].rawFloat()));
         }
+        return out;
+    }
+
+    Vector getAugmentedVector(int[] intVect, int radiix){
+        int numIntDim = intVect.length;
+        int dim = radiix * numIntDim;
+        float[] elements = new float[dim];
+        for (int j = 0;j<dim;j++){
+            int index = j/radiix;
+            elements[j] = intToTallyVector(intVect[index], radiix).rawFloat()[j % radiix];
+        }
+        return new Vector(elements);
+    }
+
+    int[] getIntVectorFromAugmentedVector(Vector v, int radiix){
+
+        float[] raw = v.rawFloat();
+
+        int ivLength = raw.length/radiix;
+        int[] o = new int[ivLength];
+        float[] fout = null;
+        for (int i = 0; i < raw.length;i++){
+            int index = i/radiix;
+
+            if (i % radiix == 0 && i > 0){
+                o[index-1] = tallyVectorToInteger(fout).intValue();
+            }
+
+            if (i % radiix == 0){
+                fout = new float[radiix];
+            }
+
+            fout[i % radiix] = raw[i];
+        }
+
+        o[ivLength-1] = tallyVectorToInteger(fout).intValue();
+        return o;
+    }
+
+
+    String displayIntGroup(int[][] a){
+
+        String[] o = new String[a.length];
+        for (int i = 0;i<a.length;i++){
+            o[i] = Arrays.toString(a[i]);
+        }
+
+        return Arrays.toString(o);
+    }
+
+
+    Vector[] getAugmentedVectors(int[][] data, int radiix){
+        Vector[] out = new Vector[data.length];
+
+        for (int i = 0; i < out.length;i++){
+            int[] dimensions = data[i];
+
+            out[i] = getAugmentedVector(dimensions, radiix);
+        }
+
+        return out;
+    }
+
+    Vector[] reconstructFromPackedIntVectors(Vector[] packed, int radiix){
+        Vector[] out = new Vector[packed.length];
+
+        for (int i = 0; i < packed.length; i++){
+            Vector element = packed[i];
+            out[i] = new Vector(getIntVectorFromAugmentedVector(element, radiix));
+        }
+
         return out;
     }
 

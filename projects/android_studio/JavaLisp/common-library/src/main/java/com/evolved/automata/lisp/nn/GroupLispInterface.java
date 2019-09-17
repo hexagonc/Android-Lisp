@@ -47,11 +47,13 @@ public class GroupLispInterface {
 
         env.mapFunction("world-add-group", worldAddGroup());
         env.mapFunction("world-get-group", worldGetGroup());
+        env.mapFunction("world-find-group", worldFindGroup());
 
         env.mapFunction("world-process-input", worldProcessInput());
 
         env.mapFunction("group-type-set-default-string-serializer", groupTypeSetDefaultStringSerializer());
         env.mapFunction("group-type-get-name", groupTypeGetName());
+        env.mapFunction("group-get-name", groupGetName());
 
 
         env.mapFunction("group-import-feature", groupImportFeature());
@@ -133,6 +135,8 @@ public class GroupLispInterface {
         env.mapFunction("remove-vector-key", removeVectorKey());
 
         // Memory reporting and diagnostics
+        env.mapFunction("Group.FOCUS_KEY", metadataGroupTypeFocusKey());
+
         env.mapFunction("report-get-log", reportGetLog());
         env.mapFunction("report-get-warnings", reportGetWarnings());
         env.mapFunction("report-get-text", reportGetText());
@@ -389,6 +393,57 @@ public class GroupLispInterface {
         };
     }
 
+    public static SimpleFunctionTemplate worldFindGroup()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) worldFindGroup();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(2, true, false);
+                WorldModel model = (WorldModel)evaluatedArgs[0].getObjectValue();
+                String groupName = evaluatedArgs[1].getString();
+
+                ArrayList<WorldModel.GroupSpecification> gspec = model.findGroups(groupName);
+
+                if (evaluatedArgs.length>2){
+                    Value typeSpecifier = evaluatedArgs[2]; // can be either the type name or the type itself
+
+                    WorldModel.GroupSpecification spec;
+                    if (typeSpecifier.isString())
+                        spec = model.getGroup(typeSpecifier.getString(), groupName);
+                    else if (typeSpecifier.isUserObject() &&  typeSpecifier.getObjectValue() instanceof WorldModel.GroupType){
+                        spec = model.getGroup((WorldModel.GroupType)typeSpecifier.getObjectValue(), groupName);
+                    }
+                    else
+                        throw new RuntimeException("Group type argument must be the GroupType's name or the GroupType itself");
+
+                    if (spec != null)
+                        return ExtendedFunctions.makeValue(spec.getGroup());
+                    else
+                        return Environment.getNull();
+                }
+                else {
+                    if (gspec.size()>0){
+                        return ExtendedFunctions.makeValue(gspec.get(0).getGroup());
+                    }
+                    else {
+                        return Environment.getNull();
+                    }
+                }
+
+
+
+            }
+        };
+    }
+
     public static SimpleFunctionTemplate groupSyncWithType()
     {
         return new SimpleFunctionTemplate() {
@@ -569,6 +624,24 @@ public class GroupLispInterface {
                 else
                     return Environment.getNull();
 
+            }
+        };
+    }
+
+    public static SimpleFunctionTemplate metadataGroupTypeFocusKey()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) metadataGroupTypeFocusKey();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                return NLispTools.makeValue(Group.FOCUS_KEY);
             }
         };
     }
@@ -1041,6 +1114,29 @@ public class GroupLispInterface {
 
 
                 return NLispTools.makeValue(type.getName());
+            }
+        };
+    }
+
+
+    public static SimpleFunctionTemplate groupGetName()
+    {
+        return new SimpleFunctionTemplate() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public <T extends FunctionTemplate> T innerClone() throws InstantiationException, IllegalAccessException
+            {
+                return (T) groupGetName();
+            }
+
+            @Override
+            public Value evaluate(Environment env, Value[] evaluatedArgs)
+            {
+                checkActualArguments(1, true, true);
+                Group group = (Group)evaluatedArgs[0].getObjectValue();
+
+
+                return NLispTools.makeValue(group.getName());
             }
         };
     }

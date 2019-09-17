@@ -1,0 +1,16 @@
+{
+  "buildFiles": [
+    "C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\CMakeLists.txt"
+  ],
+  "cleanCommands": [
+    "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\release\\x86 --target clean"
+  ],
+  "libraries": {
+    "neural_tools-Release-x86": {
+      "artifactName": "neural_tools",
+      "buildCommand": "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\release\\x86 --target neural_tools",
+      "abi": "x86",
+      "output": "C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\build\\intermediates\\cmake\\release\\obj\\x86\\libneural_tools.so"
+    }
+  }
+}

@@ -2,6 +2,8 @@ package com.evolved.automata.nn.util;
 
 import com.evolved.automata.AITools;
 import com.evolved.automata.WeightedValue;
+import com.evolved.automata.lisp.StringHashtableValue;
+import com.evolved.automata.lisp.Value;
 import com.evolved.automata.nn.NNTools;
 import com.evolved.automata.nn.Vector;
 
@@ -731,6 +733,7 @@ public class Group {
         public long _learningTime = 0;
         public boolean _isInUseP = false;
         public Object _userObject = null;
+        public Vector _mask = null;
 
         String _serializedData = null;
 
@@ -739,6 +742,16 @@ public class Group {
         FeatureMetaData(){
 
         }
+
+        public Vector getMask(){
+            return _mask;
+        }
+
+        public FeatureMetaData setMask(Vector mask){
+            _mask = mask;
+            return this;
+        }
+
 
         /**
          * Doesn't change allocation index
@@ -1719,6 +1732,32 @@ public class Group {
 
     public MODE processInput(Vector input){
         return processInput(input, null, null);
+    }
+
+    public static final String FOCUS_KEY = "FOCUS";
+
+    public Vector getMaskFromFeatureMetadata(FeatureModel model){
+        FeatureMetaData metaData = getFeatureInternalMetaData(model);
+
+        if (metaData != null){
+            if (mType.hasGroupFlag(WorldModel.GroupTypeFlag.GET_FOCUS_FROM_LISP_HASHTABLE)){
+                Object data = metaData.getCustomMetadata();
+                if (data != null && data.getClass() == StringHashtableValue.class){
+                    StringHashtableValue table = (StringHashtableValue)data;
+                    HashMap<String, Value> map = table.getStringHashtable();
+                    if (map.containsKey(FOCUS_KEY)){
+                        Value[] items = map.get(FOCUS_KEY).getList();
+                        double[] dim = new double[items.length];
+                        for (int i = 0;i < dim.length;i++){
+                            dim[i] = items[i].getFloatValue();
+                        }
+                        return new Vector(dim);
+                    }
+                }
+            }
+
+        }
+        return null;
     }
 
 
@@ -2853,10 +2892,18 @@ public class Group {
         mGroupHeap.clear();
         mFocusQueue.clear();
 
+        Vector actualMask = null;
         for (Integer index: mFeatureMap.keySet()){
             FeatureModel model = mFeatureMap.get(index);
+
             if (model.isComplete() && (excluded == null || !excluded.contains(model))){
-                model.processNextInput(input, mask);
+                if ((actualMask = getMaskFromFeatureMetadata(model)) != null){
+                    model.processNextInput(input, actualMask);
+                }
+                else {
+                    model.processNextInput(input, mask);
+                }
+
                 if (!isSleeping()){
                     getFeatureInternalMetaData(model).updateUsageCount();
                 }

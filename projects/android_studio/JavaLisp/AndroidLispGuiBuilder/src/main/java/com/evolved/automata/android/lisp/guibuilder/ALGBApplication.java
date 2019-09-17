@@ -8,6 +8,10 @@ import com.evolved.automata.android.lisp.guibuilder.model.ALGB;
 import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.nn.NNTools;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Context;
+import android.os.Build;
 import android.support.multidex.MultiDexApplication;
 import android.util.Base64;
 
@@ -23,6 +27,8 @@ public class ALGBApplication extends MultiDexApplication
 		
 		super.onCreate();
 
+		int value = ToolsKt.makeDouble(90);
+		System.out.println(value);
 		NNTools.BASE64 = new NNTools.Base64Interface() {
 			@Override
 			public String encodeBase64(byte[] data)
@@ -54,6 +60,7 @@ public class ALGBApplication extends MultiDexApplication
 			DropboxManager.create(getApplicationContext());
 			TutorialManager.make(this);
 			EventLog.create(mApplication);
+
 
 		}
 		catch (Exception e)

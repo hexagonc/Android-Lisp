@@ -5,7 +5,7 @@ buildscript {
     }
 
 	dependencies {
-		classpath 'com.android.tools.build:gradle:3.1.3'
+		classpath 'com.android.tools.build:gradle:3.4.1'
 	}
 }
 
@@ -17,17 +17,25 @@ repositories {
 	jcenter()
 }
 
+ext {
+	supportVersion = "28.0.0"
+}
+
 android {
-	compileSdkVersion 26
-	buildToolsVersion '27.0.3'
+	compileSdkVersion 28
+	buildToolsVersion '28.0.3'
+	defaultConfig {
+		minSdkVersion 24
+        targetSdkVersion 28
+    }
 }
 
 
 dependencies {
-	compile project(':common-library')
-    compile 'com.android.support:support-core-ui:26.0.2'
-	compile 'com.android.support:support-core-utils:26.0.2'
+	implementation project(':common-library')
+	implementation "com.android.support:support-core-ui:${supportVersion}"
+	implementation "com.android.support:support-core-utils:${supportVersion}"
+	implementation "com.android.support:support-compat:${supportVersion}"
 
-
-	compile group: 'com.nostra13.universalimageloader', name: 'universal-image-loader', version: '1.9.1'
+	implementation group: 'com.nostra13.universalimageloader', name: 'universal-image-loader', version: '1.9.1'
 }

@@ -2273,7 +2273,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
         }
 
-        System.out.println("Generated sample counts, " + Arrays.toString(sampleCounts));
+        System.out.println("Generated vectorToValue counts, " + Arrays.toString(sampleCounts));
         float error = 0.01F;
 
         for (int k = 0;k < numClasses;k++)
@@ -2327,7 +2327,7 @@ public class FastLSTMTester extends BaseLSTMTester {
 
         }
 
-        System.out.println("Generated sample counts, " + Arrays.toString(sampleCounts));
+        System.out.println("Generated vectorToValue counts, " + Arrays.toString(sampleCounts));
         float error = 0.01F;
 
         for (int k = 0;k < numClasses;k++)

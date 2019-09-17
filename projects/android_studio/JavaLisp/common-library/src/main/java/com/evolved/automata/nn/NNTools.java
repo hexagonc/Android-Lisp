@@ -3,6 +3,7 @@ package com.evolved.automata.nn;
 import com.evolved.automata.AITools;
 import com.evolved.automata.ArrayMapper;
 import com.evolved.automata.IndexedValueMapper;
+import com.evolved.automata.nn.util.LearningConfiguration;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
@@ -17,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -1079,7 +1081,7 @@ public class NNTools {
         for (i = 0;i< discretized.size();i++)
         {
             v_i = discretized.get(i);
-            flag = v_i > 0.5;
+            flag = roundToInt(v_i)==1;
             if ( i % 2 == 0)
             {
                 greater_than_midpoint = flag;
@@ -1177,6 +1179,10 @@ public class NNTools {
             return 0;
         else
             return 1;
+    }
+
+    public static boolean isTrue(float v){
+        return roundToInt(v) == 1;
     }
 
     public static int  roundToInt(double v)
@@ -1540,4 +1546,85 @@ public class NNTools {
         }
         return out;
     }
+
+    public LearningConfiguration.InputToStringConverter getInputToStringConverter(int... dimen){
+        return (float[] input)->{
+            int width = input.length;
+            int index = 0, total = 0;
+            int[] out = new int[dimen.length];
+            float[] buffer = new float[dimen[index]];
+            for (int i = 0; i < width;i++){
+                if (i >= total + dimen[index]){
+                    total+=dimen[index];
+                    out[index] = tallyVectorToInteger(NNTools.roundToInt(buffer));
+                    index++;
+
+                    buffer = new float[dimen[index]];
+                }
+                buffer[i - total] = input[i];
+            }
+            out[dimen.length - 1] = tallyVectorToInteger(NNTools.roundToInt(buffer));
+            return Arrays.toString(out);
+        };
+    }
+
+    public LearningConfiguration.InputValidator getAugmentedVectorInputValidator(int...dimen){
+
+        return (float[] input)->{
+
+            int index = 0;
+            int total = 0;
+            boolean seenZero = false;
+            boolean isZero = false;
+
+            for (int i =0; i < input.length;i++){
+                if (i >= total + dimen[index]){
+                    total+=dimen[index];
+                    seenZero = false;
+                    index++;
+                }
+                isZero = Math.round(input[i]) == 0F;
+                if (seenZero && !isZero)
+                    return false;
+
+                seenZero = seenZero || isZero;
+
+            }
+            return true;
+        };
+    }
+
+    float[] getMask(int[] includedDimens, int... dimen){
+        HashSet<Integer> inclusion = new HashSet<>();
+        Arrays.stream(includedDimens).forEach((x)->inclusion.add(x));
+        HashSet<Integer> ones = new HashSet<>();
+        int index = 0;
+        for (int i = 0; i < dimen.length;i++){
+            if (inclusion.contains(i)){
+                for (int j = 0; j < dimen[i];j++){
+                    ones.add(index);
+                    index++;
+                }
+            }
+            else {
+                for (int j = 0; j < dimen[i];j++){
+                    index++;
+                }
+            }
+
+
+
+        }
+
+        float[] mask = new float[index];
+        for (int j = 0; j < index;j++){
+            if (ones.contains(j))
+                mask[j]=1.0F;
+            else
+                mask[j]=0.0F;
+        }
+        return mask;
+    }
+
+
 }

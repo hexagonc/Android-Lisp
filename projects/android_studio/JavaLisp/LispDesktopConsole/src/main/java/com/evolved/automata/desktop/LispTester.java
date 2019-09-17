@@ -1,10 +1,12 @@
 package com.evolved.automata.desktop;
+import com.evolved.automata.lisp.AgentToolsKt;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FileFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.IncompleteLispExpressionException;
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.RuntimeFunctions;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.nn.GroupLispInterface;
@@ -99,7 +101,7 @@ public class LispTester {
 			display.DisplayMessageLine(result.toString(), true);
 	}
 	
-	private static void displayError(AIInfoDisplay display, Exception result)
+	private static void displayError(AIInfoDisplay display, Throwable result)
 	{
 		if (result!=null)
 			display.DisplayMessageLine(result.toString(), true);
@@ -715,8 +717,40 @@ public class LispTester {
 			top.mapFunction("delete-old-data", deleteOldData(deleteOldDataStatement));
 			top.mapFunction("select-old-data-names", selectOldData(selectOldDataStatement));
 			top.mapFunction("get-all-names", selectAllDataKeys(selectAllDataKeysStatement));
+			AgentToolsKt.addFunctions(top);
 			DropboxInterface.addDefaultFunctions(top, dropboxAccessToken, dropboxAppName);
 			GroupLispInterface.addNeuralNetFunctions(top);
+
+			RuntimeFunctions.addRuntimeFunctions(top, new RuntimeFunctions.LispInterface() {
+				@Override
+				public int getContinuationCount() {
+					return 0;
+				}
+
+				@Override
+				public void evaluate(Environment env, Value exp) {
+					_executor.submit(getWorkItem(display, env, exp, new LinkedList<>()));
+				}
+
+				@Override
+				public void evaluate(Value exp) {
+					_executor.submit(getWorkItem(display, top, exp, new LinkedList<>()));
+				}
+
+				@Override
+				public void onError(Throwable t, String message) {
+					displayError(display, t);
+				}
+
+				@Override
+				public boolean breakAll() {
+					_executor.shutdown();
+					_executor = new ScheduledThreadPoolExecutor(1);
+					display.setTitle("New Lisp");
+					return false;
+				}
+			});
+
 			BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
 			String lineinput;
 			LinkedList<Value> parsedResult = null;
@@ -760,6 +794,9 @@ public class LispTester {
 		catch (Exception e)
 		{
 			System.out.println(e.toString());
+		}
+		catch (Error err){
+			System.out.println(err.toString());
 		}
 		finally
 		{

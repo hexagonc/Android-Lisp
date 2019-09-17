@@ -31,6 +31,7 @@ import com.evolved.automata.android.speech.SpeechInterface;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
+import com.evolved.automata.lisp.RuntimeFunctions;
 import com.evolved.automata.lisp.SimpleFunctionTemplate;
 import com.evolved.automata.lisp.StringHashtableValue;
 import com.evolved.automata.lisp.Value;
@@ -975,7 +976,6 @@ public class LispContext implements SpeechListener{
         out.subscribe();
     }
 
-
     public void evaluateExpression(Value preCompiledValue, final String requestId, final Observer<Value> resultListener, Environment runtimeEnvironment)
     {
 
@@ -1004,6 +1004,32 @@ public class LispContext implements SpeechListener{
             }
         }).observeOn(AndroidSchedulers.mainThread());
         out.subscribe();
+    }
+
+
+    public void evaluateExpression(Value preCompiledValue, Environment runtimeEnvironment, final Observer<Value> resultListener)
+    {
+
+        final Request r = new Request();
+        r.expr = null;
+        r.precompiledExpr = preCompiledValue;
+        r.result = null;
+        r.rListener = resultListener;
+        r.evaluationEnv = runtimeEnvironment;
+
+        String requestId = UUID.randomUUID().toString();
+
+        synchronized (mSynch)
+        {
+            if (mRequestMap.size() == 0)
+            {
+                mRequestMap.put(requestId, r);
+                startWorkerThread();
+            }
+            else
+                mRequestMap.put(requestId, r);
+        }
+
     }
 
 
@@ -1312,6 +1338,63 @@ public class LispContext implements SpeechListener{
 
         mEnv.mapFunction("show-notificaton", show_notification() );
         mEnv.mapFunction("load-page-by-title", load_page_by_title());
+
+        RuntimeFunctions.addRuntimeFunctions(mEnv, new RuntimeFunctions.LispInterface() {
+
+            Observer<Value> _responseHandler = new Observer<Value>() {
+                @Override
+                public void onSubscribe(Disposable d) {
+
+                }
+
+                @Override
+                public void onNext(Value value) {
+
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    dispatchError(e, "Async process error" + e.getMessage());
+                }
+
+                @Override
+                public void onComplete() {
+
+                }
+            };
+
+
+            @Override
+            public int getContinuationCount() {
+                return mRequestMap.size();
+            }
+
+            void dispatchError(Throwable e, String mes){
+                onError(e, mes);
+            }
+
+            @Override
+            public void evaluate(Environment env, Value exp) {
+                LispContext.this.evaluateExpression(exp, env, _responseHandler);
+            }
+
+            @Override
+            public void evaluate(Value exp) {
+                LispContext.this.evaluateExpression(exp,mEnv, _responseHandler);
+            }
+
+            @Override
+            public void onError(Throwable t, String message) {
+                EventLog.EventSource source = new EventLog.LispGlobalSource();
+                EventLog.get().logEvent(source, EventLog.EntryType.ERROR, "Background thread error", message);
+            }
+
+            @Override
+            public boolean breakAll() {
+                breakEvaluation();
+                return true;
+            }
+        });
     }
 
     public Environment getEnvironment()

@@ -1,0 +1,53 @@
+
+{
+	"buildFiles" : 
+	[
+		"C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/CMakeLists.txt"
+	],
+	"cFileExtensions" : [ "c" ],
+	"cleanCommands" : 
+	[
+		"C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\debug\\armeabi --target clean"
+	],
+	"libraries" : 
+	{
+		"neural_tools-Debug-armeabi" : 
+		{
+			"abi" : "armeabi",
+			"artifactName" : "neural_tools",
+			"buildCommand" : "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\debug\\armeabi --target neural_tools",
+			"buildType" : "debug",
+			"files" : 
+			[
+				
+				{
+					"flags" : "  --target=armv5te-none-linux-androideabi --gcc-toolchain=C:/Android/sdk/ndk-bundle/toolchains/arm-linux-androideabi-4.9/prebuilt/windows-x86_64 --sysroot=C:/Android/sdk/ndk-bundle/sysroot -Dneural_tools_EXPORTS -I..\\..\\..\\..\\src\\main\\c  -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/arm-linux-androideabi -D__ANDROID_API__=14 -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -march=armv5te -mtune=xscale -msoft-float -fno-integrated-as -mthumb -Wa,--noexecstack -Wformat -Werror=format-security  -O0 -fno-limit-debug-info  -fPIC      -c ",
+					"src" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/c/com_evolved_automata_nn_NativeTools.c",
+					"workingDirectory" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/debug/armeabi"
+				},
+				
+				{
+					"flags" : "  --target=armv5te-none-linux-androideabi --gcc-toolchain=C:/Android/sdk/ndk-bundle/toolchains/arm-linux-androideabi-4.9/prebuilt/windows-x86_64 --sysroot=C:/Android/sdk/ndk-bundle/sysroot -Dneural_tools_EXPORTS -I..\\..\\..\\..\\src\\main\\c  -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/arm-linux-androideabi -D__ANDROID_API__=14 -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -march=armv5te -mtune=xscale -msoft-float -fno-integrated-as -mthumb -Wa,--noexecstack -Wformat -Werror=format-security  -O0 -fno-limit-debug-info  -fPIC      -c ",
+					"src" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/c/neural_library.c",
+					"workingDirectory" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/debug/armeabi"
+				},
+				
+				{
+					"flags" : "  --target=armv5te-none-linux-androideabi --gcc-toolchain=C:/Android/sdk/ndk-bundle/toolchains/arm-linux-androideabi-4.9/prebuilt/windows-x86_64 --sysroot=C:/Android/sdk/ndk-bundle/sysroot -Dneural_tools_EXPORTS -I..\\..\\..\\..\\src\\main\\c  -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/arm-linux-androideabi -D__ANDROID_API__=14 -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -march=armv5te -mtune=xscale -msoft-float -fno-integrated-as -mthumb -Wa,--noexecstack -Wformat -Werror=format-security  -O0 -fno-limit-debug-info  -fPIC      -c ",
+					"src" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/src/main/c/tools.c",
+					"workingDirectory" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/.externalNativeBuild/cmake/debug/armeabi"
+				}
+			],
+			"output" : "C:/development/Android-Lisp/projects/android_studio/JavaLisp/AndroidLispGuiBuilder/build/intermediates/cmake/debug/obj/armeabi/libneural_tools.so",
+			"toolchain" : "1629680541"
+		}
+	},
+	"toolchains" : 
+	{
+		"1629680541" : 
+		{
+			"cCompilerExecutable" : "C:/Android/sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/bin/clang.exe",
+			"cppCompilerExecutable" : "C:/Android/sdk/ndk-bundle/toolchains/llvm/prebuilt/windows-x86_64/bin/clang++.exe"
+		}
+	}
+}

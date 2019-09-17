@@ -307,12 +307,12 @@ public class LSTMNetworkProxy {
         {
             if (finishedP)
             {
-                if (vector[i] > 0.5)
+                if (roundToInt(vector[i]) == 1)
                     return invalidResult;
             }
             else
             {
-                if (vector[i] > 0.5)
+                if (roundToInt(vector[i]) == 1)
                     number = i + 1;
                 else
                     finishedP = true;
