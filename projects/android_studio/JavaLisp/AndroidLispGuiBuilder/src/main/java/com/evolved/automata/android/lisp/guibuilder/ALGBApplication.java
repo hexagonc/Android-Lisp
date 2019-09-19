@@ -27,8 +27,6 @@ public class ALGBApplication extends MultiDexApplication
 		
 		super.onCreate();
 
-		int value = ToolsKt.makeDouble(90);
-		System.out.println(value);
 		NNTools.BASE64 = new NNTools.Base64Interface() {
 			@Override
 			public String encodeBase64(byte[] data)

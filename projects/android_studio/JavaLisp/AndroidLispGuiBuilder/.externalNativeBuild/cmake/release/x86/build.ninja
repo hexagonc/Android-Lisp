@@ -35,25 +35,25 @@ include rules.ninja
 build CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o: C_COMPILER__neural_tools ../../../../src/main/c/com_evolved_automata_nn_NativeTools.c
   DEFINES = -Dneural_tools_EXPORTS
   DEP_FILE = CMakeFiles\neural_tools.dir\src\main\c\com_evolved_automata_nn_NativeTools.c.o.d
-  FLAGS = -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC
+  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -fno-addrsig -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC
   INCLUDES = -I../../../../src/main/c
-  IN_ABS = C:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\com_evolved_automata_nn_NativeTools.c
+  IN_ABS = C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\com_evolved_automata_nn_NativeTools.c
   OBJECT_DIR = CMakeFiles\neural_tools.dir
   OBJECT_FILE_DIR = CMakeFiles\neural_tools.dir\src\main\c
 build CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o: C_COMPILER__neural_tools ../../../../src/main/c/neural_library.c
   DEFINES = -Dneural_tools_EXPORTS
   DEP_FILE = CMakeFiles\neural_tools.dir\src\main\c\neural_library.c.o.d
-  FLAGS = -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC
+  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -fno-addrsig -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC
   INCLUDES = -I../../../../src/main/c
-  IN_ABS = C:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\neural_library.c
+  IN_ABS = C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\neural_library.c
   OBJECT_DIR = CMakeFiles\neural_tools.dir
   OBJECT_FILE_DIR = CMakeFiles\neural_tools.dir\src\main\c
 build CMakeFiles/neural_tools.dir/src/main/c/tools.c.o: C_COMPILER__neural_tools ../../../../src/main/c/tools.c
   DEFINES = -Dneural_tools_EXPORTS
   DEP_FILE = CMakeFiles\neural_tools.dir\src\main\c\tools.c.o.d
-  FLAGS = -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC
+  FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -fno-addrsig -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG  -fPIC
   INCLUDES = -I../../../../src/main/c
-  IN_ABS = C:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\tools.c
+  IN_ABS = C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\tools.c
   OBJECT_DIR = CMakeFiles\neural_tools.dir
   OBJECT_FILE_DIR = CMakeFiles\neural_tools.dir\src\main\c
 
@@ -65,8 +65,8 @@ build CMakeFiles/neural_tools.dir/src/main/c/tools.c.o: C_COMPILER__neural_tools
 # Link the shared library ..\..\..\..\build\intermediates\cmake\release\obj\x86\libneural_tools.so
 
 build ../../../../build/intermediates/cmake/release/obj/x86/libneural_tools.so: C_SHARED_LIBRARY_LINKER__neural_tools CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o CMakeFiles/neural_tools.dir/src/main/c/tools.c.o
-  LANGUAGE_COMPILE_FLAGS = -isystem C:/Android/sdk/ndk-bundle/sysroot/usr/include/i686-linux-android -g -DANDROID -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG
-  LINK_FLAGS = -Wl,--exclude-libs,libgcc.a -Wl,--exclude-libs,libatomic.a -nostdlib++ --sysroot C:/Android/sdk/ndk-bundle/platforms/android-24/arch-x86 -Wl,--build-id -Wl,--warn-shared-textrel -Wl,--fatal-warnings -LC:/Android/sdk/ndk-bundle/sources/cxx-stl/llvm-libc++/libs/x86 -Wl,--no-undefined -Wl,-z,noexecstack -Qunused-arguments -Wl,-z,relro -Wl,-z,now
+  LANGUAGE_COMPILE_FLAGS = -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -fno-addrsig -Wa,--noexecstack -Wformat -Werror=format-security  -O2 -DNDEBUG
+  LINK_FLAGS = -Wl,--exclude-libs,libgcc.a -Wl,--exclude-libs,libatomic.a -static-libstdc++ -Wl,--build-id -Wl,--warn-shared-textrel -Wl,--fatal-warnings -Wl,--no-undefined -Qunused-arguments -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
   LINK_LIBRARIES = -latomic -lm
   OBJECT_DIR = CMakeFiles\neural_tools.dir
   POST_BUILD = cd .
@@ -80,7 +80,7 @@ build ../../../../build/intermediates/cmake/release/obj/x86/libneural_tools.so: 
 # Utility command for edit_cache
 
 build CMakeFiles/edit_cache.util: CUSTOM_COMMAND
-  COMMAND = cmd.exe /C "cd /D C:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\release\x86 && C:\Android\sdk\cmake\3.6.4111459\bin\cmake.exe -E echo "No interactive CMake dialog available.""
+  COMMAND = cmd.exe /C "cd /D C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\release\x86 && C:\Android\sdk\cmake\3.6.4111459\bin\cmake.exe -E echo "No interactive CMake dialog available.""
   DESC = No interactive CMake dialog available...
   restat = 1
 build edit_cache: phony CMakeFiles/edit_cache.util
@@ -89,7 +89,7 @@ build edit_cache: phony CMakeFiles/edit_cache.util
 # Utility command for rebuild_cache
 
 build CMakeFiles/rebuild_cache.util: CUSTOM_COMMAND
-  COMMAND = cmd.exe /C "cd /D C:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\release\x86 && C:\Android\sdk\cmake\3.6.4111459\bin\cmake.exe -HC:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder -BC:\development\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\release\x86"
+  COMMAND = cmd.exe /C "cd /D C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\release\x86 && C:\Android\sdk\cmake\3.6.4111459\bin\cmake.exe -HC:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder -BC:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\release\x86"
   DESC = Running CMake to regenerate build system...
   pool = console
   restat = 1

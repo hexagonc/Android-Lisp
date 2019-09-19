@@ -1,16 +1,16 @@
 {
   "buildFiles": [
-    "C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\CMakeLists.txt"
+    "C:\\development\\playground\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\CMakeLists.txt"
   ],
   "cleanCommands": [
-    "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\debug\\armeabi-v7a --target clean"
+    "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\playground\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\debug\\armeabi-v7a --target clean"
   ],
   "libraries": {
     "neural_tools-Debug-armeabi-v7a": {
       "artifactName": "neural_tools",
-      "buildCommand": "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\debug\\armeabi-v7a --target neural_tools",
+      "buildCommand": "C:\\Android\\sdk\\cmake\\3.6.4111459\\bin\\cmake.exe --build C:\\development\\playground\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\.externalNativeBuild\\cmake\\debug\\armeabi-v7a --target neural_tools",
       "abi": "armeabi-v7a",
-      "output": "C:\\development\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\build\\intermediates\\cmake\\debug\\obj\\armeabi-v7a\\libneural_tools.so"
+      "output": "C:\\development\\playground\\Android-Lisp\\projects\\android_studio\\JavaLisp\\AndroidLispGuiBuilder\\build\\intermediates\\cmake\\debug\\obj\\armeabi-v7a\\libneural_tools.so"
     }
   }
 }
