@@ -15,6 +15,7 @@ import com.evolved.automata.android.mindstorms.NXTBluetoothManager;
 import com.evolved.automata.android.mindstorms.lisp.NXTLispFunctions;
 import com.evolved.automata.android.speech.SpeechInterface;
 import com.evolved.automata.lisp.Environment;
+import com.evolved.automata.lisp.nao.NAOLispEvaluator;
 import com.evolved.automata.lisp.ExtendedFunctions;
 import com.evolved.automata.lisp.FunctionTemplate;
 import com.evolved.automata.lisp.NLispTools;
@@ -135,6 +136,7 @@ public class ALGB {
         MediaEvaluator.addVisionFunctions(mTop);
         Tools.addAndroidToolFunctions(mTop);
         GroupLispInterface.addNeuralNetFunctions(mTop);
+        NAOLispEvaluator.addFunctions(mTop);
         mTop.mapFunction("println", getPrintln());
         mTop.mapFunction("log", getLog());
         mTop.mapFunction("find-page-by-name", find_page_by_name());

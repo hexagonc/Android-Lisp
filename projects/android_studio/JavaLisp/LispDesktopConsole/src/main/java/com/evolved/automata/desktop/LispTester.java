@@ -12,7 +12,7 @@ import com.evolved.automata.lisp.Value;
 import com.evolved.automata.lisp.nn.GroupLispInterface;
 import com.evolved.automata.lisp.nn.NeuralNetLispInterface;
 import com.evolved.automata.lisp.speech.SpeechLispFunctions;
-
+import com.evolved.automata.lisp.nao.NAOLispEvaluator;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.sql.Connection;
@@ -707,6 +707,7 @@ public class LispTester {
 			SpeechLispFunctions.addSpeechFunctions(top);
 			NeuralNetLispInterface.addNeuralNetFunctions(top);
 			FileFunctions.addFunctions(top);
+			NAOLispEvaluator.addFunctions(top);
 			top.mapFunction("println",getPrintln(display));
 			top.mapFunction("global", evaluateGlobal(top));
 			top.mapFunction("set-data-value", setObjectDataValue(testStatement, insertStatement, updateSpecificStatement));
