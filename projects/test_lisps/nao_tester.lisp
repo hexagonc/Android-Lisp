@@ -6,6 +6,7 @@
     (setq  MOTION_SERVICE_NAME  "ALMotion")
     (setq  POSTURE_SERVICE_NAME  "ALRobotPosture")
     (setq  VISION_SERVICE_NAME "ALVideoDevice")
+    (setq  TTS_SERVICE_NAME "ALTextToSpeech")
 
 	(setq nao-manager
 		  (create-nao-manager))
@@ -20,6 +21,25 @@
 	(call-qi-function nao-manager
 					  BATTERY_SERVICE_NAME
 					  "getBatteryCharge")
+
+	(call-qi-function nao-manager
+					  TTS_SERVICE_NAME
+					  "say"
+					  "Hello, world!")
+
+	(call-qi-function nao-manager
+					  TTS_SERVICE_NAME
+					  "getLanguage"
+					  )
+
+	(call-qi-function nao-manager
+					  TTS_SERVICE_NAME
+					  "getAvailableVoices")
+
+	(call-qi-function nao-manager
+					  TTS_SERVICE_NAME
+					  "getVolume")
+
 						 
 	
 	(call-qi-function nao-manager

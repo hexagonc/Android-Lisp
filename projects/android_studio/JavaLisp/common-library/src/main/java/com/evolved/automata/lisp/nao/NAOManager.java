@@ -224,6 +224,7 @@ public class NAOManager {
         NAOMovementManager.addMovementFunctions();
         NAOSensorManager.addMemoryFunctions();
         NAOVisionManager.addVisionFunctions();
+        NAOSpeechManager.addSpeechFunctions();
     }
 
     public NAOManager()
