@@ -1,0 +1,8 @@
+Executable : C:\Android\sdk\cmake\3.6.4111459\bin\cmake.exe
+arguments : 
+--build
+C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\.externalNativeBuild\cmake\debug\x86
+--target
+neural_tools
+jvmArgs : 
+
