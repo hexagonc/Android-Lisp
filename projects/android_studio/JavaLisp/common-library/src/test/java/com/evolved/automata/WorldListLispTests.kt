@@ -192,7 +192,7 @@ class WorldListLispTests {
             ExtendedFunctions.addExtendedFunctions(env)
             WorldLineLispFunctions.addFunctions(env, cache)
 
-            var world = WorldLine()
+
 
             message = "Failed to add cogject to world"
 
@@ -203,6 +203,35 @@ class WorldListLispTests {
             env.evaluate("(debug (worldline-get-state world 0))", false)
 
             env.evaluate("(debug (worldline-get-current-value world \"sonar\" 4))", false)
+
+            env.evaluate("(debug (worldline-get-last-update-spec world \"sonar\" 4))", false)
+
+            var world = env.getVariableValue("world").objectValue as WorldLine
+            env.evaluate("(worldline-expire-key world \"sonar\" 10)", false)
+
+            message = "Failed to expire sonar"
+
+            assertTrue(message, world.hasValue("sonar", 9) && !world.hasValue("sonar",10))
+
+            env.evaluate("(debug (setq removed (worldline-pop-last-value world \"sonar\" 6)))", false)
+
+            message = "Failed to remove sonar"
+
+            assertTrue(message, !world.hasValue("sonar", 0))
+
+            assertTrue(message, !world.hasValue("sonar", 89))
+
+
+            env.evaluate("(for x (list (25 3) (28 6) (35 15) (50 20)) F (worldline-set-value world (second x) (create-cogject \"sonar\" (first x)) ))", false)
+
+            println("${world.getUpdateTimes().map { t -> world.getState(t)}}\n")
+
+            env.evaluate("(worldline-set-value world 5 (create-cogject \"bump\" 1))", false)
+            env.evaluate("(debug (worldline-get-update-times world))", true)
+
+            env.evaluate("(debug (worldline-get-update-times world \"sonar\"))", true)
+
+            env.evaluate("(debug (worldline-get-update-times world \"sonar\" 2 89))", true)
         }
         catch (e: Throwable){
             e.printStackTrace()

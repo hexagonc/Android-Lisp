@@ -1,5 +1,6 @@
 package com.evolved.automata
 
+import com.evolved.automata.lisp.Environment
 import com.evolved.automata.nn.util.EnumVector
 import com.evolved.automata.nn.util.SetVector
 import com.evolved.automata.nn.util.TallyVector
@@ -216,10 +217,10 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
     fun getUpdateTimes(name: String, firstTime: Long, lastTime: Long): List<Long> {
         val items = state[name]?:ArrayList<CogjectEntry>()
 
-        var startIndex = findIndex(firstTime, items)
+        var startIndex = findIndex(firstTime, items)?:0
 
         var out = mutableListOf<Long>()
-        while (startIndex != null && startIndex < items.size && items[startIndex].updateTime <= lastTime){
+        while (startIndex < items.size && items[startIndex].updateTime <= lastTime){
             out.add(items[startIndex].updateTime)
             startIndex++
         }
@@ -597,7 +598,7 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         return this
     }
 
-    fun removeLatestValue(desc: String, time:Long): Boolean {
+    fun removeLatestValue(desc: String, time:Long): Cogject? {
         var history = state[desc]
 
         if (history != null){
@@ -618,10 +619,12 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
                     }
                 }
 
-                return history.removeAt(priorIndex) != null
+                val returnV = history[priorIndex]
+                history.removeAt(priorIndex)
+                return returnV.entry
             }
         }
-        return false
+        return null
     }
 
     fun removeAllValues(desc: String) : Boolean{
