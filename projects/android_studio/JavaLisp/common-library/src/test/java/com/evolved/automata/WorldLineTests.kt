@@ -1,31 +1,16 @@
 package com.evolved.automata
 
 import com.evolved.automata.nn.util.TallyVector
+import com.evolved.automata.nn.util.UnsignedNumVectorType
+import org.hamcrest.CoreMatchers.*
+import org.junit.Assert.assertThat
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.exp
 import kotlin.random.Random
 
 
 class WorldLineTests {
 
-    @Test
-    fun testBasicCogjects() {
-        val cogject = Cogject(TallyVector(10),FloatArray(10) { i -> 1F })
-
-        val expected = 10
-
-
-        val intCogject = IntCogject(expected, 10)
-        assertTrue("Failed to create int cogject, expected $expected but found ${intCogject.getValue()}", intCogject.getValue().equals(expected))
-
-
-        // Set testing
-
-        val setCogject = SetCogject(arrayOf("x", "x is greater than y", "y is less than x"), setOf("x"))
-
-        println(setCogject)
-    }
 
 
     @Test
@@ -532,9 +517,9 @@ class WorldLineTests {
                 return Pair(this, action)
             }
 
-            var stateMachine =  StateMachineCogject(
+            var stateMachine =  StateMachineCogject("machine",
                     "initial" `yields`   {world:WorldLine, time:Long -> if (time - lastStateTransition > 10) setNextState("speak", time);  stateValue},
-
+                    arrayOf(
                     "speak" `yields` {world:WorldLine, time:Long ->
                         if (time - lastStateTransition == 1L)
                             println("Hello, World")
@@ -547,10 +532,10 @@ class WorldLineTests {
                             println("what do you want?")
                         if (time - lastStateTransition > 10)
                             world.removeMe(this, time)
-                        stateValue})
+                        stateValue}))
 
 
-            timeLine.setValue("machine", stateMachine, 0)
+            timeLine.setValue(stateMachine, 0)
             for (time in 1L..100) {
                 println("State: ${timeLine.getState(time)}")
                 timeLine.process(time)
@@ -895,6 +880,364 @@ class WorldLineTests {
         }
     }
 
+
+    @Test fun testIncrementFunctions(){
+
+        var message = ""
+        try {
+            var map = mutableMapOf<String, Int>()
+
+            println("");
+        }
+        catch (e: Exception){
+            e.printStackTrace()
+            assertTrue(message, false)
+        }
+    }
+
+    fun String.cog(): Cogject {
+        return IntCogject(1, 1, this)
+    }
+
+
+    fun String.query(): Pair<Cogject, ((Cogject) ->Boolean)?> {
+        return Pair(this.cog(), {cog: Cogject -> cog.name == String@this})
+    }
+
+
+    fun String.goal(): Goal {
+        return Goal(cogjectWithName = this)
+    }
+
+
+
+    @Test fun testWorldLineUtils(){
+
+
+        var message = "Failed to create UnsignedNumVectorType"
+
+        try {
+//            val binaryVectorType = object: VectorType(VectorType.FIELD_TYPE_NAME.UNSIGNED_BINARY_NUMBER, 32) {
+//                override fun makeValidator(): LearningConfiguration.InputValidator {
+//                    return
+//                }
+//
+//            }
+
+
+            val type = UnsignedNumVectorType(23)
+
+            message = "Failed to convert 10 into a float array"
+
+            val serialized = type.valueToVector(10L)
+
+            message = "Failed to convert float array to value: $serialized"
+            val converted = type.vectorToValue(serialized) as Long
+
+            message = "Received wrong value"
+            assertTrue(message, converted == 10L)
+
+
+            var stuff = FiniteSet(300)
+
+            val number = intArrayOf(10, 23, -1000, 34)
+
+            val first = stuff.add(number[0])
+
+            assertThat(first, equalTo(0))
+
+            message = "Failed to verify duplicate value uses same index"
+
+            assertThat(stuff.add(number[0]), equalTo(0))
+
+            assertThat(stuff.add(number[1]), equalTo(1))
+
+
+            assertThat(stuff.size, equalTo(2))
+            assertThat(stuff.maxSize, equalTo(300))
+
+            var priorSize = stuff.size
+            for (i in 0..(stuff.size + 10)){
+                val v = Random.nextInt()
+                message = "Failed to add value $v"
+                val index = stuff.add(v)
+                message = "Failed to update set"
+                assertTrue(message, stuff.size > priorSize && index != null || stuff.size == stuff.maxSize && stuff.size == priorSize && index == null )
+                priorSize = stuff.size
+
+            }
+
+
+
+            val valueCogject = stuff.makeValueCogject("item", "Hello")
+
+            assertThat(valueCogject, `is`(notNullValue()))
+
+
+            message = "Failed to create string Cogject value $valueCogject"
+            assertTrue(message, valueCogject?.getValue()== "Hello")
+
+
+            fun createObjectSequence(cogjectName: String, stepSize: Int, vararg items: Any): Cogject? {
+                var root: Cogject? = null
+                var prev: Cogject? = null
+                items.withIndex().forEach{iv ->
+                    val (i, value) = iv;
+                    if (prev == null) {
+                        root = stuff.makeValueCogject(cogjectName, value)
+                        prev = root
+                    }
+                    else {
+                        val nextValue = stuff.makeValueCogject(cogjectName, value)
+                        if (nextValue!=null){
+                            prev?.interceptor { world, time ->
+                                // name is known to be defined here because we stetting it as
+                                val lastEntry = world.getLastEntry(cogjectName, time)
+                                if (lastEntry != null && lastEntry.updateTime + stepSize < time) {
+
+                                    world.setValue(nextValue, time + 1)
+
+                                }
+                                stateValue
+                            }
+                        }
+                        prev = nextValue
+
+                    }
+                }
+                return root
+            }
+
+
+            fun createTemporalSequence(stepSize: Int, vararg names: String): Cogject? {
+                var root: Cogject? = null
+                var prev: Cogject? = null
+
+                for ((i, name) in names.withIndex()){
+                    val next = stuff.makeValueCogject(name, i)
+                    if (prev == null){
+                        root = next
+
+                    }
+                    else if (next != null){
+                        val prevName:String = prev?.name?:""
+                        prev?.interceptor{ world, time ->
+                            val lastUpdate = world.getLastEntry(prevName, time)
+                            if (lastUpdate != null && lastUpdate.updateTime + stepSize > time){
+                                world.removeKey(prevName, time+1)
+                                world.setValue(next, time +1)
+                            }
+                            stateValue
+                        }
+                    }
+                    prev = next
+                }
+
+                return root
+            }
+
+            var world = WorldLine()
+
+            val countCogject = createTemporalSequence(100, "A", "B", "C", "D")
+
+            assertThat(countCogject, `is`(notNullValue()))
+            if (countCogject !=null) {
+                world.setValue(countCogject, 0)
+
+                val finalState:Map<String, Cogject> = world.run(0L, 2000L, 10L)
+
+                println("Final state after running $finalState")
+
+                message = "Failed to find final value of temporal sequence"
+
+                assertTrue(message, world.hasValue("D"))
+
+                val countDownCogject = createObjectSequence("countdown", 100, 5, 4,3,2,1)
+
+                assertThat(countDownCogject, `is`(notNullValue()))
+
+                world.setValue(countDownCogject!!, 0)
+
+                val afterRerunning = world.run(0, 2000, 10)
+
+                assertThat(afterRerunning, `is`(notNullValue()))
+
+                println("Final value of world: $afterRerunning")
+                message = "Failed to find correct final value of countdown key"
+
+                val value = afterRerunning["countdown"]
+                assertTrue(message, value != null)
+
+                if (value != null) {
+                    val finalValue:Int? = if (value is ValueCogject) value.getValue() as Int  else null
+                    assertThat(finalValue, `is`(1))
+                }
+            }
+
+            // o_>Consistent worlds
+            val aTimes = world.consistentWorlds(0L, 0L, arrayOf(stuff.makeValueCogject("A", 0)!! to { cogject: Cogject -> "A" == cogject.name}))
+            message = "Failed to receive consistent times"
+            assertTrue(message, aTimes.isNotEmpty())
+
+            println("Consistent worlds: ${aTimes}}")
+
+
+            val moreWorlds = world.consistentWorlds(600L, 1200L, arrayOf(stuff.makeValueCogject("countdown", 4)!! to null))
+
+            println("Consistent worlds 2: ${moreWorlds}")
+
+            // o->Get a random cogject of a name
+
+            val example = world.getAnExampleOf("C", 0L, 2000L)
+
+            assertThat(example, `is`(notNullValue()))
+            println("found instance: C = ${example}")
+            // o->getCausalFraction
+
+            var causalFraction = world.getCausalInstanceFraction("A", "B", 0)
+
+            println("Fraction $causalFraction")
+
+            val testCauseCogject = stuff.makeValueCogject("cause", 1)
+
+            world.setValue("cause".cog(), 0)
+
+            world.setValue("effect".cog(), 10)
+
+            var causalModel = WorldLine()
+
+
+            fun String.cog(value: Any): Cogject {
+                return stuff.makeValueCogject(this, value) as ValueCogject
+            }
+
+
+            arrayOf("cause-name".cog("cause"), "effect-name".cog("effect"), "cause-time".cog(0), "effect-time".cog(10)).forEach {causalModel.setValue(it, 0)}
+
+            println("Added causal spec to model world: ${causalModel.getState(0)}")
+
+            fun String.query(value: Any): Pair<Cogject, ((Cogject)-> Boolean)?> {
+                return Pair(this.cog(value), null)
+            }
+
+            val retrieved = causalModel.consistentWorlds(arrayOf("cause-name".query(), "effect-name".query(), "cause-time".query()))
+
+            assertThat(retrieved, `is`(notNullValue()))
+
+            println(retrieved)
+            message = "Failed to find all worlds with cause-name"
+            assertTrue(message, retrieved.size > 0)
+
+            // o-> Adding capabilities
+
+            val effect = "effect".cog()
+            val cause = "cause".cog()
+
+            message = "Effect isn't supposed to have a capability"
+
+            assertTrue(message, cause.getGoalConfidence("effect".goal()) == 0.0F)
+
+            fun getEmpiricalCapability(goal:Goal): Capability {
+                return object: Capability(goalCanAchieve = goal) {
+                    override fun getConfidence():Float {
+
+                        val name = context?.name
+                        if (name != null) {
+                            val worldsWithName = causalModel.consistentWorlds(
+                                    arrayOf("cause-name".cog(name).query(),
+                                            "effect-name".cog(goal?.cogjectWithName?:"").query()))
+                            return Math.min(1F, worldsWithName.size.toFloat())
+                        }
+                        else
+                            return 0.0F
+
+                    }
+                }
+            }
+
+
+            val emp = getEmpiricalCapability("effect".goal())
+
+            assertThat("Failed to get no confidence before adding to cogject", emp.getConfidence(), equalTo(0.0F))
+
+            cause.addCapability(emp)
+
+            assertThat(emp.getConfidence(), equalTo(1.0F))
+
+            message = "Failed to add confidence to cogject"
+
+            assertTrue(message, cause.getGoalConfidence("effect".goal()) == 1.0F)
+
+            val empCapability = world.getEmpiricalCapability("effect".goal())
+
+            arrayOf<Pair<Cogject, Long>>("cause".cog() to 0L, "effect".cog() to 100L, "cause".cog() to 5000L, "effect".cog() to 5100L, "cause".cog() to 5200L, "effect".cog() to 5400L).forEach { pair -> world.setValue(pair.first, pair.second) }
+
+            val causalStength = world.getCausalStrength("cause", "effect")
+
+            println("Strength: $causalStength")
+
+            val newCause = "cause".cog()
+
+            newCause.addCapability(empCapability)
+
+            val conf = newCause.getGoalConfidence("effect".goal())
+            assertTrue(message, conf < 0.4F)
+
+            println("Confidence: $conf")
+            // o_>Empirical Capabilities Learning
+            world.inferCausalRelationship("D", "C", 0L, 1000L)
+
+
+
+        }
+        catch (t: Throwable){
+            t.printStackTrace()
+            assertTrue(message, false)
+        }
+
+    }
+
+
+    @Test fun testWorldLineMerges(){
+
+        var message = ""
+
+        try
+        {
+            var objectCache = FiniteSet(1000)
+
+            var worldPositiveMemories = WorldLine()
+            var shortTermMemory = WorldLine()
+
+            arrayOf("walking", "in-street", "sunny-day").forEach {shortTermMemory.setValue(it.cog(), 0L)}
+
+            var t = 10L
+            arrayOf("~walking", "running").forEach { if (it.startsWith("~")) shortTermMemory.removeKey(it.substring(1), t) else shortTermMemory.setValue(it.cog(), t, false)}
+
+            t = 15L
+            arrayOf("running", "~in-street", "on-sidewalk", "saw-woman").forEach { if (it.startsWith("~")) shortTermMemory.removeKey(it.substring(1), t) else shortTermMemory.setValue(it.cog(), t, false)}
+
+            t = 20L
+            arrayOf("~running", "talking", "on-sidewalk", "saw-woman", "standing").forEach { if (it.startsWith("~")) shortTermMemory.removeKey(it.substring(1), t) else shortTermMemory.setValue(it.cog(), t, false)}
+
+            t = 25L
+            arrayOf("on-sidewalk", "~talking", "saw-woman", "kissing").forEach { if (it.startsWith("~")) shortTermMemory.removeKey(it.substring(1), t) else shortTermMemory.setValue(it.cog(), t, false)}
+
+            t = 30L
+            arrayOf("on-sidewalk", "~saw-woman", "~kissing").forEach { if (it.startsWith("~")) shortTermMemory.removeKey(it.substring(1), t) else shortTermMemory.setValue(it.cog(), t, false)}
+
+            println("World: ${shortTermMemory.getUpdateTimes().map{t->t to shortTermMemory.getState(t)}}")
+
+            shortTermMemory.clearAllTransactionsInRange(13L, 26L)
+
+            println("World after delete: ${shortTermMemory.getUpdateTimes().map{t->t to shortTermMemory.getState(t)}}")
+
+        }
+        catch (e: Throwable){
+            e.printStackTrace()
+            assertTrue(message, false)
+        }
+    }
 
 
 }

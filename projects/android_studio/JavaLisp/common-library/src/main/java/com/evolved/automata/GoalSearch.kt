@@ -109,7 +109,7 @@ enum class FAVOR_STATUS {
 
 open class Capability(val goalCanAchieve: Goal, var confidence: Confidence? = object: Confidence {  override fun getConfidence(goal: Goal?) = 1F}, var requiredGoals: List<Goal>? = null, var context: Cogject? = null) {
 
-    fun getConfidence(): Float? = confidence?.getConfidence()
+    open fun getConfidence(): Float? = confidence?.getConfidence()
 
     fun requestFavor(world: WorldLine, goalToAchieve: Goal, time: Long,  onFinished: ((FAVOR_STATUS)->Unit)? = null):Favor? {
 

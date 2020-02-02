@@ -1,17 +1,13 @@
 package com.evolved.automata
 
-import com.evolved.automata.nn.util.EnumVector
-import com.evolved.automata.nn.util.SetVector
-import com.evolved.automata.nn.util.TallyVector
-import com.evolved.automata.nn.util.VectorType
+import com.evolved.automata.nn.util.*
 import kotlin.random.Random
 
 
 private fun nop() = "Nothing"
 
 
-
-open class Cogject(val stateType: VectorType, var stateValue: FloatArray, var name: String? = null) {
+open abstract class Cogject(val stateType: VectorType, var stateValue: FloatArray, var name: String = UNKNOWN_ITEM_NAME) {
 
     var processInterceptor: (Cogject.(WorldLine,Long) -> FloatArray)? = null
 
@@ -25,8 +21,13 @@ open class Cogject(val stateType: VectorType, var stateValue: FloatArray, var na
 
     fun addCapability(capability: Capability): Cogject {
         capabilities.add(capability)
+        capability.context = this
         return this
     }
+
+
+    abstract fun  copy(): Cogject
+
 
     open fun requestFavor(goal: Goal, world: WorldLine, time: Long, onFavorComplete: (FAVOR_STATUS)->Unit):Boolean {
         var foundCapability = false
@@ -43,6 +44,10 @@ open class Cogject(val stateType: VectorType, var stateValue: FloatArray, var na
         }
 
         return foundCapability
+    }
+
+    fun query(): Pair<Cogject, ((Cogject) -> Boolean)?> {
+        return Pair(this, null)
     }
 
 
@@ -85,13 +90,11 @@ open class Cogject(val stateType: VectorType, var stateValue: FloatArray, var na
 
 
 
-open class StateMachineCogject(initialState: Pair<String, StateMachineCogject.(WorldLine, Long) -> FloatArray>,  vararg stateSpecs: Pair<String, (StateMachineCogject.(WorldLine,Long)->FloatArray)> ): Cogject(TallyVector(stateSpecs.size+1), FloatArray(stateSpecs.size+1){0F }) {
+open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  private val initialState: Pair<String, StateMachineCogject.(WorldLine, Long) -> FloatArray>, private val stateSpecs: Array<Pair<String, (StateMachineCogject.(WorldLine,Long)->FloatArray)>>): Cogject(TallyVector(stateSpecs.size+1), FloatArray(stateSpecs.size+1){0F }, name) {
 
     val stringMap: StringToIntConversion
 
-    val states = stateSpecs
-
-    var lastStateTransition: Long = 0
+    var lastStateTransition: Long = -1L
 
     var prevStateName: String? = null
 
@@ -102,21 +105,45 @@ open class StateMachineCogject(initialState: Pair<String, StateMachineCogject.(W
 
     }
 
+    open fun onUpdatedValue(world: WorldLine, time: Long): Cogject {
+        world.setValue(copy(), time+1)
+        return this
+    }
+
+    override fun copy(): Cogject {
+        var cog =  StateMachineCogject(initialState =initialState, stateSpecs = stateSpecs, name = name)
+        cog.currentStateName = currentStateName
+        cog.prevStateName = prevStateName
+        cog.lastStateTransition = lastStateTransition
+        return cog
+    }
+
     override fun toString(): String {
         return "StateMachineCogject<$currentStateName>"
     }
 
     override fun process(world: WorldLine, processTime: Long): FloatArray {
         val stateIndex = stateType.vectorToValue(stateValue) as Int
-        stateValue = states[stateIndex].second(this, world, processTime)
+        if (lastStateTransition == -1L)
+            lastStateTransition = processTime
+        stateValue = stateSpecs[stateIndex].second(this, world, processTime)
+        if (currentStateName != prevStateName){
+            onUpdatedValue(world, processTime)
+        }
         return super.process(world, processTime)
     }
 
+    /**
+     * Only call this when the state changes
+     */
     fun setNextState(name: String, time: Long): FloatArray {
-        prevStateName = currentStateName
-        lastStateTransition = time
+        if (prevStateName != currentStateName){
+            prevStateName = currentStateName
+            lastStateTransition = time
+        }
+
         currentStateName = name
-        stateValue = (stateType as TallyVector).valueToVector(stringMap.getStringIndex(name)?:0)
+        stateValue = (stateType as TallyVector).valueToVector(stringMap.getStringIndex(name)?:TODO("Need to decide what happens when setting an invalid state name"))
         return stateValue
     }
 
@@ -124,21 +151,33 @@ open class StateMachineCogject(initialState: Pair<String, StateMachineCogject.(W
 }
 
 
-open class IntCogject(value: Int, size: Int, name: String? = null):Cogject(TallyVector(size), FloatArray(size){ i -> if (i >= value) 0F else 1F}, name ) {
+open class IntCogject(private val value: Int, private val size: Int, name: String = UNKNOWN_ITEM_NAME):Cogject(TallyVector(size), FloatArray(size){ i -> if (i >= value) 0F else 1F}, name ) {
     fun getValue(): Int {
         return (stateType as TallyVector).getValue(stateValue)
+    }
+
+    override fun copy(): Cogject {
+        return IntCogject(value, size, name)
     }
 }
 
 open class RandomIntCogject(name: String):IntCogject(Random.nextInt(0, 10), 10, name)
 
-open class SetCogject(items: Array<String>, set: Set<String>) : Cogject(SetVector(items), FloatArray(items.size){ i -> if (set.contains(items[i])) 1F else 0F}) {
+open class SetCogject(private val items: Array<String>,private val set: Set<String>, name: String = UNKNOWN_ITEM_NAME) : Cogject(SetVector(items), FloatArray(items.size){ i -> if (set.contains(items[i])) 1F else 0F}, name) {
 
     fun getValue() : Set<String> {
         return HashSet<String>().apply{addAll((stateType as SetVector).getSet(stateValue).map{ it-> it as String})}
     }
+
+    override fun copy(): Cogject {
+        return SetCogject(items, set, name)
+    }
 }
 
-class UserCogject(name: String) : Cogject(EnumVector(arrayOf("", "")), floatArrayOf(1F, 0F)){
+
+
+abstract class ValueCogject(private val type: UnsignedNumVectorType,value: Any, name: String): Cogject(type, type.valueToVector(value), name) {
+    abstract fun getValue(): Any
+
 
 }

@@ -1,4 +1,6 @@
 package com.evolved.automata.desktop;
+import com.evolved.automata.FiniteSet;
+import com.evolved.automata.WorldLineLispFunctions;
 import com.evolved.automata.lisp.AgentToolsKt;
 import com.evolved.automata.lisp.Environment;
 import com.evolved.automata.lisp.ExtendedFunctions;
@@ -751,6 +753,8 @@ public class LispTester {
 					return false;
 				}
 			});
+
+            WorldLineLispFunctions.Companion.addFunctions(top, new FiniteSet(10000));
 
 			BufferedReader b = new BufferedReader(new InputStreamReader(System.in));
 			String lineinput;
