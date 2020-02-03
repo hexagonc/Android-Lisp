@@ -49,6 +49,10 @@ class StringToIntConversion(val initialValue:Int = 0) {
     fun getIntString(index: Int): String? {
         return IntToStringMap[index]
     }
+
+    fun getSize() = stringToIntMap.size
+
+    fun getStrings() = stringToIntMap.keys.toSet()
 }
 
 data class PlanningStage(val casuse: Cogject, val subGoal: Goal, val favorTime: Long)

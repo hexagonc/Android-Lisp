@@ -138,7 +138,7 @@ class WorldListLispTests {
 
             env.evaluate("(debug \"hello, world!\")", true)
 
-            var stateLispCogject = env.evaluate("(create-cogject \"robot\" (list (list \"initial\"  (lambda (world time)  (debug \"cogject name: \" (this.cogject-name)) (this.set-next-state \"final\"))) (list \"final\"  (lambda (world time)  (debug \"**finished** \")))))", true)
+            var stateLispCogject = env.evaluate("(setq robot (create-cogject \"robot\" (list (list \"initial\"  (lambda (world time)  (debug \"cogject name: \" (this.cogject-name) \" and states: \" (state.get-all-states)) (this.set-next-state \"final\"))) (list \"final\"  (lambda (world time)  (debug \"**finished** \"))))))", true)
 
             message = "Failed to evaluate state cogject"
 
@@ -171,6 +171,9 @@ class WorldListLispTests {
             }
 
             println("world state: ${world.getState(34)}")
+
+
+            env.evaluate("(debug (State.get-all-states robot))", true)
 
         }
         catch (e: Throwable){
@@ -232,12 +235,70 @@ class WorldListLispTests {
             env.evaluate("(debug (worldline-get-update-times world \"sonar\"))", true)
 
             env.evaluate("(debug (worldline-get-update-times world \"sonar\" 2 89))", true)
+
+
+
         }
         catch (e: Throwable){
             e.printStackTrace()
             assertTrue(message, false)
         }
     }
+
+    @Test
+    fun testStateMachinesDetailed(){
+        var message = ""
+        try {
+            var world = WorldLine()
+
+            world.setValue(StateMachineCogject(
+                    "robot",
+                    Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("initializing", {line: WorldLine, t: Long ->
+                        fun goto(s: String) = setNextState(s, t)
+
+                        println("starting robot\n")
+                        goto("Working")
+                        }),
+                    arrayOf(Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("Working", {line: WorldLine, t: Long ->
+                        fun goto(s: String) = setNextState(s, t)
+                        fun duration() = t - lastStateTransition
+                        println("${t - lastStateTransition}")
+                        if (duration()> 10000) {
+                            println("Done")
+                            goto("finished")
+                        }
+                    }),
+                            Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("finished", {line: WorldLine, t: Long ->
+                                fun finish () = world.removeKey(name, t)
+
+                                println("Done!!\n")
+                                finish()
+
+                            }))),
+                    1)
+
+            var time = System.currentTimeMillis()
+            val stop = 15000 + time
+            var timeout = time
+            while (time < stop){
+                world.process(time)
+                Thread.sleep(100)
+                if (time - timeout > 1000L) {
+                    println("Working")
+                    timeout = time
+                }
+                time = System.currentTimeMillis()
+
+            }
+        }
+        catch (e: Throwable){
+            e.printStackTrace()
+            assertTrue(message, false)
+        }
+
+
+    }
+
 
 
 }

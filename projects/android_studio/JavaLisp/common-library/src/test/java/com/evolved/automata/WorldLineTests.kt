@@ -513,7 +513,7 @@ class WorldLineTests {
 
             println("Testing state machine cogjects")
 
-            infix fun String.yields( action: StateMachineCogject.(WorldLine,Long)->FloatArray) : Pair<String, (StateMachineCogject.(WorldLine,Long)->FloatArray)> {
+            infix fun String.yields( action: StateMachineCogject.(WorldLine,Long)->Unit) : Pair<String, (StateMachineCogject.(WorldLine,Long)->Unit)> {
                 return Pair(this, action)
             }
 

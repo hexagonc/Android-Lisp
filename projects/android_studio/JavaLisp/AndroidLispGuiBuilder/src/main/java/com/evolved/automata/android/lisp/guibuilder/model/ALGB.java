@@ -5,6 +5,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.evolved.automata.FiniteSet;
+import com.evolved.automata.WorldLineLispFunctions;
 import com.evolved.automata.android.lisp.guibuilder.AndroidLispDAI;
 import com.evolved.automata.android.lisp.guibuilder.PageStateEvent;
 import com.evolved.automata.android.lisp.guibuilder.PageStateEventType;
@@ -137,6 +139,7 @@ public class ALGB {
         Tools.addAndroidToolFunctions(mTop);
         GroupLispInterface.addNeuralNetFunctions(mTop);
         NAOLispEvaluator.addFunctions(mTop);
+        WorldLineLispFunctions.Companion.addFunctions(mTop, new FiniteSet(1000000));
         mTop.mapFunction("println", getPrintln());
         mTop.mapFunction("log", getLog());
         mTop.mapFunction("find-page-by-name", find_page_by_name());

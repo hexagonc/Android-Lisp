@@ -90,7 +90,7 @@ open abstract class Cogject(val stateType: VectorType, var stateValue: FloatArra
 
 
 
-open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  private val initialState: Pair<String, StateMachineCogject.(WorldLine, Long) -> FloatArray>, private val stateSpecs: Array<Pair<String, (StateMachineCogject.(WorldLine,Long)->FloatArray)>>): Cogject(TallyVector(stateSpecs.size+1), FloatArray(stateSpecs.size+1){0F }, name) {
+open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  val initialState: Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>, val stateSpecs: Array<Pair<String, (StateMachineCogject.(WorldLine,Long)->Unit)>>): Cogject(TallyVector(stateSpecs.size+1), FloatArray(stateSpecs.size+1){0F }, name) {
 
     val stringMap: StringToIntConversion
 
@@ -114,7 +114,7 @@ open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  private val in
         var cog =  StateMachineCogject(initialState =initialState, stateSpecs = stateSpecs, name = name)
         cog.currentStateName = currentStateName
         cog.prevStateName = prevStateName
-        cog.lastStateTransition = lastStateTransition
+        cog.lastStateTransition = -1L
         return cog
     }
 
@@ -126,10 +126,8 @@ open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  private val in
         val stateIndex = stateType.vectorToValue(stateValue) as Int
         if (lastStateTransition == -1L)
             lastStateTransition = processTime
-        stateValue = stateSpecs[stateIndex].second(this, world, processTime)
-        if (currentStateName != prevStateName){
-            onUpdatedValue(world, processTime)
-        }
+        stateSpecs[stateIndex].second(this, world, processTime)
+
         return super.process(world, processTime)
     }
 
@@ -137,11 +135,11 @@ open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  private val in
      * Only call this when the state changes
      */
     fun setNextState(name: String, time: Long): FloatArray {
-        if (prevStateName != currentStateName){
+        if (currentStateName != name){
             prevStateName = currentStateName
+            currentStateName = name
             lastStateTransition = time
         }
-
         currentStateName = name
         stateValue = (stateType as TallyVector).valueToVector(stringMap.getStringIndex(name)?:TODO("Need to decide what happens when setting an invalid state name"))
         return stateValue

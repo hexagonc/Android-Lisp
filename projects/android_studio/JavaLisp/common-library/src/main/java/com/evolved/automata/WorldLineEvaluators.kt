@@ -69,6 +69,25 @@ class WorldLineLispFunctions {
                 }
             }
 
+            fun getAllStateNamesFunction(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                        val cog = evaluatedArgs[0].objectValue as StateMachineCogject
+                        var map = HashMap<String, Value>()
+
+                        fun getValue(key: String): Value {
+                            return NLispTools.makeValue(1)
+                        }
+
+                        return StringHashtableValue(cog.stringMap.getStrings().forEach{key->map.put(key, getValue(key))}.run {map})
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getAllStateNamesFunction() as T
+                    }
+
+                }
+            }
 
 
             env.mapFunction("create-worldline", createWorld())
@@ -76,15 +95,17 @@ class WorldLineLispFunctions {
             env.mapFunction("create-cogject", createCogject(cache))
 
 
+            // State cogject functions
             env.mapFunction("get-cogject-state", getStateNameFunction())
             env.mapFunction("get-cogject-state-duration", getStateDuration())
             env.mapFunction("get-cogject-name", getCogjectNameFunction())
             env.mapFunction("copy-cogject", getCogjectCopyFunction())
+            env.mapFunction("State.get-all-states", getAllStateNamesFunction())
 
 
             env.mapFunction("worldline-set-value", worldlineSetValue())
             env.mapFunction("worldline-get-state", worldlineGetState())
-
+            env.mapFunction("Worldline.process-time", worldlineProcessTime())
 
             env.mapFunction("debug", getPrintNameFunction())
 
@@ -237,6 +258,37 @@ class WorldLineLispFunctions {
             }
         }
 
+
+        fun worldlineProcessTime(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+
+                    val time = evaluatedArgs[1].intValue
+
+                    if (evaluatedArgs.size > 2) {
+                        world.process(evaluatedArgs.drop(2).map {v -> v.string}, time)
+                    }
+                    else
+                        world.process(time)
+
+                    val state = world.getState(time)
+                    var out = HashMap<String, Value>()
+
+                    return state.entries.forEach {entry -> out.put(entry.key, ExtendedFunctions.makeValue(entry.value))}.run {
+                        StringHashtableValue(out)
+                    }
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineProcessTime() as T
+                }
+
+            }
+
+        }
+
         fun worldlineGetState(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
@@ -334,15 +386,35 @@ class WorldLineLispFunctions {
             }
         }
 
-        fun getStateDuration(cog:StateMachineCogject): SimpleFunctionTemplate {
+        fun getAllStateNamesFunction(cog:StateMachineCogject): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
 
-                    return NLispTools.makeValue(cog.lastStateTransition)
+                    var map = HashMap<String, Value>()
+
+                    fun getValue(key: String): Value {
+                        return NLispTools.makeValue(1)
+                    }
+
+                    return StringHashtableValue(cog.stringMap.getStrings().forEach{key->map.put(key, getValue(key))}.run {map})
                 }
 
                 override fun <T :FunctionTemplate> innerClone(): T {
-                    return getStateDuration(cog) as T
+                    return getAllStateNamesFunction(cog) as T
+                }
+
+            }
+        }
+
+        fun getStateDuration(cog:StateMachineCogject, time:Long): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                    return NLispTools.makeValue(time - cog.lastStateTransition)
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return getStateDuration(cog, time) as T
                 }
 
             }
@@ -384,22 +456,22 @@ class WorldLineLispFunctions {
 
         }
 
-        fun getStateCogjectTransitionSpec(env: Environment, pair:Value): Pair<String, StateMachineCogject.(world: WorldLine, time:Long)->FloatArray> {
+        fun getStateCogjectTransitionSpec(env: Environment, pair:Value): Pair<String, StateMachineCogject.(world: WorldLine, time:Long)->Unit> {
             val name = pair.list[0].string
             val lispLambda = pair.list[1].lambda
 
 
             var innerEnv = if (lispLambda is Lambda) lispLambda.innerEnvironment else Environment(env)
-            val lambda:StateMachineCogject.(world: WorldLine, time:Long)->FloatArray = {world: WorldLine, time:Long->
+            val lambda:StateMachineCogject.(world: WorldLine, time:Long)->Unit = {world: WorldLine, time:Long->
                 innerEnv.mapFunction("this.set-next-state", getSetStateFunction(time, StateMachineCogject@this))
                 innerEnv.mapFunction("this.get-state-name", getStateNameFunction(StateMachineCogject@this))
-                innerEnv.mapFunction("this.time-in-state", getStateDuration(StateMachineCogject@this))
-
+                innerEnv.mapFunction("this.time-in-state", getStateDuration(StateMachineCogject@this, time))
+                innerEnv.mapFunction("state.get-all-states", getAllStateNamesFunction(StateMachineCogject@this))
 
                 addLispCogjectLambdas(innerEnv,StateMachineCogject@this )
                 lispLambda.setActualParameters(arrayOf<Value>(ExtendedFunctions.makeValue(world), NLispTools.makeValue(time)))
                 lispLambda.evaluate(innerEnv, false)
-                stateValue
+
             }
             return Pair(name, lambda)
         }
