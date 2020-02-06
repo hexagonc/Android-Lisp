@@ -68,11 +68,11 @@ class FiniteSet(val maxSize: Int) {
                     return makeValueCogject(name, value, action) as Cogject
                 }
 
-                override fun processInternal(world: WorldLine, processTime: Long): FloatArray {
+                override fun processInternal(world: WorldLine, processTime: Long): Unit {
                     if (action == null)
-                        return super.processInternal(world, processTime)
+                        super.processInternal(world, processTime)
                     else
-                        return action(world, processTime)
+                        action(world, processTime)
                 }
             }
         }

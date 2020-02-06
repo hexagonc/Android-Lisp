@@ -548,7 +548,7 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
             val nextIndex = findNextTimeIndex(time, history, timeInclusive)
             if (nextIndex != null) {
 
-                for (i in nextIndex..history.size){
+                for (i in nextIndex until history.size){
                     if (history[i].entry != DELETED)
                         return history[i]
                     else if (ignoreRemovalBoundary) {
@@ -608,7 +608,7 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         if (history != null){
             val priorIndex = findIndex(time, history)
             if (priorIndex != null) {
-                for (i in priorIndex..history.size){
+                for (i in priorIndex until history.size){
                     val t = history[i].updateTime
                     val data:InstanceMetaDeta? = temporalMetaData[t]
                     if (data!=null){
@@ -634,6 +634,12 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
     fun removeAllValues(desc: String) : Boolean{
         if (state.containsKey(desc)){
             state.remove(desc)
+            temporalMetaData.keys.forEach{t ->
+                if (temporalMetaData[t]!!.activeKeys.remove(desc) && temporalMetaData[t]!!.activeKeys.isEmpty()) {
+                    temporalMetaData.remove(t)
+                }
+
+            }
             return true
         }
         return false

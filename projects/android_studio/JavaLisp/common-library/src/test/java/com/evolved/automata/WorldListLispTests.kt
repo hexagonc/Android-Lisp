@@ -253,14 +253,15 @@ class WorldListLispTests {
 
             world.setValue(StateMachineCogject(
                     "robot",
-                    Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("initializing", {line: WorldLine, t: Long ->
-                        fun goto(s: String) = setNextState(s, t)
+                    "initializing",
+                    arrayOf(Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("initializing", {line: WorldLine, t: Long ->
+                        fun goto(s: String) = setNextState(world, s, t)
 
                         println("starting robot\n")
                         goto("Working")
                         }),
-                    arrayOf(Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("Working", {line: WorldLine, t: Long ->
-                        fun goto(s: String) = setNextState(s, t)
+                    Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>("Working", {line: WorldLine, t: Long ->
+                        fun goto(s: String) = setNextState(world, s, t)
                         fun duration() = t - lastStateTransition
                         println("${t - lastStateTransition}")
                         if (duration()> 10000) {

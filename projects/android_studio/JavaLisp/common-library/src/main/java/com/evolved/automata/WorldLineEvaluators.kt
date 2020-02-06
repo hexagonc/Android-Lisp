@@ -357,16 +357,16 @@ class WorldLineLispFunctions {
         }
 
 
-        fun getSetStateFunction(time: Long, cog:StateMachineCogject): SimpleFunctionTemplate {
+        fun getSetStateFunction(time: Long, cog:StateMachineCogject, world: WorldLine): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
                     val nextState = evaluatedArgs[0].string
-                    cog.setNextState(nextState, time)
+                    cog.setNextState(world, nextState, time)
                     return evaluatedArgs[0]
                 }
 
                 override fun <T :FunctionTemplate> innerClone(): T {
-                    return getSetStateFunction(time, cog) as T
+                    return getSetStateFunction(time, cog, world) as T
                 }
 
             }
@@ -463,7 +463,7 @@ class WorldLineLispFunctions {
 
             var innerEnv = if (lispLambda is Lambda) lispLambda.innerEnvironment else Environment(env)
             val lambda:StateMachineCogject.(world: WorldLine, time:Long)->Unit = {world: WorldLine, time:Long->
-                innerEnv.mapFunction("this.set-next-state", getSetStateFunction(time, StateMachineCogject@this))
+                innerEnv.mapFunction("this.set-next-state", getSetStateFunction(time, StateMachineCogject@this, world))
                 innerEnv.mapFunction("this.get-state-name", getStateNameFunction(StateMachineCogject@this))
                 innerEnv.mapFunction("this.time-in-state", getStateDuration(StateMachineCogject@this, time))
                 innerEnv.mapFunction("state.get-all-states", getAllStateNamesFunction(StateMachineCogject@this))
@@ -503,12 +503,12 @@ class WorldLineLispFunctions {
                         val name = evaluatedArgs[0].string
                         var myCache: FiniteSet?
                         if (name != null){
-                            if (evaluatedArgs[1].isList){
-
-                                val stateSpecLisp:Array<Value> = evaluatedArgs[1].list
+                            if (evaluatedArgs[1].isString){
+                                val initialStateName = evaluatedArgs[1].string
+                                val stateSpecLisp:Array<Value> = evaluatedArgs[2].list
 
                                 result = ExtendedFunctions.makeValue(StateMachineCogject(name,
-                                        getStateCogjectTransitionSpec(env, stateSpecLisp[0]),
+                                        initialStateName,
                                         stateSpecLisp.map { pair -> getStateCogjectTransitionSpec(env, pair)}.toTypedArray()
                                         ))
                             }

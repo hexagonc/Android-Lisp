@@ -7,13 +7,15 @@ import kotlin.random.Random
 private fun nop() = "Nothing"
 
 
-open abstract class Cogject(val stateType: VectorType, var stateValue: FloatArray, var name: String = UNKNOWN_ITEM_NAME) {
+open abstract class Cogject(val stateType: VectorType, var name: String = UNKNOWN_ITEM_NAME) {
 
-    var processInterceptor: (Cogject.(WorldLine,Long) -> FloatArray)? = null
+    var processInterceptor: (Cogject.(WorldLine,Long) -> Unit)? = null
 
     var capabilities: MutableSet<Capability> = mutableSetOf()
 
     var favors = mutableListOf<Favor>()
+
+    abstract val stateValue: FloatArray
 
     override fun toString(): String {
         return "Cogject: <${name?:"unknown"} ${stateType.stringConverter.toString(stateValue)}>"
@@ -24,7 +26,6 @@ open abstract class Cogject(val stateType: VectorType, var stateValue: FloatArra
         capability.context = this
         return this
     }
-
 
     abstract fun  copy(): Cogject
 
@@ -58,20 +59,22 @@ open abstract class Cogject(val stateType: VectorType, var stateValue: FloatArra
 
     open fun process(world: WorldLine, processTime: Long) : FloatArray {
         val snap = processInterceptor
-        stateValue =if (snap != null) snap(world, processTime) else stateValue
+        if (snap != null)
+            snap(world, processTime)
         favors.removeIf{favor: Favor -> val status = favor.process(world, processTime); status !in setOf<FAVOR_STATUS>(FAVOR_STATUS.WORKING, FAVOR_STATUS.PENDING)}
-        return processInternal(world, processTime)
+        processInternal(world, processTime)
+        return stateValue
     }
 
-    open fun processInternal(world: WorldLine, processTime: Long): FloatArray {
-        return stateValue
+    open fun processInternal(world: WorldLine, processTime: Long): Unit {
+
     }
 
     open fun getBooleanIntValue(bool: Boolean): Float {
         return if (bool) 1F else 0F
     }
 
-    fun interceptor(interceptor: (Cogject.(WorldLine,Long) -> FloatArray)): Cogject{
+    fun interceptor(interceptor: (Cogject.(WorldLine,Long) -> Unit)): Cogject{
         processInterceptor = interceptor
         return this
     }
@@ -90,31 +93,28 @@ open abstract class Cogject(val stateType: VectorType, var stateValue: FloatArra
 
 
 
-open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  val initialState: Pair<String, StateMachineCogject.(WorldLine, Long) -> Unit>, val stateSpecs: Array<Pair<String, (StateMachineCogject.(WorldLine,Long)->Unit)>>): Cogject(TallyVector(stateSpecs.size+1), FloatArray(stateSpecs.size+1){0F }, name) {
+open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  initialStateName: String, val stateSpecs: Array<Pair<String, (StateMachineCogject.(WorldLine,Long)->Unit)>>): Cogject(TallyVector(stateSpecs.size), name) {
 
     val stringMap: StringToIntConversion
 
     var lastStateTransition: Long = -1L
 
-    var prevStateName: String? = null
+    var currentStateName: String = initialStateName
 
-    var currentStateName: String = initialState.first
+    override val stateValue: FloatArray
 
     init {
-        stringMap = StringToIntConversion().also {me -> stateSpecs.forEach { nameLambdaPair -> me.addString(nameLambdaPair.first) }; me.addString(initialState.first)}
-
+        stringMap = StringToIntConversion().also {me -> stateSpecs.forEach { nameLambdaPair -> me.addString(nameLambdaPair.first) }}
+        stateValue = stateType.valueToVector(stringMap.getStringIndex(currentStateName))
     }
 
     open fun onUpdatedValue(world: WorldLine, time: Long): Cogject {
-        world.setValue(copy(), time+1)
+
         return this
     }
 
     override fun copy(): Cogject {
-        var cog =  StateMachineCogject(initialState =initialState, stateSpecs = stateSpecs, name = name)
-        cog.currentStateName = currentStateName
-        cog.prevStateName = prevStateName
-        cog.lastStateTransition = -1L
+        var cog =  StateMachineCogject(initialStateName = currentStateName, stateSpecs = stateSpecs, name = name)
         return cog
     }
 
@@ -122,34 +122,32 @@ open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  val initialSta
         return "StateMachineCogject<$currentStateName>"
     }
 
-    override fun process(world: WorldLine, processTime: Long): FloatArray {
+    override fun processInternal(world: WorldLine, processTime: Long): Unit {
         val stateIndex = stateType.vectorToValue(stateValue) as Int
         if (lastStateTransition == -1L)
             lastStateTransition = processTime
-        stateSpecs[stateIndex].second(this, world, processTime)
 
-        return super.process(world, processTime)
+        stateSpecs[stateIndex].second(this, world, processTime)
     }
 
     /**
      * Only call this when the state changes
      */
-    fun setNextState(name: String, time: Long): FloatArray {
+    fun setNextState(w: WorldLine, name: String, time: Long): Boolean {
         if (currentStateName != name){
-            prevStateName = currentStateName
-            currentStateName = name
-            lastStateTransition = time
+            w.setValue(StateMachineCogject(name = this.name, stateSpecs = stateSpecs, initialStateName = name), time+1)
+            return true
         }
-        currentStateName = name
-        stateValue = (stateType as TallyVector).valueToVector(stringMap.getStringIndex(name)?:TODO("Need to decide what happens when setting an invalid state name"))
-        return stateValue
+
+        return false
     }
 
 
 }
 
 
-open class IntCogject(private val value: Int, private val size: Int, name: String = UNKNOWN_ITEM_NAME):Cogject(TallyVector(size), FloatArray(size){ i -> if (i >= value) 0F else 1F}, name ) {
+open class IntCogject(private val value: Int, private val size: Int, name: String = UNKNOWN_ITEM_NAME):Cogject(TallyVector(size), name ) {
+    override val stateValue = stateType.valueToVector(value)
     fun getValue(): Int {
         return (stateType as TallyVector).getValue(stateValue)
     }
@@ -161,8 +159,8 @@ open class IntCogject(private val value: Int, private val size: Int, name: Strin
 
 open class RandomIntCogject(name: String):IntCogject(Random.nextInt(0, 10), 10, name)
 
-open class SetCogject(private val items: Array<String>,private val set: Set<String>, name: String = UNKNOWN_ITEM_NAME) : Cogject(SetVector(items), FloatArray(items.size){ i -> if (set.contains(items[i])) 1F else 0F}, name) {
-
+open class SetCogject(private val items: Array<String>,private val set: Set<String>, name: String = UNKNOWN_ITEM_NAME) : Cogject(SetVector(items), name) {
+    override val stateValue = FloatArray(items.size){ i -> if (set.contains(items[i])) 1F else 0F}
     fun getValue() : Set<String> {
         return HashSet<String>().apply{addAll((stateType as SetVector).getSet(stateValue).map{ it-> it as String})}
     }
@@ -174,8 +172,8 @@ open class SetCogject(private val items: Array<String>,private val set: Set<Stri
 
 
 
-abstract class ValueCogject(private val type: UnsignedNumVectorType,value: Any, name: String): Cogject(type, type.valueToVector(value), name) {
+abstract class ValueCogject(private val type: UnsignedNumVectorType,value: Any, name: String): Cogject(type, name) {
     abstract fun getValue(): Any
-
+    override val stateValue = type.valueToVector(value)
 
 }

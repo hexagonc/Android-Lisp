@@ -517,14 +517,18 @@ class WorldLineTests {
                 return Pair(this, action)
             }
 
-            var stateMachine =  StateMachineCogject("machine",
-                    "initial" `yields`   {world:WorldLine, time:Long -> if (time - lastStateTransition > 10) setNextState("speak", time);  stateValue},
+            var stateMachine =  StateMachineCogject("machine","initial",
                     arrayOf(
+                    "initial" `yields`   {world:WorldLine, time:Long ->
+                        if (time - lastStateTransition > 10)
+                            setNextState(world, "speak", time)
+                        stateValue
+                    },
                     "speak" `yields` {world:WorldLine, time:Long ->
                         if (time - lastStateTransition == 1L)
                             println("Hello, World")
                         if (time - lastStateTransition > 10)
-                            setNextState("reply", time)
+                            setNextState(world, "reply", time)
 
                         stateValue},
                     "reply" `yields` {world:WorldLine, time:Long ->
@@ -548,163 +552,8 @@ class WorldLineTests {
     }
 
 
-    @Test fun goalSearchTests(){
-        var message = "Failed to add basic cogject"
-
-        try {
-            // Test creating relative goals
-            val userName = "user"
-            println("Test creating effective goals")
-            var world = WorldLine(userCogjectName = userName)
-
-            val name = "x"
-            world.setValue(name, IntCogject(5, 10), 10)
-
-            message = "Failed to create simple name goal"
-
-            val simpleNameGoal = Goal(cogjectWithName = name)
-
-            println("Testing goal fulfillment")
-
-            message = "Goal should not be fullfilled when time less than 10"
-            assertTrue(message, !world.goalIsSatisfied(simpleNameGoal, 0))
-
-            message = "Goal should  be fullfilled when time is 10"
-            assertTrue(message, world.goalIsSatisfied(simpleNameGoal, 10))
-
-            message = "Goal should be fullfilled when time is greater than 10"
-
-            assertTrue(message, world.goalIsSatisfied(simpleNameGoal, 100))
-
-            println("Test simple goal search where goal is already reached")
-
-            world.setValue("user", IntCogject(1,1), 0)
-
-            val actionsToTake: List<PlanningStage>?
-
-            actionsToTake = world.planRouteToGoal(10, simpleNameGoal)
-            assertTrue(message, actionsToTake!=null && actionsToTake.isEmpty())
-
-            // Interlude for testing capabilities
-            testSimpleNameCapabilities(name);
 
 
-
-        }
-        catch (e: Throwable){
-            e.printStackTrace()
-            assertTrue(message, false)
-        }
-    }
-
-
-    fun testSimpleNameCapabilities(name: String){
-
-        val simpleGoal = Goal(cogjectWithName = name)
-
-        var message = "Failed to create simple name goal"
-
-        var world = WorldLine()
-
-        val name = simpleGoal.cogjectWithName!!
-
-        println("----> Testing capabilities")
-
-        message = "Failed to create ability to add random int cogject"
-        // This capability is only able to create goals that have not specific value of time
-        // requirements
-        val abilityToCreateRandomCogject = object: Capability(goalCanAchieve = Goal(cogjectWithName = name), confidence = object: Confidence {
-            override fun getConfidence(goal: Goal?): Float {
-                return 1F
-            }
-        }){
-            override fun doIt(goalToAchieve: Goal,requestTime: Long, currentTime: Long, timeLine: WorldLine) {
-                timeLine.setValue(goalToAchieve.cogjectWithName!!, IntCogject(Random.nextInt(0, 10), 10, goalToAchieve.cogjectWithName!!), currentTime)
-            }
-        }
-
-        message = "Failed to obtain a favor"
-
-        var favor = abilityToCreateRandomCogject.requestFavor(world, simpleGoal, 0)
-
-        assertTrue(message, favor != null)
-
-        message = "Failed to correctly process favor of world: ${world.getState(0)} and time 0"
-
-        val status = favor?.process(world, 0)
-
-        message = "Failed to complete favor with correct status: $status"
-
-        assertTrue(message, status == FAVOR_STATUS.SUCCESS)
-
-        message = "Failed to correctly call world.goalIsSatisfied(simpleGoal, 0)"
-        var goalSatisfied = world.goalIsSatisfied(simpleGoal, 0)
-
-
-        message = "Failed to verify goal is satisfied in the world: isSatisfied = $goalSatisfied"
-
-        assertTrue(message,  goalSatisfied)
-
-        println("worldline: ${world.getState(1)}")
-
-        println("Testing goal fullfillment at a particular time")
-
-        val delayedSimpleGoal = Goal(cogjectWithName = name, observeAtTime = 10)
-
-        message = "Failed to remove all keys from world"
-        world.removeAllValues(name)
-
-        assertTrue(message, world.getLastValue(name, 0) == null)
-        message = "Failed to obtain favor"
-
-        favor = abilityToCreateRandomCogject.requestFavor(world, delayedSimpleGoal, 0)
-
-        assertTrue(message, favor != null)
-
-        favor?.process(world, 0)
-
-        message = "Failed to detect goal satisfied after 10 steps"
-
-        assertTrue(message, world.goalIsSatisfied(delayedSimpleGoal, 10))
-
-        message = "Goal fails to be not satisfied with t < 10"
-
-        assertTrue(message, !world.goalIsSatisfied(delayedSimpleGoal, 9))
-
-        message = "Goal fails to be not satisfied with t > 10"
-
-        assertTrue(message, !world.goalIsSatisfied(delayedSimpleGoal, 11))
-
-        message = "Failed to satisfy goal after 10 steps"
-        for (t: Long in 0L..20) {
-
-            if (world.getLastValue(name, t)==null){
-                val result = favor?.process(world, t)
-                println("Favor status: $result")
-            }
-
-            println("Current world: ${world.getState(t)} at time $t")
-            assertTrue(message, t != 10L && !world.goalIsSatisfied(delayedSimpleGoal, t) || t==10L && world.goalIsSatisfied(delayedSimpleGoal, t))
-        }
-
-        println("Test goal ranges")
-
-        val pivotTime = 10L
-        val simpleFutureGoal = Goal(cogjectWithName = name, observeAfter = pivotTime)
-
-        goalSatisfied = world.goalIsSatisfied(simpleFutureGoal, 4)
-
-        message = "Failed to not match $simpleFutureGoal when time less than $pivotTime.  Expected false but found $goalSatisfied"
-
-        assertTrue(message, !goalSatisfied)
-
-        favor = abilityToCreateRandomCogject.requestFavor(world, simpleFutureGoal, 0)
-
-        for (t: Long in 0L..20) {
-            println("Current world: ${world.getState(t)} at time $t")
-            assertTrue(message, t < pivotTime && !world.goalIsSatisfied(simpleFutureGoal, t) || t>=pivotTime && world.goalIsSatisfied(simpleFutureGoal, t))
-        }
-    }
 
 
     @Test fun testRealGoalSearch(){
