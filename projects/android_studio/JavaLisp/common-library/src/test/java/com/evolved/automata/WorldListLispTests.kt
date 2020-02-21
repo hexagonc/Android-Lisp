@@ -10,6 +10,53 @@ import org.junit.Test
 class WorldListLispTests {
 
 
+    @Test fun testOrderingKeys(){
+        var message = ""
+        try {
+
+            var cache = FiniteSet(1000)
+
+            var world = WorldLine()
+
+            val keys = arrayOf("x", "y", "z", "a z", "a y", "a a")
+            for ((i, key) in keys.withIndex()){
+                val t = Math.min(i + 1, 4)
+
+                val item = cache.makeValueCogject(key, t)!!
+                world.setValue(item, t.toLong())
+            }
+
+            println("Sorted: ${world.getKeysInChronologicalOrder(world.getLastTime()!!)} ")
+
+            world.removeKey("y", 10)
+
+            val results = keys.map { it->world.getCogjectMetaData(it, 5) }
+            println("Data: ${results}")
+
+
+            for (i in 1..5){
+                world.setValue(cache.makeValueCogject("+", i)!!, 10)
+            }
+
+            var values = world.getAllValuesAt("+", 10)
+            println("Values at 10: ${values}")
+
+            values = world.getAllValuesAt("+", 15)
+            println("Values at 15: ${values}")
+
+            println("Last value at 15: ${world.getLastValue("+", 15)}")
+
+            repeat (6){
+                world.removeLatestValue("+", 10)
+                values = world.getAllValuesAt("+", 10)
+                println("$it) Values at 10: ${values}")
+            }
+        }
+        catch (e: Throwable){
+            e.printStackTrace()
+            assertTrue(message, false)
+        }
+    }
 
     @Test fun testCreateWorldLineAndSimpleCogjects(){
         var message = "Failed to create WorldLine Value"

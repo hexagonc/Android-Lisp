@@ -1,9 +1,6 @@
 package com.evolved.automata
 
 import com.evolved.automata.lisp.*
-import com.evolved.automata.nn.util.UnsignedNumVectorType
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import java.lang.RuntimeException
 
 
@@ -94,6 +91,10 @@ class WorldLineLispFunctions {
             env.mapFunction("get-cogject-value", getCogjectValue())
             env.mapFunction("create-cogject", createCogject(cache))
 
+            env.mapFunction("create-cogject", createCogject(cache))
+            env.mapFunction("cogject-life-time", getLifeDuration())
+            env.mapFunction("cogject-death-time", getDeathTime())
+
 
             // State cogject functions
             env.mapFunction("get-cogject-state", getStateNameFunction())
@@ -115,6 +116,16 @@ class WorldLineLispFunctions {
             env.mapFunction("worldline-expire-key", worldlineExpireKey())
             env.mapFunction("worldline-pop-last-value", worldlinePopLastValue())
             env.mapFunction("worldline-get-update-times", worldlineGetLastUpdateTimes())
+
+            env.mapFunction("worldline-get-ordered-keys", worldlineGetOrderedKeysAt())
+            env.mapFunction("worldline-get-value-meta-data", worldlineGetKeyMetadataAt())
+            env.mapFunction("worldline-get-all-values-at", worldlineGetAllValuesAt())
+
+            env.mapFunction("worldline-get-universe-scale", worldlineGetWorldScale())
+            env.mapFunction("worldline-delete-older-than world", worldlineClearAllOlderThan())
+
+
+
 
 
         }
@@ -208,6 +219,123 @@ class WorldLineLispFunctions {
 
             }
         }
+
+
+        fun worldlineGetOrderedKeysAt(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    val time = evaluatedArgs[1].intValue
+
+                    val keys = world.getKeysInOldestUpdateOrder(time)
+
+                    return ListValue(keys.map { NLispTools.makeValue(it) }.toTypedArray<Value>())
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineGetOrderedKeysAt() as T
+                }
+
+            }
+        }
+
+
+        fun worldlineGetKeyMetadataAt(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    val key = evaluatedArgs[1].string
+                    val time = evaluatedArgs[2].intValue
+
+                    val data = world.getCogjectMetaData(key, time)
+
+                    val map = HashMap<String, Value>()
+
+                    if (data != null) {
+                        map.put("key", NLispTools.makeValue(data?.keyName?:""))
+                        map.put("value", NLispTools.makeValue(data?.valString?:""))
+                        map.put("value-age", if (data.valueLifeTime != null) NLispTools.makeValue(data.valueLifeTime) else Environment.getNull())
+                        map.put("total-age", if (data.totalLifeTime != null) NLispTools.makeValue(data.totalLifeTime) else Environment.getNull())
+                        map.put("birthday-str", if (data.birthdayString != null) NLispTools.makeValue(data.birthdayString) else Environment.getNull())
+                        map.put("death-time", if (data.deathDay != null) NLispTools.makeValue(data.deathDay!!) else Environment.getNull())
+                    }
+
+                    return StringHashtableValue(map)
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineGetKeyMetadataAt() as T
+                }
+
+            }
+        }
+
+
+        fun worldlineGetAllValuesAt(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    val key = evaluatedArgs[1].string
+                    val time = evaluatedArgs[2].intValue
+
+                    return ListValue(world.getAllValuesAt(key, time).map { it -> ExtendedFunctions.makeValue(it) }.toTypedArray<Value>())
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineGetAllValuesAt() as T
+                }
+
+            }
+        }
+
+
+        // (worldline-get-key-universe-scale world)
+        // returns a list ({minimum-time} {maximum-time} {all-keys-ever-seen} )
+        // worldlineGetWorldScale
+        fun worldlineGetWorldScale(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+
+                    val v1 = ListValue(world.everyKeyEveryCreated().map { it -> ExtendedFunctions.makeValue(it) }.toTypedArray<Value>())
+
+                    val (earliest, latest) = Pair(world.getEarliestTime(), world.getLastTime())
+
+                    return ListValue(
+                            arrayOf(
+                                    if (earliest != null) NLispTools.makeValue(earliest) else Environment.getNull(),
+                            if (latest != null) NLispTools.makeValue(latest) else Environment.getNull(),v1))
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineGetWorldScale() as T
+                }
+
+            }
+        }
+
+        fun worldlineClearAllOlderThan(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    val cutoffAge =evaluatedArgs[1].intValue
+
+                    world.clearAllTransactionsInRange(world.getEarliestTime()?:0, cutoffAge)
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineClearAllOlderThan() as T
+                }
+
+            }
+        }
+
 
         fun worldlinePopLastValue(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
@@ -420,6 +548,81 @@ class WorldLineLispFunctions {
             }
         }
 
+        fun getLifeDuration(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                    var world = evaluatedArgs[0].objectValue as WorldLine
+
+                    val name:String = if (evaluatedArgs[1].isString) evaluatedArgs[1].string else (evaluatedArgs[1].objectValue as Cogject).name
+                    val time: Long = evaluatedArgs[2].intValue
+                    return NLispTools.makeValue(world.getCogjectCurrentAge(name, time))
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return getLifeDuration() as T
+                }
+
+            }
+        }
+
+        fun getDeathTime(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                    var world = evaluatedArgs[0].objectValue as WorldLine
+                    val cog: Cogject = evaluatedArgs[1].objectValue as Cogject
+                    val time: Long = evaluatedArgs[2].intValue
+
+
+                    val deathTime = world.getDeathTime(cog.name, time);
+                    if (deathTime != null)
+                        return NLispTools.makeValue(deathTime)
+                    else
+                        return Environment.getNull()
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return getDeathTime() as T
+                }
+
+            }
+        }
+
+
+        fun getLifeDuration(cog:Cogject, time:Long): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                    var world = evaluatedArgs[0].objectValue as WorldLine
+                    return NLispTools.makeValue(world.getCogjectCurrentAge(cog.name, time))
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return getLifeDuration(cog, time) as T
+                }
+
+            }
+        }
+
+        fun getDeathTime(cog:Cogject, time:Long): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                    var world = evaluatedArgs[0].objectValue as WorldLine
+                    val deathTime = world.getDeathTime(cog.name, time);
+                    if (deathTime != null)
+                        return NLispTools.makeValue(deathTime)
+                    else
+                        return Environment.getNull()
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return getDeathTime(cog, time) as T
+                }
+
+            }
+        }
 
         fun getCogjectNameFunction(cog:Cogject): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
@@ -447,9 +650,11 @@ class WorldLineLispFunctions {
             }
         }
 
-        fun addLispCogjectLambdas(env: Environment, cog: Cogject){
+        fun addLispCogjectLambdas(env: Environment, cog: Cogject, time:Long){
             env.mapFunction("this.cogject-name", getCogjectNameFunction(cog))
             env.mapFunction("this.cogject-copy", getCogjectCopyFunction(cog))
+            env.mapFunction("this.life-time", getLifeDuration(cog, time))
+            env.mapFunction("this.death-time", getDeathTime(cog, time))
         }
 
         fun addLispWorldLineLambdas(env: Environment, cog: Cogject){
@@ -466,9 +671,10 @@ class WorldLineLispFunctions {
                 innerEnv.mapFunction("this.set-next-state", getSetStateFunction(time, StateMachineCogject@this, world))
                 innerEnv.mapFunction("this.get-state-name", getStateNameFunction(StateMachineCogject@this))
                 innerEnv.mapFunction("this.time-in-state", getStateDuration(StateMachineCogject@this, time))
+
                 innerEnv.mapFunction("state.get-all-states", getAllStateNamesFunction(StateMachineCogject@this))
 
-                addLispCogjectLambdas(innerEnv,StateMachineCogject@this )
+                addLispCogjectLambdas(innerEnv,StateMachineCogject@this, time )
                 lispLambda.setActualParameters(arrayOf<Value>(ExtendedFunctions.makeValue(world), NLispTools.makeValue(time)))
                 lispLambda.evaluate(innerEnv, false)
 
@@ -503,7 +709,7 @@ class WorldLineLispFunctions {
                         val name = evaluatedArgs[0].string
                         var myCache: FiniteSet?
                         if (name != null){
-                            if (evaluatedArgs[1].isString){
+                            if (evaluatedArgs[1].isString && evaluatedArgs.size>2){
                                 val initialStateName = evaluatedArgs[1].string
                                 val stateSpecLisp:Array<Value> = evaluatedArgs[2].list
 

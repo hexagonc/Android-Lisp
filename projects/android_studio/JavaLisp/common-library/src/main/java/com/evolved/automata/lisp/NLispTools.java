@@ -4922,6 +4922,10 @@ public class NLispTools
 		}
 		return NLispTools.makeValue(base);
 	}
+
+	public static Value makeValue(Value v) {
+		return v;
+	}
 	
 	public static Value makeValue(Value[] args)
 	{

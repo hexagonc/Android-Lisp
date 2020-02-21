@@ -5,6 +5,7 @@ import com.evolved.automata.nn.util.EnumVector
 import com.evolved.automata.nn.util.SetVector
 import com.evolved.automata.nn.util.TallyVector
 import com.evolved.automata.nn.util.VectorType
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.collections.ArrayList
@@ -116,9 +117,9 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
 
     private val temporalMetaData = TreeMap<Long, InstanceMetaDeta>()
 
-    fun getEarliestTime():Long? = temporalMetaData.firstKey()
+    fun getEarliestTime():Long? = if (temporalMetaData.isNotEmpty()) temporalMetaData.firstKey() else null
 
-    fun getLastTime():Long? = temporalMetaData.lastKey()
+    fun getLastTime():Long? = if (temporalMetaData.isNotEmpty()) temporalMetaData.lastKey() else null
 
     private var empiricalMetaData: WorldLine? = null
 
@@ -127,6 +128,15 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
     fun goalIsSatisfied(goal: Goal, time: Long): Boolean {
         return getState(time).values.any{cogject -> goal.isSatisfiedBy(cogject, time)}
     }
+
+    fun everyKeyEveryCreated():List<String> {
+
+        val sortedKeys:List<String> = state.keys.sortedBy { key -> state?.get(key)?.get(0)?.updateTime?:0 }
+
+        return sortedKeys.toList()
+    }
+
+
 
     fun planRouteToGoal(time: Long, sourceCogject: Cogject, goal: Goal): List<PlanningStage>? {
 
@@ -192,6 +202,112 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
             temporalMetaData.remove(time)
         return this
     }
+
+
+
+    fun getKeysInChronologicalOrder(time: Long): Set<String> {
+        val state = getState(time)
+        val sortedKeys:List<String> = state.keys.sortedWith (Comparator<String>{lvalue: String, rvalue:String->
+            val (lvage, rvage) = Pair(getCogjectCurrentAge(lvalue, time), getCogjectCurrentAge(rvalue, time))
+            if (lvage > rvage){
+                -1
+            }
+            else if (lvage == rvage){
+                state[lvalue]!!.name.compareTo(state[rvalue]!!.name)
+            }
+            else
+                1
+        })
+
+        return mutableSetOf<String>().apply{addAll(sortedKeys)}.toSet()
+    }
+
+    fun getKeysInOldestUpdateOrder(time: Long): List<String> {
+        val stateInstance = getState(time)
+        val sortedKeys:List<String> = stateInstance.keys.sortedWith (Comparator<String>{lvalue: String, rvalue:String->
+            val (lvage, rvage) = Pair(state.get(lvalue)?.get(0)!!.updateTime, state.get(rvalue)?.get(0)!!.updateTime)
+            if (lvage < rvage){
+                -1
+            }
+            else if (lvage == rvage){
+                stateInstance[lvalue]!!.name.compareTo(stateInstance[rvalue]!!.name)
+            }
+            else
+                1
+        })
+
+        return sortedKeys
+    }
+
+    data class CogjectInstanceSummary (val keyName: String, val valString:String, val totalLifeTime:Long?, val valueLifeTime: Long?, var deathDay:Long? , val birthdayString:String)
+
+    fun getCogjectMetaData(name: String, time: Long): CogjectInstanceSummary? {
+        val history = state[name]
+        if (history == null){
+            return null
+        }
+
+        val index = findIndex(time, history)
+        if (index!=null){
+            val keyName = name
+            val valueString = history[index].entry.toString()
+            val totalLifeDurationMs = getCogjectCurrentAge(name, time)
+            val valueLifetime = time - history[index].updateTime
+            var deathTime:Long?=null
+            for (i in index+1 until history.size){
+                if (history[i].entry == DELETED){
+                    deathTime = history[i].updateTime
+                    break
+                }
+            }
+            val birthdayString:String = (SimpleDateFormat("yyyy.MM.dd 'at' HH:mm:ss").format(Date(time - totalLifeDurationMs)))
+            return CogjectInstanceSummary(keyName, valueString, totalLifeDurationMs, valueLifetime, deathTime, birthdayString)
+        }
+        else
+            return null
+    }
+
+    fun getKeyMetaDataInUpdateOrder(time: Long): Set<String> {
+        val stateInstance = getState(time)
+        val sortedKeys:List<String> = stateInstance.keys.sortedWith (Comparator<String>{lvalue: String, rvalue:String->
+            val (lvage, rvage) = Pair(state.get(lvalue)?.get(0)!!.updateTime, state.get(rvalue)?.get(0)!!.updateTime)
+            if (lvage > rvage){
+                -1
+            }
+            else if (lvage == rvage){
+                stateInstance[lvalue]!!.name.compareTo(stateInstance[rvalue]!!.name)
+            }
+            else
+                1
+        })
+
+        return mutableSetOf<String>().apply{addAll(sortedKeys)}.toSet()
+    }
+
+    fun getAllValuesAt(key:String, time:Long): List<Cogject>{
+        val history = state[key]
+        var out = mutableListOf<Cogject>()
+        if (history != null){
+            val entry = getLastEntry(key, time)
+            if (entry != null){
+                if (entry.updateTime!=time){
+                    out.add(entry.entry)
+                }
+                else {
+                    for (i in 0 until history.size){
+                        if (history[i].updateTime == time){
+                            out.add(history[i].entry)
+                        }
+                        else if (history[i].updateTime > time){
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        return out
+    }
+
 
     fun getUpdateTimes():List<Long> {
         val (start, end) = getEarliestTime() to getLastTime()
@@ -515,9 +631,18 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         return getState(currentTime).values.filter{ cogject -> cogject.getGoalConfidence(goal)>0}.sortedBy { cogject -> cogject.getGoalConfidence(goal) }
     }
 
-    private fun findLastValue(time: Long, timeline:ArrayList<CogjectEntry>): CogjectEntry? {
-        val entryIndex = findIndex(time, timeline)
-        return if (entryIndex!=null)timeline[entryIndex] else null
+    private fun findLastValue(searchTime: Long, history:ArrayList<CogjectEntry>): CogjectEntry? {
+
+        val priorIndex = findIndex(searchTime, history)
+        if (priorIndex == null)
+            return null
+        val time = history[priorIndex].updateTime
+        var upperIndex = priorIndex
+        var lowerIndex = priorIndex
+        while (upperIndex < history.size-2 && history[upperIndex+1].updateTime == time && history[upperIndex+1].entry != DELETED) upperIndex++
+        while (lowerIndex > 0 && history[lowerIndex-1].updateTime == time && history[lowerIndex-1].entry != DELETED) lowerIndex--
+
+        return history[lowerIndex]
     }
 
     fun findNextValue(key: String, time: Long, ignoreRemovalBoundary: Boolean = true, timeInclusive: Boolean = true) : Cogject? {
@@ -566,6 +691,46 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         return hasValue(desc, System.currentTimeMillis())
     }
 
+
+    fun getCogjectCurrentAge(name: String, time:Long): Long{
+        if (hasValue(name, time)){
+            val values = state[name]!!
+            val index:Int = findIndex(time, values)!!
+            var totalTime = 0L
+            for (i in index downTo 0){
+                if (values[i].entry!= DELETED) {
+                    if (i == index){
+                        totalTime+=time - values[i].updateTime
+                    }
+                    else {
+                        totalTime+=values[i-1].updateTime - values[i].updateTime
+                    }
+                }
+                else
+                    break
+            }
+
+            return totalTime
+        }
+        else
+            return 0L
+    }
+
+    fun getDeathTime(name: String, time:Long): Long? {
+        if (hasValue(name, time)){
+            val values = state[name]!!
+            val index:Int = findIndex(time, values)!!
+            for (i in index until values.size){
+                if (values[i].entry== DELETED) {
+                    return values[i].updateTime
+                }
+
+            }
+        }
+        return null
+    }
+
+
     fun clearAllTransactionsInRange(startTime: Long, endTime:Long): WorldLine {
         return clearAllTransactionsInRange(startTime, endTime, state.keys.toTypedArray())
     }
@@ -606,12 +771,18 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         var history = state[desc]
 
         if (history != null){
-            val priorIndex = findIndex(time, history)
+            var priorIndex = findIndex(time, history)
             if (priorIndex != null) {
-                for (i in priorIndex until history.size){
+                var upperIndex = priorIndex
+                var lowerIndex = priorIndex
+                while (upperIndex< history.size-2 && history[upperIndex+1].updateTime == time && history[upperIndex+1].entry != DELETED) upperIndex++
+                while (lowerIndex > 0 && history[lowerIndex-1].updateTime == time && history[lowerIndex-1].entry != DELETED) lowerIndex--
+
+                val numRemainingAfterDelete = upperIndex - lowerIndex
+                for (i in lowerIndex until history.size){
                     val t = history[i].updateTime
                     val data:InstanceMetaDeta? = temporalMetaData[t]
-                    if (data!=null){
+                    if (data!=null && numRemainingAfterDelete == 0){
                         data.activeKeys.remove(desc)
                         if (data.activeKeys.size == 0)
                         {
@@ -623,8 +794,8 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
                     }
                 }
 
-                val returnV = history[priorIndex]
-                history.removeAt(priorIndex)
+                val returnV = history[lowerIndex]
+                history.removeAt(lowerIndex)
                 return returnV.entry
             }
         }
