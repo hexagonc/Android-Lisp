@@ -113,6 +113,8 @@ open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  initialStateNa
         return this
     }
 
+    fun getAllStateNames(): Set<String> = stateSpecs.map {it.first}.toSet()
+
     override fun copy(): Cogject {
         var cog =  StateMachineCogject(initialStateName = currentStateName, stateSpecs = stateSpecs, name = name)
         return cog

@@ -703,7 +703,7 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
                         totalTime+=time - values[i].updateTime
                     }
                     else {
-                        totalTime+=values[i-1].updateTime - values[i].updateTime
+                        totalTime+=values[i+1].updateTime - values[i].updateTime
                     }
                 }
                 else

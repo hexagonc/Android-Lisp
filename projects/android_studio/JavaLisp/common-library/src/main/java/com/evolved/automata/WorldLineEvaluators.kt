@@ -87,11 +87,12 @@ class WorldLineLispFunctions {
             }
 
 
+            env.mapFunction("cogject-process", cogjectProcess())
             env.mapFunction("create-worldline", createWorld())
             env.mapFunction("get-cogject-value", getCogjectValue())
             env.mapFunction("create-cogject", createCogject(cache))
 
-            env.mapFunction("create-cogject", createCogject(cache))
+            env.mapFunction("is-cogject", isCogject())
             env.mapFunction("cogject-life-time", getLifeDuration())
             env.mapFunction("cogject-death-time", getDeathTime())
 
@@ -124,6 +125,7 @@ class WorldLineLispFunctions {
             env.mapFunction("worldline-get-universe-scale", worldlineGetWorldScale())
             env.mapFunction("worldline-delete-older-than world", worldlineClearAllOlderThan())
 
+            env.mapFunction("worldline-serialize", worldlineSerialize())
 
 
 
@@ -445,6 +447,55 @@ class WorldLineLispFunctions {
         }
 
 
+        fun worldlineSerialize(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    var prevActiveKeys: Set<String>? = null
+                    var worldSpecList = ArrayList<Value>()
+                    for (time in world.getUpdateTimes()) {
+                        val activeKeys = world.getActiveKeys(time)
+                        prevActiveKeys?.forEach{key ->
+                            if (!activeKeys.contains(key)){
+                                worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  Environment.getNull(), NLispTools.makeValue(time))))
+                            }
+                        }
+
+                        prevActiveKeys = activeKeys
+
+
+                        for (key in activeKeys){
+
+                            val valuesAtThisTime = world.getAllValuesAt(key, time)
+
+                            valuesAtThisTime.forEach{cogject ->
+
+                                when (cogject){
+                                    is StateMachineCogject -> {
+                                        val states = cogject.getAllStateNames()
+
+                                        worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), NLispTools.makeValue(cogject.currentStateName), ListValue(states.map{NLispTools.makeValue(it)}.toTypedArray()), Environment.getNull(), Environment.getNull())))}
+                                    is ValueCogject -> {worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  cogject.getValue() as Value, Environment.getNull()))) }
+                                }
+
+                            }
+
+                        }
+                    }
+
+                    val listSpec = ListValue(worldSpecList.toTypedArray()).serializedForm()
+                    return NLispTools.makeValue("(build-world ${listSpec})")
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineSerialize() as T
+                }
+
+            }
+
+        }
+
 
         fun getCogjectValue(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
@@ -469,6 +520,26 @@ class WorldLineLispFunctions {
         }
 
 
+        fun cogjectProcess(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, false, false)
+                    val cogject = evaluatedArgs!![0].objectValue as Cogject
+                    val world = evaluatedArgs[1].objectValue as WorldLine
+                    val time = evaluatedArgs[2].intValue
+
+                    cogject.process(world, time)
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return cogjectProcess() as T
+                }
+
+            }
+
+        }
+
         fun createWorld(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>?): Value {
@@ -478,6 +549,29 @@ class WorldLineLispFunctions {
 
                 override fun <T :FunctionTemplate> innerClone(): T {
                     return createWorld() as T
+                }
+
+            }
+
+        }
+
+
+        fun isCogject(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, false, false)
+
+                    val obj = evaluatedArgs[0]
+                    if  (obj.objectValue == null || obj.objectValue !is Cogject)
+                        return Environment.getNull()
+                    if (obj.objectValue is StateMachineCogject)
+                        return NLispTools.makeValue("STATE_MACHINE_COGJECT")
+                    else
+                        return NLispTools.makeValue("VALUE_COGJECT")
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return isCogject() as T
                 }
 
             }
@@ -690,12 +784,12 @@ class WorldLineLispFunctions {
 
                 var myCache: FiniteSet = cache
 
-                when (evaluatedArgs.size){
-                    2 -> return ArgModel(myCache, evaluatedArgs[1])
-                    3 -> if (evaluatedArgs[2].isLambda)
-                            return ArgModel(myCache, evaluatedArgs[1], (evaluatedArgs[2] as LambdaValue).lambda)
-                         else
-                            return ArgModel(evaluatedArgs[2].objectValue as FiniteSet, evaluatedArgs[1])
+                when {
+                    evaluatedArgs.size == 2 || evaluatedArgs.size == 3 && evaluatedArgs[2].isNull -> return ArgModel(myCache, evaluatedArgs[1])
+                    evaluatedArgs.size == 3 -> if (evaluatedArgs[2].isLambda)
+                                                    return ArgModel(myCache, evaluatedArgs[1], (evaluatedArgs[2] as LambdaValue).lambda)
+                                                 else
+                                                    return ArgModel(evaluatedArgs[2].objectValue as FiniteSet, evaluatedArgs[1])
                 }
                 throw RuntimeException("Invalid arguments for creating value lisp cogject: $evaluatedArgs")
             }
@@ -709,7 +803,7 @@ class WorldLineLispFunctions {
                         val name = evaluatedArgs[0].string
                         var myCache: FiniteSet?
                         if (name != null){
-                            if (evaluatedArgs[1].isString && evaluatedArgs.size>2){
+                            if (evaluatedArgs[1].isString && evaluatedArgs.size>2 && evaluatedArgs[2].isList ){
                                 val initialStateName = evaluatedArgs[1].string
                                 val stateSpecLisp:Array<Value> = evaluatedArgs[2].list
 
@@ -733,7 +827,10 @@ class WorldLineLispFunctions {
                                 else {
                                     val lambda:Cogject.(world: WorldLine, time:Long)->FloatArray = { world: WorldLine, time: Long ->
                                         spec.lambda.setActualParameters(arrayOf<Value>(ExtendedFunctions.makeValue(world), NLispTools.makeValue(time)))
+                                        addLispCogjectLambdas((spec.lambda as Lambda).innerEnvironment,Cogject@this, time )
+
                                         spec.lambda.evaluate(env, false)
+
                                         stateValue
                                     }
                                     val cog = spec.cache.makeValueCogject(name, spec.value, lambda) as Cogject?
