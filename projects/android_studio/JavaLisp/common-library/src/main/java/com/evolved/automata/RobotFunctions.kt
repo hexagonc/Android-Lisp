@@ -84,7 +84,7 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
             return null
         }
 
-        private fun findIndex(time: Long, timeline:ArrayList<CogjectEntry>): Int?
+        private fun findIndex(time: Long, timeline:ArrayList<CogjectEntry>, allowDeletedP:Boolean = false): Int?
         {
             if (timeline.size == 0 || timeline[0].updateTime > time) {
                 return null
@@ -105,7 +105,7 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
                     bottom = mid
                 }
             } while (mid != (top + bottom)/2)
-            return if (timeline[mid].entry != DELETED) mid else null
+            return if (allowDeletedP || timeline[mid].entry != DELETED) mid else null
         }
     }
 
@@ -248,9 +248,14 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         }
 
         val index = findIndex(time, history)
-        if (index!=null){
+        val deleted = index == null && findIndex(time, history, true)!=null
+        if (index!=null || deleted){
             val keyName = name
-            val valueString = history[index].entry.toString()
+            if (deleted) {
+                return CogjectInstanceSummary(keyName, "", getCogjectCurrentAge(name, time - 1), 0, time, "")
+            }
+
+            val valueString = history[index!!].entry.toString()
             val totalLifeDurationMs = getCogjectCurrentAge(name, time)
             val valueLifetime = time - history[index].updateTime
             var deathTime:Long?=null
@@ -712,8 +717,9 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
 
             return totalTime
         }
-        else
+        else {
             return 0L
+        }
     }
 
     fun getDeathTime(name: String, time:Long): Long? {

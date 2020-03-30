@@ -107,7 +107,7 @@ class WorldLineLispFunctions {
 
             env.mapFunction("worldline-set-value", worldlineSetValue())
             env.mapFunction("worldline-get-state", worldlineGetState())
-            env.mapFunction("Worldline.process-time", worldlineProcessTime())
+            env.mapFunction("worldline.process-time", worldlineProcessTime())
 
             env.mapFunction("debug", getPrintNameFunction())
 
@@ -765,6 +765,7 @@ class WorldLineLispFunctions {
                 innerEnv.mapFunction("this.set-next-state", getSetStateFunction(time, StateMachineCogject@this, world))
                 innerEnv.mapFunction("this.get-state-name", getStateNameFunction(StateMachineCogject@this))
                 innerEnv.mapFunction("this.time-in-state", getStateDuration(StateMachineCogject@this, time))
+
 
                 innerEnv.mapFunction("state.get-all-states", getAllStateNamesFunction(StateMachineCogject@this))
 
