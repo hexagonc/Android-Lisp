@@ -61,7 +61,7 @@ data class CogjectTime(val cogject: Cogject, val time:Long)
 
 val UNKNOWN_ITEM_NAME = "UNKNOWN"
 val USER_COGJECT_NAME = "USER"
-open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversion(), val userCogjectName: String = USER_COGJECT_NAME) {
+open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
 
     companion object {
         val DELETED = IntCogject(1 , 1, "DELETED")
@@ -116,6 +116,22 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
     val state = HashMap<String, ArrayList<CogjectEntry>>()
 
     private val temporalMetaData = TreeMap<Long, InstanceMetaDeta>()
+
+    val cogjectBuilder:FiniteSet = FiniteSet(1000)
+
+    fun makeSimpleCogject(name: String, value:Any): Cogject? {
+        return cogjectBuilder.makeValueCogject(name, value)
+    }
+
+    fun say(speech:String, time:Long): Long {
+        val tokens = speech.split(' ')
+        for ((t, token) in tokens.withIndex()){
+            setValue(makeSimpleCogject("speech", token)!!, time + t )
+        }
+        return tokens.size + time
+    }
+
+
 
     fun getEarliestTime():Long? = if (temporalMetaData.isNotEmpty()) temporalMetaData.firstKey() else null
 
@@ -338,6 +354,21 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
             return listOf()
     }
 
+    fun getAllValuesSinceBirth(name:String, time:Long): List<Cogject> {
+        val out = mutableListOf<Cogject>()
+        if (hasValue(name, time)){
+            var index = findIndex(time, state[name]!!)!!
+            val stack = mutableListOf<Cogject>()
+            while (index >= 0 && state[name]!![index]?.entry != DELETED){
+                stack.add(state[name]!![index]!!.entry)
+                index--
+            }
+            out.addAll(stack.reversed())
+        }
+        return out
+    }
+
+
 
     fun getUpdateTimes(name: String, firstTime: Long, lastTime: Long): List<Long> {
         val items = state[name]?:ArrayList<CogjectEntry>()
@@ -539,6 +570,11 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
     fun setValue(value: Cogject, time: Long, allowDupes:Boolean = true): WorldLine {
         return setValue(value.name?:UNKNOWN_ITEM_NAME, value, time, allowDupes)
     }
+
+    fun setValue(name:String, value:Any, time: Long = System.currentTimeMillis()): WorldLine{
+        return setValue(name, objectCache.makeValueCogject(name, value)!!, time)
+    }
+
 
     fun getLastValue(desc: String, time: Long) : Cogject? {
         val history = state[desc]
@@ -822,7 +858,12 @@ open class WorldLine(var stringNames:StringToIntConversion = StringToIntConversi
         return false
     }
 
+    @Deprecated("replaced by [expireKey]")
     fun removeKey(desc: String, time: Long) :Boolean {
+        return expireKey(desc, time)
+    }
+
+    fun expireKey(desc: String, time: Long) :Boolean{
         assertKeyDoesNotExist(time, desc)
         val history = state[desc]
         if (history == null || findIndex(time, history) == null) {
