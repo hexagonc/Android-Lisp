@@ -177,5 +177,12 @@ open class SetCogject(private val items: Array<String>,private val set: Set<Stri
 abstract class ValueCogject(private val type: UnsignedNumVectorType,value: Any, name: String): Cogject(type, name) {
     abstract fun getValue(): Any
     override val stateValue = type.valueToVector(value)
+}
 
+class SimpleValueCogject(name: String, val data: Any): ValueCogject(UnsignedNumVectorType(1), data, name){
+    override fun copy(): Cogject {
+        return SimpleValueCogject(name, data)
+    }
+
+    override fun getValue() = data
 }

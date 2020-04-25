@@ -354,10 +354,11 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
             return listOf()
     }
 
-    fun getAllValuesSinceBirth(name:String, time:Long): List<Cogject> {
+
+    fun getAllValuesSinceBirth(name:String, time:Number): List<Cogject> {
         val out = mutableListOf<Cogject>()
-        if (hasValue(name, time)){
-            var index = findIndex(time, state[name]!!)!!
+        if (hasValue(name, time.toLong())){
+            var index = findIndex(time.toLong(), state[name]!!)!!
             val stack = mutableListOf<Cogject>()
             while (index >= 0 && state[name]!![index]?.entry != DELETED){
                 stack.add(state[name]!![index]!!.entry)
@@ -553,16 +554,16 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
         return  temporalMetaData.subMap(start, true, end, true).keys.toSet()
     }
 
-    fun setValue(desc: String, value: Cogject, time: Long, allowDupes: Boolean = true):WorldLine {
-        if (!allowDupes && getLastValue(desc, time) == value)
+    fun setValue(desc: String, value: Cogject, time: Number, allowDupes: Boolean = true):WorldLine {
+        if (!allowDupes && getLastValue(desc, time.toLong()) == value)
             return this
         value.name = desc
         val first = AtomicReference<Boolean>(true)
         val prior = state[desc]?: ArrayList<CogjectEntry>()
-        val new = ArrayList<CogjectEntry>(prior.size + 1).also {it -> prior.forEach{oldEntry:CogjectEntry -> if (oldEntry.updateTime >= time && first.getAndUpdate{false}) it.add(CogjectEntry( time, value)); it.add(oldEntry)}}
+        val new = ArrayList<CogjectEntry>(prior.size + 1).also {it -> prior.forEach{oldEntry:CogjectEntry -> if (oldEntry.updateTime >= time.toLong() && first.getAndUpdate{false}) it.add(CogjectEntry( time.toLong(), value)); it.add(oldEntry)}}
         if (first.get())
-            new.add(CogjectEntry(time, value))
-        assertKeyExists(time, desc)
+            new.add(CogjectEntry(time.toLong(), value))
+        assertKeyExists(time.toLong(), desc)
         state[desc] = new
         return this
     }
@@ -571,7 +572,24 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
         return setValue(value.name?:UNKNOWN_ITEM_NAME, value, time, allowDupes)
     }
 
-    fun setValue(name:String, value:Any, time: Long = System.currentTimeMillis()): WorldLine{
+    fun addCogject(value: Cogject, time: Number): WorldLine {
+        return setValue(value.name?:UNKNOWN_ITEM_NAME, value, time.toLong(), true)
+    }
+
+    fun addValueCogject(name:String, value:Any, time:Number): Unit {
+        addCogject(objectCache.makeValueCogject(name, value)!!, time.toLong())
+    }
+
+    fun <T> getCogjectValue(name:String, time:Number): T? {
+        val cog = getState(time.toLong())[name]
+        if (cog == null)
+            return null
+        else {
+            return (cog as ValueCogject).getValue() as T
+        }
+    }
+
+    fun setValue(name:String, value:Any, time: Number = System.currentTimeMillis()): WorldLine{
         return setValue(name, objectCache.makeValueCogject(name, value)!!, time)
     }
 
@@ -863,19 +881,32 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
         return expireKey(desc, time)
     }
 
-    fun expireKey(desc: String, time: Long) :Boolean{
-        assertKeyDoesNotExist(time, desc)
+    fun expireKey(desc: String, time: Number) :Boolean{
+        assertKeyDoesNotExist(time.toLong(), desc)
         val history = state[desc]
-        if (history == null || findIndex(time, history) == null) {
+        if (history == null || findIndex(time.toLong(), history) == null) {
             return false
         }
         setValue(desc, DELETED, time)
         return true
     }
 
-    fun hasValue(desc: String, time: Long): Boolean {
-        return state[desc]!=null && findIndex(time, state[desc] as ArrayList<CogjectEntry>) != null
+
+
+    fun hasValue(desc: String, time: Number): Boolean {
+        return state[desc]!=null && findIndex(time.toLong(), state[desc] as ArrayList<CogjectEntry>) != null
     }
+
+    fun getState():Map<String, Cogject> {
+        val lastTime  = getLastTime()
+        if (lastTime != null){
+            return getState(lastTime)
+        }
+        else
+            return mapOf<String, Cogject>()
+    }
+
+    fun getState(time: Int): Map<String, Cogject> = getState(time.toLong())
 
     fun getState(time: Long): Map<String, Cogject> {
         var map = mutableMapOf<String, Cogject>()

@@ -5,6 +5,7 @@ import com.evolved.automata.nn.util.UnsignedNumVectorType
 import org.hamcrest.CoreMatchers.*
 import org.junit.Assert.assertThat
 import org.junit.Assert.assertTrue
+import org.junit.Ignore
 import org.junit.Test
 import kotlin.random.Random
 
@@ -556,6 +557,7 @@ class WorldLineTests {
 
 
 
+    @Ignore()
     @Test fun testRealGoalSearch(){
 
         var message = ""
