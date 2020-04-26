@@ -221,26 +221,34 @@ class WorldLineSpeechTests {
     val SPEECH_PROCESSING_COGJECT_NAME = "speech-processor"
 
 
-    data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> WorldLineSpeechTests.HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   WorldLineSpeechTests.HANDLER_STATE.SUCCESS })
+    data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val maxMatchGapSize: Int? = null, val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val predicates:MutableSet<String> = mutableSetOf(), val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> WorldLineSpeechTests.HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   WorldLineSpeechTests.HANDLER_STATE.SUCCESS })
 
     fun isHigherToken(tokenName:String):Boolean {
         return tokenName.startsWith('[') && tokenName.endsWith(']')
+    }
+
+    fun isPredicateToken(tokenName:String):Boolean {
+        return tokenName.startsWith('<') && tokenName.endsWith('>')
     }
 
     fun makeSpeechIntent(
             intentTokenName:String,
             phrase:String,
             synonymMap:MutableMap<String, String>? = null,
+            maxGapSize:Int? = null,
             requiredCogjects:Set<String> = setOf(),
             outputCogjects:Set<String> = setOf(),
+            basePredicates:Set<String> = setOf(),
             handler:IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> WorldLineSpeechTests.HANDLER_STATE = { tokens, stateWorldline:WorldLine, time  ->   stateWorldline.setValue(makeCogject(intentTokenName, intentTokenName), time); WorldLineSpeechTests.HANDLER_STATE.SUCCESS }): IntentHandler {
         val tokens = phrase.split(' ')
         val syn = (mutableMapOf(*tokens.map {it -> it to it}.toTypedArray())).apply{putAll( synonymMap?:mutableMapOf<String, String>())}
         return IntentHandler(intentName = intentTokenName,
                              phraseTokens = tokens,
                 synonoyms = syn,
+                maxMatchGapSize = maxGapSize,
                 requiredCogjectNames = mutableSetOf(*tokens.filter { t -> isHigherToken(t)}.toTypedArray()).apply {addAll(requiredCogjects) },
                 outputCogjectNames = mutableSetOf(intentTokenName).apply {addAll(outputCogjects)},
+                predicates = mutableSetOf<String>().apply{addAll(basePredicates)},
                 handler = handler
                 )
     }
@@ -272,21 +280,7 @@ class WorldLineSpeechTests {
             return invertedIndex
         }
 
-        fun expandTokenSet(tokenSet: Set<String>, invertedMap: Map<String, Set<String>>, maxLevels:Int = 100): MutableSet<String> {
-            var set = mutableSetOf<String>().apply {addAll(tokenSet)}
-            var next:MutableSet<String> = set
-            var level = 0
-            do{
-                set = next
-                next = mutableSetOf<String>()
-                for (token in set){
-                    next.add(token)
-                    invertedMap[token]?.forEach{ it -> next.add(it)}
-                }
-                level++
-            }while (set != next && level < maxLevels)
-            return set
-        }
+
 
         fun getTokenMappingToCanonicalToken(annotatedTokens:MutableSet<String>, handlerOfCanonicalToken:IntentHandler): String? {
             return annotatedTokens.find { token -> handlerOfCanonicalToken.synonoyms.containsKey(token)}
@@ -342,6 +336,26 @@ class WorldLineSpeechTests {
 
         val tokenInvertedIndex = buildIndex(handlers)
 
+        fun expandTokenSet(tokenSet: Set<String>, invertedMap: Map<String, Set<String>>, maxLevels:Int = 100): MutableSet<String> {
+            var set = mutableSetOf<String>().apply {addAll(tokenSet)}
+            var next:MutableSet<String> = set
+            var level = 0
+            do{
+                set = next
+                next = mutableSetOf<String>()
+                for (token in set){
+                    next.add(token)
+                    invertedMap[token]?.forEach{
+                        higherHandler -> next.add(higherHandler)
+                        handlerMap[higherHandler]?.predicates?.forEach {predToken -> next.add(predToken)}
+                    }
+
+                }
+                level++
+            }while (set != next && level < maxLevels)
+            return set
+        }
+
         val annotatedTokens = phraseTokens.map { spokenToken -> expandTokenSet(setOf(spokenToken), tokenInvertedIndex)}
 
         fun getScoreThreshold(tokens:List<String>): Float {
@@ -352,16 +366,12 @@ class WorldLineSpeechTests {
             return (this as ValueCogject).getValue() as T
         }
 
-        fun checkDeferredHandlerRequirements(deferredCogjectName: String, time:Long): HANDLER_STATE {
-            TODO("not implementing this yet")
-        }
-
         fun getCurrentInputTokens(higherToken:String, time:Number):MutableList<String> {
             var tokenInput = mutableListOf<String>()
             for (tokenCogject in speechArgumentWorld.getAllValuesSinceBirth(higherToken, time)){
                 val token = (tokenCogject as ValueCogject).getValue() as String
-                // Consecutive higher order token names squashed
-                if (!isHigherToken(token) || (tokenInput.size > 0 && tokenInput[tokenInput.lastIndex - 1] != token)){
+                // Consecutive higher order or predicate token names are squashed
+                if (!(isPredicateToken(token) || isHigherToken(token)) || tokenInput.isEmpty() || (tokenInput.size > 1 && tokenInput[tokenInput.lastIndex - 1] != token)){
                     tokenInput.add(token)
                 }
             }
@@ -369,10 +379,10 @@ class WorldLineSpeechTests {
         }
 
         fun getCurrentScore(higherToken:String, tokenInput:List<String>): Float {
+            val handler = handlerMap[higherToken]!!
             val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:"*"}
-            return getMatchScore(canonicalInput)
+            return getMatchScore(canonicalInput, buildTokenOrderMapsList(canonicalInput, handler.maxMatchGapSize?:searchWidth))
         }
-
 
         fun processHigherTokenBoundary(higherToken:String, time: Number): List<String> {
             var deferredSpeechInput:List<String>? = null
@@ -390,7 +400,9 @@ class WorldLineSpeechTests {
 
             // score the tokenInput
             val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:"*"}
-            val inputScore = getMatchScore(canonicalInput)
+            val handler = handlerMap[higherToken]!!
+
+            val inputScore = getMatchScore(canonicalInput, buildTokenOrderMapsList(canonicalInput, handler.maxMatchGapSize?:searchWidth))
             if (inputScore > getScoreThreshold(tokenInput)){
                 // Passes threshold for matching handler for these words
                 // Check if the required cogjects are present in nluworld
@@ -490,7 +502,6 @@ class WorldLineSpeechTests {
 
         }
 
-
         var t = lastIndex + 1
         var remainingHandlers = speechProcessingWorld.getState(t).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}
         var size = speechProcessingWorld.state.size
@@ -503,7 +514,6 @@ class WorldLineSpeechTests {
             t++
             remainingHandlers = speechProcessingWorld.getState(t).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}
         }
-
 
         return nluWorldLine.getState(t).values.find { cog -> speechProcessingWorld.getCogjectValue<HANDLER_STATE>(cog.name,lastIndex ) == HANDLER_STATE.SUCCESS}
     }
@@ -555,6 +565,94 @@ class WorldLineSpeechTests {
         processSpeech(phrase, handlers, worldline)
 
         assertTrue("Expected match for ${phrase}", worldline.hasValue("[forward-duration]"))
+    }
+
+    @Test fun mediumSpeechTests(){
+        var phrase = "when greater than 6 then go"
+
+        val worldline = WorldLine()
+
+        val handlers = listOf<IntentHandler>(
+                makeSpeechIntent(
+                        intentTokenName = "[less-than-5]",
+                        phrase = "less than 5",
+                        basePredicates = setOf("<predicate>"),
+                        synonymMap = mutableMapOf("five" to "5"),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+                            nluWorld.addValueCogject(intentName, "< 5", time)
+                            nluWorld.addValueCogject("predicate-type", "less-than", time)
+                            nluWorld.addValueCogject("less-than-value", 5, time)
+                            HANDLER_STATE.SUCCESS}),
+                makeSpeechIntent(
+                        intentTokenName = "[greater-than-6]",
+                        phrase = "greater than 6",
+                        synonymMap = mutableMapOf("size" to "6"),
+                        basePredicates = setOf("<predicate>"),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+                            nluWorld.addValueCogject(intentName, "> 6", time)
+                            nluWorld.addValueCogject("predicate-type", "greater-than", time)
+                            nluWorld.addValueCogject("greater-than-value", 6, time)
+                            HANDLER_STATE.SUCCESS}),
+                makeSpeechIntent(
+                        intentTokenName = "[conditional]",
+                        phrase = "when <predicate> then go forward",
+                        synonymMap = mutableMapOf("if" to "when", "move" to "go"),
+                        requiredCogjects = setOf("predicate-type"),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+
+                            nluWorld.addValueCogject(intentName, "Predicate became true", time)
+                            val predType = nluWorld.getCogjectValue<String>("predicate-type", time)
+                            var predMetaData: Any? = null
+                            when (predType) {
+                                "less-than" ->  predMetaData = nluWorld.getCogjectValue<Int>("less-than-value", time)
+                                "greater-than" -> predMetaData = nluWorld.getCogjectValue<Int>("greater-than-value", time)
+                                else ->  print("Unknown predicate type")
+                            }
+
+                            println("Conditional match with predicate type: ${predType} when meta-data: ${predMetaData?:"nothing"}")
+
+                            HANDLER_STATE.SUCCESS}),
+                makeSpeechIntent(
+                        intentTokenName = "[number]",
+                        phrase = "number",
+                        synonymMap = mutableMapOf(*listOf(0, 1, 2, 3, 4,5,6,7,8,9, 10).map {n -> n.toString() to "number"}.toTypedArray()),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+                            val numValue = Integer.parseInt(tokens[0])
+                            nluWorld.addValueCogject(intentName, numValue, time)
+                            println("Ran for ${numValue} minutes")
+                            HANDLER_STATE.SUCCESS}),
+                makeSpeechIntent(
+                        intentTokenName = "[forward-duration]",
+                        phrase = "move forward for [number] seconds",
+                        synonymMap = mutableMapOf("go" to "move"),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+                            val duration = nluWorld.getCogjectValue<Int>("[number]", time)
+                            nluWorld.addValueCogject(intentName, duration!!, time)
+                            if (tokens.size > 3){
+                                println("Finished moving forward by ${duration} seconds")
+                                HANDLER_STATE.SUCCESS
+                            }
+                            else {
+                                println("Insufficient arguments to process ${intentName}")
+                                HANDLER_STATE.FAILURE
+                            }
+
+                        }),
+                makeSpeechIntent(
+                        intentTokenName = "[backward]",
+                        phrase = "backward",
+                        synonymMap = mutableMapOf("back" to "backward", "reverse" to "backward"),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+                            nluWorld.addValueCogject(intentName, "moving backward", time)
+                            println("Moving back")
+                            HANDLER_STATE.SUCCESS})
+
+        )
+
+
+        processSpeech(phrase, handlers, worldline)
+
+        assertTrue("Expected match for ${phrase}", worldline.hasValue("[conditional]"))
     }
 
     @Test fun developBuildChains(){
