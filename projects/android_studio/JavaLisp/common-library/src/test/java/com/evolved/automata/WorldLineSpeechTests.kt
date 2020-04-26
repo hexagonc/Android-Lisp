@@ -371,7 +371,7 @@ class WorldLineSpeechTests {
             for (tokenCogject in speechArgumentWorld.getAllValuesSinceBirth(higherToken, time)){
                 val token = (tokenCogject as ValueCogject).getValue() as String
                 // Consecutive higher order or predicate token names are squashed
-                if (!(isPredicateToken(token) || isHigherToken(token)) || tokenInput.isEmpty() || (tokenInput.size > 1 && tokenInput[tokenInput.lastIndex - 1] != token)){
+                if (!(isPredicateToken(token) || isHigherToken(token)) || tokenInput.isEmpty() || (tokenInput.size > 0 && tokenInput[tokenInput.lastIndex] != token)){
                     tokenInput.add(token)
                 }
             }
@@ -402,7 +402,7 @@ class WorldLineSpeechTests {
             val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:"*"}
             val handler = handlerMap[higherToken]!!
 
-            val inputScore = getMatchScore(canonicalInput, buildTokenOrderMapsList(canonicalInput, handler.maxMatchGapSize?:searchWidth))
+            val inputScore = getMatchScore(canonicalInput, buildTokenOrderMapsList(handler.phraseTokens, handler.maxMatchGapSize?:searchWidth))
             if (inputScore > getScoreThreshold(tokenInput)){
                 // Passes threshold for matching handler for these words
                 // Check if the required cogjects are present in nluworld
@@ -495,8 +495,10 @@ class WorldLineSpeechTests {
                         // This is a higher level token.  Get the token that is an argument to it
                         val tokenForThisHandler = getTokenMappingToCanonicalToken(matchSet, handler)
                         speechArgumentWorld.addCogject(makeCogject(higherOrderToken, tokenForThisHandler?:"*"), i)
+
                         speechProcessingWorld.addCogject(makeCogject(higherOrderToken, HANDLER_STATE.BUILDING), i)
                     }
+
                 }
             }
 
