@@ -359,7 +359,9 @@ class WorldLineSpeechTests {
         val annotatedTokens = phraseTokens.map { spokenToken -> expandTokenSet(setOf(spokenToken), tokenInvertedIndex)}
 
         fun getScoreThreshold(tokens:List<String>): Float {
-            return 0.5F
+            // Technical note #2: probably need to make this IntentSpecific but this is just a first
+            // pass optimization that makes processing faster
+            return (1/tokens.size).toFloat()
         }
 
         fun <T> Cogject.getValue(): T {
@@ -380,8 +382,25 @@ class WorldLineSpeechTests {
 
         fun getCurrentScore(higherToken:String, tokenInput:List<String>): Float {
             val handler = handlerMap[higherToken]!!
-            val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:"*"}
-            return getMatchScore(canonicalInput, buildTokenOrderMapsList(canonicalInput, handler.maxMatchGapSize?:searchWidth))
+            val inputInCanonicalForm = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:it}
+
+            val canonicalInput = handler.phraseTokens
+            // Technical note #1: this assumes a similar tolerance for word order mismatches between the speaker
+            // and the IntentHandler
+            if (inputInCanonicalForm.size <= canonicalInput.size){
+                // this is interpreting the speech from the perspective of the IntentHandler
+                // The IntentHandler expects a certain fuzzy sequence of tokens matches the spoken input
+                // against this
+                return getMatchScore(inputInCanonicalForm, buildTokenOrderMapsList(canonicalInput, handler.maxMatchGapSize?:searchWidth))
+            }
+            else {
+                // This is interpreting the canonical phrase from the perspective of the speaker's spoken
+                // input.  Techincally, the windowSize should be define based on the speaker's preference
+                // instead of the IntentHandler's [maxMatchGapSize] but we are assuming similar tolerance
+                // for mismatches as explained above
+                return getMatchScore(canonicalInput, buildTokenOrderMapsList(inputInCanonicalForm, handler.maxMatchGapSize?:searchWidth))
+            }
+
         }
 
         fun processHigherTokenBoundary(higherToken:String, time: Number): List<String> {
@@ -399,11 +418,12 @@ class WorldLineSpeechTests {
             }
 
             // score the tokenInput
-            val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:"*"}
-            val handler = handlerMap[higherToken]!!
-
-            val inputScore = getMatchScore(canonicalInput, buildTokenOrderMapsList(handler.phraseTokens, handler.maxMatchGapSize?:searchWidth))
-            if (inputScore > getScoreThreshold(tokenInput)){
+            val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:it}
+//            val handler = handlerMap[higherToken]!!
+//
+//            val inputScore = getMatchScore(canonicalInput, buildTokenOrderMapsList(handler.phraseTokens, handler.maxMatchGapSize?:searchWidth))
+            val inputScore = getCurrentScore(higherToken, tokenInput)
+            if (inputScore >= getScoreThreshold(tokenInput)){
                 // Passes threshold for matching handler for these words
                 // Check if the required cogjects are present in nluworld
                 val allCogjetRequirementsMet = handlerMap[higherToken]!!.requiredCogjectNames.all { requiredCogject -> nluWorldLine.hasValue(requiredCogject, time)}
@@ -507,13 +527,15 @@ class WorldLineSpeechTests {
         var t = lastIndex + 1
         var remainingHandlers = speechProcessingWorld.getState(t).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}
         var size = speechProcessingWorld.state.size
-        while (remainingHandlers.isNotEmpty() && remainingHandlers.size < size){
+        var first = true
+        while (remainingHandlers.isNotEmpty() && (first || remainingHandlers.size < size)){
             for (expiredHandlerName in remainingHandlers){
                 // No lookahead for the last character
                 processHigherTokenBoundary(expiredHandlerName, t)
             }
             size = remainingHandlers.size
             t++
+            first = false
             remainingHandlers = speechProcessingWorld.getState(t).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}
         }
 
@@ -656,6 +678,44 @@ class WorldLineSpeechTests {
 
         assertTrue("Expected match for ${phrase}", worldline.hasValue("[conditional]"))
     }
+
+    @Test fun edgeCaseSpeechTests(){
+        var phrase = "my name is Andrew"
+
+        val worldline = WorldLine()
+
+        val handlers = listOf<IntentHandler>(
+                makeSpeechIntent(
+                        intentTokenName = "[user-says-name]",
+                        phrase = "my name is [name]",
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+
+                            val username = nluWorld.getCogjectValue<String>("[name]", time)
+                            println("Hello, ${username}")
+                            nluWorld.addValueCogject(intentName, username!!, time)
+                            HANDLER_STATE.SUCCESS}),
+                makeSpeechIntent(
+                        intentTokenName = "[name]",
+                        phrase = "name",
+                        synonymMap = mutableMapOf("Andrew" to "name", "Aprill" to "name", "Paul" to "name", "Rindi" to "name"),
+                        handler = {tokens:List<String>, nluWorld:WorldLine, time:Long ->
+                            val spokenName = tokens.find { t -> synonoyms.containsKey(t) && t != "name"}
+                            if (spokenName != null){
+                                nluWorld.addValueCogject(intentName, spokenName, time)
+                                HANDLER_STATE.SUCCESS
+                            }
+                            else {
+                                HANDLER_STATE.FAILURE
+                            }})
+
+        )
+
+
+        processSpeech(phrase, handlers, worldline)
+
+        assertTrue("Expected match for ${phrase}", worldline.hasValue("[user-says-name]"))
+    }
+
 
     @Test fun developBuildChains(){
         val clusters = listOf<ClustSpec>(
