@@ -9,29 +9,9 @@ import kotlin.math.max
 
 typealias Chain = List<String>
 
-val globalSet = FiniteSet(10000)
-
-fun makeCogject(name:String, value:Any): Cogject
-{
-    return globalSet.makeValueCogject(name, value)!!
-}
-
-fun <T> List<T>.matchingIndexInRange(start:Int, width:Int, predictate:(T) -> Boolean): Int? {
-
-    var i  = start
-    while (i < Math.min(start+width, size)) {
-        if (predictate(get(i))){
-            return i
-        }
-        i++
-    }
-
-    return null
-}
 
 class WorldLineSpeechTests {
 
-    enum class HANDLER_STATE { BUILDING, PROCESSING, WAITING, FAILURE, SUCCESS}
     data class MatchStats(val matchOrderSets:List<Map<String, Int>>, var orderScore: Float?, var setScore:Float? = null)
     data class ClustSpec (val phrase:String, val name:String, var synonmys:MutableMap<String, String> = mutableMapOf(), var stats: MatchStats?=null)
     data class matchTokenClusterCache (var index:MutableMap<String, MutableSet<String>>, val matchStats:MutableMap<String, Double>, val handlerMap:Map<String, ClustSpec>)
@@ -221,326 +201,6 @@ class WorldLineSpeechTests {
     val SPEECH_PROCESSING_COGJECT_NAME = "speech-processor"
 
 
-    data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val maxMatchGapSize: Int? = null, val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val predicates:MutableSet<String> = mutableSetOf(), val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> WorldLineSpeechTests.HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   WorldLineSpeechTests.HANDLER_STATE.SUCCESS })
-
-    fun isHigherToken(tokenName:String):Boolean {
-        return tokenName.startsWith('[') && tokenName.endsWith(']')
-    }
-
-    fun isPredicateToken(tokenName:String):Boolean {
-        return tokenName.startsWith('<') && tokenName.endsWith('>')
-    }
-
-    fun makeSpeechIntent(
-            intentTokenName:String,
-            phrase:String,
-            synonymMap:MutableMap<String, String>? = null,
-            maxGapSize:Int? = null,
-            requiredCogjects:Set<String> = setOf(),
-            outputCogjects:Set<String> = setOf(),
-            basePredicates:Set<String> = setOf(),
-            handler:IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> WorldLineSpeechTests.HANDLER_STATE = { tokens, stateWorldline:WorldLine, time  ->   stateWorldline.setValue(makeCogject(intentTokenName, intentTokenName), time); WorldLineSpeechTests.HANDLER_STATE.SUCCESS }): IntentHandler {
-        val tokens = phrase.split(' ')
-        val syn = (mutableMapOf(*tokens.map {it -> it to it}.toTypedArray())).apply{putAll( synonymMap?:mutableMapOf<String, String>())}
-        return IntentHandler(intentName = intentTokenName,
-                             phraseTokens = tokens,
-                synonoyms = syn,
-                maxMatchGapSize = maxGapSize,
-                requiredCogjectNames = mutableSetOf(*tokens.filter { t -> isHigherToken(t)}.toTypedArray()).apply {addAll(requiredCogjects) },
-                outputCogjectNames = mutableSetOf(intentTokenName).apply {addAll(outputCogjects)},
-                predicates = mutableSetOf<String>().apply{addAll(basePredicates)},
-                handler = handler
-                )
-    }
-
-    fun processSpeech(speech:String, handlers:List<IntentHandler>, nluWorldLine:WorldLine, searchWidth:Int = 2): Cogject? {
-        var phraseTokens = speech.split(' ')
-
-        val objectSet = FiniteSet(400)
-
-        val speechProcessingWorld = WorldLine(objectSet)
-
-        val speechArgumentWorld = WorldLine(objectSet)
-
-        fun buildIndex(handlers:List<IntentHandler>): MutableMap<String, MutableSet<String>> {
-
-            fun addHandler(handler: IntentHandler, invertedIndex:MutableMap<String, MutableSet<String>>){
-                handler.synonoyms.forEach{(spokenWord:String, _:String)->
-                    var prior = invertedIndex?.get(spokenWord)?: mutableSetOf()
-                    prior.add(handler.intentName)
-                    invertedIndex[spokenWord] = prior
-                }
-            }
-
-            val invertedIndex = mutableMapOf<String, MutableSet<String>>()
-
-            for (spec:IntentHandler in handlers){
-                addHandler(spec, invertedIndex)
-            }
-            return invertedIndex
-        }
-
-
-
-        fun getTokenMappingToCanonicalToken(annotatedTokens:MutableSet<String>, handlerOfCanonicalToken:IntentHandler): String? {
-            return annotatedTokens.find { token -> handlerOfCanonicalToken.synonoyms.containsKey(token)}
-        }
-
-        fun buildTokenOrderMapsList(words:List<String>, windowSize:Int = words.size): List<Map<String, Int>> {
-            fun MutableMap<String, Int>.incrMap(key: String, defaultValue:Int = 0, weight: Int = 1) : MutableMap<String, Int> {
-                if (containsKey(key)){
-                    put(key, weight + get(key)!!)
-                }
-                else {
-                    put(key, defaultValue + weight)
-                }
-                return this
-            }
-
-            return words.mapIndexed {i, _ ->
-                val mapForIndex = mutableMapOf<String, Int>(*words.map{word -> word to 0}.toTypedArray())
-                for (j in max(0, i - windowSize)..i) {
-                    mapForIndex.incrMap(words[j])
-                }
-                mapForIndex.toMap()
-            }
-        }
-
-        fun getMatchScore(speech:List<String>, matchSpec:List<Map<String, Int>> = buildTokenOrderMapsList(speech, 3)): Float {
-            fun MutableMap<String, Int>.incrMap(key: String, defaultValue:Int = 0, weight: Int = 1) : MutableMap<String, Int> {
-                if (containsKey(key)){
-                    put(key, weight + get(key)!!)
-                }
-                else {
-                    put(key, defaultValue + weight)
-                }
-                return this
-            }
-
-            var maxScore = max(matchSpec.size, speech.size)
-
-            var compMap = mutableMapOf<String, Int>()
-            var score = 0.0F
-            for ((i, word) in speech.withIndex()){
-                compMap.incrMap(word)
-                val specMap = matchSpec[i]
-                if (specMap.containsKey(word)){
-                    val wordWeight = 1.0F
-                    score+=wordWeight/(1.0F + abs(compMap[word]!! - specMap[word]!!))
-                }
-            }
-            return score/maxScore
-        }
-
-        val handlerMap = mapOf<String, IntentHandler>(*handlers.map {it -> it.intentName to it}.toTypedArray())
-
-        val tokenInvertedIndex = buildIndex(handlers)
-
-        fun expandTokenSet(tokenSet: Set<String>, invertedMap: Map<String, Set<String>>, maxLevels:Int = 100): MutableSet<String> {
-            var set = mutableSetOf<String>().apply {addAll(tokenSet)}
-            var next:MutableSet<String> = set
-            var level = 0
-            do{
-                set = next
-                next = mutableSetOf<String>()
-                for (token in set){
-                    next.add(token)
-                    invertedMap[token]?.forEach{
-                        higherHandler -> next.add(higherHandler)
-                        handlerMap[higherHandler]?.predicates?.forEach {predToken -> next.add(predToken)}
-                    }
-
-                }
-                level++
-            }while (set != next && level < maxLevels)
-            return set
-        }
-
-        val annotatedTokens = phraseTokens.map { spokenToken -> expandTokenSet(setOf(spokenToken), tokenInvertedIndex)}
-
-        fun getScoreThreshold(tokens:List<String>): Float {
-            // Technical note #2: probably need to make this IntentSpecific but this is just a first
-            // pass optimization that makes processing faster
-            return (1/tokens.size).toFloat()
-        }
-
-        fun <T> Cogject.getValue(): T {
-            return (this as ValueCogject).getValue() as T
-        }
-
-        fun getCurrentInputTokens(higherToken:String, time:Number):MutableList<String> {
-            var tokenInput = mutableListOf<String>()
-            for (tokenCogject in speechArgumentWorld.getAllValuesSinceBirth(higherToken, time)){
-                val token = (tokenCogject as ValueCogject).getValue() as String
-                // Consecutive higher order or predicate token names are squashed
-                if (!(isPredicateToken(token) || isHigherToken(token)) || tokenInput.isEmpty() || (tokenInput.size > 0 && tokenInput[tokenInput.lastIndex] != token)){
-                    tokenInput.add(token)
-                }
-            }
-            return tokenInput
-        }
-
-        fun getCurrentScore(higherToken:String, tokenInput:List<String>): Float {
-            val handler = handlerMap[higherToken]!!
-            val inputInCanonicalForm = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:it}
-
-            val canonicalInput = handler.phraseTokens
-            // Technical note #1: this assumes a similar tolerance for word order mismatches between the speaker
-            // and the IntentHandler
-            if (inputInCanonicalForm.size <= canonicalInput.size){
-                // this is interpreting the speech from the perspective of the IntentHandler
-                // The IntentHandler expects a certain fuzzy sequence of tokens matches the spoken input
-                // against this
-                return getMatchScore(inputInCanonicalForm, buildTokenOrderMapsList(canonicalInput, handler.maxMatchGapSize?:searchWidth))
-            }
-            else {
-                // This is interpreting the canonical phrase from the perspective of the speaker's spoken
-                // input.  Techincally, the windowSize should be define based on the speaker's preference
-                // instead of the IntentHandler's [maxMatchGapSize] but we are assuming similar tolerance
-                // for mismatches as explained above
-                return getMatchScore(canonicalInput, buildTokenOrderMapsList(inputInCanonicalForm, handler.maxMatchGapSize?:searchWidth))
-            }
-
-        }
-
-        fun processHigherTokenBoundary(higherToken:String, time: Number): List<String> {
-            var deferredSpeechInput:List<String>? = null
-            if (speechProcessingWorld.getCogjectValue<HANDLER_STATE>(higherToken, time) == HANDLER_STATE.WAITING){
-                deferredSpeechInput = speechProcessingWorld.getCogjectValue("${higherToken}.speech-tokens", time)
-            }
-
-            var tokenInput = mutableListOf<String>()
-            if (deferredSpeechInput != null){
-                tokenInput.addAll(deferredSpeechInput)
-            }
-            else {
-                tokenInput = getCurrentInputTokens(higherToken, time)
-            }
-
-            // score the tokenInput
-            val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:it}
-//            val handler = handlerMap[higherToken]!!
-//
-//            val inputScore = getMatchScore(canonicalInput, buildTokenOrderMapsList(handler.phraseTokens, handler.maxMatchGapSize?:searchWidth))
-            val inputScore = getCurrentScore(higherToken, tokenInput)
-            if (inputScore >= getScoreThreshold(tokenInput)){
-                // Passes threshold for matching handler for these words
-                // Check if the required cogjects are present in nluworld
-                val allCogjetRequirementsMet = handlerMap[higherToken]!!.requiredCogjectNames.all { requiredCogject -> nluWorldLine.hasValue(requiredCogject, time)}
-
-                if (allCogjetRequirementsMet){
-                    val handlerFunction = handlerMap[higherToken]!!.handler
-
-                    val result = handlerFunction(handlerMap[higherToken]!!, tokenInput, nluWorldLine, time.toLong())
-                    speechProcessingWorld.addCogject(makeCogject(higherToken, result), time)
-                    if (result in setOf(HANDLER_STATE.FAILURE, HANDLER_STATE.SUCCESS) ){
-                        speechArgumentWorld.expireKey(higherToken, time)
-                        // Not expiring expiredHandlerName until it restarts processing speechProcessingWorld
-                    }
-                }
-                else {
-                    var canBeDeferred =false
-                    for (requiredCogject in handlerMap[higherToken]!!.requiredCogjectNames){
-                        val hasComputedResult =  nluWorldLine.hasValue(requiredCogject, time)
-                        canBeDeferred = canBeDeferred || hasComputedResult
-                        if (!canBeDeferred){
-                            val processStateCogject = speechProcessingWorld.getState(time.toLong())[requiredCogject]
-                            if (processStateCogject != null){
-                                val processingState = processStateCogject.getValue<HANDLER_STATE>()
-                                canBeDeferred = processingState in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.PROCESSING, HANDLER_STATE.WAITING)
-                            }
-                        }
-                    }
-
-                    if (canBeDeferred) {
-                        speechProcessingWorld.addValueCogject(higherToken, HANDLER_STATE.WAITING, time)
-                        speechProcessingWorld.addValueCogject("${higherToken}.speech-tokens", tokenInput, time)
-                    }
-                    else {
-                        speechProcessingWorld.addValueCogject(higherToken, HANDLER_STATE.FAILURE, time)
-                    }
-                }
-
-            }
-            else {
-                // TODO: look ahead to decide if should allow this gap? (checking if higherToken in matchSet)
-                speechProcessingWorld.addValueCogject(higherToken, HANDLER_STATE.FAILURE, time)
-            }
-            // finally expire the token history for this value
-            speechArgumentWorld.expireKey(higherToken, time)
-            return canonicalInput
-        }
-        // Main processing loop
-
-        val lastIndex = annotatedTokens.size - 1
-        for ((i, matchSet) in annotatedTokens.withIndex()){
-
-            if (matchSet.size == 1){
-                // matchSet.size == 1 if and only if the element in it is the raw speech token itself
-                // None of the currently processing handlers match so expire them all (unless we allow skips)
-                for (expiredHandlerName in speechProcessingWorld.getState(i).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}){
-                    val cont = annotatedTokens.matchingIndexInRange(i, searchWidth){ map -> map.contains(expiredHandlerName)}
-                    if (cont == null)
-                        processHigherTokenBoundary(expiredHandlerName, i)
-                    else
-                        speechArgumentWorld.addCogject(makeCogject(expiredHandlerName, "*"), i)
-                }
-            }
-            else {
-                val speechToken = phraseTokens[i]
-                println("matching ${speechToken} -> ${matchSet.sorted()}")
-
-                if (i > 0){
-                    //
-                    for (expiredHandlerName in speechProcessingWorld.getState(i).values.filter {cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING) && !matchSet.contains(cog.name) }.map {it.name}){
-                        val cont = annotatedTokens.matchingIndexInRange(i, searchWidth){ map -> map.contains(expiredHandlerName)}
-                        if (cont == null)
-                            processHigherTokenBoundary(expiredHandlerName, i)
-                        else
-                            speechArgumentWorld.addCogject(makeCogject(expiredHandlerName, "*"), i)
-                    }
-                }
-
-                for (token in matchSet){
-                    val handler = handlerMap[token]
-                    if (handler != null){
-                        // For every higher order token, there should be
-                        val higherOrderToken = token
-                        if (!speechProcessingWorld.hasValue(higherOrderToken, i) && speechProcessingWorld.state.containsKey(higherOrderToken)){
-                            // There is a previous value for this key, so expire it to define a new birthday and replace
-                            // with BUILDING
-                            speechProcessingWorld.expireKey(higherOrderToken, i - 1)
-                        }
-
-                        // This is a higher level token.  Get the token that is an argument to it
-                        val tokenForThisHandler = getTokenMappingToCanonicalToken(matchSet, handler)
-                        speechArgumentWorld.addCogject(makeCogject(higherOrderToken, tokenForThisHandler?:"*"), i)
-
-                        speechProcessingWorld.addCogject(makeCogject(higherOrderToken, HANDLER_STATE.BUILDING), i)
-                    }
-
-                }
-            }
-
-        }
-
-        var t = lastIndex + 1
-        var remainingHandlers = speechProcessingWorld.getState(t).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}
-        var size = speechProcessingWorld.state.size
-        var first = true
-        while (remainingHandlers.isNotEmpty() && (first || remainingHandlers.size < size)){
-            for (expiredHandlerName in remainingHandlers){
-                // No lookahead for the last character
-                processHigherTokenBoundary(expiredHandlerName, t)
-            }
-            size = remainingHandlers.size
-            t++
-            first = false
-            remainingHandlers = speechProcessingWorld.getState(t).values.filter { cog -> cog.getValue() in setOf(HANDLER_STATE.BUILDING, HANDLER_STATE.WAITING)}.map { cog -> cog.name}
-        }
-
-        return nluWorldLine.getState(t).values.find { cog -> speechProcessingWorld.getCogjectValue<HANDLER_STATE>(cog.name,lastIndex ) == HANDLER_STATE.SUCCESS}
-    }
 
     @Test fun simpleSpeechTests(){
         var phrase = "andrew move forward please for 10 seconds"
@@ -1362,5 +1022,202 @@ class WorldLineSpeechTests {
 
         phrase = "backward"
         assertTrue("should match \"${tokenClusters[1].name}\" with \"${phrase}\"", matchTokenCluster(tokenClusters, phrase) == setOf(tokenClusters[1].name))
+    }
+
+
+    @Test fun testSpeechContexts(){
+        val aiWorldLine = WorldLine()
+
+        aiWorldLine.addValueCogject("height", 5.5F, 0L)
+        aiWorldLine.addValueCogject("weight", 100, 0L)
+        aiWorldLine.addValueCogject("age", 10, 0L)
+        aiWorldLine.addValueCogject("name", "Andrew", 0L)
+
+        val context = SpeechContext(
+                nluWorldLine = aiWorldLine,
+                speech = "what is height of Andrew",
+                temporalOffset = 10L,
+                handlers = mutableListOf<IntentHandler>(
+                        makeSpeechIntent(
+                                intentTokenName = "[query-property]",
+                                phrase = "what is the <attribute> of <user-name>",
+                                requiredCogjects = setOf("[attribute]", "[user-name]"),
+                                outputCogjects = setOf("answer"),
+                                handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long ->
+                                    val nameTime:Pair<String, Long>? = outputWorldLine.getCogjectValue<Pair<String, Long>>("[user-name]", time)
+                                    if (nameTime == null) {
+                                        HANDLER_STATE.FAILURE
+                                    }
+                                    else {
+                                        val attributeName = outputWorldLine.getCogjectValue<String>("[attribute]", time)
+                                        if (attributeName == null){
+                                            HANDLER_STATE.FAILURE
+                                        }
+                                        else {
+                                            val requiredTime = nameTime.second
+                                            val objectName = nameTime.first
+                                            val attributeValue =outputWorldLine.getCogjectValue(attributeName, requiredTime) as Any?
+                                            if (attributeValue == null){
+                                                println("The ${attributeName} of ${objectName} is undefined")
+                                            }
+                                            else
+                                                println("The ${attributeName} of ${objectName} is ${attributeValue}")
+
+                                            HANDLER_STATE.SUCCESS
+                                        }
+
+                                    }
+
+                                }
+                                ),
+                        makeSpeechIntent(
+                                intentTokenName = "[attribute]",
+                                phrase = "attribute",
+                                synonymMap = mutableMapOf("height" to "attribute", "weight" to "attribute","age" to "attribute"),
+                                basePredicates = setOf("<attribute>"),
+                                maxGapSize = 0,
+                                handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long ->
+                                    val attributeName = tokens[0]
+                                    if (attributeName != "attribute"){
+                                        outputWorldLine.addValueCogject(intentName, attributeName, time)
+                                        HANDLER_STATE.SUCCESS
+                                    }
+                                    else
+                                        HANDLER_STATE.FAILURE}
+                                ),
+                        makeSpeechIntent(
+                                intentTokenName = "[user-name]",
+                                phrase = "name",
+                                synonymMap = mutableMapOf("Andrew" to "name", "Aprill" to "name","Eddie" to "name"),
+                                basePredicates = setOf("<user-name>"),
+                                handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long->
+                                    if (outputWorldLine.hasValue("name", time)){
+                                        val name = outputWorldLine.getCogjectValue<String>("name", time)
+                                        val createTime = outputWorldLine.getLastEntry("name", time)!!.updateTime
+                                        outputWorldLine.addValueCogject(intentName, Pair(name, createTime), time)
+                                        HANDLER_STATE.SUCCESS
+                                    }
+                                    else
+                                        HANDLER_STATE.FAILURE
+                                })
+
+                )
+        )
+
+        var result = context.processSpeech()
+        println("Processing speech ${context.speech} resulting in ${result} world state is: ${aiWorldLine.getState()}")
+        result = context.processSpeech("what is the weight of Aprill")
+        println("Result: ${result}.  speech mind is: ${context.speechProcessingWorld!!.getState()}")
+    }
+
+
+    @Test fun testSpeechErrors(){
+        val aiWorldLine = WorldLine()
+
+        aiWorldLine.addValueCogject("height", 5.5F, 0L)
+        aiWorldLine.addValueCogject("weight", 100, 0L)
+        aiWorldLine.addValueCogject("age", 10, 0L)
+        aiWorldLine.addValueCogject("name", "Andrew", 0L)
+
+        val context = SpeechContext(
+                nluWorldLine = aiWorldLine,
+                speech = "what is the weight of Aprill",
+                temporalOffset = 10L,
+                handlers = mutableListOf<IntentHandler>(
+                        makeSpeechIntent(
+                                intentTokenName = "[query-property]",
+                                phrase = "what is the <attribute> of <user-name>",
+                                requiredCogjects = setOf("[attribute]", "[user-name]"),
+                                outputCogjects = setOf("answer"),
+                                handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long ->
+                                    val nameTime:Pair<String, Long>? = outputWorldLine.getCogjectValue<Pair<String, Long>>("[user-name]", time)
+                                    if (nameTime == null) {
+                                        HANDLER_STATE.FAILURE
+                                    }
+                                    else {
+                                        val attributeName = outputWorldLine.getCogjectValue<String>("[attribute]", time)
+                                        if (attributeName == null){
+                                            HANDLER_STATE.FAILURE
+                                        }
+                                        else {
+                                            val requiredTime = nameTime.second
+                                            val objectName = nameTime.first
+                                            val attributeValue =outputWorldLine.getCogjectValue(attributeName, requiredTime) as Any?
+                                            if (attributeValue == null){
+                                                println("The ${attributeName} of ${objectName} is undefined")
+                                            }
+                                            else
+                                                println("The ${attributeName} of ${objectName} is ${attributeValue}")
+
+                                            HANDLER_STATE.SUCCESS
+                                        }
+
+                                    }
+
+                                }
+                        ),
+                        makeSpeechIntent(
+                                intentTokenName = "[attribute]",
+                                phrase = "attribute",
+                                synonymMap = mutableMapOf("height" to "attribute", "weight" to "attribute","age" to "attribute"),
+                                basePredicates = setOf("<attribute>"),
+                                maxGapSize = 0,
+                                handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long ->
+                                    val attributeName = tokens[0]
+                                    if (attributeName != "attribute"){
+                                        outputWorldLine.addValueCogject(intentName, attributeName, time)
+                                        HANDLER_STATE.SUCCESS
+                                    }
+                                    else
+                                        HANDLER_STATE.FAILURE}
+                        ),
+                        makeSpeechIntent(
+                                intentTokenName = "[user-name]",
+                                phrase = "name",
+                                synonymMap = mutableMapOf("Andrew" to "name", "Aprill" to "name","Eddie" to "name"),
+                                basePredicates = setOf("<user-name>"),
+                                handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long->
+                                    val expectedName = tokens.find {t -> t in synonoyms}
+                                    if (outputWorldLine.hasValue("name", time) && expectedName != null ){
+                                        val name = outputWorldLine.getCogjectValue<String>("name", time)
+                                        if (name == expectedName){
+                                            val createTime = outputWorldLine.getLastEntry("name", time)!!.updateTime
+                                            outputWorldLine.addValueCogject(intentName, Pair(name, createTime), time)
+                                            HANDLER_STATE.SUCCESS
+                                        }
+                                        else {
+                                            println("I don't know anything about ${expectedName}")
+                                            HANDLER_STATE.FAILURE
+                                        }
+                                    }
+                                    else {
+                                        if (expectedName == null) {
+                                            println("I don't know who ${tokens[0]} is")
+                                        }
+                                        HANDLER_STATE.FAILURE
+                                    }
+                                })
+
+                )
+        )
+
+        var result = context.processSpeech()
+        //println("Processing speech ${context.speech} resulting in ${result} world state is: ${aiWorldLine.getState()}")
+
+        println("Result: ${result}.  speech mind is: ${context.speechProcessingWorld!!.getState()}")
+
+
+        result = context.processSpeech("What is the weight of johnny")
+
+        println("Result: ${result}.  speech mind is: ${context.speechProcessingWorld!!.getState()}")
+
+        result = context.processSpeech("What is the weight of Andrew")
+
+        println("Result: ${result}.  speech mind is: ${context.speechProcessingWorld!!.getState()}")
+
+
+
+
+
     }
 }

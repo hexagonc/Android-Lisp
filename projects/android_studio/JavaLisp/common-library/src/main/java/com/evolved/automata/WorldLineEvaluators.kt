@@ -86,7 +86,6 @@ class WorldLineLispFunctions {
                 }
             }
 
-
             env.mapFunction("cogject-process", cogjectProcess())
             env.mapFunction("create-worldline", createWorld())
             env.mapFunction("get-cogject-value", getCogjectValue())
@@ -127,9 +126,7 @@ class WorldLineLispFunctions {
 
             env.mapFunction("worldline-serialize", worldlineSerialize())
 
-
-
-
+            
         }
 
         fun worldlineSetValue(): SimpleFunctionTemplate {
