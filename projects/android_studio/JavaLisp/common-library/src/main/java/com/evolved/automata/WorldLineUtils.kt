@@ -241,7 +241,7 @@ fun makeSpeechIntent(
 
 
 
-open class SpeechContext(val speech:String, var temporalOffset:Long = 0, var phraseTokens:List<String>? = null, var handlers:MutableList<IntentHandler>, var searchWidth:Int = 2, val nluWorldLine:WorldLine, var speechProcessingWorld:WorldLine? = null, var speechArgumentWorld:WorldLine? = null) {
+open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var phraseTokens:List<String>? = null, var handlers:MutableList<IntentHandler>, var searchWidth:Int = 2, val nluWorldLine:WorldLine, var speechProcessingWorld:WorldLine? = null, var speechArgumentWorld:WorldLine? = null) {
 
     private val multiWordTokenIndex: MutableMap<String, MutableSet<String>> = mutableMapOf()
 
@@ -281,7 +281,15 @@ open class SpeechContext(val speech:String, var temporalOffset:Long = 0, var phr
 
 
         if (phraseTokens == null){
-            phraseTokens = tokenize(speech)
+            if (speech != null){
+                phraseTokens = tokenize(speech)
+            }
+
+            if (phraseTokens != null){
+                if (annotatedTokens == null){
+                    annotatedTokens = phraseTokens?.map { spokenToken -> expandTokenSet(setOf(spokenToken))}
+                }
+            }
         }
 
         if (annotatedTokens == null){

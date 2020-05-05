@@ -126,8 +126,335 @@ class WorldLineLispFunctions {
 
             env.mapFunction("worldline-serialize", worldlineSerialize())
 
-            
+            env.mapFunction("create-speech-intent", createSpeechIntent())
+            env.mapFunction("create-speech-context", createSpeechContext())
+            env.mapFunction("speech-process", speechProcess())
+            env.mapFunction("speech-context-get-process-world", speechContextGetProcessWorld())
         }
+
+        /**
+         * (create-speech-intent {intent-name}
+         *                       {speech-phrase}
+         *                       {synonym-map}
+         *                       {required-cogjects}
+         *                       {output-cogject-names}
+         *                       {type-list}
+         *                       {search-error}
+         *                       {handler-lambda}
+         */
+        fun createSpeechIntent(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    var intentName:String? = null
+                    var speech: String? = null
+                    var synonymMap: MutableMap<String, String>? = null
+                    var requiredCogjects:Set<String>? = null
+                    var outputCogjects:Set<String>? = null
+                    var types:Set<String>? = null
+                    var searchError:Int? = null
+                    var handler:(IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> HANDLER_STATE)? = null
+
+                    var key:String? = null
+                    for ((i, arg) in evaluatedArgs.withIndex()){
+                        if (key == null){
+                            key = arg.string
+                        }
+                        else {
+                            when (key) {
+                                "intent-name" -> intentName = arg.string
+                                "speech-phrase" -> speech = arg.string
+                                "synonym-map" -> {
+                                    if (!arg.isNull){
+                                        synonymMap = mutableMapOf()
+                                        for ((syn, value) in arg.stringHashtable.entries){
+                                            synonymMap[syn] = value.string
+                                        }
+                                    }
+                                }
+                                "required-cogjects" -> if (!arg.isNull) {
+                                    requiredCogjects = arg.list.map {v -> v.string}.toSet()
+                                }
+                                "output-cogject-names" -> if (!arg.isNull){
+                                    outputCogjects = arg.list.map {v -> v.string}.toSet()
+                                }
+                                "type-list" -> if (!arg.isNull){
+                                    types = arg.list.map {v -> v.string}.toSet()
+                                }
+                                "search-error" -> if (!arg.isNull){
+                                    searchError = arg.intValue.toInt()
+                                }
+                                "hander" -> {
+                                    val lambda = arg.lambda
+                                    handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long->
+                                        lambda.setActualParameters(arrayOf<Value>(ListValue(tokens.map{NLispTools.makeValue(it)}.toTypedArray()),ExtendedFunctions.makeValue(outputWorldLine), NLispTools.makeValue(time)))
+                                        addSpeechIntentMethods(IntentHandler@this, (lambda as Lambda).innerEnvironment, time)
+
+                                        var result:HANDLER_STATE = HANDLER_STATE.FAILURE
+
+                                        fun setSuccess(): SimpleFunctionTemplate {
+                                            return object: SimpleFunctionTemplate(){
+                                                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                                                    result = HANDLER_STATE.SUCCESS
+                                                    for (outputName in outputCogjectNames!!){
+                                                        outputWorldLine.addValueCogject(outputName, evaluatedArgs[0], time)
+                                                    }
+                                                    return evaluatedArgs[0]
+                                                }
+
+                                                override fun <T :FunctionTemplate> innerClone(): T {
+                                                    return setSuccess() as T
+                                                }
+
+                                            }
+                                        }
+
+                                        fun setFailure(): SimpleFunctionTemplate {
+                                            return object: SimpleFunctionTemplate(){
+                                                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                                                    result = HANDLER_STATE.FAILURE
+                                                    return Environment.getNull()
+                                                }
+
+                                                override fun <T :FunctionTemplate> innerClone(): T {
+                                                    return setFailure() as T
+                                                }
+
+                                            }
+                                        }
+
+                                        fun setWaiting(): SimpleFunctionTemplate {
+                                            return object: SimpleFunctionTemplate(){
+                                                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                                                    result = HANDLER_STATE.WAITING
+                                                    return Environment.getNull()
+                                                }
+
+                                                override fun <T :FunctionTemplate> innerClone(): T {
+                                                    return setWaiting() as T
+                                                }
+
+                                            }
+                                        }
+
+                                        env.mapFunction("intent-set-success", setSuccess())
+                                        env.mapFunction("intent-set-failure", setFailure())
+                                        env.mapFunction("intent-set-waiting", setWaiting())
+
+                                        lambda.evaluate(env, false)
+                                        result
+                                    }
+                                }
+                            }
+                            key = null
+                        }
+                    }
+
+                    return ExtendedFunctions.makeValue(makeSpeechIntent(
+                            intentTokenName = intentName!!,
+                            phrase = speech!!,
+                            synonymMap = synonymMap!!,
+                            maxGapSize = searchError!!,
+                            requiredCogjects = requiredCogjects!!,
+                            outputCogjects = outputCogjects!!,
+                            basePredicates = types!!,
+                            handler = handler!!
+                            ))
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return createSpeechIntent() as T
+                }
+
+            }
+
+        }
+
+        fun addSpeechIntentMethods(handler:IntentHandler, env:Environment, time: Long){
+            fun addType(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                        handler.predicates.add(evaluatedArgs[0].string)
+                        return Environment.getNull()
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return addType() as T
+                    }
+
+                }
+            }
+
+            fun removeType(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                        handler.predicates.remove(evaluatedArgs[0].string)
+                        return Environment.getNull()
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return removeType() as T
+                    }
+
+                }
+            }
+
+            fun getTypes(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                        return ListValue(handler.predicates.map {it -> NLispTools.makeValue(it)}.toTypedArray())
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getTypes() as T
+                    }
+
+                }
+            }
+
+            fun getSynonyms(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                        return ListValue(handler.predicates.map {it -> NLispTools.makeValue(it)}.toTypedArray())
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getSynonyms() as T
+                    }
+
+                }
+            }
+
+            fun getRequiredCogjects(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                        return ListValue(handler.requiredCogjectNames.map {it -> NLispTools.makeValue(it)}.toTypedArray())
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getRequiredCogjects() as T
+                    }
+
+                }
+            }
+
+            fun getOutputCogjects(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                        return ListValue(handler.outputCogjectNames.map {it -> NLispTools.makeValue(it)}.toTypedArray())
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getOutputCogjects() as T
+                    }
+
+                }
+            }
+
+            fun getIntentName(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+
+                        return NLispTools.makeValue(handler.intentName)
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getIntentName() as T
+                    }
+                }
+            }
+
+            fun getIntentPhrase(): SimpleFunctionTemplate {
+                return object: SimpleFunctionTemplate(){
+                    override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                        val builder = java.lang.StringBuilder()
+                        handler.phraseTokens.forEach{builder.append(it)}
+                        return NLispTools.makeValue(builder.toString())
+                    }
+
+                    override fun <T :FunctionTemplate> innerClone(): T {
+                        return getIntentPhrase() as T
+                    }
+                }
+            }
+
+            env.mapFunction("intent-add-type", addType())
+            env.mapFunction("intent-remove-type", removeType())
+            env.mapFunction("intent-get-types", getTypes())
+            env.mapFunction("intent-get-synonyms", getSynonyms())
+            env.mapFunction("intent-get-required-cogjects", getRequiredCogjects())
+            env.mapFunction("intent-get-output-cogjects", getOutputCogjects())
+            env.mapFunction("intent-get-name", getIntentName())
+            env.mapFunction("intent-get-phrase", getIntentPhrase())
+
+        }
+
+        // (create-speech-context {worldline}
+        //                        {handlers}
+        //                        {search-error}
+        //                        {temporal-offset}
+        //                        {speech-processing-world}
+        //                        {speech-argument-world})
+        //
+        fun createSpeechContext(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    var speechText:String? = null
+
+                    if (!evaluatedArgs[0].isNull){
+                        speechText = evaluatedArgs[0].string
+                    }
+
+                    var offset: Long? = null
+
+                    var handlers:MutableList<IntentHandler>? = null
+                    var searchWidth:Int? = null
+                    var nluWorldLine:WorldLine? = null
+                    var speechProcessingWorld:WorldLine? = null
+                    var speechArgumentWorld:WorldLine? = null
+
+                    var key:String? = null
+
+                    for (arg in evaluatedArgs){
+                        if (key == null){
+                            key = arg.string
+                        }
+                        else {
+                            when (key){
+                                "worldline" -> nluWorldLine = arg.objectValue as WorldLine
+                                "handlers" -> handlers = mutableListOf<IntentHandler>().apply {addAll(arg.list.map{value -> value.objectValue as IntentHandler})}
+                                "search-error" -> searchWidth = arg.intValue.toInt()
+                                "temporal-offset" -> offset = arg.intValue
+                                "speech-processing-world" -> speechProcessingWorld = arg.objectValue as WorldLine
+                                "speech-argument-world" -> speechProcessingWorld = arg.objectValue as WorldLine
+
+                            }
+                            key = null
+                        }
+                    }
+
+                    return ExtendedFunctions.makeValue(SpeechContext(
+                            handlers = handlers!!,
+                            speech = speechText,
+                            temporalOffset = offset?:nluWorldLine!!.getLastTime()?:0L,
+                            searchWidth = searchWidth?:2,
+                            nluWorldLine = nluWorldLine!!,
+                            speechProcessingWorld = speechProcessingWorld,
+                            speechArgumentWorld = speechArgumentWorld
+                    ))
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return createSpeechContext() as T
+                }
+
+            }
+
+        }
+
 
         fun worldlineSetValue(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
@@ -145,10 +472,50 @@ class WorldLineLispFunctions {
                 }
 
             }
-
         }
 
 
+        fun speechProcess(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    val speech = evaluatedArgs[1].string
+                    val outputCogjectName = evaluatedArgs[2].string
+                    var temporalOffset:Long
+                    if (evaluatedArgs.size > 3)
+                        temporalOffset = evaluatedArgs[3].intValue
+                    else
+                        temporalOffset = speechContext.nluWorldLine.getLastTime()?:0L
+
+                    val output = speechContext.processSpeech(speech, temporalOffset)
+                    val desiredObject = speechContext.nluWorldLine.getState()[outputCogjectName]
+                    return ExtendedFunctions.makeValue(desiredObject)
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechProcess() as T
+                }
+
+            }
+        }
+
+        fun speechContextGetProcessWorld(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    val out = speechContext.speechProcessingWorld
+
+                    return ExtendedFunctions.makeValue(out)
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextGetProcessWorld() as T
+                }
+
+            }
+        }
 
 
         fun worldlineGetLastUpdateSpec(): SimpleFunctionTemplate {
