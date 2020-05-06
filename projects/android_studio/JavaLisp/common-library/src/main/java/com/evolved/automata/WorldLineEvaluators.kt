@@ -130,6 +130,28 @@ class WorldLineLispFunctions {
             env.mapFunction("create-speech-context", createSpeechContext())
             env.mapFunction("speech-process", speechProcess())
             env.mapFunction("speech-context-get-process-world", speechContextGetProcessWorld())
+            env.mapFunction("speech-context-get-handlers", speechContextGetHandlers())
+            env.mapFunction("speech-context-reset-model", speechContextResetModel())
+            env.mapFunction("speech-context-clear-result-meta", speechContextResetResultMetaData())
+            env.mapFunction("speech-context-reset", speechContextReset())
+
+            env.mapFunction("speech-context-get-handler", speechContextGetHandler())
+            env.mapFunction("speech-context-get-handlers-with-type", speechContextGetHandlersWithTypes())
+
+
+            // Handler methods
+            env.mapFunction("speech-handler-get-types", speechHandlerGetTypes())
+            env.mapFunction("speech-handler-remove-type", speechHandlerRemoveType())
+            env.mapFunction("speech-handler-add-type", speechHandlerAddType())
+            env.mapFunction("speech-handler-add-synonym", speechHandlerAddSynonym())
+            env.mapFunction("speech-handler-remove-synonym", speechHandlerRemoveSynonym())
+            env.mapFunction("speech-handler-get-synonyms", speechHandlerGetSynonyms())
+
+
+
+            // , (), (), ()
+            // (), (), (), (), ()
+            // ()
         }
 
         /**
@@ -474,6 +496,225 @@ class WorldLineLispFunctions {
             }
         }
 
+
+        /**
+         * Rarely need to do this unless you are doing exception handling
+         */
+        fun speechContextResetResultMetaData(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    speechContext.resetSpeechResultState()
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextResetResultMetaData() as T
+                }
+
+            }
+        }
+
+
+
+        fun speechContextResetModel(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    speechContext.rebuildSpeechModelIndexes()
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextResetModel() as T
+                }
+
+            }
+        }
+
+
+
+        fun speechContextReset(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    speechContext.rebuildSpeechModelIndexes()
+                    speechContext.resetSpeechResultState()
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextReset() as T
+                }
+            }
+        }
+
+
+
+        fun speechContextGetHandlers(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+
+
+                    return ListValue(speechContext.handlers.map{ExtendedFunctions.makeValue(it)}.toTypedArray())
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextGetHandlers() as T
+                }
+            }
+        }
+
+        fun speechContextGetHandlersWithTypes(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    val typeList = evaluatedArgs[1].list.map {it.string}
+
+
+                    return ListValue(speechContext.handlers.filter {intent -> intent.predicates.containsAll(typeList)}.map {ExtendedFunctions.makeValue(it)}.toTypedArray())
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextGetHandlersWithTypes() as T
+                }
+            }
+        }
+
+        fun speechContextGetHandler(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    val intentName = evaluatedArgs[1].string
+
+                    return ExtendedFunctions.makeValue(speechContext.handlerMap[intentName])
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextGetHandler() as T
+                }
+            }
+        }
+
+
+        fun speechHandlerGetSynonyms(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val handler = evaluatedArgs[0].objectValue as IntentHandler
+
+                    val inner = HashMap<String, Value>()
+                    val out = StringHashtableValue(inner)
+                    handler.synonoyms.entries.forEach{(key, value) -> inner[key] = NLispTools.makeValue(value)}
+                    return out
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechHandlerGetSynonyms() as T
+                }
+            }
+        }
+
+
+
+        fun speechHandlerRemoveSynonym(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val handler = evaluatedArgs[0].objectValue as IntentHandler
+                    val synonym = evaluatedArgs[1].string
+                    handler.synonoyms.remove(synonym)
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechHandlerRemoveSynonym() as T
+                }
+            }
+        }
+
+
+        fun speechHandlerAddSynonym(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, true, true)
+                    val handler = evaluatedArgs[0].objectValue as IntentHandler
+                    val synonym = evaluatedArgs[1].string
+                    val canonical = evaluatedArgs[2].string
+                    handler.synonoyms[synonym] = canonical
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechHandlerAddSynonym() as T
+                }
+            }
+        }
+
+
+
+        fun speechHandlerAddType(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val handler = evaluatedArgs[0].objectValue as IntentHandler
+                    val type = evaluatedArgs[1].string
+
+                    handler.predicates.add(type)
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechHandlerAddType() as T
+                }
+            }
+        }
+
+
+        fun speechHandlerRemoveType(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val handler = evaluatedArgs[0].objectValue as IntentHandler
+                    val type = evaluatedArgs[1].string
+
+                    handler.predicates.remove(type)
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechHandlerRemoveType() as T
+                }
+            }
+        }
+
+        fun speechHandlerGetTypes(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, true, true)
+                    val handler = evaluatedArgs[0].objectValue as IntentHandler
+
+                    return ListValue(handler.predicates.map{ExtendedFunctions.makeValue(it)}.toTypedArray())
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechHandlerGetTypes() as T
+                }
+            }
+        }
 
         fun speechProcess(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){

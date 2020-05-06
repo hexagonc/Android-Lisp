@@ -297,7 +297,7 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
         }
     }
 
-    fun resetNLUState(){
+    fun rebuildSpeechModelIndexes(){
         tokenInvertedIndex = buildIndex()
 
         for (handler in handlers){
@@ -309,7 +309,7 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
         updateIndex()
     }
 
-    fun resetSpeechState(){
+    fun resetSpeechResultState(){
         val finiteSet = FiniteSet(200)
         speechArgumentWorld = WorldLine(finiteSet)
         speechProcessingWorld = WorldLine(finiteSet)
@@ -506,7 +506,7 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
             phraseTokens = tokenize(newSpeech)
             annotatedTokens = phraseTokens?.map { spokenToken -> expandTokenSet(setOf(spokenToken))}
 
-            resetSpeechState()
+            resetSpeechResultState()
         }
 
         if (offset != null)
