@@ -104,6 +104,7 @@ class WorldLineLispFunctions {
             env.mapFunction("State.get-all-states", getAllStateNamesFunction())
 
 
+            env.mapFunction("worldline-has-value", worldlineHasValue())
             env.mapFunction("worldline-set-value", worldlineSetValue())
             env.mapFunction("worldline-get-state", worldlineGetState())
             env.mapFunction("worldline.process-time", worldlineProcessTime())
@@ -205,7 +206,7 @@ class WorldLineLispFunctions {
                                 "search-error" -> if (!arg.isNull){
                                     searchError = arg.intValue.toInt()
                                 }
-                                "hander" -> {
+                                "handler-lambda" -> {
                                     val lambda = arg.lambda
                                     handler = {tokens:List<String>, outputWorldLine:WorldLine, time:Long->
                                         lambda.setActualParameters(arrayOf<Value>(ListValue(tokens.map{NLispTools.makeValue(it)}.toTypedArray()),ExtendedFunctions.makeValue(outputWorldLine), NLispTools.makeValue(time)))
@@ -274,11 +275,11 @@ class WorldLineLispFunctions {
                     return ExtendedFunctions.makeValue(makeSpeechIntent(
                             intentTokenName = intentName!!,
                             phrase = speech!!,
-                            synonymMap = synonymMap!!,
-                            maxGapSize = searchError!!,
-                            requiredCogjects = requiredCogjects!!,
-                            outputCogjects = outputCogjects!!,
-                            basePredicates = types!!,
+                            synonymMap = synonymMap,
+                            maxGapSize = searchError,
+                            requiredCogjects = requiredCogjects,
+                            outputCogjects = outputCogjects,
+                            basePredicates = types,
                             handler = handler!!
                             ))
                 }
@@ -730,8 +731,27 @@ class WorldLineLispFunctions {
                         temporalOffset = speechContext.nluWorldLine.getLastTime()?:0L
 
                     val output = speechContext.processSpeech(speech, temporalOffset)
-                    val desiredObject = speechContext.nluWorldLine.getState()[outputCogjectName]
-                    return ExtendedFunctions.makeValue(desiredObject)
+                    val lastTime = speechContext.nluWorldLine.getLastTime()?:0
+                    val topPatterns = mutableSetOf<String>()
+                    var maxLength = 0
+                    speechContext.speechArgumentWorld?.getState()?.keys?.filter { key ->
+                        val value = speechContext.speechProcessingWorld?.getState()?.get(key) as ValueCogject
+
+                        HANDLER_STATE.SUCCESS == value?.getValue() as HANDLER_STATE
+                    }?. forEach{key ->
+                        val len:Int = speechContext?.speechArgumentWorld?.getAllValuesSinceBirth(key, lastTime)?.size?:0
+                        if (topPatterns.isEmpty() || maxLength <= len){
+                            maxLength = len
+                            topPatterns.add(key)
+                        }
+                    }
+
+                    if (topPatterns.size == 1){
+                        val output = speechContext.nluWorldLine.getCogjectValue<Value>(topPatterns.iterator().next(), lastTime)
+                        speechContext.nluWorldLine.addValueCogject(outputCogjectName, output!!, lastTime)
+                    }
+
+                    return ListValue(topPatterns.map{NLispTools.makeValue(it)}.toTypedArray())
                 }
 
                 override fun <T :FunctionTemplate> innerClone(): T {
@@ -1045,6 +1065,28 @@ class WorldLineLispFunctions {
 
                 override fun <T :FunctionTemplate> innerClone(): T {
                     return worldlineGetState() as T
+                }
+
+            }
+
+        }
+
+        fun worldlineHasValue(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    val key = evaluatedArgs[1].string
+                    val time = if (evaluatedArgs.size < 3) world.getLastTime() else evaluatedArgs[2].intValue
+
+                    if (time == null)
+                        return Environment.getNull()
+
+                    return NLispTools.makeValue(world.hasValue(key, time))
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineHasValue() as T
                 }
 
             }

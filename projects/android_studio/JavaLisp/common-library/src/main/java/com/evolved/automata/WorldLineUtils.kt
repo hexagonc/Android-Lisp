@@ -217,9 +217,9 @@ fun makeSpeechIntent(
         phrase:String,
         synonymMap:MutableMap<String, String>? = null,
         maxGapSize:Int? = null,
-        requiredCogjects:Set<String> = setOf(),
-        outputCogjects:Set<String> = setOf(),
-        basePredicates:Set<String> = setOf(),
+        requiredCogjects:Set<String>? = null,
+        outputCogjects:Set<String>? = null,
+        basePredicates:Set<String>? = null,
         handler:IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline:WorldLine, time  ->   stateWorldline.setValue(makeCogject(intentTokenName, intentTokenName), time); HANDLER_STATE.SUCCESS }): IntentHandler {
     val tokens = phrase.split(' ')
     val syn = (mutableMapOf(*tokens.map {it -> it to it}.toTypedArray())).apply{putAll( synonymMap?:mutableMapOf<String, String>())}
@@ -232,9 +232,9 @@ fun makeSpeechIntent(
             phraseTokens = tokens,
             synonoyms = syn,
             maxMatchGapSize = maxGapSize,
-            requiredCogjectNames = mutableSetOf(*tokens.filter { t -> isHigherToken(t)}.toTypedArray()).apply {addAll(requiredCogjects) },
-            outputCogjectNames = mutableSetOf(intentTokenName).apply {addAll(outputCogjects)},
-            predicates = mutableSetOf<String>().apply{addAll(basePredicates)},
+            requiredCogjectNames = mutableSetOf(*tokens.filter { t -> isHigherToken(t)}.toTypedArray()).apply {addAll(requiredCogjects?: setOf()) },
+            outputCogjectNames = mutableSetOf(intentTokenName).apply {addAll(outputCogjects?: setOf())},
+            predicates = mutableSetOf<String>().apply{addAll(basePredicates?: setOf())},
             handler = handler
     )
 }
