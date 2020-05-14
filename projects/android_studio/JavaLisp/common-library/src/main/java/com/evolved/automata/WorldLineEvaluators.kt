@@ -116,7 +116,7 @@ class WorldLineLispFunctions {
             env.mapFunction("worldline-get-last-update-spec", worldlineGetLastUpdateSpec())
             env.mapFunction("worldline-expire-key", worldlineExpireKey())
             env.mapFunction("worldline-pop-last-value", worldlinePopLastValue())
-            env.mapFunction("worldline-get-update-times", worldlineGetLastUpdateTimes())
+                env.mapFunction("worldline-get-update-times", worldlineGetLastUpdateTimes())
 
             env.mapFunction("worldline-get-ordered-keys", worldlineGetOrderedKeysAt())
             env.mapFunction("worldline-get-value-meta-data", worldlineGetKeyMetadataAt())
@@ -148,11 +148,6 @@ class WorldLineLispFunctions {
             env.mapFunction("speech-handler-remove-synonym", speechHandlerRemoveSynonym())
             env.mapFunction("speech-handler-get-synonyms", speechHandlerGetSynonyms())
 
-
-
-            // , (), (), ()
-            // (), (), (), (), ()
-            // ()
         }
 
         /**
@@ -175,6 +170,7 @@ class WorldLineLispFunctions {
                     var outputCogjects:Set<String>? = null
                     var types:Set<String>? = null
                     var searchError:Int? = null
+                    var parseRequirements = mutableSetOf<String>()
                     var handler:(IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> HANDLER_STATE)? = null
 
                     var key:String? = null
@@ -205,6 +201,9 @@ class WorldLineLispFunctions {
                                 }
                                 "search-error" -> if (!arg.isNull){
                                     searchError = arg.intValue.toInt()
+                                }
+                                "parse-requirements" -> if (!arg.isNull){
+                                    arg.list.forEach { parseRequirements.add(it.string) }
                                 }
                                 "handler-lambda" -> {
                                     val lambda = arg.lambda
@@ -278,6 +277,7 @@ class WorldLineLispFunctions {
                             synonymMap = synonymMap,
                             maxGapSize = searchError,
                             requiredCogjects = requiredCogjects,
+                            parseRequirements = parseRequirements,
                             outputCogjects = outputCogjects,
                             basePredicates = types,
                             handler = handler!!
@@ -1230,7 +1230,7 @@ class WorldLineLispFunctions {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
                     val nextState = evaluatedArgs[0].string
-                    cog.setNextState(world, nextState, time)
+                    cog.setNextState(world, nextState, time, true)
                     return evaluatedArgs[0]
                 }
 
@@ -1312,15 +1312,28 @@ class WorldLineLispFunctions {
                 override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
 
                     var world = evaluatedArgs[0].objectValue as WorldLine
-                    val cog: Cogject = evaluatedArgs[1].objectValue as Cogject
-                    val time: Long = evaluatedArgs[2].intValue
+
+                    if (evaluatedArgs[1].isString) {
+                        val time: Long = evaluatedArgs[2].intValue
+
+                        val deathTime = world.getDeathTime(evaluatedArgs[1].string, time)
+                        if (deathTime != null)
+                            return NLispTools.makeValue(deathTime)
+                        else
+                            return Environment.getNull()
+                    }
+                    else {
+                        val cog: Cogject = evaluatedArgs[1].objectValue as Cogject
+                        val time: Long = evaluatedArgs[2].intValue
 
 
-                    val deathTime = world.getDeathTime(cog.name, time);
-                    if (deathTime != null)
-                        return NLispTools.makeValue(deathTime)
-                    else
-                        return Environment.getNull()
+                        val deathTime = world.getDeathTime(cog.name, time)
+                        if (deathTime != null)
+                            return NLispTools.makeValue(deathTime)
+                        else
+                            return Environment.getNull()
+                    }
+
                 }
 
                 override fun <T :FunctionTemplate> innerClone(): T {

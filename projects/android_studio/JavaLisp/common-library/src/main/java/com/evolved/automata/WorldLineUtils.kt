@@ -90,7 +90,7 @@ class FiniteSet(val maxSize: Int) {
 val globalSet = FiniteSet(10000)
 
 
-data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val maxMatchGapSize: Int? = null, val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val predicates:MutableSet<String> = mutableSetOf(), var multiWordTokenIndex:MutableMap<String, MutableSet<String>>? = null , val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   HANDLER_STATE.SUCCESS })
+data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val maxMatchGapSize: Int? = null, val parsePredicates:MutableSet<String> = mutableSetOf(), val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val predicates:MutableSet<String> = mutableSetOf(), var multiWordTokenIndex:MutableMap<String, MutableSet<String>>? = null , val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   HANDLER_STATE.SUCCESS })
 enum class HANDLER_STATE { BUILDING, PROCESSING, WAITING, FAILURE, SUCCESS}
 enum class TOKENIZATION_METHOD {GREEDY, RANDOM, BASIC}
 
@@ -217,6 +217,7 @@ fun makeSpeechIntent(
         phrase:String,
         synonymMap:MutableMap<String, String>? = null,
         maxGapSize:Int? = null,
+        parseRequirements:MutableSet<String> = mutableSetOf(),
         requiredCogjects:Set<String>? = null,
         outputCogjects:Set<String>? = null,
         basePredicates:Set<String>? = null,
@@ -232,6 +233,7 @@ fun makeSpeechIntent(
             phraseTokens = tokens,
             synonoyms = syn,
             maxMatchGapSize = maxGapSize,
+            parsePredicates = parseRequirements,
             requiredCogjectNames = mutableSetOf(*tokens.filter { t -> isHigherToken(t)}.toTypedArray()).apply {addAll(requiredCogjects?: setOf()) },
             outputCogjectNames = mutableSetOf(intentTokenName).apply {addAll(outputCogjects?: setOf())},
             predicates = mutableSetOf<String>().apply{addAll(basePredicates?: setOf())},
@@ -620,19 +622,23 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
                 for (token in matchSet){
                     val handler = handlerMap[token]
                     if (handler != null){
-                        // For every higher order token, there should be
-                        val higherOrderToken = token
-                        if (!speechProcessingWorld!!.hasValue(higherOrderToken, i) && speechProcessingWorld!!.state.containsKey(higherOrderToken)){
-                            // There is a previous value for this key, so expire it to define a new birthday and replace
-                            // with BUILDING
-                            speechProcessingWorld?.expireKey(higherOrderToken, i - 1)
+                        if (handler.parsePredicates.isEmpty() || handler.parsePredicates.any{it -> nluWorldLine.hasValue(it)}){
+                            // For every higher order token, there should be
+                            val higherOrderToken = token
+                            if (!speechProcessingWorld!!.hasValue(higherOrderToken, i) && speechProcessingWorld!!.state.containsKey(higherOrderToken)){
+                                // There is a previous value for this key, so expire it to define a new birthday and replace
+                                // with BUILDING
+                                speechProcessingWorld?.expireKey(higherOrderToken, i - 1)
+                            }
+
+                            // This is a higher level token.  Get the token that is an argument to it
+                            val tokenForThisHandler = getTokenMappingToCanonicalToken(matchSet, handler)
+                            speechArgumentWorld?.addCogject(makeCogject(higherOrderToken, tokenForThisHandler?:"*"), i)
+
+                            speechProcessingWorld?.addCogject(makeCogject(higherOrderToken, HANDLER_STATE.BUILDING), i)
                         }
 
-                        // This is a higher level token.  Get the token that is an argument to it
-                        val tokenForThisHandler = getTokenMappingToCanonicalToken(matchSet, handler)
-                        speechArgumentWorld?.addCogject(makeCogject(higherOrderToken, tokenForThisHandler?:"*"), i)
 
-                        speechProcessingWorld?.addCogject(makeCogject(higherOrderToken, HANDLER_STATE.BUILDING), i)
                     }
 
                 }

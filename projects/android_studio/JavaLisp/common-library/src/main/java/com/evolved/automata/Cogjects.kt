@@ -135,8 +135,8 @@ open class StateMachineCogject(name: String = UNKNOWN_ITEM_NAME,  initialStateNa
     /**
      * Only call this when the state changes
      */
-    fun setNextState(w: WorldLine, name: String, time: Long): Boolean {
-        if (currentStateName != name){
+    fun setNextState(w: WorldLine, name: String, time: Long, allowReentry:Boolean = false): Boolean {
+        if (allowReentry || currentStateName != name){
             w.setValue(StateMachineCogject(name = this.name, stateSpecs = stateSpecs, initialStateName = name), time+1)
             return true
         }
