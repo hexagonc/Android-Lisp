@@ -90,7 +90,7 @@ class FiniteSet(val maxSize: Int) {
 val globalSet = FiniteSet(10000)
 
 
-data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val maxMatchGapSize: Int? = null, val parsePredicates:MutableSet<String> = mutableSetOf(), val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val predicates:MutableSet<String> = mutableSetOf(), var multiWordTokenIndex:MutableMap<String, MutableSet<String>>? = null , val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   HANDLER_STATE.SUCCESS })
+data class IntentHandler (val intentName:String, val phraseTokens:List<String>, val synonoyms:MutableMap<String, String>, val maxMatchGapSize: Int? = null, val parsePredicates:MutableSet<String> = mutableSetOf(), val requiredCogjectNames:Set<String>, val outputCogjectNames:Set<String>, val predicates:MutableSet<String> = mutableSetOf(), var multiWordTokenIndex:MutableMap<String, MutableSet<String>>? = null , val handler:IntentHandler.(tokens:List<String>, stateWorldline: WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline, time  -> stateWorldline.setValue(makeCogject(intentName, intentName), time);   HANDLER_STATE.SUCCESS }, val defaultMatchFraction:Float = 0.1F)
 enum class HANDLER_STATE { BUILDING, PROCESSING, WAITING, FAILURE, SUCCESS}
 enum class TOKENIZATION_METHOD {GREEDY, RANDOM, BASIC}
 
@@ -221,12 +221,10 @@ fun makeSpeechIntent(
         requiredCogjects:Set<String>? = null,
         outputCogjects:Set<String>? = null,
         basePredicates:Set<String>? = null,
-        handler:IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline:WorldLine, time  ->   stateWorldline.setValue(makeCogject(intentTokenName, intentTokenName), time); HANDLER_STATE.SUCCESS }): IntentHandler {
+        handler:IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> HANDLER_STATE = { tokens, stateWorldline:WorldLine, time  ->   stateWorldline.setValue(makeCogject(intentTokenName, intentTokenName), time); HANDLER_STATE.SUCCESS },
+        defaultMatchThreshold:Float? = null): IntentHandler {
     val tokens = phrase.split(' ')
     val syn = (mutableMapOf(*tokens.map {it -> it to it}.toTypedArray())).apply{putAll( synonymMap?:mutableMapOf<String, String>())}
-
-
-
 
 
     return IntentHandler(intentName = intentTokenName,
@@ -237,7 +235,8 @@ fun makeSpeechIntent(
             requiredCogjectNames = mutableSetOf(*tokens.filter { t -> isHigherToken(t)}.toTypedArray()).apply {addAll(requiredCogjects?: setOf()) },
             outputCogjectNames = mutableSetOf(intentTokenName).apply {addAll(outputCogjects?: setOf())},
             predicates = mutableSetOf<String>().apply{addAll(basePredicates?: setOf())},
-            handler = handler
+            handler = handler,
+            defaultMatchFraction = defaultMatchThreshold?:1.0F/tokens.size
     )
 }
 
@@ -249,7 +248,7 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
 
     var handlerIndex: MutableMap<String, IntentHandler>? = null
 
-    val handlerMap = mapOf<String, IntentHandler>(*handlers.map {it -> it.intentName to it}.toTypedArray())
+    val handlerMap = mutableMapOf<String, IntentHandler>(*handlers.map {it -> it.intentName to it}.toTypedArray())
 
     var tokenInvertedIndex:MutableMap<String, MutableSet<String>>? = null
 
@@ -271,16 +270,13 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
             updateIndex()
         }
 
-
-        if (speechProcessingWorld == null || speechArgumentWorld == null){
+        if (speechProcessingWorld == null || speechArgumentWorld == null) {
             val finiteSet = FiniteSet(200)
             if (speechArgumentWorld == null)
                 speechArgumentWorld = WorldLine(finiteSet)
             if (speechProcessingWorld == null)
                 speechProcessingWorld = WorldLine(finiteSet)
         }
-
-
 
         if (phraseTokens == null){
             if (speech != null){
@@ -464,7 +460,7 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
         var set = mutableSetOf<String>().apply {addAll(tokenSet)}
         var next:MutableSet<String> = set
         var level = 0
-        do{
+        do {
             set = next
             next = mutableSetOf<String>()
             for (token in set){
@@ -476,7 +472,7 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
 
             }
             level++
-        }while (set != next && level < maxLevels)
+        } while (set != next && level < maxLevels)
         return set
     }
 
@@ -514,9 +510,11 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
         if (offset != null)
             temporalOffset = offset
 
-        fun getScoreThreshold(tokens:List<String>): Float {
+        fun getScoreThreshold(tokens:List<String>, scoreThreshold:Float? = null): Float {
             // Technical note #2: probably need to make this Intent specific but this is just a first
             // pass optimization that makes processing faster
+            if (scoreThreshold!=null)
+                return scoreThreshold
             return (1/tokens.size).toFloat()
         }
 
@@ -539,9 +537,10 @@ open class SpeechContext(val speech:String?, var temporalOffset:Long = 0, var ph
             }
 
             // score the tokenInput
+
             val canonicalInput = tokenInput.map {it -> handlerMap[higherToken]!!.synonoyms[it]?:it}
             val inputScore = getCurrentScore(higherToken, tokenInput)
-            if (inputScore >= getScoreThreshold(tokenInput)){
+            if (inputScore >= getScoreThreshold(tokenInput, handlerMap[higherToken]!!.defaultMatchFraction)){
                 // Passes threshold for matching handler for these words
                 // Check if the required cogjects are present in nluworld
                 val allCogjetRequirementsMet = handlerMap[higherToken]!!.requiredCogjectNames.all { requiredCogject -> nluWorldLine.hasValue(requiredCogject, time.toLong() + temporalOffset)}

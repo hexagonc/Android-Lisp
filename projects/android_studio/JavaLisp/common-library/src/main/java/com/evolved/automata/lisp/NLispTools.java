@@ -523,9 +523,24 @@ public class NLispTools
 			
 		}
 		);
-		
-		
-		env.mapFunction("not", new SimpleFunctionTemplate()
+
+        env.mapFunction("symbol-p", new SimpleFunctionTemplate()
+                {
+
+                    @Override
+                    public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                        checkActualArguments(1, false, true);
+
+                        return makeValue(evaluatedArgs[0].isIdentifier());
+
+                    }
+
+                }
+        );
+
+
+
+        env.mapFunction("not", new SimpleFunctionTemplate()
 		{
 
 			@Override

@@ -6,7 +6,7 @@ public class MacroTemplate extends FunctionTemplate
 	protected boolean _isMacro = true;
 	
 	final String[] _formalParameters;
-	final Environment _innerEnvironment;
+	Environment _innerEnvironment;
 	final Value[] _bodyArguments;
 	
 	public MacroTemplate(Environment innerEnv, String[] formalParameters, Value[] bodyArgs)

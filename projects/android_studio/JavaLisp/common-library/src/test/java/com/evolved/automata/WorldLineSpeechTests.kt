@@ -1214,10 +1214,76 @@ class WorldLineSpeechTests {
         result = context.processSpeech("What is the weight of Andrew")
 
         println("Result: ${result}.  speech mind is: ${context.speechProcessingWorld!!.getState()}")
+    }
 
+    @Test fun testSinglePartialIntervalNarrativeTesting(){
+        val worldline = WorldLine()
+        val created = worldline.addValueCogject("x", "a", 1)
+        val output = worldline.getAllNarratives(1, 10, 0)
+        val expected = WorldLine.CogjectEntry(1, created)
+        assertTrue("Expected partial narrative cover start of cogject, x", output.size == 1 && output[0].contains(expected))
+    }
 
+    @Test fun testSingleIntervalNarativeBuilding(){
+        val worldline = WorldLine()
 
+        fun createInterval(name:String, value:Any, start:Long, end:Long): Cogject{
+            val cog = worldline.addValueCogject(name, value, start)
+            worldline.expireKey(name, end)
+            return cog
+        }
 
+        val cog = createInterval("x", 1, 1, 10)
+
+        var output = worldline.getAllNarratives(1, 10, 0)
+
+        val expected = WorldLine.CogjectEntry(1L, cog)
+
+        assertTrue("Expected a single narrative covering entire interval", output.size == 1 && output[0].contains(expected))
+
+        output = worldline.getAllNarratives(-10, 50, 0)
+        assertTrue("Expected empty narratives for misaligned interval", output.isEmpty())
+
+        output = worldline.getAllNarratives(3, 10, 3)
+        assertTrue("Expected fuzzy narrative to exist for start", output.size == 1 && output[0].contains(expected))
+
+        output = worldline.getAllNarratives(1, 13, 3)
+        assertTrue("Expected fuzzy narrative to exist for end", output.size == 1 && output[0].contains(expected))
+
+        output = worldline.getAllNarratives(-2, 13, 3)
+        assertTrue("Expected fuzzy narrative to exist for both ends", output.size == 1 && output[0].contains(expected))
+
+        //createInterval("y", 1, 10, 20)
+        //createInterval("z", 1, 20, 30)
 
     }
+
+
+    @Test fun testMultipleIntervalNarratives(){
+
+        val world = WorldLine()
+
+        val stack = Thread.currentThread().stackTrace
+
+        fun createInterval(name:String, value:Any, start:Long, end:Long): WorldLine.CogjectEntry {
+            val cog = world.addValueCogject(name, value, start)
+            world.expireKey(name, end)
+            return WorldLine.CogjectEntry(start, cog)
+        }
+
+        val first = createInterval("x", "a", 10, 30)
+        val second = createInterval("y", "b", 10, 30)
+
+        var out = world.getAllNarratives(10, 30, 0)
+
+        assertTrue("Expected two independent narratives for x and y", out.size == 2)
+
+        val third = createInterval("z", "c", 30, 60)
+        out = world.getAllNarratives(10, 60, 0)
+
+        assertTrue("Expected double narrative covering sequence of [x,z]", out.size == 2)
+
+        println("Narrative: ${out}")
+    }
+
 }

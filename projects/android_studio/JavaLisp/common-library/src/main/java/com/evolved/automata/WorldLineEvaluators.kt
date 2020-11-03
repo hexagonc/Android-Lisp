@@ -104,10 +104,11 @@ class WorldLineLispFunctions {
             env.mapFunction("State.get-all-states", getAllStateNamesFunction())
 
 
+            env.mapFunction("is-worldline", isWorldline())
             env.mapFunction("worldline-has-value", worldlineHasValue())
             env.mapFunction("worldline-set-value", worldlineSetValue())
             env.mapFunction("worldline-get-state", worldlineGetState())
-            env.mapFunction("worldline.process-time", worldlineProcessTime())
+            env.mapFunction("worldline-process-time", worldlineProcessTime())
 
             env.mapFunction("debug", getPrintNameFunction())
 
@@ -116,14 +117,15 @@ class WorldLineLispFunctions {
             env.mapFunction("worldline-get-last-update-spec", worldlineGetLastUpdateSpec())
             env.mapFunction("worldline-expire-key", worldlineExpireKey())
             env.mapFunction("worldline-pop-last-value", worldlinePopLastValue())
-                env.mapFunction("worldline-get-update-times", worldlineGetLastUpdateTimes())
+            env.mapFunction("worldline-get-update-times", worldlineGetLastUpdateTimes())
 
             env.mapFunction("worldline-get-ordered-keys", worldlineGetOrderedKeysAt())
             env.mapFunction("worldline-get-value-meta-data", worldlineGetKeyMetadataAt())
             env.mapFunction("worldline-get-all-values-at", worldlineGetAllValuesAt())
 
             env.mapFunction("worldline-get-universe-scale", worldlineGetWorldScale())
-            env.mapFunction("worldline-delete-older-than world", worldlineClearAllOlderThan())
+            env.mapFunction("worldline-delete-older-than", worldlineClearAllOlderThan())
+            env.mapFunction("worldline-get-all-narratives", worldlineGetAllNarratives())
 
             env.mapFunction("worldline-serialize", worldlineSerialize())
 
@@ -135,6 +137,8 @@ class WorldLineLispFunctions {
             env.mapFunction("speech-context-reset-model", speechContextResetModel())
             env.mapFunction("speech-context-clear-result-meta", speechContextResetResultMetaData())
             env.mapFunction("speech-context-reset", speechContextReset())
+            env.mapFunction("speech-context-add-handler", speechContextAddHandler())
+
 
             env.mapFunction("speech-context-get-handler", speechContextGetHandler())
             env.mapFunction("speech-context-get-handlers-with-type", speechContextGetHandlersWithTypes())
@@ -148,6 +152,287 @@ class WorldLineLispFunctions {
             env.mapFunction("speech-handler-remove-synonym", speechHandlerRemoveSynonym())
             env.mapFunction("speech-handler-get-synonyms", speechHandlerGetSynonyms())
 
+            env.mapFunction("match-keywords", matchKeyWords())
+            env.mapFunction("match-permutation", matchPermutation())
+            env.mapFunction("match-prefix", matchPrefix())
+
+        }
+
+        // arguments: speech
+        //            match-spec (list (list {tokens} handler-exp))
+        //            on-ambiguous error-exp
+        //            score-threshold
+        fun matchPermutation():SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    val functionConfigVarName = name
+                    val speechKey = "speech"
+                    val matchSpecKey = "match-spec"
+                    val errorExpKey = "on-ambiguous"
+                    val scoreThresholdKey = "score-threshold"
+                    var scoreThreshold = 0.5
+                    var argumentKey:String? = null
+
+                    val argMap = mutableMapOf<String, Value>()
+
+                    for ((i, argIndex) in evaluatedArgs.withIndex()) {
+                        if (argumentKey == null){
+                            argumentKey = evaluatedArgs[i].string
+                        }
+                        else {
+                            argMap[argumentKey] = evaluatedArgs[i]
+                            argumentKey = null
+                        }
+                    }
+
+                    var speechTokens = argMap.get(speechKey)
+                    var matchSpec:Value? = argMap.get(matchSpecKey)
+                    if (speechTokens == null){
+                        val configPrefix:String? = env.getVariableValue(functionConfigVarName)?.string
+                        if (configPrefix!=null){
+                            val speechArgumentVarname = "${configPrefix}${speechKey}"
+                            speechTokens = env.getVariableValue(speechArgumentVarname)
+                        }
+                    }
+
+                    if (speechTokens != null && matchSpec != null){
+                        val pattern = speechTokens?.list.map{ it -> it.string}
+                        val optionSpec:Array<Value> = matchSpec.list
+                        val ambiguityHandler = argMap.get(errorExpKey)
+                        if (argMap.containsKey(scoreThresholdKey)) {
+                            scoreThreshold = argMap[scoreThresholdKey]!!.floatValue
+                        }
+                        val scoredList = optionSpec?.map{spec:Value->
+                            val keySpec = spec.list
+                            val tokens = keySpec[0].list.map{it -> it.string}
+                            val exp = keySpec[1]
+                            val score = SpeechUtilities.wagnerFischerEditDistance(pattern, tokens)
+                            score to exp
+                        }
+
+                        if (scoredList!=null){
+                            val highestScore = scoredList.fold(-1.0){maxScore:Double, next:Pair<Double, Value> ->
+                                if (next.first > maxScore)
+                                    next.first
+                                else
+                                    maxScore
+                            }
+
+                            val maxFraction = 0.9
+                            val bestOption = scoredList.filter{next:Pair<Double, Value> -> next.first >= highestScore*maxFraction && next.first > scoreThreshold }
+
+                            if (bestOption.size == 1){
+                                val exp = bestOption[0].second
+                                val evaluationEnv = Environment(env)
+
+                                evaluationEnv.mapValue("score", NLispTools.makeValue(bestOption[0].first))
+
+                                val result = evaluationEnv.evaluate(exp, false)
+                                return result
+                            }
+                            else if (ambiguityHandler != null){
+                                val ambiguousEnv = Environment(env)
+                                ambiguousEnv.mapValue("ambiguous-count", NLispTools.makeValue(bestOption.size))
+                                return ambiguousEnv.evaluate(ambiguityHandler, false)
+                            }
+                            else
+                                return Environment.getNull()
+
+                        }
+
+                    }
+                    throw RuntimeException("Invalid parameters for $name")
+
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return matchPermutation() as T
+                }
+
+            }
+        }
+
+
+        // arguments: speech
+        //            match-spec (list (list {tokens} handler-exp))
+        //            on-ambiguous error-exp
+        fun matchPrefix():SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    val functionConfigVarName = name
+                    val speechKey = "speech"
+                    val matchSpecKey = "match-spec"
+                    val errorExpKey = "on-ambiguous"
+                    val scoreThresholdKey = "score-threshold"
+                    var scoreThreshold = 0.5
+                    var argumentKey:String? = null
+
+                    val argMap = mutableMapOf<String, Value>()
+
+                    for ((i, argIndex) in evaluatedArgs.withIndex()) {
+                        if (argumentKey == null){
+                            argumentKey = evaluatedArgs[i].string
+                        }
+                        else {
+                            argMap[argumentKey] = evaluatedArgs[i]
+                            argumentKey = null
+                        }
+                    }
+
+                    var speechTokens = argMap.get(speechKey)
+                    var matchSpec:Value? = argMap.get(matchSpecKey)
+                    if (speechTokens == null){
+                        val configPrefix:String? = env.getVariableValue(functionConfigVarName)?.string
+                        if (configPrefix!=null){
+                            val speechArgumentVarname = "${configPrefix}${speechKey}"
+                            speechTokens = env.getVariableValue(speechArgumentVarname)
+                        }
+                    }
+
+                    if (speechTokens != null && matchSpec != null){
+                        val pattern = speechTokens?.list.map{ it -> it.string}
+                        val optionSpec:Array<Value> = matchSpec.list
+                        val ambiguityHandler = argMap.get(errorExpKey)
+                        if (argMap.containsKey(scoreThresholdKey)) {
+                            scoreThreshold = argMap[scoreThresholdKey]!!.floatValue
+                        }
+                        val scoredList = optionSpec?.map{spec:Value->
+                            val keySpec = spec.list
+                            val tokens = keySpec[0].list.map{it -> it.string}
+                            val exp = keySpec[1]
+                            val matchSpec = SpeechUtilities.prefixPermutationMatch(tokens, pattern)
+                            matchSpec to exp
+                        }
+
+                        if (scoredList!=null){
+                            val highestScore = scoredList.fold(-1.0){maxScore:Double, next:Pair<MatchResult, Value> ->
+                                if (next.first.score > maxScore)
+                                    next.first.score
+                                else
+                                    maxScore
+                            }
+
+
+                            val maxFraction = 0.9
+                            val bestOption = scoredList.filter{next:Pair<MatchResult, Value> -> next.first.score >= highestScore*maxFraction && next.first.score > scoreThreshold }
+
+                            if (bestOption.size == 1){
+                                val exp = bestOption[0].second
+                                val evaluationEnv = Environment(env)
+                                val remaining = ListValue(bestOption[0].first.remainingTokens.map{it -> NLispTools.makeValue(it)}.toTypedArray())
+                                evaluationEnv.mapValue("remaining", remaining)
+                                evaluationEnv.mapValue("_speech", remaining)
+                                evaluationEnv.mapValue(name, NLispTools.makeValue("_"))
+                                val result = evaluationEnv.evaluate(exp, false)
+                                return result
+                            }
+                            else if (ambiguityHandler != null){
+                                val ambiguousEnv = Environment(env)
+                                ambiguousEnv.mapValue("ambiguous-count", NLispTools.makeValue(bestOption.size))
+                                return ambiguousEnv.evaluate(ambiguityHandler, false)
+                            }
+                            else
+                                return Environment.getNull()
+
+                        }
+
+                    }
+                    throw RuntimeException("Invalid parameters for $name")
+
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return matchPrefix() as T
+                }
+
+            }
+        }
+
+
+
+        // arguments: speech
+        //            match-spec (list (list {tokens} handler-exp))
+        //            on-ambiguous error-exp
+        fun matchKeyWords():SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    val functionConfigVarName = name
+                    val speechKey = "speech"
+                    val matchSpecKey = "match-spec"
+                    val errorExpKey = "on-ambiguous"
+                    var argumentKey:String? = null
+
+                    val argMap = mutableMapOf<String, Value>()
+
+                    for ((i, argIndex) in evaluatedArgs.withIndex()) {
+                        if (argumentKey == null){
+                            argumentKey = evaluatedArgs[i].string
+                        }
+                        else {
+                            argMap[argumentKey] = evaluatedArgs[i]
+                            argumentKey = null
+                        }
+                    }
+
+                    var speechTokens = argMap.get(speechKey)
+                    var matchSpec:Value? = argMap.get(matchSpecKey)
+                    if (speechTokens == null){
+                        val configPrefix:String? = env.getVariableValue(functionConfigVarName)?.string
+                        if (configPrefix!=null){
+                            val speechArgumentVarname = "${configPrefix}${speechKey}"
+                            speechTokens = env.getVariableValue(speechArgumentVarname)
+                        }
+                    }
+
+                    if (speechTokens != null && matchSpec != null){
+                        val pattern = speechTokens?.list.map{ it -> it.string}
+                        val optionSpec:Array<Value> = matchSpec.list
+                        val ambiguityHandler = argMap.get(errorExpKey)
+                        val scoredList = optionSpec?.map{spec:Value->
+                            val keySpec = spec.list
+                            val tokens = keySpec[0].list.map{it -> it.string}
+                            val exp = keySpec[1]
+                            val score = SpeechUtilities.matchKeywords(pattern, tokens)
+                            score to exp
+                        }
+
+                        if (scoredList!=null){
+                            val highestScore = scoredList.fold(-1.0){maxScore:Double, next:Pair<Double, Value> ->
+                                if (next.first > maxScore)
+                                    next.first
+                                else
+                                    maxScore
+                            }
+
+
+                            val maxFraction = 0.9
+                            val bestOption = scoredList.filter{next:Pair<Double, Value> -> next.first >= highestScore*maxFraction }
+
+                            if (bestOption.size == 1){
+                                val exp = bestOption[0].second
+                                val result = env.evaluate(exp, false)
+                                return result
+                            }
+                            else if (ambiguityHandler != null){
+                                val ambiguousEnv = Environment(env)
+                                ambiguousEnv.mapValue("ambiguous-count", NLispTools.makeValue(bestOption.size))
+                                return ambiguousEnv.evaluate(ambiguityHandler, false)
+                            }
+                            else
+                                return Environment.getNull()
+
+                        }
+
+                    }
+                    throw RuntimeException("Invalid parameters for $name")
+
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return matchKeyWords() as T
+                }
+
+            }
         }
 
         /**
@@ -158,6 +443,7 @@ class WorldLineLispFunctions {
          *                       {output-cogject-names}
          *                       {type-list}
          *                       {search-error}
+         *                       {match-Error-threshold}
          *                       {handler-lambda}
          */
         fun createSpeechIntent(): SimpleFunctionTemplate {
@@ -170,6 +456,7 @@ class WorldLineLispFunctions {
                     var outputCogjects:Set<String>? = null
                     var types:Set<String>? = null
                     var searchError:Int? = null
+                    var matchErrorThresholdFraction:Float? = null
                     var parseRequirements = mutableSetOf<String>()
                     var handler:(IntentHandler.(tokens:List<String>, outputWorldLine:WorldLine, time:Long) -> HANDLER_STATE)? = null
 
@@ -204,6 +491,9 @@ class WorldLineLispFunctions {
                                 }
                                 "parse-requirements" -> if (!arg.isNull){
                                     arg.list.forEach { parseRequirements.add(it.string) }
+                                }
+                                "match-Error-threshold" -> if (!arg.isNull){
+                                    matchErrorThresholdFraction = arg.floatValue.toFloat()
                                 }
                                 "handler-lambda" -> {
                                     val lambda = arg.lambda
@@ -280,7 +570,9 @@ class WorldLineLispFunctions {
                             parseRequirements = parseRequirements,
                             outputCogjects = outputCogjects,
                             basePredicates = types,
-                            handler = handler!!
+                            handler = handler!!,
+                            defaultMatchThreshold = matchErrorThresholdFraction
+
                             ))
                 }
 
@@ -497,6 +789,30 @@ class WorldLineLispFunctions {
             }
         }
 
+        fun worldlineGetAllNarratives(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, true, true)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+
+                    val startTime = evaluatedArgs[1].intValue
+                    val endTime = evaluatedArgs[2].intValue
+                    var error: Long = 0
+                    if (evaluatedArgs.size > 3 && !evaluatedArgs[3].isNull){
+                        error = evaluatedArgs[3].intValue
+                    }
+                    return ListValue(world.getAllNarratives(startTime, endTime, error).map {narrative:MutableList<WorldLine.CogjectEntry> ->
+                        ListValue(narrative.map {entry -> ListValue(arrayOf(NLispTools.makeValue(entry.updateTime), ExtendedFunctions.makeValue(entry.entry)))}.toTypedArray())
+                    }.toTypedArray())
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineGetAllNarratives() as T
+                }
+
+            }
+        }
+
 
         /**
          * Rarely need to do this unless you are doing exception handling
@@ -531,6 +847,26 @@ class WorldLineLispFunctions {
 
                 override fun <T :FunctionTemplate> innerClone(): T {
                     return speechContextResetModel() as T
+                }
+
+            }
+        }
+
+        fun speechContextAddHandler(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(2, true, true)
+                    val speechContext = evaluatedArgs[0].objectValue as SpeechContext
+                    val speechIntent = evaluatedArgs[1].objectValue as IntentHandler
+                    speechContext.handlerMap[speechIntent.intentName] = speechIntent
+
+                    speechContext.rebuildSpeechModelIndexes()
+
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return speechContextAddHandler() as T
                 }
 
             }
@@ -1014,6 +1350,9 @@ class WorldLineLispFunctions {
         }
 
 
+        // First argument is the worldline
+        // second argument is time
+        // optional seco
         fun worldlineProcessTime(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
@@ -1023,7 +1362,12 @@ class WorldLineLispFunctions {
                     val time = evaluatedArgs[1].intValue
 
                     if (evaluatedArgs.size > 2) {
-                        world.process(evaluatedArgs.drop(2).map {v -> v.string}, time)
+                        val requiredNames = evaluatedArgs[2].list.map{v -> v.string}
+                        val ignoredNames = mutableSetOf<String>()
+                        if (evaluatedArgs.size > 3) {
+                            evaluatedArgs[3].list.forEach { ignoredNames.add(it.string)}
+                        }
+                        world.process(requiredNames, time, ignoredNames)
                     }
                     else
                         world.process(time)
@@ -1094,6 +1438,10 @@ class WorldLineLispFunctions {
         }
 
 
+        /**
+         * Builds serialization spec arguments as
+         * (time key value behavior-lambda current-state state-spec delete-time)
+         */
         fun worldlineSerialize(): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
@@ -1111,7 +1459,6 @@ class WorldLineLispFunctions {
 
                         prevActiveKeys = activeKeys
 
-
                         for (key in activeKeys){
 
                             val valuesAtThisTime = world.getAllValuesAt(key, time)
@@ -1123,7 +1470,14 @@ class WorldLineLispFunctions {
                                         val states = cogject.getAllStateNames()
 
                                         worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), NLispTools.makeValue(cogject.currentStateName), ListValue(states.map{NLispTools.makeValue(it)}.toTypedArray()), Environment.getNull(), Environment.getNull())))}
-                                    is ValueCogject -> {worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  cogject.getValue() as Value, Environment.getNull()))) }
+                                    is ValueCogject -> {
+                                        val lisp = cogject.getValue() as Value
+                                        if (lisp.isList() && lisp.getList().size > 0 && lisp.list[0].isIdentifier()){
+                                            worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  ListValue(arrayOf(NLispTools.makeValue("quote", true), lisp)), Environment.getNull())))
+                                        }
+                                        else
+                                            worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  cogject.getValue() as Value, Environment.getNull())))
+                                    }
                                 }
 
                             }
@@ -1219,6 +1573,25 @@ class WorldLineLispFunctions {
 
                 override fun <T :FunctionTemplate> innerClone(): T {
                     return isCogject() as T
+                }
+
+            }
+
+        }
+
+        fun isWorldline(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(1, false, false)
+
+                    val obj = evaluatedArgs[0]
+                    if  (obj.objectValue == null || obj.objectValue !is WorldLine)
+                        return Environment.getNull()
+                    return evaluatedArgs[0]
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return isWorldline() as T
                 }
 
             }
@@ -1344,26 +1717,24 @@ class WorldLineLispFunctions {
         }
 
 
-        fun getLifeDuration(cog:Cogject, time:Long): SimpleFunctionTemplate {
+        fun getLifeDuration(cog:Cogject, time:Long, world:WorldLine): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
 
-                    var world = evaluatedArgs[0].objectValue as WorldLine
                     return NLispTools.makeValue(world.getCogjectCurrentAge(cog.name, time))
                 }
 
                 override fun <T :FunctionTemplate> innerClone(): T {
-                    return getLifeDuration(cog, time) as T
+                    return getLifeDuration(cog, time, world) as T
                 }
 
             }
         }
 
-        fun getDeathTime(cog:Cogject, time:Long): SimpleFunctionTemplate {
+        fun getDeathTime(cog:Cogject, time:Long, world:WorldLine): SimpleFunctionTemplate {
             return object: SimpleFunctionTemplate(){
                 override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
 
-                    var world = evaluatedArgs[0].objectValue as WorldLine
                     val deathTime = world.getDeathTime(cog.name, time);
                     if (deathTime != null)
                         return NLispTools.makeValue(deathTime)
@@ -1372,7 +1743,7 @@ class WorldLineLispFunctions {
                 }
 
                 override fun <T :FunctionTemplate> innerClone(): T {
-                    return getDeathTime(cog, time) as T
+                    return getDeathTime(cog, time, world) as T
                 }
 
             }
@@ -1404,11 +1775,33 @@ class WorldLineLispFunctions {
             }
         }
 
-        fun addLispCogjectLambdas(env: Environment, cog: Cogject, time:Long){
+        fun getCogjectValueFunction(cog:Cogject): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    if (cog is ValueCogject) {
+                        return cog.getValue() as Value
+                    }
+                    else if (cog is StateMachineCogject)
+                        return ExtendedFunctions.makeValue(cog.currentStateName)
+                    else
+                        return Environment.getNull()
+
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return getCogjectValueFunction(cog) as T
+                }
+
+            }
+        }
+
+
+        fun addLispCogjectLambdas(env: Environment, cog: Cogject, time:Long, world:WorldLine){
             env.mapFunction("this.cogject-name", getCogjectNameFunction(cog))
             env.mapFunction("this.cogject-copy", getCogjectCopyFunction(cog))
-            env.mapFunction("this.life-time", getLifeDuration(cog, time))
-            env.mapFunction("this.death-time", getDeathTime(cog, time))
+            env.mapFunction("this.cogject-value", getCogjectValueFunction(cog))
+            env.mapFunction("this.life-time", getLifeDuration(cog, time, world))
+            env.mapFunction("this.death-time", getDeathTime(cog, time, world))
         }
 
         fun addLispWorldLineLambdas(env: Environment, cog: Cogject){
@@ -1429,7 +1822,7 @@ class WorldLineLispFunctions {
 
                 innerEnv.mapFunction("state.get-all-states", getAllStateNamesFunction(StateMachineCogject@this))
 
-                addLispCogjectLambdas(innerEnv,StateMachineCogject@this, time )
+                addLispCogjectLambdas(innerEnv,StateMachineCogject@this, time, world )
                 lispLambda.setActualParameters(arrayOf<Value>(ExtendedFunctions.makeValue(world), NLispTools.makeValue(time)))
                 lispLambda.evaluate(innerEnv, false)
 
@@ -1488,9 +1881,9 @@ class WorldLineLispFunctions {
                                 else {
                                     val lambda:Cogject.(world: WorldLine, time:Long)->FloatArray = { world: WorldLine, time: Long ->
                                         spec.lambda.setActualParameters(arrayOf<Value>(ExtendedFunctions.makeValue(world), NLispTools.makeValue(time)))
-                                        addLispCogjectLambdas((spec.lambda as Lambda).innerEnvironment,Cogject@this, time )
+                                        addLispCogjectLambdas((spec.lambda as Lambda).innerEnvironment,Cogject@this, time, world )
 
-                                        spec.lambda.evaluate(env, false)
+                                        spec.lambda.evaluate((spec.lambda as Lambda).innerEnvironment, false)
 
                                         stateValue
                                     }

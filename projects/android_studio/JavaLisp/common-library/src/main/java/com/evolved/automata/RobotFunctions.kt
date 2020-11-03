@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
-
+import kotlin.math.abs
 
 
 fun <T> MutableMap<T, Int>.incrementKey(key: T, increment: Int = 1, initialValue: Int = 0):Map<T, Int> {
@@ -146,8 +146,16 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
     }
 
     fun everyKeyEveryCreated():List<String> {
-
-        val sortedKeys:List<String> = state.keys.sortedBy { key -> state?.get(key)?.get(0)?.updateTime?:0 }
+        if (state.keys.isEmpty()){
+            return listOf()
+        }
+        val sortedKeys:List<String> = state.keys.sortedBy { key ->
+            val list = state?.get(key)
+            if (list?.size?:0 == 0){
+                -1
+            }
+            else
+                list?.get(0)?.updateTime?:0 }
 
         return sortedKeys.toList()
     }
@@ -568,6 +576,8 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
         return this
     }
 
+
+
     fun setValue(value: Cogject, time: Long, allowDupes:Boolean = true): WorldLine {
         return setValue(value.name?:UNKNOWN_ITEM_NAME, value, time, allowDupes)
     }
@@ -576,8 +586,10 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
         return setValue(value.name?:UNKNOWN_ITEM_NAME, value, time.toLong(), true)
     }
 
-    fun addValueCogject(name:String, value:Any, time:Number): Unit {
-        addCogject(objectCache.makeValueCogject(name, value)!!, time.toLong())
+    fun addValueCogject(name:String, value:Any, time:Number): Cogject {
+        val cog = objectCache.makeValueCogject(name, value)!!
+        addCogject(cog, time.toLong())
+        return cog
     }
 
     fun <T> getCogjectValue(name:String, time:Number): T? {
@@ -925,12 +937,83 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
         process(getActiveKeys(time), time)
     }
 
-    fun process(keys: Collection<String>, time: Long) {
+    fun process(keys: Collection<String>, time: Long, ignoreKeys:Set<String> = setOf()) {
         val activekeys = getActiveKeys(time)
-        keys.filter { it -> activekeys.contains(it)}.forEach{key ->  getLastValue(key, time)?.process(this, time)}
+        keys.filter { it -> activekeys.contains(it) && !ignoreKeys.contains(it)}.forEach{key ->  getLastValue(key, time)?.process(this, time)}
     }
 
     fun getActiveKeys(time: Long): Set<String> {
         return mutableSetOf<String>().also {me -> state.entries.filter { entry -> hasValue(entry.key, time)}.forEach{entry -> me.add(entry.key)} } .toSet()
+    }
+
+    fun getAllNarratives(startTime:Long, endTime:Long, offset:Long): MutableList<MutableList<CogjectEntry>> {
+
+
+        fun isCloseTo(v:Long?, w:Long?, delta:Long): Boolean {
+            if (v == null || w == null)
+                return false
+            return abs(v - w) <= delta
+        }
+
+        // The time bounds, starting near [startTime], where a given cogject
+        // has a constant value.  If there is no upper bound for this value, the
+        // the cogject is assumed to have this value indefinitely
+        fun getNextValueBounds(upTimes:List<Long>): Pair<Long, Long?>? {
+            for ((i, time) in upTimes.withIndex()){
+                if (isCloseTo(time , startTime, offset)){
+                    if (i < upTimes.lastIndex){
+                        return Pair(time, upTimes[i+1])
+                    }
+                    else
+                        return Pair(time, null)
+                }
+            }
+            return null
+        }
+
+        var stateMap = getState(startTime)
+        val output:MutableList<MutableList<CogjectEntry>> = mutableListOf<MutableList<CogjectEntry>>()
+
+        val initialUpdateTimes = getUpdateTimes(startTime - offset, endTime)
+        if (initialUpdateTimes.isEmpty()){
+            return output
+        }
+        if (stateMap.isEmpty()){
+            // Try to find cogjects with update times nearby
+            val around = getNextValueBounds(initialUpdateTimes)
+            if (around != null)
+                stateMap = getState(around.first)
+        }
+
+        for (name: String in stateMap.keys){
+            val updateTimes = getUpdateTimes(name, startTime - offset, endTime)
+            val bounds = getNextValueBounds(updateTimes)
+            if (updateTimes.size == 1){ // This means the single update time is either the death
+                // time of [key] or the last time the cogject's value was updated
+                if (bounds != null){
+                    output.add(mutableListOf(CogjectEntry(bounds.first, stateMap[name]!!)))
+                }
+                return output
+            } else if (updateTimes.size > 1){
+                if (bounds!=null){
+                    val valueEndTime = bounds.second
+                    if (valueEndTime != null){
+                        if (isCloseTo(valueEndTime, endTime, offset)){
+                            // This means the last time of [key] spans the entire interval
+                            output.add(mutableListOf(CogjectEntry(bounds.first, stateMap[name]!!)))
+                        }
+                        else if (valueEndTime < endTime){
+                            val remaining = getAllNarratives(valueEndTime, endTime, offset)
+                            for (remainingNarrative in remaining){
+                                output.add(mutableListOf(CogjectEntry(bounds.first, stateMap[name]!!)).apply{addAll(remainingNarrative)} )
+                            }
+                        }
+                    }
+
+                }
+            }
+
+        }
+        return output
     }
 }

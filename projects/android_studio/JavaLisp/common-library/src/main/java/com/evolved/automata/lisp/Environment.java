@@ -374,6 +374,7 @@ public class Environment
 					MacroTemplate mtemplate = getMacro(first.getString());
 					if (mtemplate!=null)
 					{
+
 						Value[] actualArgs = new Value[values.length-1];
 						for (int i=0;i<actualArgs.length;i++)
 							actualArgs[i] = values[i+1];
