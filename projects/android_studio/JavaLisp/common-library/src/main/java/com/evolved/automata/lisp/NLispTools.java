@@ -3802,6 +3802,25 @@ public class NLispTools
 			
 		}
 		);
+
+		env.mapFunction("nano-time", new SimpleFunctionTemplate()
+				{
+
+					private void time()
+					{
+
+					}
+
+					@Override
+					public Value evaluate(Environment env,Value[] evaluatedArgs) {
+						checkActualArguments(0, false, true);
+
+						return makeValue(System.nanoTime());
+					}
+
+				}
+		);
+
 		
 		env.mapFunction("sleep-milli", new SimpleFunctionTemplate()
 		{

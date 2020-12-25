@@ -74,6 +74,10 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
 
             val greatestLowerBound = findIndex(time, timeline)
 
+            if (greatestLowerBound == null) {
+                return 0
+            }
+
             if (timeInclusive && greatestLowerBound != null && timeline[greatestLowerBound].updateTime == time)
                 return greatestLowerBound
 
@@ -382,10 +386,11 @@ open class WorldLine(var objectCache:FiniteSet = FiniteSet(1000000)) {
     fun getUpdateTimes(name: String, firstTime: Long, lastTime: Long): List<Long> {
         val items = state[name]?:ArrayList<CogjectEntry>()
 
-        var startIndex = findIndex(firstTime, items)?:0
+        var startIndex = findNextTimeIndex(firstTime, items)?:-1
 
         var out = mutableListOf<Long>()
-        while (startIndex < items.size && items[startIndex].updateTime <= lastTime){
+
+        while (startIndex >= 0 && startIndex < items.size && items[startIndex].updateTime <= lastTime && items[startIndex].updateTime>=firstTime){
             out.add(items[startIndex].updateTime)
             startIndex++
         }

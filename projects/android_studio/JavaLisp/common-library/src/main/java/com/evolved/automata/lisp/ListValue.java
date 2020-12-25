@@ -94,6 +94,12 @@ public class ListValue extends Value
 	@Override
 	public String serializedForm()
 	{
+		return serializedForm(false);
+	}
+
+	@Override
+	public String serializedForm(boolean inQuotes)
+	{
 		if (!_listValidP)
 		{
 			_listValidP = true;
@@ -103,23 +109,33 @@ public class ListValue extends Value
 			return "()";
 
 		StringBuilder builder = new StringBuilder();
+		boolean quotesAdded = false;
 		if (_values[0].isIdentifier()){
-			builder.append("(" + _values[0].serializedForm());
+			if (inQuotes) {
+				builder.append("(" + _values[0].serializedForm(inQuotes));
+			}
+			else {
+				quotesAdded = true;
+				builder.append("(quote (" + _values[0].serializedForm(quotesAdded));
+			}
+
 		}
 		else {
-			builder.append("(list " + _values[0].serializedForm());
+			builder.append("(list " + _values[0].serializedForm(inQuotes));
 		}
 
-		
+
 		for (int i=1;i<_values.length;i++)
 		{
 			builder.append(" ");
-			builder.append(_values[i].serializedForm());
+			builder.append(_values[i].serializedForm(quotesAdded || inQuotes));
 		}
 		builder.append(")");
+		if (quotesAdded) {
+			builder.append(")");
+		}
 		return addQualifiers(builder.toString());
 	}
-	
 
 	@Override
 	public synchronized Value clone() {

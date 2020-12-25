@@ -1,5 +1,6 @@
 package com.evolved.automata.desktop;
 import java.awt.Color;
+import java.awt.Font;
 
 import javax.swing.*;
 import javax.swing.text.*;
@@ -15,10 +16,13 @@ public class AIInfoDisplay {
 		TextArea.setEditable(false);
 		TextFrame = new JFrame(description);
 		TextFrame.getContentPane().add(ScrollPane);
+
 		TextFrame.pack();
 		TextFrame.setVisible(true);
 		TextArea.setBackground(Color.BLACK);
 		TextArea.setForeground(Color.WHITE);
+
+
 		
 	}
 	
@@ -36,9 +40,11 @@ public class AIInfoDisplay {
 	public AIInfoDisplay(String description)
 	{
 		TextArea = new JTextArea(20,80);
+		TextArea.setFont(new Font("Times Roman", Font.PLAIN, 20));
 		ScrollPane = new JScrollPane(TextArea);
 		TextArea.setEditable(false);
 		TextFrame = new JFrame(description);
+
 		TextFrame.getContentPane().add(ScrollPane);
 		TextFrame.pack();
 		TextFrame.setVisible(true);

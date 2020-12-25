@@ -392,6 +392,11 @@ public abstract class Value {
 	{
 		return toString();
 	}
+
+	public String serializedForm(boolean quoted)
+	{
+		return serializedForm();
+	}
 	
 	public String addQualifiers(String value)
 	{

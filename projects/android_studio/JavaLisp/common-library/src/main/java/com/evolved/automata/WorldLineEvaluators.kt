@@ -155,6 +155,7 @@ class WorldLineLispFunctions {
             env.mapFunction("match-keywords", matchKeyWords())
             env.mapFunction("match-permutation", matchPermutation())
             env.mapFunction("match-prefix", matchPrefix())
+            env.mapFunction("match-suffix", matchSuffix())
 
         }
 
@@ -247,6 +248,101 @@ class WorldLineLispFunctions {
 
                 override fun <T :FunctionTemplate> innerClone(): T {
                     return matchPermutation() as T
+                }
+
+            }
+        }
+
+        // arguments: speech
+        //            match-spec (list (list {tokens} handler-exp))
+        //            on-ambiguous error-exp
+        fun matchSuffix():SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment, evaluatedArgs: Array<out Value>): Value {
+                    val functionConfigVarName = name
+                    val speechKey = "speech"
+                    val matchSpecKey = "match-spec"
+                    val errorExpKey = "on-ambiguous"
+                    val scoreThresholdKey = "score-threshold"
+                    var scoreThreshold = 0.5
+                    var argumentKey:String? = null
+
+                    val argMap = mutableMapOf<String, Value>()
+
+                    for ((i, argIndex) in evaluatedArgs.withIndex()) {
+                        if (argumentKey == null){
+                            argumentKey = evaluatedArgs[i].string
+                        }
+                        else {
+                            argMap[argumentKey] = evaluatedArgs[i]
+                            argumentKey = null
+                        }
+                    }
+
+                    var speechTokens = argMap.get(speechKey)
+                    var matchSpec:Value? = argMap.get(matchSpecKey)
+                    if (speechTokens == null){
+                        val configPrefix:String? = env.getVariableValue(functionConfigVarName)?.string
+                        if (configPrefix!=null){
+                            val speechArgumentVarname = "${configPrefix}${speechKey}"
+                            speechTokens = env.getVariableValue(speechArgumentVarname)
+                        }
+                    }
+
+                    if (speechTokens != null && matchSpec != null){
+                        val pattern = speechTokens?.list.map{ it -> it.string}
+                        val optionSpec:Array<Value> = matchSpec.list
+                        val ambiguityHandler = argMap.get(errorExpKey)
+                        if (argMap.containsKey(scoreThresholdKey)) {
+                            scoreThreshold = argMap[scoreThresholdKey]!!.floatValue
+                        }
+                        val scoredList = optionSpec?.map{spec:Value->
+                            val keySpec = spec.list
+                            val tokens = keySpec[0].list.map{it -> it.string}.reversed()
+                            val exp = keySpec[1]
+                            val matchSpec = SpeechUtilities.prefixPermutationMatch(tokens, pattern.reversed())
+                            matchSpec to exp
+                        }
+
+                        if (scoredList!=null){
+                            val highestScore = scoredList.fold(-1.0){maxScore:Double, next:Pair<MatchResult, Value> ->
+                                if (next.first.score > maxScore)
+                                    next.first.score
+                                else
+                                    maxScore
+                            }
+
+
+                            val maxFraction = 0.9
+                            val bestOption = scoredList.filter{next:Pair<MatchResult, Value> -> next.first.score >= highestScore*maxFraction && next.first.score > scoreThreshold }
+
+                            if (bestOption.size == 1){
+                                val exp = bestOption[0].second
+                                val evaluationEnv = Environment(env)
+                                val remaining = ListValue(bestOption[0].first.remainingTokens.map{it -> NLispTools.makeValue(it)}.reversed().toTypedArray())
+                                evaluationEnv.mapValue("remaining", remaining)
+                                evaluationEnv.mapValue("_speech", remaining)
+                                evaluationEnv.mapValue(name, NLispTools.makeValue("_"))
+                                val result = evaluationEnv.evaluate(exp, false)
+                                return result
+                            }
+                            else if (ambiguityHandler != null){
+                                val ambiguousEnv = Environment(env)
+                                ambiguousEnv.mapValue("ambiguous-count", NLispTools.makeValue(bestOption.size))
+                                return ambiguousEnv.evaluate(ambiguityHandler, false)
+                            }
+                            else
+                                return Environment.getNull()
+
+                        }
+
+                    }
+                    throw RuntimeException("Invalid parameters for $name")
+
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return matchSuffix() as T
                 }
 
             }
@@ -1472,11 +1568,15 @@ class WorldLineLispFunctions {
                                         worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), NLispTools.makeValue(cogject.currentStateName), ListValue(states.map{NLispTools.makeValue(it)}.toTypedArray()), Environment.getNull(), Environment.getNull())))}
                                     is ValueCogject -> {
                                         val lisp = cogject.getValue() as Value
-                                        if (lisp.isList() && lisp.getList().size > 0 && lisp.list[0].isIdentifier()){
-                                            worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  ListValue(arrayOf(NLispTools.makeValue("quote", true), lisp)), Environment.getNull())))
-                                        }
-                                        else
-                                            worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  cogject.getValue() as Value, Environment.getNull())))
+//                                        if (lisp.isList() && lisp.getList().size > 0 && lisp.list[0].isIdentifier()){
+//                                            worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), Environment.getNull(), Environment.getNull(),  ListValue(arrayOf(NLispTools.makeValue("quote", true), lisp)), Environment.getNull())))
+//                                        }
+//                                        else
+                                        //{
+                                            // State machine cogjects are deprecated.  Instead, we will use that field for whether the cogject had a behavior definition
+
+                                            worldSpecList.add(ListValue(arrayOf(NLispTools.makeValue(time), NLispTools.makeValue(key), (if (cogject.processInterceptor!=null) NLispTools.makeValue(1) else Environment.getNull()) , Environment.getNull(), cogject.getValue() as Value, Environment.getNull())))
+                                        //}
                                     }
                                 }
 
