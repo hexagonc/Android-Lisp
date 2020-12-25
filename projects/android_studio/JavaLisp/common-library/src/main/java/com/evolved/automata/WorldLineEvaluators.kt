@@ -115,6 +115,7 @@ class WorldLineLispFunctions {
             env.mapFunction("worldline-get-current-value", worldlineGetCurrentValue())
 
             env.mapFunction("worldline-get-last-update-spec", worldlineGetLastUpdateSpec())
+            env.mapFunction("worldline-get-next-update-spec", worldlineGetNextUpdateSpec())
             env.mapFunction("worldline-expire-key", worldlineExpireKey())
             env.mapFunction("worldline-pop-last-value", worldlinePopLastValue())
             env.mapFunction("worldline-get-update-times", worldlineGetLastUpdateTimes())
@@ -1226,6 +1227,27 @@ class WorldLineLispFunctions {
 
                 override fun <T :FunctionTemplate> innerClone(): T {
                     return worldlineGetLastUpdateSpec() as T
+                }
+
+            }
+
+        }
+
+        fun worldlineGetNextUpdateSpec(): SimpleFunctionTemplate {
+            return object: SimpleFunctionTemplate(){
+                override fun evaluate(env: Environment?, evaluatedArgs: Array<out Value>): Value {
+                    checkActualArguments(3, false, false)
+                    val world = evaluatedArgs[0].objectValue as WorldLine
+                    val name = evaluatedArgs[1].string
+                    val time = evaluatedArgs[2].intValue
+
+                    val result = world.findNextValueSpec(name, time)
+
+                    return if (result != null) ListValue(arrayOf<Value>(ExtendedFunctions.makeValue(result.entry), NLispTools.makeValue(result.updateTime))) else Environment.getNull()
+                }
+
+                override fun <T :FunctionTemplate> innerClone(): T {
+                    return worldlineGetNextUpdateSpec() as T
                 }
 
             }
