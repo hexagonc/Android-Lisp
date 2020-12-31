@@ -40,7 +40,7 @@ public class AIInfoDisplay {
 	public AIInfoDisplay(String description)
 	{
 		TextArea = new JTextArea(20,80);
-		TextArea.setFont(new Font("Times Roman", Font.PLAIN, 20));
+		TextArea.setFont(new Font("Times Roman", Font.PLAIN, 30));
 		ScrollPane = new JScrollPane(TextArea);
 		TextArea.setEditable(false);
 		TextFrame = new JFrame(description);
