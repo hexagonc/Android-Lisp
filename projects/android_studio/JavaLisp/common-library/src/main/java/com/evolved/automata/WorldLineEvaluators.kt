@@ -1337,6 +1337,7 @@ class WorldLineLispFunctions {
                     if (data != null) {
                         map.put("key", NLispTools.makeValue(data?.keyName?:""))
                         map.put("value", NLispTools.makeValue(data?.valString?:""))
+                        map.put("birthday", if (data.totalLifeTime != null) NLispTools.makeValue(time - data.totalLifeTime) else Environment.getNull())
                         map.put("value-age", if (data.valueLifeTime != null) NLispTools.makeValue(data.valueLifeTime) else Environment.getNull())
                         map.put("total-age", if (data.totalLifeTime != null) NLispTools.makeValue(data.totalLifeTime) else Environment.getNull())
                         map.put("birthday-str", if (data.birthdayString != null) NLispTools.makeValue(data.birthdayString) else Environment.getNull())

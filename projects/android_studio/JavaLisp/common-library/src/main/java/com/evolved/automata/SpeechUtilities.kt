@@ -53,7 +53,7 @@ class SpeechUtilities {
                 val transform = D[i][0]
                 transform.cost = i.toDouble()
                 if (i > 0)
-                    transform.route = 0 to (i-1)
+                    transform.route = (i-1) to 0
                 transform.matchP = i == 0
             }
 
