@@ -10,6 +10,7 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
@@ -1290,6 +1291,10 @@ public class ExtendedFunctions
 		env.mapFunction("to-sha1", to_sha1_sum());
 		
 		env.mapFunction("to-md5", to_md5_sum());
+
+		//
+		env.mapFunction("match-replacement-pattern-spec", match_replacement_field_pattern_spec());
+		env.mapFunction("get-replacement-pattern-spec", get_replacement_field_pattern_spec());
 		
 		env.mapFunction("synchronized", new FunctionTemplate()
 		{
@@ -1589,6 +1594,170 @@ public class ExtendedFunctions
 			
 		};
 	}
+
+	//
+	// Returns (({literal} {field}) ... )
+	public static SimpleFunctionTemplate get_replacement_field_pattern_spec(){
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(1, true, true);
+
+				try
+				{
+					String replaceFieldPattern = evaluatedArgs[0].getString();
+					String replaceFieldDelimiter = "{}";
+					if (evaluatedArgs.length > 1) {
+						replaceFieldDelimiter = evaluatedArgs[1].getString();
+					}
+
+					char startCharacter = replaceFieldDelimiter.charAt(0);
+					char endCharacter = replaceFieldDelimiter.charAt(1);
+
+					ArrayList<Value> spec = new ArrayList<Value>();
+
+					StringBuilder fielcName = null;
+					StringBuilder literals = null;
+					boolean hasLiterals = false, hasFields = false;
+
+					for (int i = 0;i<replaceFieldPattern.length();i++){
+						char letter = replaceFieldPattern.charAt(i);
+						if (letter == startCharacter){
+							if (literals != null){
+								Value[] fieldSpec = new Value[2];
+								fieldSpec[1] = Environment.getNull();
+								fieldSpec[0] = NLispTools.makeValue(literals.toString());
+								literals = null;
+								spec.add(new ListValue(fieldSpec));
+							}
+							if (fielcName == null){
+								fielcName = new StringBuilder();
+							}
+
+						} else if (letter == endCharacter) {
+							if (fielcName != null){
+								Value[] fieldSpec = new Value[2];
+								fieldSpec[1] = NLispTools.makeValue(fielcName.toString());
+								fieldSpec[0] = Environment.getNull();
+								fielcName = null;
+								spec.add(new ListValue(fieldSpec));
+							}
+						} else {
+							if (fielcName != null) {
+								fielcName.append(letter);
+								hasFields = true;
+							}
+							else {
+								if (literals == null){
+									literals = new StringBuilder();
+								}
+								hasLiterals = true;
+								literals.append(letter);
+							}
+
+						}
+
+					}
+					if (literals != null){
+						Value[] fieldSpec = new Value[2];
+						fieldSpec[1] = Environment.getNull();
+						fieldSpec[0] = NLispTools.makeValue(literals.toString());
+						spec.add(new ListValue(fieldSpec));
+						hasLiterals = true;
+					}
+
+					if (hasLiterals && hasFields)
+						return new ListValue(spec.toArray(new Value[0]));
+					else
+						return Environment.getNull();
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+
+		};
+	}
+
+
+	public static SimpleFunctionTemplate match_replacement_field_pattern_spec(){
+		return new SimpleFunctionTemplate()
+		{
+
+			@Override
+			public Value evaluate(Environment env, Value[] evaluatedArgs) {
+				checkActualArguments(2, true, true);
+
+				try
+				{
+					String text = evaluatedArgs[0].getString();
+					Value[] replacementSpecList = evaluatedArgs[1].getList();
+					HashMap<String, Value> replacementMap = new HashMap<String, Value>();
+					boolean allowEmptyFields =  false;
+
+					int specIndex = 0, matchIndex = 0, literalIndex = 0;
+					int i,j;
+					while (specIndex < replacementSpecList.length && matchIndex < text.length()){
+						literalIndex = -1;
+						for (i = specIndex;i<replacementSpecList.length;i++) {
+							if (!replacementSpecList[i].getList()[0].isNull()) {
+								literalIndex = i;
+								break;
+							}
+						}
+
+						if (literalIndex != -1) {
+							String literal = replacementSpecList[literalIndex].getList()[0].getString();
+							j = text.indexOf(literal, matchIndex);
+							if (j == -1) {
+								return Environment.getNull();
+							}
+							if (literalIndex == specIndex) {
+
+								if (j != matchIndex){
+									return Environment.getNull();
+								}
+
+								matchIndex+=literal.length();
+								specIndex++;
+							}
+							else {
+								String fieldName = replacementSpecList[specIndex].getList()[1].getString();
+								if (j == matchIndex && !allowEmptyFields) {
+									return Environment.getNull();
+								}
+								replacementMap.put(fieldName, NLispTools.makeValue(text.substring(matchIndex, j)));
+								specIndex = literalIndex+1;
+								matchIndex =j+literal.length();
+							}
+						}
+						else {
+							String fieldName = replacementSpecList[specIndex].getList()[1].getString();
+							String value = text.substring(matchIndex);
+							if (value.length() == 0 && !allowEmptyFields) {
+								return Environment.getNull();
+							}
+							replacementMap.put(fieldName, NLispTools.makeValue(value));
+							specIndex++;
+						}
+
+					}
+
+
+					return new StringHashtableValue(replacementMap);
+				}
+				catch (Exception e)
+				{
+					throw new RuntimeException(e.getMessage());
+				}
+			}
+
+		};
+	}
+
 	/**
 	 * Performs 1 dimensional k-means clustering
 	 * first argument is a list of numeric values
