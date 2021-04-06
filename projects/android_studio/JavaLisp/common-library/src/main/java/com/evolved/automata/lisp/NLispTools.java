@@ -506,7 +506,34 @@ public class NLispTools
 			
 		}
 		);
-		
+
+        env.mapFunction("get-cache-value", new SimpleFunctionTemplate()
+                {
+
+                    @Override
+                    public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                        Value result = env.getThreadLocal();
+
+                        return result;
+
+                    }
+                }
+        );
+
+        env.mapFunction("set-cache-value", new SimpleFunctionTemplate()
+                {
+
+                    @Override
+                    public Value evaluate(Environment env,Value[] evaluatedArgs) {
+                        checkActualArguments(1, false, true);
+                        Value result = evaluatedArgs[0];
+                        env.setThreadLocal(result);
+
+                        return result;
+
+                    }
+                }
+        );
 		
 		env.mapFunction("var-exists-p", new SimpleFunctionTemplate()
 		{
@@ -1663,7 +1690,7 @@ public class NLispTools
 								_outList = new LinkedList<Value>();
 							}
 							else 
-								throw new RuntimeException("Second argument to 'mapcar' must be a list");
+								throw new RuntimeException("Second argument to 'map-some' must be a list");
 							 _currentState = BINDING_VARIABLES;
 							 _loopIndex = 0;
 							 break;

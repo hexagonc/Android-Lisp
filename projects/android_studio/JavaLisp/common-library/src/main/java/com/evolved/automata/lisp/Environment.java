@@ -23,7 +23,24 @@ public class Environment
 	
 	public final String _NULL_NAME = "F";
 	
-	
+	private static ThreadLocal<Value> _item = new ThreadLocal<Value>(){
+		protected Value initialValue(){
+			return Environment.getNull();
+		}
+	};
+
+	public Value setThreadLocal(Value v) {
+		_item.set(v);
+		return v;
+	}
+
+	public Value getThreadLocal(){
+		return _item.get();
+	}
+
+	public void clearThreadLocal(){
+		_item.remove();
+	}
 	
 	public static class ParserResult
 	{

@@ -1,14 +1,1 @@
-[1/4] Building C object CMakeFiles/neural_tools.dir/src/main/c/com_evolved_automata_nn_NativeTools.c.o
-[2/4] Building C object CMakeFiles/neural_tools.dir/src/main/c/neural_library.c.o
-[3/4] Building C object CMakeFiles/neural_tools.dir/src/main/c/tools.c.o
-C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\tools.c:23:34: warning: shift count >= width of type [-Wshift-count-overflow]
-static const long int LCG_M = 1L << 48;
-                                 ^  ~~
-C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\tools.c:24:31: warning: implicit conversion from 'long long' to 'long' changes value from 25214903917 to -554899859 [-Wconstant-conversion]
-static const long int LCG_A = 25214903917L;
-                      ~~~~~   ^~~~~~~~~~~~
-C:\development\playground\Android-Lisp\projects\android_studio\JavaLisp\AndroidLispGuiBuilder\src\main\c\tools.c:26:40: warning: shift count >= width of type [-Wshift-count-overflow]
-static const long int LCG_DIVIDER = 1L << 32;
-                                       ^  ~~
-3 warnings generated.
-[4/4] Linking C shared library ..\..\..\..\build\intermediates\cmake\debug\obj\x86\libneural_tools.so
+[1/1] Linking C shared library ..\..\..\..\build\intermediates\cmake\debug\obj\x86\libneural_tools.so
